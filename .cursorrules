@@ -1,0 +1,169 @@
+您是一个专注于本项目的强大的、聪明的、能记住重要信息的 AI 助手，熟悉项目相关配置和命名约定。
+
+## 项目概述
+本项目是一个基于 Sora 的视频生成 Web 前端平台，主要功能包括：
+- 模型选择和管理
+- 视频生成（文本生成视频、图片生成视频等）
+- 用户购买和订阅管理
+- 视频作品管理和展示
+- 用户账户和个人中心
+
+## 技术栈配置
+
+### 国际化配置
+- 国际化配置在 `src/locales` 文件中
+- 请确保在添加各国新的国际化配置时，遵循上述规则并更新 `src/locales` 文件夹
+- 国际化配置使用 `react-intl` 插件
+- 国际化配置使用 `src/locales/index.js` 文件
+- ar的配置在 `src/locales/ar_SA.js` 文件中
+- de的配置在 `src/locales/de_DE.js` 文件中
+- en的配置在 `src/locales/en_US.js` 文件中
+- es的配置在 `src/locales/es_ES.js` 文件中
+- fr的配置在 `src/locales/fr_FR.js` 文件中
+- it的配置在 `src/locales/it_IT.js` 文件中
+- ja的配置在 `src/locales/ja_JP.js` 文件中
+- ko的配置在 `src/locales/ko_KR.js` 文件中
+- ru的配置在 `src/locales/ru_RU.js` 文件中
+- zh的配置在 `src/locales/zh_CN.js` 文件中
+- pt的配置在 `src/locales/pt_PT.js` 文件中
+
+### App.js 配置规则
+- App.js 是应用程序的根组件
+- 必须使用 ConfigProvider 进行全局配置
+- 必须使用 ThemeProvider 进行主题配置
+- 必须使用 LocaleProvider 进行国际化配置
+- 必须使用 BrowserRouter 进行路由配置
+- 必须使用 Routes 和 Route 进行路由定义
+- 必须实现路由守卫功能
+- 必须实现主题切换功能（深色/浅色模式）
+- 必须实现国际化切换功能
+- 必须配置全局消息提示（message）
+- 必须引入全局样式（GlobalStyles）
+- 必须配置 antd 主题（包括自定义 token）
+- 私有路由必须使用 PrivateRoute 组件包装
+- 根路由（/）必须根据登录状态进行重定向
+
+### 路由配置
+- 路由配置在 `src/App.js` 文件中
+- 请确保在添加新路由时，遵循上述规则并更新 `src/App.js` 文件
+- 主要路由应包括：
+  - `/` - 首页/登录页
+  - `/login` - 登录页
+  - `/signup` - 注册页
+  - `/generate` - 视频生成页面（私有路由）
+  - `/models` - 模型选择页面（私有路由）
+  - `/works` - 我的作品页面（私有路由）
+  - `/pricing` - 定价和购买页面
+  - `/profile` - 个人中心（私有路由）
+
+### 依赖配置
+- 依赖配置在 `package.json` 文件中
+- 请确保在添加新依赖时，遵循上述规则并更新 `package.json` 文件
+- 核心依赖包括：React、Ant Design、React Router、Axios、React Intl 等
+
+### TypeScript 配置
+- ts的配置在 `tsconfig.json` 文件中
+- 请确保在添加新ts配置时，遵循上述规则并更新 `tsconfig.json` 文件
+- 新组件优先使用 TypeScript 编写
+
+### 样式规范
+- 永远不要使用 twin.macro
+- 响应式布局必须使用 bootstrap 的栅格系统
+- 全局样式在 `src/styles/GlobalStyles.js` 文件中
+- 请确保在添加新全局样式时，遵循上述规则并更新 `src/styles/GlobalStyles.js` 文件
+- 组件样式优先使用 styled-components 或 Ant Design 的样式系统
+
+### 主题配置
+- 主题色必须在 App.js 中通过 ConfigProvider 的 theme.token.colorPrimary 配置
+- 默认主题色为 #3b82f6
+- 深色模式下的主题配置必须使用 theme.darkAlgorithm
+- 浅色模式下的主题配置必须使用 theme.defaultAlgorithm
+
+## API 和数据处理
+
+### API 请求
+- import instance from 'api/axios';
+- 请确保在添加新Api请求时，遵循上述规则并更新 `src/api/axios.js` 文件
+- API 请求应统一使用 axios 实例，并包含错误处理和拦截器
+- API 接口应包含：
+  - 用户认证相关接口（登录、注册、重置密码等）
+  - 模型相关接口（获取模型列表、模型详情等）
+  - 视频生成相关接口（创建生成任务、查询生成状态、获取生成结果等）
+  - 作品管理相关接口（获取作品列表、删除作品、下载作品等）
+  - 支付相关接口（创建订单、查询订单状态等）
+
+### 加解密配置
+- CryptoJS的配置在 `src/utils/crypto.js` 文件中
+- 请确保在添加新CryptoJS配置时，遵循上述规则并更新 `src/utils/crypto.js` 文件
+- 敏感数据传输应使用加密处理
+
+## 用户体验规范
+
+### Loading 效果
+任何请求接口的操作必须有对应的 loading 效果，包括但不限于：
+- 视频生成任务创建和查询
+- 模型加载和切换
+- 文件上传（如上传参考图片）
+- 文件下载（如下载生成的视频）
+- 删除操作（如删除作品）
+- 支付和订单处理
+- 加载效果需要现代化设计，使用 Ant Design 的 Spin 组件或自定义加载动画
+
+### 视频处理
+- 视频播放应使用 HTML5 video 标签或第三方视频播放器库
+- 视频预览应支持缩略图显示
+- 视频上传应支持进度显示
+- 视频生成状态应实时更新（轮询或 WebSocket）
+
+### 模型选择
+- 模型列表应展示模型名称、描述、参数信息、价格等
+- 模型选择应支持筛选和搜索功能
+- 模型详情页应展示详细信息和示例视频
+
+## 业务功能规范
+
+### 视频生成流程
+1. 用户选择模型
+2. 输入生成参数（文本提示词、参考图片等）
+3. 提交生成任务
+4. 显示生成进度和状态
+5. 生成完成后展示结果
+6. 支持下载、分享、删除等操作
+
+### 支付和订阅
+- 支持多种支付方式
+- 支持订阅和按次付费两种模式
+- 订单状态实时更新
+- 余额和积分管理
+
+### 作品管理
+- 作品列表支持分页、筛选、搜索
+- 作品详情页展示完整信息
+- 支持作品分享、下载、删除等操作
+
+## 开发规范
+
+### 代码规范
+- 组件命名使用 PascalCase
+- 文件命名使用 PascalCase（组件）或 camelCase（工具函数）
+- 函数和变量命名使用 camelCase
+- 常量命名使用 UPPER_SNAKE_CASE
+
+### 文件组织
+- 页面组件放在 `src/pages` 目录
+- 通用组件放在 `src/components` 目录
+- 工具函数放在 `src/utils` 目录
+- API 接口放在 `src/api` 目录
+- 类型定义放在 `src/models` 目录
+- 上下文和状态管理放在 `src/contexts` 目录
+
+### 路由更新
+- 更改页面路径后，请确保在 `src/App.js` 文件中更新路由配置
+- 新增页面时，应同时更新路由和导航菜单（如有）
+
+## 注意事项
+- 所有用户操作应有明确的反馈（成功/失败提示）
+- 敏感操作（如删除、支付）应有二次确认
+- 错误信息应友好且可操作
+- 保持代码的可维护性和可扩展性
+- 遵循 React 最佳实践和性能优化原则
