@@ -1,4 +1,6 @@
 export default {
+  'header.homepage': 'ホームページ',
+  'header.workspace': 'ワークスペース',
   'login.title': 'MyStorageX',
   'login.welcome': 'MyStorageXへようこそ',
   'login.description': 'MyStorageXは、安全で便利なファイル保存と管理サービスを提供するクラウドストレージアシスタントです。いつでもどこでもファイルにアクセスできます。',
@@ -382,4 +384,10 @@ export default {
   'create.style.realistic': 'リアル',
   'create.style.3d-render': '3Dレンダー',
   'create.style.cyberpunk': 'サイバーパンク',
+  'create.settings.loadFailed': '作成タイプ設定の読み込みに失敗しました。すべてのオプションを表示します',
+  'create.settings.error': '設定の読み込みに失敗しました。すべてのオプションを表示します',
+  'create.noAvailableTabs': '利用可能な作成タイプがありません',
+  'create.network.error.title': 'ネットワーク接続エラー',
+  'create.network.error.description': '作成タイプ設定を読み込めません。ネットワーク接続を確認してページを更新してください',
+  'create.network.error.refresh': 'ページを更新',
 }; 

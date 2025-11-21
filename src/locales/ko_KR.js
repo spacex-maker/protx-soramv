@@ -1,4 +1,6 @@
 export default {
+  'header.homepage': '홈페이지',
+  'header.workspace': '작업 공간',
   'login.title': 'MyStorageX',
   'login.welcome': 'MyStorageX에 오신 것을 환영합니다',
   'login.description': 'MyStorageX는 안전하고 편리한 파일 저장 및 관리 서비스를 제공하는 클라우드 스토리지 도우미입니다. 언제 어디서나 파일에 접근할 수 있습니다.',
@@ -362,4 +364,10 @@ export default {
   'create.style.realistic': '사실적',
   'create.style.3d-render': '3D 렌더',
   'create.style.cyberpunk': '사이버펑크',
+  'create.settings.loadFailed': '작성 유형 설정 로드 실패, 모든 옵션 표시',
+  'create.settings.error': '설정 로드 실패, 모든 옵션 표시',
+  'create.noAvailableTabs': '사용 가능한 작성 유형이 없습니다',
+  'create.network.error.title': '네트워크 연결 오류',
+  'create.network.error.description': '작성 유형 설정을 로드할 수 없습니다. 네트워크 연결을 확인하고 페이지를 새로고침하세요',
+  'create.network.error.refresh': '페이지 새로고침',
 }; 

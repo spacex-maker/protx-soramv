@@ -1,4 +1,6 @@
 export default {
+  'header.homepage': '返回官网',
+  'header.workspace': '工作空间',
   'login.title': 'Sora MV',
   'login.welcome': '欢迎使用 Sora MV',
   'login.description': 'Sora MV 是您的AI 视频生成平台，为您提供安全、便捷的视频生成和创作服务。随时随地，轻松访问您的所有文件。',
@@ -442,4 +444,10 @@ export default {
   'create.style.realistic': '写实 (Realistic)',
   'create.style.3d-render': '3D 渲染 (3D Render)',
   'create.style.cyberpunk': '赛博朋克 (Cyberpunk)',
+  'create.settings.loadFailed': '获取创作类型设置失败，显示所有选项',
+  'create.settings.error': '加载设置失败，显示所有选项',
+  'create.noAvailableTabs': '暂无可用的创作类型',
+  'create.network.error.title': '网络连接异常',
+  'create.network.error.description': '无法加载创作类型配置，请检查网络连接后刷新页面重试',
+  'create.network.error.refresh': '刷新页面',
 }; 

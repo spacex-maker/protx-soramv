@@ -1,4 +1,6 @@
 export default {
+  'header.homepage': 'Startseite',
+  'header.workspace': 'Arbeitsbereich',
   'login.title': 'MyStorageX',
   'login.welcome': 'Willkommen bei MyStorageX',
   'login.description': 'MyStorageX ist Ihr Cloud-Speicher-Assistent, der sicheren und bequemen Dateispeicher und -verwaltung bietet. Greifen Sie jederzeit und überall auf Ihre Dateien zu.',
@@ -363,4 +365,10 @@ export default {
   'create.style.realistic': 'Realistisch',
   'create.style.3d-render': '3D Render',
   'create.style.cyberpunk': 'Cyberpunk',
+  'create.settings.loadFailed': 'Fehler beim Laden der Erstellungstyp-Einstellungen, alle Optionen werden angezeigt',
+  'create.settings.error': 'Fehler beim Laden der Einstellungen, alle Optionen werden angezeigt',
+  'create.noAvailableTabs': 'Keine verfügbaren Erstellungstypen',
+  'create.network.error.title': 'Netzwerkverbindungsfehler',
+  'create.network.error.description': 'Erstellungstyp-Einstellungen konnten nicht geladen werden. Bitte überprüfen Sie Ihre Netzwerkverbindung und aktualisieren Sie die Seite',
+  'create.network.error.refresh': 'Seite aktualisieren',
 }; 

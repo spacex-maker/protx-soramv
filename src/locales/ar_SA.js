@@ -1,4 +1,6 @@
 export default {
+  'header.homepage': 'الصفحة الرئيسية',
+  'header.workspace': 'مساحة العمل',
   'login.title': 'MyStorageX',
   'login.welcome': 'مرحباً بك في MyStorageX',
   'login.description': 'MyStorageX هو مساعدك في التخزين السحابي، يوفر تخزين وإدارة آمنة ومريحة للملفات. الوصول إلى ملفاتك في أي وقت وأي مكان.',
@@ -308,4 +310,10 @@ export default {
   'create.style.realistic': 'واقعي',
   'create.style.3d-render': '3D Render',
   'create.style.cyberpunk': 'سايبربانك',
+  'create.settings.loadFailed': 'فشل تحميل إعدادات نوع الإبداع، عرض جميع الخيارات',
+  'create.settings.error': 'فشل تحميل الإعدادات، عرض جميع الخيارات',
+  'create.noAvailableTabs': 'لا توجد أنواع إبداع متاحة',
+  'create.network.error.title': 'خطأ في اتصال الشبكة',
+  'create.network.error.description': 'تعذر تحميل إعدادات نوع الإبداع. يرجى التحقق من اتصال الشبكة وتحديث الصفحة',
+  'create.network.error.refresh': 'تحديث الصفحة',
 }; 

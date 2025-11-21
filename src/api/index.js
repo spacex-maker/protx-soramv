@@ -4,6 +4,9 @@ export { default as axios } from './axios';
 // 导出认证相关 API
 export { auth } from './auth';
 
+// 导出基础 API
+export { base } from './base';
+
 // 后续可以继续添加其他模块的 API
 // export { user } from './user';
 // export { posts } from './posts';

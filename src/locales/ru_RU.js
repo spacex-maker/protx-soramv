@@ -1,4 +1,6 @@
 export default {
+  'header.homepage': 'Главная Страница',
+  'header.workspace': 'Рабочее Пространство',
   'login.title': 'MyStorageX',
   'login.welcome': 'Добро пожаловать в MyStorageX',
   'login.description': 'MyStorageX - ваш помощник в облачном хранении, предоставляющий безопасное и удобное хранение и управление файлами. Получите доступ к вашим файлам в любое время и в любом месте.',
@@ -294,4 +296,10 @@ export default {
   'create.style.realistic': 'Реалистичный',
   'create.style.3d-render': '3D Render',
   'create.style.cyberpunk': 'Киберпанк',
+  'create.settings.loadFailed': 'Не удалось загрузить настройки типа создания, отображаются все варианты',
+  'create.settings.error': 'Не удалось загрузить настройки, отображаются все варианты',
+  'create.noAvailableTabs': 'Нет доступных типов создания',
+  'create.network.error.title': 'Ошибка Сетевого Подключения',
+  'create.network.error.description': 'Не удалось загрузить настройки типа создания. Пожалуйста, проверьте подключение к сети и обновите страницу',
+  'create.network.error.refresh': 'Обновить Страницу',
 }; 

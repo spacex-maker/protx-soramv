@@ -1,4 +1,6 @@
 export default {
+  'header.homepage': 'Página Principal',
+  'header.workspace': 'Espacio de Trabajo',
   'login.title': 'MyStorageX',
   'login.welcome': 'Bienvenido a MyStorageX',
   'login.description': 'MyStorageX es tu asistente de almacenamiento en la nube, que ofrece almacenamiento y gestión de archivos seguros y convenientes. Accede a tus archivos en cualquier momento y lugar.',
@@ -286,4 +288,10 @@ export default {
   'create.style.realistic': 'Realista',
   'create.style.3d-render': '3D Render',
   'create.style.cyberpunk': 'Cyberpunk',
+  'create.settings.loadFailed': 'Error al cargar la configuración del tipo de creación, mostrando todas las opciones',
+  'create.settings.error': 'Error al cargar la configuración, mostrando todas las opciones',
+  'create.noAvailableTabs': 'No hay tipos de creación disponibles',
+  'create.network.error.title': 'Error de Conexión de Red',
+  'create.network.error.description': 'No se puede cargar la configuración del tipo de creación. Por favor, verifique su conexión de red y actualice la página',
+  'create.network.error.refresh': 'Actualizar Página',
 }; 

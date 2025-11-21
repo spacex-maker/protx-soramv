@@ -39,10 +39,9 @@ const PrivateRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
-// 根路径路由组件
+// 根路径路由组件 - 允许已登录用户访问主页
 const RootRoute = () => {
-  const isAuthenticated = localStorage.getItem('token'); // 检查用户是否已登录
-  return isAuthenticated ? <Navigate to="/workspace" /> : <HomePage />;
+  return <HomePage />;
 };
 
 export default function App() {

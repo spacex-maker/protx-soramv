@@ -25,5 +25,18 @@ export const base = {
         message: error.response?.data?.message || '获取站点设置失败' 
       };
     }
+  },
+
+  // 获取创作类型设置
+  getCreationTypeSettings: async () => {
+    try {
+      const { data } = await axios.get('/base/site-settings/creation-type-settings');
+      return data;
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.message || '获取创作类型设置失败' 
+      };
+    }
   }
 }; 

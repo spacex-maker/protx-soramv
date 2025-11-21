@@ -1,4 +1,6 @@
 export default {
+  'header.homepage': 'Homepage',
+  'header.workspace': 'Workspace',
   'login.title': 'Sora MV',
   'login.welcome': 'Welcome to Sora MV',
   'login.description': 'Sora MV is your AI video generation platform, providing secure and convenient video generation and creation services. Access all your files anytime, anywhere.',
@@ -389,4 +391,10 @@ export default {
   'create.style.realistic': 'Realistic',
   'create.style.3d-render': '3D Render',
   'create.style.cyberpunk': 'Cyberpunk',
+  'create.settings.loadFailed': 'Failed to load creation type settings, showing all options',
+  'create.settings.error': 'Failed to load settings, showing all options',
+  'create.noAvailableTabs': 'No available creation types',
+  'create.network.error.title': 'Network Connection Error',
+  'create.network.error.description': 'Unable to load creation type settings. Please check your network connection and refresh the page',
+  'create.network.error.refresh': 'Refresh Page',
 }; 

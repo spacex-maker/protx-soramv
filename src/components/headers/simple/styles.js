@@ -1,4 +1,4 @@
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes, css } from "styled-components";
 import { Link } from "react-router-dom";
 
 // 定义跑马灯效果
@@ -24,6 +24,26 @@ export const pulseEffect = keyframes`
   100% {
     transform: scale(0.97);
     opacity: 0.8;
+  }
+`;
+
+// 定义选中状态的发光动画
+export const activeGlow = keyframes`
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.6);
+  }
+`;
+
+// 定义选中状态的图标脉冲动画
+export const iconPulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
   }
 `;
 
@@ -173,5 +193,61 @@ export const LanguageButton = styled.button`
 
   .anticon {
     font-size: 1.25rem;
+  }
+`;
+
+export const IconNavLink = styled(NavLink)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  min-width: 36px;
+  height: 36px;
+  position: relative;
+  transition: all 0.3s ease;
+
+  .anticon {
+    font-size: 1.25rem;
+    transition: all 0.3s ease;
+  }
+
+  /* 选中状态特效 */
+  ${props => props.$active && css`
+    color: var(--ant-color-primary) !important;
+    background: ${props.theme.mode === 'dark' 
+      ? 'rgba(59, 130, 246, 0.15)' 
+      : 'rgba(59, 130, 246, 0.1)'} !important;
+    animation: ${activeGlow} 2s ease-in-out infinite;
+    
+    .anticon {
+      color: var(--ant-color-primary);
+      animation: ${iconPulse} 2s ease-in-out infinite;
+    }
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 20px;
+      padding: 2px;
+      background: linear-gradient(45deg, 
+        var(--ant-color-primary), 
+        rgba(59, 130, 246, 0.3),
+        var(--ant-color-primary)
+      );
+      background-size: 200% 200%;
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      animation: ${marqueeGlow} 3s linear infinite;
+      opacity: 0.6;
+    }
+  `}
+
+  &:hover {
+    ${props => !props.$active && css`
+      color: var(--ant-color-primary);
+      background: var(--ant-color-bg-container);
+    `}
   }
 `; 

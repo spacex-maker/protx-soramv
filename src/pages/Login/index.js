@@ -47,7 +47,7 @@ const LoginPage = () => {
       const result = await auth.login({ email, password });
       if (result.success) {
         message.success("登录成功");
-        navigate("/");
+        navigate("/workspace");
       } else {
         setError(result.message || "登录失败");
       }

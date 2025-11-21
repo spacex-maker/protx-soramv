@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { ThemeContext } from "styled-components";
+import { HomeOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { auth } from "../../../api/auth.js";
 import { base } from "../../../api/base.js";
 import { useLocale } from 'contexts/LocaleContext';
@@ -14,17 +16,24 @@ import {
   LeftSection,
   RightSection,
   NavLink,
-  PrimaryLink
+  PrimaryLink,
+  IconNavLink
 } from './styles';
 
 const SimpleHeader = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const theme = React.useContext(ThemeContext);
+  const intl = useIntl();
   const [isDark, setIsDark] = useState(theme.mode === 'dark');
   const [userInfo, setUserInfo] = useState(null);
   const [scrolled, setScrolled] = useState(false);
   const { locale, changeLocale } = useLocale();
   const [languages, setLanguages] = useState([]);
+
+  // 检测当前路由
+  const isHomePage = location.pathname === '/';
+  const isWorkspace = location.pathname.startsWith('/workspace');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -137,6 +146,14 @@ const SimpleHeader = () => {
         </LeftSection>
 
         <RightSection>
+          <IconNavLink 
+            to="/" 
+            $active={isHomePage}
+            title={intl.formatMessage({ id: 'header.homepage', defaultMessage: '返回官网' })}
+          >
+            <HomeOutlined />
+          </IconNavLink>
+
           <LanguageSelector 
             locale={locale}
             languages={languages}
@@ -149,15 +166,28 @@ const SimpleHeader = () => {
           />
           
           {userInfo ? (
-            <UserMenu 
-              userInfo={userInfo}
-              isDark={isDark}
-              onLogout={handleLogout}
-            />
+            <>
+              <IconNavLink 
+                to="/workspace" 
+                $active={isWorkspace}
+                title={intl.formatMessage({ id: 'header.workspace', defaultMessage: '工作空间' })}
+              >
+                <AppstoreOutlined />
+              </IconNavLink>
+              <UserMenu 
+                userInfo={userInfo}
+                isDark={isDark}
+                onLogout={handleLogout}
+              />
+            </>
           ) : (
             <>
-              <NavLink to="/login">登录</NavLink>
-              <PrimaryLink to="/signup">注册</PrimaryLink>
+              <NavLink to="/login">
+                <FormattedMessage id="login.button" defaultMessage="登录" />
+              </NavLink>
+              <PrimaryLink to="/signup">
+                <FormattedMessage id="signup.button" defaultMessage="注册" />
+              </PrimaryLink>
             </>
           )}
         </RightSection>
