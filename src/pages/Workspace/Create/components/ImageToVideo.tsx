@@ -15,9 +15,6 @@ import {
   Spin,
   Tooltip,
   Modal,
-  Upload,
-  UploadFile,
-  UploadProps,
 } from 'antd';
 import { 
   ThunderboltOutlined, 
@@ -25,8 +22,16 @@ import {
   VideoCameraOutlined,
   PlayCircleOutlined,
   InfoCircleOutlined,
-  UploadOutlined,
-  PictureOutlined
+  PictureOutlined,
+  FileImageOutlined,
+  EditOutlined,
+  SlidersOutlined,
+  ClockCircleOutlined,
+  CameraOutlined,
+  InboxOutlined,
+  DeleteOutlined,
+  CheckCircleOutlined,
+  SwapOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -78,12 +83,108 @@ const VideoPlaceholder = styled.div`
   }
 `;
 
+// 左侧：输入图片容器
+const InputImageContainer = styled.div`
+  width: 100%;
+  height: 260px;
+  border-radius: 12px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+
+  &:hover .overlay-actions {
+    opacity: 1;
+  }
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto !important; 
+    height: auto !important;
+    object-fit: contain; 
+    display: block;
+    border-radius: 12px;
+  }
+`;
+
+// 输入图片的遮罩层
+const OverlayActions = styled.div`
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+`;
+
+// 自定义上传区域
+const CustomUploadArea = styled.div<{ $isDark?: boolean; $isDragging?: boolean }>`
+  width: 100%;
+  height: 260px;
+  border-radius: 12px;
+  border: 1px dashed ${props => props.$isDark ? '#444' : '#d9d9d9'};
+  background: ${props => props.$isDark ? '#1f1f1f' : '#fafafa'};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  
+  ${props => props.$isDragging && `
+    border-color: #1890ff;
+    background: ${props.$isDark ? '#2a2a2a' : '#f0f7ff'};
+  `}
+  
+  &:hover {
+    border-color: #1890ff;
+  }
+  
+  input[type="file"] {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+`;
+
+const UploadIcon = styled.div<{ $isDark?: boolean }>`
+  margin-bottom: 16px;
+  color: #1890ff;
+  font-size: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const UploadText = styled.div<{ $isDark?: boolean }>`
+  color: ${props => props.$isDark ? '#fff' : '#333'};
+  font-size: 16px;
+  margin-bottom: 8px;
+`;
+
+const UploadHint = styled.div<{ $isDark?: boolean }>`
+  color: ${props => props.$isDark ? '#999' : '#999'};
+  font-size: 12px;
+`;
+
 const UploadPreview = styled.img`
   width: 100%;
   height: auto;
-  aspect-ratio: 1 / 1; /* 保持一致性 */
+  aspect-ratio: 1 / 1;
   object-fit: contain;
-  border-radius: 8px;
+  border-radius: 12px;
 `;
 
 
@@ -150,19 +251,80 @@ const ImageToVideo: React.FC = () => {
   
   // 图片上传状态
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
-  const [fileList, setFileList] = useState<UploadFile[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
 
-  // 处理文件上传预览和状态
-  const handleUploadChange: UploadProps['onChange'] = async ({ fileList: newFileList }) => {
-    setFileList(newFileList.slice(-1)); 
+  // 监听主题变化
+  React.useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    return () => observer.disconnect();
+  }, []);
 
-    if (newFileList.length > 0 && newFileList[0].originFileObj) {
-        const url = await getBase64(newFileList[0].originFileObj as File);
-        setOriginalImageUrl(url);
-    } else {
-        setOriginalImageUrl(null);
+  // 处理文件选择
+  const handleFileSelect = async (file: File | null) => {
+    if (!file) {
+      setOriginalImageUrl(null);
+      form.setFieldsValue({ inputFile: undefined });
+      return;
     }
-    form.setFieldsValue({ inputFile: newFileList.length > 0 ? newFileList[0].uid : undefined });
+
+    // 验证文件类型
+    if (!file.type.startsWith('image/')) {
+      message.error('请选择图片文件');
+      return;
+    }
+
+    try {
+      const url = await getBase64(file);
+      setOriginalImageUrl(url);
+      form.setFieldsValue({ inputFile: file.name });
+    } catch (error) {
+      message.error('图片读取失败');
+    }
+  };
+
+  // 处理文件输入变化
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    handleFileSelect(file);
+  };
+
+  // 处理拖拽
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0] || null;
+    handleFileSelect(file);
+  };
+
+  const handleRemoveImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOriginalImageUrl(null);
+    form.setFieldsValue({ inputFile: undefined });
+    const fileInput = document.getElementById('i2v-upload-input') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
   };
 
 
@@ -211,11 +373,13 @@ const ImageToVideo: React.FC = () => {
         {/* --- 左侧：控制面板 --- */}
         <Col xs={24} lg={9}>
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <div>
-              <Title level={3} style={{ margin: 0 }}>
+            <div style={{ marginBottom: 8 }}>
+              <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
                 <FormattedMessage id="create.imageToVideo.title" defaultMessage="AI 图生视频" />
               </Title>
-              <Text type="secondary">
+              <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <VideoCameraOutlined style={{ fontSize: 14 }} />
                 <FormattedMessage 
                   id="create.imageToVideo.subtitle" 
                   defaultMessage="赋予静态图片生命，通过提示词控制运动" 
@@ -237,40 +401,53 @@ const ImageToVideo: React.FC = () => {
              {/* 1. 上传图片区域 */}
               <Form.Item
                 name="inputFile"
-                label={<FormattedMessage id="create.i2v.upload" defaultMessage="上传参考图片 (起始帧)" />}
-                valuePropName="fileList"
-                getValueFromEvent={() => fileList}
+                label={
+                  <Space>
+                    <FileImageOutlined style={{ color: '#1890ff' }} />
+                    <FormattedMessage id="create.i2v.upload" defaultMessage="上传参考图片 (起始帧)" />
+                  </Space>
+                }
                 rules={[{ required: true, message: '请上传参考图片' }]}
+                style={{ marginBottom: 20, marginTop: 0 }}
               >
                 {originalImageUrl ? (
-                    <div style={{ position: 'relative' }}>
-                        <UploadPreview src={originalImageUrl} alt="Original Preview" />
-                        <Button 
-                            type="dashed" 
-                            size="small"
-                            onClick={() => { setOriginalImageUrl(null); setFileList([]); form.resetFields(['inputFile']); }}
-                            style={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}
-                        >
-                            <FormattedMessage id="create.i2v.reupload" defaultMessage="更换" />
-                        </Button>
-                    </div>
+                    <InputImageContainer>
+                        <img src={originalImageUrl} alt="Original" />
+                        <OverlayActions className="overlay-actions">
+                            <Button 
+                                type="primary" 
+                                danger 
+                                icon={<DeleteOutlined />}
+                                onClick={handleRemoveImage}
+                            >
+                                更换图片
+                            </Button>
+                        </OverlayActions>
+                    </InputImageContainer>
                 ) : (
-                    <Upload
-                        beforeUpload={() => false} 
-                        onChange={handleUploadChange}
-                        fileList={fileList}
-                        accept="image/*"
-                        listType="picture-card"
-                        maxCount={1}
-                        showUploadList={false}
+                    <CustomUploadArea
+                        $isDark={isDark}
+                        $isDragging={isDragging}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        onClick={() => document.getElementById('i2v-upload-input')?.click()}
                     >
-                        <Space direction="vertical" align="center" style={{ padding: '10px 0' }}>
-                            <UploadOutlined />
-                            <div style={{ marginTop: 8 }}>
-                                <FormattedMessage id="create.i2v.upload.click" defaultMessage="点击或拖拽上传" />
-                            </div>
-                        </Space>
-                    </Upload>
+                        <input
+                            id="i2v-upload-input"
+                            type="file"
+                            accept="image/*"
+                            onChange={handleFileInputChange}
+                            style={{ display: 'none' }}
+                        />
+                        <UploadIcon $isDark={isDark}>
+                            <InboxOutlined style={{ fontSize: 48 }} />
+                        </UploadIcon>
+                        <UploadText $isDark={isDark}>
+                            <FormattedMessage id="create.i2v.upload.click" defaultMessage="点击或拖拽上传" />
+                        </UploadText>
+                        <UploadHint $isDark={isDark}>支持 JPG, PNG, WebP</UploadHint>
+                    </CustomUploadArea>
                 )}
               </Form.Item>
 
@@ -279,6 +456,7 @@ const ImageToVideo: React.FC = () => {
                 name="motionStrength"
                 label={
                   <Space>
+                    <SlidersOutlined style={{ color: '#1890ff' }} />
                     <FormattedMessage id="create.i2v.motionStrength" defaultMessage="运动强度 (Motion Strength)" />
                     <Tooltip title={intl.formatMessage({ 
                         id: 'create.i2v.motionStrength.tip', 
@@ -288,6 +466,7 @@ const ImageToVideo: React.FC = () => {
                     </Tooltip>
                   </Space>
                 }
+                style={{ marginBottom: 20 }}
               >
                 <Slider 
                   min={0.1} 
@@ -300,8 +479,14 @@ const ImageToVideo: React.FC = () => {
               {/* 3. 提示词输入 */}
               <Form.Item
                 name="prompt"
-                label={<FormattedMessage id="create.prompt" defaultMessage="运动引导提示词 (Prompt)" />}
+                label={
+                  <Space>
+                    <EditOutlined style={{ color: '#1890ff' }} />
+                    <FormattedMessage id="create.prompt" defaultMessage="运动引导提示词 (Prompt)" />
+                  </Space>
+                }
                 rules={[{ required: true, message: '请输入视频运动的引导描述' }]}
+                style={{ marginBottom: 20 }}
               >
                 <TextArea 
                   rows={3} 
@@ -313,11 +498,17 @@ const ImageToVideo: React.FC = () => {
               </Form.Item>
 
               {/* 4. 视频参数设置 */}
-              <Row gutter={16}>
+              <Row gutter={16} style={{ marginBottom: 20 }}>
                 <Col span={12}>
                   <Form.Item
                     name="duration"
-                    label={<FormattedMessage id="create.video.duration" defaultMessage="视频时长 (秒)" />}
+                    label={
+                      <Space>
+                        <ClockCircleOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                        <FormattedMessage id="create.video.duration" defaultMessage="视频时长 (秒)" />
+                      </Space>
+                    }
+                    style={{ marginBottom: 0 }}
                   >
                      <Select options={DURATIONS} />
                   </Form.Item>
@@ -325,7 +516,13 @@ const ImageToVideo: React.FC = () => {
                 <Col span={12}>
                   <Form.Item
                     name="cameraMotion"
-                    label={<FormattedMessage id="create.video.camera" defaultMessage="镜头运动" />}
+                    label={
+                      <Space>
+                        <CameraOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                        <FormattedMessage id="create.video.camera" defaultMessage="镜头运动" />
+                      </Space>
+                    }
+                    style={{ marginBottom: 0 }}
                   >
                     <Select options={CAMERA_MOTIONS} />
                   </Form.Item>
@@ -333,7 +530,7 @@ const ImageToVideo: React.FC = () => {
               </Row>
 
               {/* 提交按钮 */}
-              <Form.Item style={{ marginTop: 32 }}>
+              <Form.Item style={{ marginTop: 16 }}>
                 <Button 
                   type="primary" 
                   htmlType="submit" 
@@ -341,7 +538,7 @@ const ImageToVideo: React.FC = () => {
                   size="large" 
                   block
                   loading={loading}
-                  style={{ height: 48, fontSize: 16 }}
+                  style={{ height: 48, fontSize: 16, borderRadius: 24 }}
                 >
                   {loading ? 'AI 正在为图片注入生命...' : <FormattedMessage id="create.generate.i2v" defaultMessage="开始生成视频" />}
                 </Button>
@@ -362,22 +559,34 @@ const ImageToVideo: React.FC = () => {
               </Space>
             ) : generatedVideo ? (
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Row gutter={16}>
+                <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                    <FormattedMessage id="create.i2v.result" defaultMessage="生成对比" />
+                  </Title>
+                </div>
+                <Row gutter={[20, 20]}>
                     {/* 原图对比 */}
                     <Col span={12}>
-                        <Title level={5} style={{ margin: 0 }}>
-                            <PictureOutlined style={{ marginRight: 8 }} />
-                            <FormattedMessage id="create.i2v.original" defaultMessage="原图 (起始帧)" />
-                        </Title>
-                        <UploadPreview src={originalImageUrl || "https://placehold.co/400x225?text=Original+Image"} alt="Original Preview" style={{aspectRatio: '16/9'}} />
+                        <div style={{ marginBottom: 12, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <FileImageOutlined style={{ color: '#1890ff' }} />
+                          <FormattedMessage id="create.i2v.original" defaultMessage="原图 (起始帧)" />
+                        </div>
+                        <div style={{ width: '100%', height: 225, borderRadius: 12, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'transparent' }}>
+                          <img 
+                            src={originalImageUrl || "https://placehold.co/400x225?text=Original+Image"} 
+                            alt="Original Preview" 
+                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', borderRadius: 12 }}
+                          />
+                        </div>
                     </Col>
                     
                     {/* 视频预览 */}
                     <Col span={12}>
-                        <Title level={5} style={{ margin: 0 }}>
-                            <VideoCameraOutlined style={{ marginRight: 8 }} />
-                            <FormattedMessage id="create.video.result" defaultMessage="生成视频预览" />
-                        </Title>
+                        <div style={{ marginBottom: 12, fontWeight: 600, color: '#1890ff', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <VideoCameraOutlined />
+                          <FormattedMessage id="create.video.result" defaultMessage="生成视频预览" />
+                        </div>
                         <VideoPlaceholder onClick={handleOpenModal}>
                             <img 
                                 src={generatedVideo.thumbnail} 

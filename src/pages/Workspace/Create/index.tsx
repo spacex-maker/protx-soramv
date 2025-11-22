@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Tabs, Spin, Button, Result } from 'antd';
-import { ReloadOutlined, WifiOutlined } from '@ant-design/icons';
+import { Layout, Tabs, Spin, Button, Result, Space } from 'antd';
+import { 
+  ReloadOutlined, 
+  WifiOutlined,
+  PictureOutlined,
+  VideoCameraOutlined,
+  SwapOutlined,
+  FileImageOutlined
+} from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
+import styled from 'styled-components';
 import { base } from '../../../api/base';
 import TextToImage from './components/TextToImage';
 import TextToVideo from './components/TextToVideo';
@@ -14,6 +22,69 @@ interface CreationTypeSetting {
   key: string;
   enabled: boolean;
 }
+
+// 样式化的 Tabs 组件
+const StyledTabs = styled(Tabs)`
+  .ant-tabs-nav {
+    margin-bottom: 24px;
+    
+    &::before {
+      border-bottom: 2px solid ${props => props.theme.mode === 'dark' ? '#333' : '#f0f0f0'};
+    }
+  }
+
+  .ant-tabs-tab {
+    padding: 12px 24px;
+    margin: 0 4px;
+    border-radius: 12px 12px 0 0;
+    transition: all 0.3s ease;
+    border: none;
+    
+    &:hover {
+      background: ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)'};
+    }
+
+    .ant-tabs-tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      font-size: 15px;
+      color: ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.65)'};
+      transition: all 0.3s ease;
+    }
+
+    .anticon {
+      font-size: 18px;
+      transition: all 0.3s ease;
+    }
+
+    &.ant-tabs-tab-active {
+      background: ${props => props.theme.mode === 'dark' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(24, 144, 255, 0.08)'};
+      
+      .ant-tabs-tab-btn {
+        color: #1890ff;
+        font-weight: 600;
+      }
+
+      .anticon {
+        color: #1890ff;
+        transform: scale(1.1);
+      }
+    }
+  }
+
+  .ant-tabs-ink-bar {
+    background: linear-gradient(90deg, #1890ff, #40a9ff);
+    height: 3px;
+    border-radius: 2px;
+  }
+
+  .ant-tabs-content-holder {
+    flex: 1;
+    overflow: auto;
+  }
+`;
 
 const Create: React.FC = () => {
   const intl = useIntl();
@@ -66,22 +137,42 @@ const Create: React.FC = () => {
   const allTabItems = [
     {
       key: 'textToImage',
-      label: <FormattedMessage id="create.tab.textToImage" defaultMessage="文生图" />,
+      label: (
+        <Space>
+          <PictureOutlined />
+          <FormattedMessage id="create.tab.textToImage" defaultMessage="文生图" />
+        </Space>
+      ),
       children: <TextToImage />
     },
     {
       key: 'textToVideo',
-      label: <FormattedMessage id="create.tab.textToVideo" defaultMessage="文生视频" />,
+      label: (
+        <Space>
+          <VideoCameraOutlined />
+          <FormattedMessage id="create.tab.textToVideo" defaultMessage="文生视频" />
+        </Space>
+      ),
       children: <TextToVideo />
     },
     {
       key: 'imageToImage',
-      label: <FormattedMessage id="create.tab.imageToImage" defaultMessage="图生图" />,
+      label: (
+        <Space>
+          <SwapOutlined />
+          <FormattedMessage id="create.tab.imageToImage" defaultMessage="图生图" />
+        </Space>
+      ),
       children: <ImageToImage />
     },
     {
       key: 'imageToVideo',
-      label: <FormattedMessage id="create.tab.imageToVideo" defaultMessage="图生视频" />,
+      label: (
+        <Space>
+          <FileImageOutlined />
+          <FormattedMessage id="create.tab.imageToVideo" defaultMessage="图生视频" />
+        </Space>
+      ),
       children: <ImageToVideo />
     }
   ];
@@ -179,7 +270,7 @@ const Create: React.FC = () => {
       padding: '20px',
       background: 'transparent'
     }}>
-      <Tabs
+      <StyledTabs
         activeKey={activeTab}
         onChange={setActiveTab}
         items={tabItems}
@@ -188,10 +279,6 @@ const Create: React.FC = () => {
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden'
-        }}
-        tabBarStyle={{
-          marginBottom: '20px',
-          background: 'transparent'
         }}
       />
     </Content>

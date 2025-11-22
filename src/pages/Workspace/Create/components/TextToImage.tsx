@@ -21,7 +21,14 @@ import {
   DownloadOutlined, 
   PictureOutlined, 
   SettingOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  EditOutlined,
+  FileImageOutlined,
+  AppstoreOutlined,
+  NumberOutlined,
+  SlidersOutlined,
+  CheckCircleOutlined,
+  SwapOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -157,11 +164,13 @@ const TextToImage: React.FC = () => {
         {/* --- 左侧：控制面板 --- */}
         <Col xs={24} lg={9}>
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <div>
-              <Title level={3} style={{ margin: 0 }}>
+            <div style={{ marginBottom: 8 }}>
+              <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
                 <FormattedMessage id="create.textToImage.title" defaultMessage="AI 文生图" />
               </Title>
-              <Text type="secondary">
+              <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <PictureOutlined style={{ fontSize: 14 }} />
                 <FormattedMessage 
                   id="create.textToImage.subtitle" 
                   defaultMessage="输入描述，让 AI 绘制您想象中的画面" 
@@ -183,8 +192,14 @@ const TextToImage: React.FC = () => {
               {/* 提示词输入 */}
               <Form.Item
                 name="prompt"
-                label={<FormattedMessage id="create.prompt" defaultMessage="提示词 (Prompt)" />}
+                label={
+                  <Space>
+                    <EditOutlined style={{ color: '#1890ff' }} />
+                    <FormattedMessage id="create.prompt" defaultMessage="提示词 (Prompt)" />
+                  </Space>
+                }
                 rules={[{ required: true, message: intl.formatMessage({ id: 'create.prompt.required', defaultMessage: '请输入提示词' }) }]}
+                style={{ marginBottom: 20 }}
               >
                 <TextArea 
                   rows={5} 
@@ -200,22 +215,30 @@ const TextToImage: React.FC = () => {
                 name="negativePrompt"
                 label={
                   <Space>
+                    <EditOutlined style={{ color: '#1890ff', fontSize: 12 }} />
                     <FormattedMessage id="create.negativePrompt" defaultMessage="反向提示词 (Negative)" />
                     <Tooltip title={intl.formatMessage({ id: 'create.negativePrompt.tooltip', defaultMessage: '你不希望画面中出现的元素' })}>
                       <InfoCircleOutlined style={{ color: '#999' }} />
                     </Tooltip>
                   </Space>
                 }
+                style={{ marginBottom: 20 }}
               >
                 <Input placeholder={intl.formatMessage({ id: 'create.negativePrompt.placeholder', defaultMessage: '例如：模糊，低质量，变形的手指...' })} />
               </Form.Item>
 
               {/* 参数设置行 */}
-              <Row gutter={16}>
+              <Row gutter={16} style={{ marginBottom: 20 }}>
                 <Col span={12}>
                   <Form.Item
                     name="aspectRatio"
-                    label={<FormattedMessage id="create.ratio" defaultMessage="画面比例" />}
+                    label={
+                      <Space>
+                        <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                        <FormattedMessage id="create.ratio" defaultMessage="画面比例" />
+                      </Space>
+                    }
+                    style={{ marginBottom: 0 }}
                   >
                     <Select options={getAspectRatios(intl)} />
                   </Form.Item>
@@ -223,7 +246,13 @@ const TextToImage: React.FC = () => {
                 <Col span={12}>
                   <Form.Item
                     name="style"
-                    label={<FormattedMessage id="create.style" defaultMessage="艺术风格" />}
+                    label={
+                      <Space>
+                        <AppstoreOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                        <FormattedMessage id="create.style" defaultMessage="艺术风格" />
+                      </Space>
+                    }
+                    style={{ marginBottom: 0 }}
                   >
                     <Select options={getStyles(intl)} />
                   </Form.Item>
@@ -233,13 +262,19 @@ const TextToImage: React.FC = () => {
               {/* 高级滑块 */}
               <Form.Item
                 name="batchSize"
-                label={<FormattedMessage id="create.batchSize" defaultMessage="生成数量" />}
+                label={
+                  <Space>
+                    <NumberOutlined style={{ color: '#1890ff' }} />
+                    <FormattedMessage id="create.batchSize" defaultMessage="生成数量" />
+                  </Space>
+                }
+                style={{ marginBottom: 20 }}
               >
                 <Slider min={1} max={4} marks={{ 1: '1', 2: '2', 3: '3', 4: '4' }} />
               </Form.Item>
 
               {/* 提交按钮 */}
-              <Form.Item style={{ marginTop: 32 }}>
+              <Form.Item style={{ marginTop: 16 }}>
                 <Button 
                   type="primary" 
                   htmlType="submit" 
@@ -247,7 +282,7 @@ const TextToImage: React.FC = () => {
                   size="large" 
                   block
                   loading={loading}
-                  style={{ height: 48, fontSize: 16, borderRadius: '24px' }}
+                  style={{ height: 48, fontSize: 16, borderRadius: 24 }}
                 >
                   {loading ? <FormattedMessage id="create.generating" defaultMessage="正在绘制..." /> : <FormattedMessage id="create.generate" defaultMessage="立即生成" />}
                 </Button>
@@ -268,8 +303,9 @@ const TextToImage: React.FC = () => {
               </Space>
             ) : generatedImages.length > 0 ? (
               <div style={{ width: '100%' }}>
-                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Title level={5} style={{ margin: 0 }}>
+                <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
                     <FormattedMessage id="create.result.title" defaultMessage="生成结果" />
                   </Title>
                   <Button type="text" icon={<DownloadOutlined />}>

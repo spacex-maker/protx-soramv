@@ -17,11 +17,22 @@ import {
   Modal
 } from 'antd';
 import { 
-  ThunderboltOutlined, // 使用兼容性好的闪电图标
+  ThunderboltOutlined,
   DownloadOutlined, 
   VideoCameraOutlined,
   PlayCircleOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  EditOutlined,
+  FileImageOutlined,
+  AppstoreOutlined,
+  ClockCircleOutlined,
+  CameraOutlined,
+  CheckCircleOutlined,
+  SwapOutlined,
+  TabletOutlined,
+  MobileOutlined,
+  BorderOutlined,
+  DesktopOutlined
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -87,24 +98,51 @@ const ActionOverlay = styled.div`
   }
 `;
 
+const AspectRatioOption = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  .anticon {
+    font-size: 16px;
+    color: #1890ff;
+  }
+`;
+
 // --- 模拟数据与配置 ---
 
-// 视频比例
-const ASPECT_RATIOS = [
-  { label: '16:9 (宽屏)', value: '16:9' },
-  { label: '9:16 (竖屏)', value: '9:16' },
-  { label: '21:9 (电影)', value: '21:9' },
-  { label: '1:1 (方屏)', value: '1:1' },
+// 视频比例 - 使用国际化函数生成选项
+const getAspectRatios = (intl: any) => [
+  { 
+    label: intl.formatMessage({ id: 'create.aspectRatio.16:9', defaultMessage: '16:9 (Landscape)' }), 
+    value: '16:9',
+    icon: <DesktopOutlined />
+  },
+  { 
+    label: intl.formatMessage({ id: 'create.aspectRatio.9:16', defaultMessage: '9:16 (Portrait)' }), 
+    value: '9:16',
+    icon: <MobileOutlined />
+  },
+  { 
+    label: intl.formatMessage({ id: 'create.aspectRatio.21:9', defaultMessage: '21:9 (Cinema)' }), 
+    value: '21:9',
+    icon: <VideoCameraOutlined />
+  },
+  { 
+    label: intl.formatMessage({ id: 'create.aspectRatio.1:1', defaultMessage: '1:1 (Square)' }), 
+    value: '1:1',
+    icon: <AppstoreOutlined />
+  },
 ];
 
-// 镜头运动
-const CAMERA_MOTIONS = [
-  { label: '无运动 (None)', value: 'none' },
-  { label: '向前推 (Zoom In)', value: 'zoom_in' },
-  { label: '向后拉 (Dolly Out)', value: 'dolly_out' },
-  { label: '向左平移 (Pan Left)', value: 'pan_left' },
-  { label: '向上倾斜 (Tilt Up)', value: 'tilt_up' },
-  { label: '360° 环绕 (Orbital)', value: 'orbital' },
+// 镜头运动 - 使用国际化函数生成选项
+const getCameraMotions = (intl: any) => [
+  { label: intl.formatMessage({ id: 'create.cameraMotion.none', defaultMessage: '无运动 (None)' }), value: 'none' },
+  { label: intl.formatMessage({ id: 'create.cameraMotion.zoomIn', defaultMessage: '向前推 (Zoom In)' }), value: 'zoom_in' },
+  { label: intl.formatMessage({ id: 'create.cameraMotion.dollyOut', defaultMessage: '向后拉 (Dolly Out)' }), value: 'dolly_out' },
+  { label: intl.formatMessage({ id: 'create.cameraMotion.panLeft', defaultMessage: '向左平移 (Pan Left)' }), value: 'pan_left' },
+  { label: intl.formatMessage({ id: 'create.cameraMotion.tiltUp', defaultMessage: '向上倾斜 (Tilt Up)' }), value: 'tilt_up' },
+  { label: intl.formatMessage({ id: 'create.cameraMotion.orbital', defaultMessage: '360° 环绕 (Orbital)' }), value: 'orbital' },
 ];
 
 // 模拟视频结果类型
@@ -164,11 +202,13 @@ const TextToVideo: React.FC = () => {
         {/* --- 左侧：控制面板 --- */}
         <Col xs={24} lg={9}>
           <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <div>
-              <Title level={3} style={{ margin: 0 }}>
+            <div style={{ marginBottom: 8 }}>
+              <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
                 <FormattedMessage id="create.textToVideo.title" defaultMessage="AI 文生视频" />
               </Title>
-              <Text type="secondary">
+              <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <VideoCameraOutlined style={{ fontSize: 14 }} />
                 <FormattedMessage 
                   id="create.textToVideo.subtitle" 
                   defaultMessage="输入场景描述与镜头控制，生成高品质视频" 
@@ -189,8 +229,20 @@ const TextToVideo: React.FC = () => {
               {/* 提示词输入 */}
               <Form.Item
                 name="prompt"
-                label={<FormattedMessage id="create.prompt" defaultMessage="场景描述 (Prompt)" />}
-                rules={[{ required: true, message: '请输入视频场景描述' }]}
+                label={
+                  <Space>
+                    <EditOutlined style={{ color: '#1890ff' }} />
+                    <FormattedMessage id="create.prompt.video" defaultMessage="视频场景描述 (Prompt)" />
+                  </Space>
+                }
+                rules={[{ 
+                  required: true, 
+                  message: intl.formatMessage({ 
+                    id: 'create.prompt.video.required', 
+                    defaultMessage: '请输入视频场景描述' 
+                  }) 
+                }]}
+                style={{ marginBottom: 20 }}
               >
                 <TextArea 
                   rows={4} 
@@ -206,32 +258,78 @@ const TextToVideo: React.FC = () => {
                 name="negativePrompt"
                 label={
                   <Space>
+                    <EditOutlined style={{ color: '#1890ff', fontSize: 12 }} />
                     <FormattedMessage id="create.negativePrompt" defaultMessage="反向提示词 (Negative)" />
-                    <Tooltip title="你不希望画面中出现的元素">
+                    <Tooltip title={intl.formatMessage({ 
+                      id: 'create.negativePrompt.tooltip', 
+                      defaultMessage: '你不希望画面中出现的元素' 
+                    })}>
                       <InfoCircleOutlined style={{ color: '#999' }} />
                     </Tooltip>
                   </Space>
                 }
+                style={{ marginBottom: 20 }}
               >
-                <Input placeholder="例如：水渍，闪烁，低分辨率，人物模糊..." />
+                <Input placeholder={intl.formatMessage({ 
+                  id: 'create.negativePrompt.video.placeholder', 
+                  defaultMessage: '例如：水渍，闪烁，低分辨率，人物模糊...' 
+                })} />
               </Form.Item>
 
               {/* 视频参数设置 */}
-              <Row gutter={16}>
+              <Row gutter={16} style={{ marginBottom: 20 }}>
                 <Col span={12}>
                   <Form.Item
                     name="aspectRatio"
-                    label={<FormattedMessage id="create.video.ratio" defaultMessage="视频比例" />}
+                    label={
+                      <Space>
+                        <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                        <FormattedMessage id="create.video.ratio" defaultMessage="视频比例" />
+                      </Space>
+                    }
+                    style={{ marginBottom: 0 }}
                   >
-                    <Select options={ASPECT_RATIOS} />
+                    <Select
+                      optionLabelProp="label"
+                    >
+                      {getAspectRatios(intl).map(ratio => (
+                        <Select.Option 
+                          key={ratio.value} 
+                          value={ratio.value}
+                          label={
+                            <AspectRatioOption>
+                              {ratio.icon}
+                              <span>{ratio.label}</span>
+                            </AspectRatioOption>
+                          }
+                        >
+                          <AspectRatioOption>
+                            {ratio.icon}
+                            <span>{ratio.label}</span>
+                          </AspectRatioOption>
+                        </Select.Option>
+                      ))}
+                    </Select>
                   </Form.Item>
                 </Col>
                 <Col span={12}>
                   <Form.Item
                     name="cameraMotion"
-                    label={<FormattedMessage id="create.video.camera" defaultMessage="镜头运动" />}
+                    label={
+                      <Space>
+                        <CameraOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                        <FormattedMessage id="create.video.camera" defaultMessage="镜头运动" />
+                      </Space>
+                    }
+                    style={{ marginBottom: 0 }}
                   >
-                    <Select options={CAMERA_MOTIONS} />
+                    <Select>
+                      {getCameraMotions(intl).map(motion => (
+                        <Select.Option key={motion.value} value={motion.value}>
+                          {motion.label}
+                        </Select.Option>
+                      ))}
+                    </Select>
                   </Form.Item>
                 </Col>
               </Row>
@@ -241,17 +339,38 @@ const TextToVideo: React.FC = () => {
                 name="duration"
                 label={
                   <Space>
+                    <ClockCircleOutlined style={{ color: '#1890ff' }} />
                     <FormattedMessage id="create.video.duration" defaultMessage="视频时长 (秒)" />
-                    <Text type="secondary">({form.getFieldValue('duration')}s)</Text>
+                    <Text type="secondary">
+                      ({intl.formatMessage({ 
+                        id: 'create.duration.format', 
+                        defaultMessage: '{duration}s' 
+                      }, { duration: form.getFieldValue('duration') })})
+                    </Text>
                   </Space>
                 }
+                style={{ marginBottom: 20 }}
               >
-                <Slider min={4} max={15} marks={{ 4: '4s', 8: '8s', 15: '15s' }} tooltip={{ formatter: (val) => `${val}s` }} />
+                <Slider 
+                  min={4} 
+                  max={15} 
+                  marks={{ 
+                    4: intl.formatMessage({ id: 'create.duration.4s', defaultMessage: '4s' }), 
+                    8: intl.formatMessage({ id: 'create.duration.8s', defaultMessage: '8s' }), 
+                    15: intl.formatMessage({ id: 'create.duration.15s', defaultMessage: '15s' }) 
+                  }} 
+                  tooltip={{ 
+                    formatter: (val) => intl.formatMessage({ 
+                      id: 'create.duration.format', 
+                      defaultMessage: '{duration}s' 
+                    }, { duration: val }) 
+                  }} 
+                />
               </Form.Item>
 
 
               {/* 提交按钮 */}
-              <Form.Item style={{ marginTop: 32 }}>
+              <Form.Item style={{ marginTop: 16 }}>
                 <Button 
                   type="primary" 
                   htmlType="submit" 
@@ -259,9 +378,13 @@ const TextToVideo: React.FC = () => {
                   size="large" 
                   block
                   loading={loading}
-                  style={{ height: 48, fontSize: 16 }}
+                  style={{ height: 48, fontSize: 16, borderRadius: 24 }}
                 >
-                  {loading ? 'Sora 正在构思中...' : <FormattedMessage id="create.generate.video" defaultMessage="立即生成视频" />}
+                  {loading ? (
+                    <FormattedMessage id="create.sora.thinking" defaultMessage="Sora 正在构思中..." />
+                  ) : (
+                    <FormattedMessage id="create.generate.video" defaultMessage="立即生成视频" />
+                  )}
                 </Button>
               </Form.Item>
             </Form>
@@ -275,15 +398,20 @@ const TextToVideo: React.FC = () => {
               <Space direction="vertical" align="center">
                 <Spin size="large" />
                 <Text type="secondary" style={{ marginTop: 16 }}>
-                   正在分析提示词，构建 3D 世界...
+                  <FormattedMessage 
+                    id="create.video.analyzing" 
+                    defaultMessage="正在分析提示词，构建 3D 世界..." 
+                  />
                 </Text>
               </Space>
             ) : generatedVideo ? (
               <Space direction="vertical" style={{ width: '100%' }}>
-                <Title level={5} style={{ margin: 0 }}>
-                  <VideoCameraOutlined style={{ marginRight: 8 }} />
-                  <FormattedMessage id="create.video.result" defaultMessage="最终视频预览" />
-                </Title>
+                <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                    <FormattedMessage id="create.video.result" defaultMessage="最终视频预览" />
+                  </Title>
+                </div>
                 
                 <VideoPlaceholder onClick={handleOpenModal}>
                     <img 
@@ -297,7 +425,16 @@ const TextToVideo: React.FC = () => {
                 </VideoPlaceholder>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
-                    <Text type="secondary">时长: {generatedVideo.duration}s | 比例: {generatedVideo.aspectRatio}</Text>
+                    <Text type="secondary">
+                      <FormattedMessage 
+                        id="create.video.info" 
+                        defaultMessage="时长: {duration}s | 比例: {ratio}" 
+                        values={{ 
+                          duration: generatedVideo.duration, 
+                          ratio: generatedVideo.aspectRatio 
+                        }} 
+                      />
+                    </Text>
                     <Button type="primary" icon={<DownloadOutlined />} href={generatedVideo.url} download="sora_mv_video.mp4">
                         <FormattedMessage id="create.download" defaultMessage="下载视频" />
                     </Button>
@@ -319,7 +456,7 @@ const TextToVideo: React.FC = () => {
       
       {/* 视频播放 Modal */}
       <Modal
-        title="视频预览"
+        title={<FormattedMessage id="create.video.preview" defaultMessage="视频预览" />}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={null}
