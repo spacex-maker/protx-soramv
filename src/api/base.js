@@ -38,5 +38,18 @@ export const base = {
         message: error.response?.data?.message || '获取创作类型设置失败' 
       };
     }
+  },
+
+  // 根据模型类型获取启用的模型列表
+  getEnabledModelsByType: async (modelType) => {
+    try {
+      const { data } = await axios.get(`/productx/sa-ai-models/enabled/by-type?modelType=${modelType}`);
+      return data;
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.message || '获取模型列表失败' 
+      };
+    }
   }
 }; 
