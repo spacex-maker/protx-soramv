@@ -1,6 +1,14 @@
 import styled, { createGlobalStyle } from 'styled-components';
 import { Card, Button } from 'antd';
 
+export const TitleSection = styled.div`
+  margin-bottom: 8px;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
 // 全局下拉菜单样式
 export const GlobalSelectStyles = createGlobalStyle`
   /* 下拉框输入框圆角 */

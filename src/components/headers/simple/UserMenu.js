@@ -21,6 +21,14 @@ const UserButton = styled.button`
   cursor: pointer;
   transition: all 0.2s;
   z-index: 1;
+
+  @media (max-width: 768px) {
+    padding: 0.25rem;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    justify-content: center;
+  }
 `;
 
 const ButtonGlow = styled.div`
@@ -32,6 +40,10 @@ const ButtonGlow = styled.div`
   border-radius: 50px;
   z-index: -1;
   overflow: hidden;
+  
+  @media (max-width: 768px) {
+    border-radius: 50%;
+  }
   
   &::before {
     content: '';
@@ -51,6 +63,10 @@ const ButtonGlow = styled.div`
     );
     background-size: 200% 100%;
     animation: ${marqueeGlow} 3s linear infinite;
+    
+    @media (max-width: 768px) {
+      border-radius: 50%;
+    }
   }
   
   &::after {
@@ -63,6 +79,10 @@ const ButtonGlow = styled.div`
     border-radius: 48px;
     background: ${props => props.isDark ? '#141414' : '#ffffff'};
     z-index: 0;
+    
+    @media (max-width: 768px) {
+      border-radius: 50%;
+    }
   }
 `;
 
@@ -77,6 +97,10 @@ const GlowOverlay = styled.div`
   opacity: 0.7;
   z-index: -1;
   animation: ${pulseEffect} 2s ease-in-out infinite;
+  
+  @media (max-width: 768px) {
+    border-radius: 50%;
+  }
 `;
 
 const AvatarContainer = styled.div`
@@ -84,6 +108,10 @@ const AvatarContainer = styled.div`
   width: 38px;
   height: 38px;
   margin-right: 10px;
+
+  @media (max-width: 768px) {
+    margin-right: 0;
+  }
 `;
 
 const UserAvatar = styled.img`
@@ -130,6 +158,11 @@ const UserInfo = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
+  transition: opacity 0.2s ease;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
 `;
 
 const UserName = styled.span`

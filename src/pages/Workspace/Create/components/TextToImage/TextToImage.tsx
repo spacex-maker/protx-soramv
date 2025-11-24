@@ -52,6 +52,7 @@ import {
   DetailButton,
   AspectRatioTag,
   AspectRatioOption,
+  TitleSection,
 } from './styles';
 
 const { Title, Text } = Typography;
@@ -670,8 +671,8 @@ const TextToImage: React.FC = () => {
         <Row gutter={[32, 24]}>
           {/* --- 左侧：控制面板 --- */}
           <Col xs={24} lg={9}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
-              <div style={{ marginBottom: 8 }}>
+            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+              <TitleSection>
                 <Title
                   level={3}
                   style={{
@@ -698,7 +699,7 @@ const TextToImage: React.FC = () => {
                     defaultMessage="输入描述，让 AI 绘制您想象中的画面"
                   />
                 </Text>
-              </div>
+              </TitleSection>
 
               <Form
                 form={form}

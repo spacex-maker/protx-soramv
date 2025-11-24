@@ -31,6 +31,11 @@ const StyledTabs = styled(Tabs)`
     &::before {
       border-bottom: 2px solid ${props => props.theme.mode === 'dark' ? '#333' : '#f0f0f0'};
     }
+    
+    @media (max-width: 768px) {
+      margin-bottom: 0;
+      padding: 0 8px;
+    }
   }
 
   .ant-tabs-tab {
@@ -39,6 +44,12 @@ const StyledTabs = styled(Tabs)`
     border-radius: 12px 12px 0 0;
     transition: all 0.3s ease;
     border: none;
+    
+    @media (max-width: 768px) {
+      padding: 10px 12px;
+      margin: 0 2px;
+      border-radius: 8px 8px 0 0;
+    }
     
     &:hover {
       background: ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)'};
@@ -52,11 +63,20 @@ const StyledTabs = styled(Tabs)`
       font-size: 15px;
       color: ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.65)'};
       transition: all 0.3s ease;
+      
+      @media (max-width: 768px) {
+        font-size: 13px;
+        gap: 6px;
+      }
     }
 
     .anticon {
       font-size: 18px;
       transition: all 0.3s ease;
+      
+      @media (max-width: 768px) {
+        font-size: 16px;
+      }
     }
 
     &.ant-tabs-tab-active {
@@ -92,6 +112,15 @@ const Create: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(['textToImage', 'textToVideo', 'imageToImage', 'imageToVideo']));
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 769);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // 获取创作类型设置
   const fetchCreationTypeSettings = async () => {
@@ -267,7 +296,7 @@ const Create: React.FC = () => {
       flexDirection: 'column',
       height: '100%',
       overflow: 'hidden',
-      padding: '20px',
+      padding: isMobile ? '12px' : '20px',
       background: 'transparent'
     }}>
       <StyledTabs

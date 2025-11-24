@@ -22,11 +22,11 @@ const TextToImage: React.FC = () => {
   // 移动端断点：小于 768px
   const shouldUseMobile = !screens.md || isMobile;
 
-  if (shouldUseMobile) {
-    return React.createElement(TextToImageMobile);
-  } else {
-    return React.createElement(TextToImageDesktop);
-  }
+  return shouldUseMobile ? (
+    <TextToImageMobile />
+  ) : (
+    <TextToImageDesktop />
+  );
 };
 
 export default TextToImage;
