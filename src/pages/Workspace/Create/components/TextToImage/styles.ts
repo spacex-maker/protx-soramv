@@ -308,7 +308,7 @@ export const ModelOptionWrapper = styled.div<{ coverImage?: string | null }>`
   
   .model-detail-button {
     flex-shrink: 0;
-    opacity: 0.7;
+    opacity: 1;
     transition: opacity 0.3s ease, transform 0.2s ease;
     
     &:hover {
@@ -325,20 +325,20 @@ export const DetailButton = styled(Button)`
   border-radius: 14px;
   background: ${(props) =>
     props.theme.mode === 'dark'
-      ? 'rgba(24, 144, 255, 0.15)'
-      : 'rgba(24, 144, 255, 0.08)'};
+      ? 'rgba(24, 144, 255, 0.35)'
+      : 'rgba(24, 144, 255, 0.2)'};
   border: 1px solid
     ${(props) =>
       props.theme.mode === 'dark'
-        ? 'rgba(24, 144, 255, 0.3)'
-        : 'rgba(24, 144, 255, 0.2)'};
+        ? 'rgba(24, 144, 255, 0.4)'
+        : 'rgba(24, 144, 255, 0.35)'};
   color: #1890ff;
   
   &:hover {
     background: ${(props) =>
       props.theme.mode === 'dark'
-        ? 'rgba(24, 144, 255, 0.25)'
-        : 'rgba(24, 144, 255, 0.15)'};
+        ? 'rgba(24, 144, 255, 0.45)'
+        : 'rgba(24, 144, 255, 0.3)'};
     border-color: #1890ff;
     color: #1890ff;
   }
@@ -391,5 +391,173 @@ export const AspectRatioOption = styled.div`
     font-size: 16px;
     color: #1890ff;
   }
+`;
+
+// 生成记录区域样式
+export const HistorySection = styled.div`
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid
+    ${(props) => (props.theme.mode === 'dark' ? '#333' : '#e8e8e8')};
+`;
+
+export const HistoryTitle = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  
+  h4 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+`;
+
+export const HistoryGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+  }
+`;
+
+export const HistoryCard = styled.div`
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: ${(props) =>
+    props.theme.mode === 'dark' ? '#1f1f1f' : '#fff'};
+  border: 1px solid
+    ${(props) => (props.theme.mode === 'dark' ? '#333' : '#e8e8e8')};
+  transition: all 0.3s ease;
+  cursor: pointer;
+  
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    border-color: #1890ff;
+  }
+`;
+
+export const HistoryImageWrapper = styled.div`
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: ${(props) =>
+    props.theme.mode === 'dark' ? '#0a0a0a' : '#f5f5f5'};
+  
+  .ant-image {
+    width: 100%;
+    height: 100%;
+    display: block;
+    
+    .ant-image-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+  }
+  
+  ${HistoryCard}:hover & {
+    .ant-image-img {
+      transform: scale(1.05);
+    }
+  }
+`;
+
+export const HistoryImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  
+  ${HistoryCard}:hover & {
+    transform: scale(1.05);
+  }
+`;
+
+export const HistoryStatusBadge = styled.div<{ status: number }>`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  
+  ${(props) => {
+    if (props.status === 2) {
+      // 成功
+      return `
+        background: rgba(82, 196, 26, 0.2);
+        color: #52c41a;
+        border: 1px solid rgba(82, 196, 26, 0.3);
+      `;
+    } else if (props.status === 3 || props.status === 4) {
+      // 失败或超时
+      return `
+        background: rgba(255, 77, 79, 0.2);
+        color: #ff4d4f;
+        border: 1px solid rgba(255, 77, 79, 0.3);
+      `;
+    } else {
+      // 排队或进行中
+      return `
+        background: rgba(24, 144, 255, 0.2);
+        color: #1890ff;
+        border: 1px solid rgba(24, 144, 255, 0.3);
+      `;
+    }
+  }}
+`;
+
+export const HistoryInfo = styled.div`
+  padding: 12px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+`;
+
+export const HistoryModelName = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${(props) => (props.theme.mode === 'dark' ? '#fff' : '#262626')};
+  margin-bottom: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+`;
+
+export const HistoryTime = styled.div`
+  font-size: 11px;
+  color: ${(props) => (props.theme.mode === 'dark' ? '#8c8c8c' : '#8c8c8c')};
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+export const HistoryActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+  align-items: center;
+`;
+
+export const HistoryEmpty = styled.div`
+  text-align: center;
+  padding: 40px 20px;
+  color: ${(props) => (props.theme.mode === 'dark' ? '#8c8c8c' : '#8c8c8c')};
 `;
 

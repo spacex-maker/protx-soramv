@@ -13,6 +13,7 @@ import {
   Spin,
   Tooltip,
   Drawer,
+  Pagination,
 } from 'antd';
 import {
   ThunderboltOutlined,
@@ -30,11 +31,14 @@ import {
   SettingOutlined,
   CloseOutlined,
   DesktopOutlined,
+  HistoryOutlined,
+  ClockCircleOutlined,
+  ReloadOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import instance from 'api/axios';
 import ModelDetailModal, { ModelDetail } from '../../ModelDetailModal';
-import { ModelFamily, Model } from '../types';
+import { ModelFamily, Model, GenerationTask, GenerationTaskPageResponse } from '../types';
 import {
   isFree,
   getAspectRatioOption,
@@ -52,10 +56,62 @@ import {
   MobileModelOption,
   MobileActionBar,
   MobileDrawerContent,
+  MobileHistorySection,
+  MobileHistoryTitle,
+  MobileHistoryGrid,
+  MobileHistoryCard,
+  MobileHistoryImageWrapper,
+  MobileHistoryStatusBadge,
+  MobileHistoryInfo,
+  MobileHistoryModelName,
+  MobileHistoryTime,
+  MobileHistoryEmpty,
 } from './styles';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+
+const normalizeImageSource = (image: string): string => {
+  if (!image) {
+    return '';
+  }
+  const trimmed = image.trim();
+
+  if (trimmed.startsWith('data:image')) {
+    return trimmed;
+  }
+
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+
+  if (trimmed.startsWith('//') && typeof window !== 'undefined') {
+    return `${window.location.protocol}${trimmed}`;
+  }
+
+  if (trimmed.startsWith('/') && typeof window !== 'undefined') {
+    return `${window.location.origin}${trimmed}`;
+  }
+
+  return `data:image/png;base64,${trimmed}`;
+};
+
+const normalizeImageData = (image: any): string | null => {
+  if (!image) {
+    return null;
+  }
+
+  const source =
+    typeof image === 'string'
+      ? image
+      : image.url || image.base64 || image.data || '';
+
+  if (!source) {
+    return null;
+  }
+
+  return normalizeImageSource(source);
+};
 
 const TextToImageMobile: React.FC = () => {
   const intl = useIntl();
@@ -73,6 +129,15 @@ const TextToImageMobile: React.FC = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailModel, setDetailModel] = useState<ModelDetail | null>(null);
   const [settingsDrawerVisible, setSettingsDrawerVisible] = useState(false);
+  
+  // 生成记录相关状态
+  const [historyTasks, setHistoryTasks] = useState<GenerationTask[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyPagination, setHistoryPagination] = useState({
+    current: 1,
+    pageSize: 10,
+    total: 0,
+  });
 
   // 获取模型家族列表
   useEffect(() => {
@@ -487,21 +552,16 @@ const TextToImageMobile: React.FC = () => {
           response.data.images || response.data.data?.images || [];
 
         if (images && images.length > 0) {
-          // 将 base64 字符串转换为可显示的图片 URL
-          const imageUrls = images.map((base64: string) => {
-            // 如果已经是完整的数据URL，直接返回
-            if (base64.startsWith('data:image')) {
-              return base64;
-            }
-            // 否则添加 data URL 前缀
-            return `data:image/png;base64,${base64}`;
-          });
+          // 兼容 base64 与图片链接
+          const imageUrls = images
+            .map((img: any) => normalizeImageData(img))
+            .filter((url: string | null): url is string => Boolean(url));
 
           setGeneratedImages(imageUrls);
           message.success(
             intl.formatMessage({
               id: 'create.generate.success',
-              defaultMessage: `成功生成 ${images.length} 张图片！`,
+              defaultMessage: `成功生成 ${imageUrls.length} 张图片！`,
             })
           );
         } else {
@@ -582,8 +642,127 @@ const TextToImageMobile: React.FC = () => {
   // 打开详情弹窗
   const handleShowDetail = (e: React.MouseEvent, model: ModelFamily | Model) => {
     e.stopPropagation();
+    
+    // 关闭所有打开的下拉框
+    if (document.activeElement) {
+      (document.activeElement as HTMLElement).blur();
+    }
+    // 移除所有 Select 的打开状态
+    setTimeout(() => {
+      const selectElements = document.querySelectorAll('.ant-select-open');
+      selectElements.forEach((el) => {
+        const select = el as HTMLElement;
+        select.blur();
+      });
+    }, 0);
+    
     setDetailModel(model as ModelDetail);
     setDetailModalVisible(true);
+  };
+
+  // 获取生成记录
+  const fetchHistoryTasks = async (page: number = 1, pageSize: number = 10) => {
+    setHistoryLoading(true);
+    try {
+      const response = await instance.get<{
+        success: boolean;
+        data: GenerationTaskPageResponse;
+      }>('/productx/sa-ai-gen-task/my-tasks/page', {
+        params: {
+          currentPage: page,
+          pageSize: pageSize,
+        },
+      });
+
+      if (response.data.success && response.data.data) {
+        // 只显示 t2i (文本生成图片) 类型的任务
+        const t2iTasks = response.data.data.records.filter(
+          (task) => task.taskType === 't2i'
+        );
+        setHistoryTasks(t2iTasks);
+        setHistoryPagination({
+          current: response.data.data.current,
+          pageSize: response.data.data.size,
+          total: response.data.data.total,
+        });
+      }
+    } catch (error: any) {
+      console.error('获取生成记录失败:', error);
+      // 不显示错误提示，避免干扰用户体验
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // 组件加载时获取生成记录
+  useEffect(() => {
+    fetchHistoryTasks();
+  }, []);
+
+  // 生成成功后刷新记录
+  useEffect(() => {
+    if (generatedImages.length > 0 && !loading) {
+      // 延迟一下再刷新，确保后端数据已更新
+      setTimeout(() => {
+        fetchHistoryTasks(historyPagination.current, historyPagination.pageSize);
+      }, 1000);
+    }
+  }, [generatedImages.length, loading]);
+
+  // 处理分页变化
+  const handleHistoryPageChange = (page: number, pageSize: number) => {
+    fetchHistoryTasks(page, pageSize);
+  };
+
+  // 获取状态文本
+  const getStatusText = (status: number) => {
+    switch (status) {
+      case 0:
+        return intl.formatMessage({
+          id: 'create.history.status.queued',
+          defaultMessage: '排队',
+        });
+      case 1:
+        return intl.formatMessage({
+          id: 'create.history.status.processing',
+          defaultMessage: '进行中',
+        });
+      case 2:
+        return intl.formatMessage({
+          id: 'create.history.status.success',
+          defaultMessage: '成功',
+        });
+      case 3:
+        return intl.formatMessage({
+          id: 'create.history.status.failed',
+          defaultMessage: '失败',
+        });
+      case 4:
+        return intl.formatMessage({
+          id: 'create.history.status.timeout',
+          defaultMessage: '超时',
+        });
+      default:
+        return '';
+    }
+  };
+
+  // 计算生成时间（秒）
+  const calculateGenerationTime = (startTime: string | null, endTime: string | null): number | null => {
+    if (!startTime || !endTime) {
+      return null;
+    }
+    try {
+      const start = new Date(startTime).getTime();
+      const end = new Date(endTime).getTime();
+      if (isNaN(start) || isNaN(end) || end < start) {
+        return null;
+      }
+      return Math.round((end - start) / 1000); // 转换为秒
+    } catch (error) {
+      console.error('计算生成时间失败:', error);
+      return null;
+    }
   };
 
   return (
@@ -699,7 +878,11 @@ const TextToImageMobile: React.FC = () => {
                       '请选择艺术风格（可选，默认使用家族模型）',
                   })}
                   loading={styleModelsLoading}
-                  disabled={!selectedFamily || styleModelsLoading}
+                  disabled={
+                    !selectedFamily ||
+                    styleModelsLoading ||
+                    styleModels.length === 0
+                  }
                   allowClear
                   size="large"
                 >
@@ -930,6 +1113,178 @@ const TextToImageMobile: React.FC = () => {
             />
           )}
         </MobileResultSection>
+
+        {/* 生成记录区域 */}
+        <MobileHistorySection>
+          <MobileHistoryTitle>
+            <Title
+              level={4}
+              style={{
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                fontSize: 16,
+              }}
+            >
+              <HistoryOutlined style={{ color: '#1890ff' }} />
+              <FormattedMessage
+                id="create.history.title"
+                defaultMessage="生成记录"
+              />
+            </Title>
+            <Button
+              type="text"
+              size="small"
+              icon={<ReloadOutlined />}
+              onClick={() => fetchHistoryTasks(historyPagination.current, historyPagination.pageSize)}
+              loading={historyLoading}
+            >
+              <FormattedMessage
+                id="create.history.refresh"
+                defaultMessage="刷新"
+              />
+            </Button>
+          </MobileHistoryTitle>
+
+          {historyLoading ? (
+            <div style={{ textAlign: 'center', padding: '30px 0' }}>
+              <Spin />
+            </div>
+          ) : historyTasks.length > 0 ? (
+            <>
+              <Image.PreviewGroup>
+                <MobileHistoryGrid>
+                  {historyTasks.map((task) => {
+                    const imageUrl =
+                      task.resultUrls && task.resultUrls.length > 0
+                        ? normalizeImageSource(task.resultUrls[0])
+                        : null;
+                    const thumbnailUrl = task.thumbnailUrl
+                      ? normalizeImageSource(task.thumbnailUrl)
+                      : imageUrl;
+
+                    return (
+                      <MobileHistoryCard key={task.id}>
+                        <MobileHistoryImageWrapper>
+                          {thumbnailUrl ? (
+                            <Image
+                              src={thumbnailUrl}
+                              alt={task.modelName}
+                              width="100%"
+                              height="100%"
+                              style={{ objectFit: 'cover', cursor: 'pointer' }}
+                              preview={{
+                                mask: <EyeOutlined style={{ fontSize: 14 }} />,
+                                src: imageUrl || thumbnailUrl,
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: '100%',
+                                height: '100%',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: task.status === 3 ? '#ff4d4f' : '#8c8c8c',
+                                padding: '12px',
+                              }}
+                            >
+                              {task.status === 3 ? (
+                                <>
+                                  <PictureOutlined style={{ fontSize: 24, marginBottom: 6 }} />
+                                  <div style={{ fontSize: 10, textAlign: 'center' }}>
+                                    <FormattedMessage
+                                      id="create.history.failed.noImage"
+                                      defaultMessage="生成失败"
+                                    />
+                                  </div>
+                                </>
+                              ) : (
+                                <PictureOutlined style={{ fontSize: 24 }} />
+                              )}
+                            </div>
+                          )}
+                          <MobileHistoryStatusBadge status={task.status}>
+                            {getStatusText(task.status)}
+                          </MobileHistoryStatusBadge>
+                        </MobileHistoryImageWrapper>
+                        <MobileHistoryInfo>
+                          <MobileHistoryModelName>{task.modelName}</MobileHistoryModelName>
+                          {task.status === 3 && task.errorMessage && (
+                            <div
+                              style={{
+                                fontSize: 10,
+                                color: '#ff4d4f',
+                                marginTop: 4,
+                                marginBottom: 4,
+                                lineHeight: 1.3,
+                                wordBreak: 'break-word',
+                                padding: '3px 6px',
+                                background: 'rgba(255, 77, 79, 0.1)',
+                                borderRadius: 4,
+                                border: '1px solid rgba(255, 77, 79, 0.2)',
+                              }}
+                            >
+                              {task.errorMessage}
+                            </div>
+                          )}
+                          <MobileHistoryTime>
+                            <ClockCircleOutlined style={{ fontSize: 10 }} />
+                            {new Date(task.createTime).toLocaleString('zh-CN', {
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                            {(() => {
+                              const duration = calculateGenerationTime(task.startTime, task.endTime);
+                              if (duration !== null) {
+                                return (
+                                  <span style={{ marginLeft: 6, color: '#1890ff', fontSize: 10 }}>
+                                    · {duration}s
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </MobileHistoryTime>
+                        </MobileHistoryInfo>
+                      </MobileHistoryCard>
+                    );
+                  })}
+                </MobileHistoryGrid>
+              </Image.PreviewGroup>
+              {historyPagination.total > historyPagination.pageSize && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 16 }}>
+                  <Pagination
+                    current={historyPagination.current}
+                    pageSize={historyPagination.pageSize}
+                    total={historyPagination.total}
+                    onChange={handleHistoryPageChange}
+                    showSizeChanger={false}
+                    size="small"
+                    simple
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <MobileHistoryEmpty>
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={
+                  <FormattedMessage
+                    id="create.history.empty"
+                    defaultMessage="暂无生成记录"
+                  />
+                }
+              />
+            </MobileHistoryEmpty>
+          )}
+        </MobileHistorySection>
 
       {/* 设置抽屉 */}
       <Drawer
