@@ -131,3 +131,30 @@ export const calculateDimensionsFromRatio = (
   return { width, height };
 };
 
+// 解析分辨率字符串（格式：1024x1024 或 1024*1024）
+export const parseResolution = (
+  resolution: string
+): { width: number; height: number } | null => {
+  if (!resolution) return null;
+
+  // 支持 x 或 * 作为分隔符
+  const parts = resolution.split(/[x*]/);
+  if (parts.length !== 2) return null;
+
+  const width = parseInt(parts[0].trim(), 10);
+  const height = parseInt(parts[1].trim(), 10);
+
+  if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
+    return null;
+  }
+
+  return { width, height };
+};
+
+// 格式化分辨率为显示文本
+export const formatResolution = (resolution: string): string => {
+  const parsed = parseResolution(resolution);
+  if (!parsed) return resolution;
+  return `${parsed.width} × ${parsed.height}`;
+};
+

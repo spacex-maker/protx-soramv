@@ -28,6 +28,7 @@ import {
   SwapOutlined,
   RobotOutlined,
   EyeOutlined,
+  DesktopOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import instance from 'api/axios';
@@ -37,6 +38,8 @@ import {
   isFree,
   getAspectRatioOption,
   calculateDimensionsFromRatio,
+  parseResolution,
+  formatResolution,
 } from './utils';
 import {
   GlobalSelectStyles,
@@ -121,6 +124,14 @@ const TextToImage: React.FC = () => {
     if (!model) return;
 
     const updates: any = {};
+
+    // 设置默认分辨率（如果有）
+    if (model.imageDefaultResolution) {
+      const currentResolution = form.getFieldValue('resolution');
+      if (!currentResolution) {
+        updates.resolution = model.imageDefaultResolution;
+      }
+    }
 
     // 设置图片比例（如果有支持的比例）
     if (model.imageAspectRatios) {
@@ -358,6 +369,55 @@ const TextToImage: React.FC = () => {
     return formats;
   };
 
+  // 获取支持的分辨率选项（根据选中的模型）
+  const getAvailableResolutions = () => {
+    if (!selectedModel) {
+      return [];
+    }
+
+    const resolutions: string[] = [];
+
+    // 如果有默认分辨率，添加到列表
+    if (selectedModel.imageDefaultResolution) {
+      resolutions.push(selectedModel.imageDefaultResolution);
+    }
+
+    // 如果有最大分辨率，也添加到列表（如果与默认不同）
+    if (
+      selectedModel.imageMaxResolution &&
+      selectedModel.imageMaxResolution !== selectedModel.imageDefaultResolution
+    ) {
+      resolutions.push(selectedModel.imageMaxResolution);
+    }
+
+    // 如果没有明确的分辨率，根据比例生成一些常用分辨率
+    if (resolutions.length === 0 && selectedModel.imageAspectRatios) {
+      const ratios = selectedModel.imageAspectRatios.split(',').map((r) => r.trim());
+      ratios.forEach((ratio) => {
+        const dimensions = calculateDimensionsFromRatio(ratio);
+        if (dimensions) {
+          const resolution = `${dimensions.width}x${dimensions.height}`;
+          if (!resolutions.includes(resolution)) {
+            resolutions.push(resolution);
+          }
+        }
+      });
+    }
+
+    // 添加一些常用分辨率
+    const commonResolutions = ['512x512', '768x768', '1024x1024', '1024x768', '768x1024'];
+    commonResolutions.forEach((res) => {
+      if (!resolutions.includes(res)) {
+        resolutions.push(res);
+      }
+    });
+
+    return resolutions.map((res) => ({
+      label: formatResolution(res),
+      value: res,
+    }));
+  };
+
   // 调用后端 API 生成图片
   const handleGenerate = async (values: any) => {
     if (!selectedModel) {
@@ -400,8 +460,14 @@ const TextToImage: React.FC = () => {
         requestData.negativePrompt = values.negativePrompt;
       }
 
-      // 根据比例计算宽高
-      if (values.aspectRatio) {
+      // 优先使用分辨率，如果没有选择分辨率则使用比例计算宽高
+      if (values.resolution) {
+        const dimensions = parseResolution(values.resolution);
+        if (dimensions) {
+          requestData.width = dimensions.width;
+          requestData.height = dimensions.height;
+        }
+      } else if (values.aspectRatio) {
         const dimensions = calculateDimensionsFromRatio(values.aspectRatio);
         if (dimensions) {
           requestData.width = dimensions.width;
@@ -640,6 +706,7 @@ const TextToImage: React.FC = () => {
                 onFinish={handleGenerate}
                 initialValues={{
                   aspectRatio: undefined,
+                  resolution: undefined,
                   styleModelId: null,
                   batchSize: 2,
                   steps: 30,
@@ -840,9 +907,9 @@ const TextToImage: React.FC = () => {
                   />
                 </Form.Item>
 
-                {/* 参数设置行 */}
+                {/* 参数设置行：画面比例、输出格式、分辨率 */}
                 <Row gutter={16} style={{ marginBottom: 20 }}>
-                  <Col span={12}>
+                  <Col span={8}>
                     <Form.Item
                       name="aspectRatio"
                       label={
@@ -893,7 +960,7 @@ const TextToImage: React.FC = () => {
                       </Select>
                     </Form.Item>
                   </Col>
-                  <Col span={12}>
+                  <Col span={8}>
                     <Form.Item
                       name="imageFormat"
                       label={
@@ -926,6 +993,51 @@ const TextToImage: React.FC = () => {
                         {getAvailableImageFormats().map((format) => (
                           <Select.Option key={format} value={format}>
                             {format.toUpperCase()}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  </Col>
+                  <Col span={8}>
+                    <Form.Item
+                      name="resolution"
+                      label={
+                        <Space>
+                          <DesktopOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                          <FormattedMessage
+                            id="create.resolution"
+                            defaultMessage="分辨率"
+                          />
+                          <Tooltip
+                            title={intl.formatMessage({
+                              id: 'create.resolution.tooltip',
+                              defaultMessage: '选择图片的分辨率，优先级高于画面比例',
+                            })}
+                          >
+                            <InfoCircleOutlined style={{ color: '#999' }} />
+                          </Tooltip>
+                        </Space>
+                      }
+                      style={{ marginBottom: 0 }}
+                    >
+                      <Select
+                        disabled={!selectedModel || getAvailableResolutions().length === 0}
+                        placeholder={
+                          !selectedModel
+                            ? intl.formatMessage({
+                                id: 'create.model.select.placeholder',
+                                defaultMessage: '请先选择模型',
+                              })
+                            : intl.formatMessage({
+                                id: 'create.resolution.placeholder',
+                                defaultMessage: '选择分辨率（可选）',
+                              })
+                        }
+                        allowClear
+                      >
+                        {getAvailableResolutions().map((res) => (
+                          <Select.Option key={res.value} value={res.value}>
+                            {res.label}
                           </Select.Option>
                         ))}
                       </Select>
