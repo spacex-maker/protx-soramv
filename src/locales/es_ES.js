@@ -408,5 +408,8 @@ export default {
   'create.taskDetail.status.failed': 'FALLIDO',
   'create.taskDetail.status.processing': 'PROCESANDO',
   'create.taskDetail.status.queued': 'EN COLA',
+  'create.taskDetail.imageDimensions': 'Dimensiones',
+  'create.taskDetail.fileSize': 'Tamaño del archivo',
+  'create.taskDetail.loadingImageInfo': 'Cargando información de la imagen...',
   'video.not.supported': 'Su navegador no admite la reproducción de video.',
 }; 

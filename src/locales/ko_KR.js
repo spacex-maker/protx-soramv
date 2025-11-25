@@ -484,5 +484,8 @@ export default {
   'create.taskDetail.status.failed': '실패',
   'create.taskDetail.status.processing': '처리 중',
   'create.taskDetail.status.queued': '대기 중',
+  'create.taskDetail.imageDimensions': '크기',
+  'create.taskDetail.fileSize': '파일 크기',
+  'create.taskDetail.loadingImageInfo': '이미지 정보 로딩 중...',
   'video.not.supported': '브라우저가 동영상 재생을 지원하지 않습니다.',
 }; 

@@ -518,6 +518,9 @@ export default {
   'create.taskDetail.status.failed': 'FAILED',
   'create.taskDetail.status.processing': 'PROCESSING',
   'create.taskDetail.status.queued': 'QUEUED',
+  'create.taskDetail.imageDimensions': 'Dimensions',
+  'create.taskDetail.fileSize': 'File Size',
+  'create.taskDetail.loadingImageInfo': 'Loading image info...',
   'create.aspectRatio.3:4': '3:4 (Portrait Classic)',
   'video.not.supported': 'Your browser does not support video playback.',
 }; 

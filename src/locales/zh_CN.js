@@ -571,6 +571,9 @@ export default {
   'create.taskDetail.status.failed': '失败',
   'create.taskDetail.status.processing': '处理中',
   'create.taskDetail.status.queued': '排队中',
+  'create.taskDetail.imageDimensions': '尺寸',
+  'create.taskDetail.fileSize': '大小',
+  'create.taskDetail.loadingImageInfo': '加载图片信息中...',
   'create.aspectRatio.3:4': '3:4 (竖版经典)',
   'video.not.supported': '您的浏览器不支持视频播放。',
 }; 

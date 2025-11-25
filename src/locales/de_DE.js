@@ -485,5 +485,8 @@ export default {
   'create.taskDetail.status.failed': 'FEHLGESCHLAGEN',
   'create.taskDetail.status.processing': 'WIRD VERARBEITET',
   'create.taskDetail.status.queued': 'IN WARTESCHLANGE',
+  'create.taskDetail.imageDimensions': 'Abmessungen',
+  'create.taskDetail.fileSize': 'Dateigröße',
+  'create.taskDetail.loadingImageInfo': 'Bildinformationen werden geladen...',
   'video.not.supported': 'Ihr Browser unterstützt keine Videowiedergabe.',
 }; 

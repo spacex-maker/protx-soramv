@@ -54,6 +54,7 @@ import {
   ImageWrapper,
   ImageActions,
   ModelOptionWrapper,
+  ModelSelectDisplay,
   DetailButton,
   AspectRatioTag,
   AspectRatioOption,
@@ -192,7 +193,7 @@ const TextToImage: React.FC = () => {
   }, [intl, form]);
 
   // 根据模型更新表单参数
-  const updateFormByModel = (model: Model) => {
+  const updateFormByModel = (model: Model | ModelFamily | null) => {
     if (!model) return;
 
     const updates: any = {};
@@ -275,59 +276,24 @@ const TextToImage: React.FC = () => {
           coverImage: item.coverImage || null,
         }));
         setStyleModels(styleModelsList);
-        // 默认选择第一个风格模型
         if (styleModelsList.length > 0) {
           const firstStyleModel = styleModelsList[0];
           setSelectedModel(firstStyleModel);
           form.setFieldsValue({ styleModelId: firstStyleModel.id });
           updateFormByModel(firstStyleModel);
         } else {
-          // 如果没有风格模型，使用家族本身作为模型
+          setSelectedModel(null);
+          form.setFieldsValue({ styleModelId: null });
           if (targetFamily) {
-            const familyAsModel: Model = {
-              id: targetFamily.id,
-              modelName: targetFamily.modelName,
-              modelCode: targetFamily.modelCode,
-              description: targetFamily.description,
-              imageDefaultResolution: targetFamily.imageDefaultResolution,
-              imageMaxResolution: targetFamily.imageMaxResolution,
-              imageAspectRatios: targetFamily.imageAspectRatios,
-              imageFormats: targetFamily.imageFormats,
-              supportControlnet: targetFamily.supportControlnet,
-              supportInpaint: targetFamily.supportInpaint,
-              supportReference: targetFamily.supportReference,
-              currency: targetFamily.currency,
-              outputPrice: targetFamily.outputPrice,
-              coverImage: null,
-            };
-            setSelectedModel(familyAsModel);
-            form.setFieldsValue({ styleModelId: null });
-            updateFormByModel(familyAsModel);
+            updateFormByModel(targetFamily);
           }
         }
       } else {
-        // 如果没有风格模型，使用家族本身作为模型
+        setSelectedModel(null);
+        setStyleModels([]);
+        form.setFieldsValue({ styleModelId: null });
         if (targetFamily) {
-          const familyAsModel: Model = {
-            id: targetFamily.id,
-            modelName: targetFamily.modelName,
-            modelCode: targetFamily.modelCode,
-            description: targetFamily.description,
-            imageDefaultResolution: targetFamily.imageDefaultResolution,
-            imageMaxResolution: targetFamily.imageMaxResolution,
-            imageAspectRatios: targetFamily.imageAspectRatios,
-            imageFormats: targetFamily.imageFormats,
-            supportControlnet: targetFamily.supportControlnet,
-            supportInpaint: targetFamily.supportInpaint,
-            supportReference: targetFamily.supportReference,
-            currency: targetFamily.currency,
-            outputPrice: targetFamily.outputPrice,
-            coverImage: null,
-          };
-          setSelectedModel(familyAsModel);
-          setStyleModels([]);
-          form.setFieldsValue({ styleModelId: null });
-          updateFormByModel(familyAsModel);
+          updateFormByModel(targetFamily);
         }
       }
     } catch (error: any) {
@@ -338,31 +304,15 @@ const TextToImage: React.FC = () => {
           defaultMessage: '加载风格模型列表失败',
         })
       );
-      // 出错时使用家族本身作为模型
+      // 出错时回退到家族默认配置
       const targetFamily =
         family ||
         modelFamilies.find((f) => f.modelCode === parentModelCode);
       if (targetFamily) {
-        const familyAsModel: Model = {
-          id: targetFamily.id,
-          modelName: targetFamily.modelName,
-          modelCode: targetFamily.modelCode,
-          description: targetFamily.description,
-          imageDefaultResolution: targetFamily.imageDefaultResolution,
-          imageMaxResolution: targetFamily.imageMaxResolution,
-          imageAspectRatios: targetFamily.imageAspectRatios,
-          imageFormats: targetFamily.imageFormats,
-          supportControlnet: targetFamily.supportControlnet,
-          supportInpaint: targetFamily.supportInpaint,
-          supportReference: targetFamily.supportReference,
-          currency: targetFamily.currency,
-          outputPrice: targetFamily.outputPrice,
-          coverImage: null,
-        };
-        setSelectedModel(familyAsModel);
+        setSelectedModel(null);
         setStyleModels([]);
         form.setFieldsValue({ styleModelId: null });
-        updateFormByModel(familyAsModel);
+        updateFormByModel(targetFamily);
       }
     } finally {
       setStyleModelsLoading(false);
@@ -382,30 +332,103 @@ const TextToImage: React.FC = () => {
     }
   };
 
+  // 自定义模型家族选择框显示内容
+  const renderFamilySelectDisplay = (family: ModelFamily | null) => {
+    if (!family) return null;
+    
+    return (
+      <ModelSelectDisplay coverImage={family.coverImage}>
+        <div className="model-display-header">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="model-display-name">{family.modelName}</div>
+            {family.modelCode && (
+              <div className="model-display-code">{family.modelCode}</div>
+            )}
+          </div>
+          {isFree(family.outputPrice, family.currency) ? (
+            <div className="model-display-free">
+              {intl.formatMessage({
+                id: 'create.model.free',
+                defaultMessage: '免费',
+              })}
+            </div>
+          ) : (
+            family.outputPrice !== null &&
+            family.outputPrice !== undefined && (
+              <div className="model-display-price">
+                <span className="model-display-price-amount">
+                  {family.outputPrice}
+                </span>
+                <span className="model-display-price-currency">
+                  {family.currency || 'USD'}
+                </span>
+                <span className="model-display-price-unit">
+                  {intl.formatMessage({
+                    id: 'create.model.price.perImage',
+                    defaultMessage: '/张',
+                  })}
+                </span>
+              </div>
+            )
+          )}
+        </div>
+      </ModelSelectDisplay>
+    );
+  };
+
+  // 自定义艺术风格选择框显示内容
+  const renderStyleModelSelectDisplay = (model: Model | ModelFamily | null, isDefault: boolean = false) => {
+    if (!model) return null;
+    
+    return (
+      <ModelSelectDisplay coverImage={model.coverImage}>
+        <div className="model-display-header">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div className="model-display-name">
+              {isDefault ? `${model.modelName} (默认)` : model.modelName}
+            </div>
+            {model.modelCode && (
+              <div className="model-display-code">{model.modelCode}</div>
+            )}
+          </div>
+          {isFree(model.outputPrice, model.currency) ? (
+            <div className="model-display-free">
+              {intl.formatMessage({
+                id: 'create.model.free',
+                defaultMessage: '免费',
+              })}
+            </div>
+          ) : (
+            model.outputPrice !== null &&
+            model.outputPrice !== undefined && (
+              <div className="model-display-price">
+                <span className="model-display-price-amount">
+                  {model.outputPrice}
+                </span>
+                <span className="model-display-price-currency">
+                  {model.currency || 'USD'}
+                </span>
+                <span className="model-display-price-unit">
+                  {intl.formatMessage({
+                    id: 'create.model.price.perImage',
+                    defaultMessage: '/张',
+                  })}
+                </span>
+              </div>
+            )
+          )}
+        </div>
+      </ModelSelectDisplay>
+    );
+  };
+
   // 处理风格模型选择变化
   const handleStyleModelChange = (modelId: number | null) => {
-    if (modelId === null) {
-      // 如果选择"无"或家族本身，使用家族作为模型
+    if (modelId === null || modelId === undefined) {
+      setSelectedModel(null);
+      form.setFieldsValue({ styleModelId: null });
       if (selectedFamily) {
-        const familyAsModel: Model = {
-          id: selectedFamily.id,
-          modelName: selectedFamily.modelName,
-          modelCode: selectedFamily.modelCode,
-          description: selectedFamily.description,
-          imageDefaultResolution: selectedFamily.imageDefaultResolution,
-          imageMaxResolution: selectedFamily.imageMaxResolution,
-          imageAspectRatios: selectedFamily.imageAspectRatios,
-          imageFormats: selectedFamily.imageFormats,
-          supportControlnet: selectedFamily.supportControlnet,
-          supportInpaint: selectedFamily.supportInpaint,
-          supportReference: selectedFamily.supportReference,
-          currency: selectedFamily.currency,
-          outputPrice: selectedFamily.outputPrice,
-          coverImage: null,
-        };
-        setSelectedModel(familyAsModel);
-        form.setFieldsValue({ styleModelId: null });
-        updateFormByModel(familyAsModel);
+        updateFormByModel(selectedFamily);
       }
     } else {
       const model = styleModels.find((m) => m.id === modelId);
@@ -417,13 +440,16 @@ const TextToImage: React.FC = () => {
     }
   };
 
-  // 获取支持的图片比例选项（根据选中的模型）
+  const getEffectiveModel = () => selectedModel || selectedFamily || null;
+
+  // 获取支持的图片比例选项（根据选中的模型或家族）
   const getAvailableAspectRatios = () => {
-    if (!selectedModel || !selectedModel.imageAspectRatios) {
+    const activeModel = getEffectiveModel();
+    if (!activeModel || !activeModel.imageAspectRatios) {
       return [];
     }
 
-    const supportedRatios = selectedModel.imageAspectRatios
+    const supportedRatios = activeModel.imageAspectRatios
       .split(',')
       .map((r) => r.trim());
 
@@ -431,40 +457,42 @@ const TextToImage: React.FC = () => {
     return supportedRatios.map((ratio) => getAspectRatioOption(ratio, intl));
   };
 
-  // 获取支持的图片格式选项（根据选中的模型）
+  // 获取支持的图片格式选项（根据选中的模型或家族）
   const getAvailableImageFormats = () => {
-    if (!selectedModel || !selectedModel.imageFormats) {
+    const activeModel = getEffectiveModel();
+    if (!activeModel || !activeModel.imageFormats) {
       return [];
     }
 
-    const formats = selectedModel.imageFormats.split(',').map((f) => f.trim());
+    const formats = activeModel.imageFormats.split(',').map((f) => f.trim());
     return formats;
   };
 
-  // 获取支持的分辨率选项（根据选中的模型）
+  // 获取支持的分辨率选项（根据选中的模型或家族）
   const getAvailableResolutions = () => {
-    if (!selectedModel) {
+    const activeModel = getEffectiveModel();
+    if (!activeModel) {
       return [];
     }
 
     const resolutions: string[] = [];
 
     // 如果有默认分辨率，添加到列表
-    if (selectedModel.imageDefaultResolution) {
-      resolutions.push(selectedModel.imageDefaultResolution);
+    if (activeModel.imageDefaultResolution) {
+      resolutions.push(activeModel.imageDefaultResolution);
     }
 
     // 如果有最大分辨率，也添加到列表（如果与默认不同）
     if (
-      selectedModel.imageMaxResolution &&
-      selectedModel.imageMaxResolution !== selectedModel.imageDefaultResolution
+      activeModel.imageMaxResolution &&
+      activeModel.imageMaxResolution !== activeModel.imageDefaultResolution
     ) {
-      resolutions.push(selectedModel.imageMaxResolution);
+      resolutions.push(activeModel.imageMaxResolution);
     }
 
     // 如果没有明确的分辨率，根据比例生成一些常用分辨率
-    if (resolutions.length === 0 && selectedModel.imageAspectRatios) {
-      const ratios = selectedModel.imageAspectRatios.split(',').map((r) => r.trim());
+    if (resolutions.length === 0 && activeModel.imageAspectRatios) {
+      const ratios = activeModel.imageAspectRatios.split(',').map((r) => r.trim());
       ratios.forEach((ratio) => {
         const dimensions = calculateDimensionsFromRatio(ratio);
         if (dimensions) {
@@ -492,16 +520,6 @@ const TextToImage: React.FC = () => {
 
   // 调用后端 API 生成图片
   const handleGenerate = async (values: any) => {
-    if (!selectedModel) {
-      message.warning(
-        intl.formatMessage({
-          id: 'create.model.select.image.placeholder',
-          defaultMessage: '请选择要使用的图片生成模型',
-        })
-      );
-      return;
-    }
-
     if (!selectedFamily) {
       message.warning(
         intl.formatMessage({
@@ -519,8 +537,11 @@ const TextToImage: React.FC = () => {
       // 构建请求参数
       const requestData: any = {
         prompt: values.prompt,
-        modelCode: selectedModel.modelCode,
       };
+
+      if (selectedModel?.modelCode) {
+        requestData.modelCode = selectedModel.modelCode;
+      }
 
       // 添加模型检查点（使用模型家族的 modelCode）
       if (selectedFamily.modelCode) {
@@ -550,6 +571,11 @@ const TextToImage: React.FC = () => {
       // 添加批次大小（可选）
       if (values.batchSize) {
         requestData.batchSize = values.batchSize;
+      }
+
+      // 添加图片格式（可选）
+      if (values.imageFormat) {
+        requestData.imageFormat = values.imageFormat;
       }
 
       console.log('Generating image with params:', requestData);
@@ -923,20 +949,16 @@ const TextToImage: React.FC = () => {
                     optionLabelProp="label"
                     dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
                     dropdownClassName="model-select-dropdown"
+                    className="model-family-select"
                   >
                     {modelFamilies.map((family) => (
                       <Select.Option
                         key={family.id}
                         value={family.id}
                         label={
-                          <Space>
-                            <span>{family.modelName}</span>
-                            {family.modelCode && (
-                              <Text type="secondary" style={{ fontSize: 12 }}>
-                                ({family.modelCode})
-                              </Text>
-                            )}
-                          </Space>
+                          <div style={{ width: '100%' }}>
+                            {renderFamilySelectDisplay(family)}
+                          </div>
                         }
                       >
                         <ModelOptionWrapper coverImage={family.coverImage}>
@@ -1111,11 +1133,11 @@ const TextToImage: React.FC = () => {
                       <Select
                         optionLabelProp="label"
                         disabled={
-                          !selectedModel ||
+                          !getEffectiveModel() ||
                           getAvailableAspectRatios().length === 0
                         }
                         placeholder={
-                          !selectedModel
+                          !getEffectiveModel()
                             ? intl.formatMessage({
                                 id: 'create.model.select.placeholder',
                                 defaultMessage: '请先选择模型',
@@ -1161,11 +1183,11 @@ const TextToImage: React.FC = () => {
                     >
                       <Select
                         disabled={
-                          !selectedModel ||
+                          !getEffectiveModel() ||
                           getAvailableImageFormats().length === 0
                         }
                         placeholder={
-                          !selectedModel
+                          !getEffectiveModel()
                             ? intl.formatMessage({
                                 id: 'create.model.select.placeholder',
                                 defaultMessage: '请先选择模型',
@@ -1204,9 +1226,9 @@ const TextToImage: React.FC = () => {
                       style={{ marginBottom: 0 }}
                     >
                       <Select
-                        disabled={!selectedModel || getAvailableResolutions().length === 0}
+                        disabled={!getEffectiveModel() || getAvailableResolutions().length === 0}
                         placeholder={
-                          !selectedModel
+                          !getEffectiveModel()
                             ? intl.formatMessage({
                                 id: 'create.model.select.placeholder',
                                 defaultMessage: '请先选择模型',
@@ -1247,7 +1269,7 @@ const TextToImage: React.FC = () => {
                       style={{ marginBottom: 0 }}
                     >
                       <Select
-                        value={selectedModel?.id}
+                        value={selectedModel?.id ?? null}
                         onChange={handleStyleModelChange}
                         placeholder={intl.formatMessage({
                           id: 'create.style.select.placeholder',
@@ -1264,6 +1286,7 @@ const TextToImage: React.FC = () => {
                         optionLabelProp="label"
                         dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
                         dropdownClassName="model-select-dropdown"
+                        className="model-style-select"
                       >
                         {/* 添加一个选项，允许使用家族本身 */}
                         {selectedFamily && (
@@ -1271,11 +1294,9 @@ const TextToImage: React.FC = () => {
                             key={`family-${selectedFamily.id}`}
                             value={null}
                             label={
-                              <Space>
-                                <span>
-                                  {selectedFamily.modelName} (默认)
-                                </span>
-                              </Space>
+                              <div style={{ width: '100%' }}>
+                                {renderStyleModelSelectDisplay(selectedFamily, true)}
+                              </div>
                             }
                           >
                             <ModelOptionWrapper coverImage={selectedFamily.coverImage}>
@@ -1342,9 +1363,9 @@ const TextToImage: React.FC = () => {
                             key={model.id}
                             value={model.id}
                             label={
-                              <Space>
-                                <span>{model.modelName}</span>
-                              </Space>
+                              <div style={{ width: '100%' }}>
+                                {renderStyleModelSelectDisplay(model, false)}
+                              </div>
                             }
                           >
                             <ModelOptionWrapper coverImage={model.coverImage}>

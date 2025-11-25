@@ -434,5 +434,8 @@ export default {
   'create.taskDetail.status.failed': 'FALLITO',
   'create.taskDetail.status.processing': 'IN ELABORAZIONE',
   'create.taskDetail.status.queued': 'IN CODA',
+  'create.taskDetail.imageDimensions': 'Dimensioni',
+  'create.taskDetail.fileSize': 'Dimensione file',
+  'create.taskDetail.loadingImageInfo': 'Caricamento informazioni immagine...',
   'video.not.supported': 'Il tuo browser non supporta la riproduzione video.',
 }; 

@@ -228,50 +228,18 @@ const TextToImageMobile: React.FC = () => {
           form.setFieldsValue({ styleModelId: firstStyleModel.id });
           updateFormByModel(firstStyleModel);
         } else {
+          setSelectedModel(null);
+          form.setFieldsValue({ styleModelId: null });
           if (targetFamily) {
-            const familyAsModel: Model = {
-              id: targetFamily.id,
-              modelName: targetFamily.modelName,
-              modelCode: targetFamily.modelCode,
-              description: targetFamily.description,
-              imageDefaultResolution: targetFamily.imageDefaultResolution,
-              imageMaxResolution: targetFamily.imageMaxResolution,
-              imageAspectRatios: targetFamily.imageAspectRatios,
-              imageFormats: targetFamily.imageFormats,
-              supportControlnet: targetFamily.supportControlnet,
-              supportInpaint: targetFamily.supportInpaint,
-              supportReference: targetFamily.supportReference,
-              currency: targetFamily.currency,
-              outputPrice: targetFamily.outputPrice,
-              coverImage: null,
-            };
-            setSelectedModel(familyAsModel);
-            form.setFieldsValue({ styleModelId: null });
-            updateFormByModel(familyAsModel);
+            updateFormByModel(targetFamily);
           }
         }
       } else {
+        setSelectedModel(null);
+        setStyleModels([]);
+        form.setFieldsValue({ styleModelId: null });
         if (targetFamily) {
-          const familyAsModel: Model = {
-            id: targetFamily.id,
-            modelName: targetFamily.modelName,
-            modelCode: targetFamily.modelCode,
-            description: targetFamily.description,
-            imageDefaultResolution: targetFamily.imageDefaultResolution,
-            imageMaxResolution: targetFamily.imageMaxResolution,
-            imageAspectRatios: targetFamily.imageAspectRatios,
-            imageFormats: targetFamily.imageFormats,
-            supportControlnet: targetFamily.supportControlnet,
-            supportInpaint: targetFamily.supportInpaint,
-            supportReference: targetFamily.supportReference,
-            currency: targetFamily.currency,
-            outputPrice: targetFamily.outputPrice,
-            coverImage: null,
-          };
-          setSelectedModel(familyAsModel);
-          setStyleModels([]);
-          form.setFieldsValue({ styleModelId: null });
-          updateFormByModel(familyAsModel);
+          updateFormByModel(targetFamily);
         }
       }
     } catch (error: any) {
@@ -286,26 +254,10 @@ const TextToImageMobile: React.FC = () => {
         family ||
         modelFamilies.find((f) => f.modelCode === parentModelCode);
       if (targetFamily) {
-        const familyAsModel: Model = {
-          id: targetFamily.id,
-          modelName: targetFamily.modelName,
-          modelCode: targetFamily.modelCode,
-          description: targetFamily.description,
-          imageDefaultResolution: targetFamily.imageDefaultResolution,
-          imageMaxResolution: targetFamily.imageMaxResolution,
-          imageAspectRatios: targetFamily.imageAspectRatios,
-          imageFormats: targetFamily.imageFormats,
-          supportControlnet: targetFamily.supportControlnet,
-          supportInpaint: targetFamily.supportInpaint,
-          supportReference: targetFamily.supportReference,
-          currency: targetFamily.currency,
-          outputPrice: targetFamily.outputPrice,
-          coverImage: null,
-        };
-        setSelectedModel(familyAsModel);
+        setSelectedModel(null);
         setStyleModels([]);
         form.setFieldsValue({ styleModelId: null });
-        updateFormByModel(familyAsModel);
+        updateFormByModel(targetFamily);
       }
     } finally {
       setStyleModelsLoading(false);
@@ -313,7 +265,7 @@ const TextToImageMobile: React.FC = () => {
   };
 
   // 根据模型更新表单参数
-  const updateFormByModel = (model: Model) => {
+  const updateFormByModel = (model: Model | ModelFamily | null) => {
     if (!model) return;
 
     const updates: any = {};
@@ -370,27 +322,11 @@ const TextToImageMobile: React.FC = () => {
 
   // 处理风格模型选择变化
   const handleStyleModelChange = (modelId: number | null) => {
-    if (modelId === null) {
+    if (modelId === null || modelId === undefined) {
+      setSelectedModel(null);
+      form.setFieldsValue({ styleModelId: null });
       if (selectedFamily) {
-        const familyAsModel: Model = {
-          id: selectedFamily.id,
-          modelName: selectedFamily.modelName,
-          modelCode: selectedFamily.modelCode,
-          description: selectedFamily.description,
-          imageDefaultResolution: selectedFamily.imageDefaultResolution,
-          imageMaxResolution: selectedFamily.imageMaxResolution,
-          imageAspectRatios: selectedFamily.imageAspectRatios,
-          imageFormats: selectedFamily.imageFormats,
-          supportControlnet: selectedFamily.supportControlnet,
-          supportInpaint: selectedFamily.supportInpaint,
-          supportReference: selectedFamily.supportReference,
-          currency: selectedFamily.currency,
-          outputPrice: selectedFamily.outputPrice,
-          coverImage: null,
-        };
-        setSelectedModel(familyAsModel);
-        form.setFieldsValue({ styleModelId: null });
-        updateFormByModel(familyAsModel);
+        updateFormByModel(selectedFamily);
       }
     } else {
       const model = styleModels.find((m) => m.id === modelId);
@@ -402,12 +338,15 @@ const TextToImageMobile: React.FC = () => {
     }
   };
 
+  const getEffectiveModel = () => selectedModel || selectedFamily || null;
+
   // 获取支持的图片比例选项
   const getAvailableAspectRatios = () => {
-    if (!selectedModel || !selectedModel.imageAspectRatios) {
+    const activeModel = getEffectiveModel();
+    if (!activeModel || !activeModel.imageAspectRatios) {
       return [];
     }
-    const supportedRatios = selectedModel.imageAspectRatios
+    const supportedRatios = activeModel.imageAspectRatios
       .split(',')
       .map((r) => r.trim());
     return supportedRatios.map((ratio) => getAspectRatioOption(ratio, intl));
@@ -415,30 +354,32 @@ const TextToImageMobile: React.FC = () => {
 
   // 获取支持的图片格式选项
   const getAvailableImageFormats = () => {
-    if (!selectedModel || !selectedModel.imageFormats) {
+    const activeModel = getEffectiveModel();
+    if (!activeModel || !activeModel.imageFormats) {
       return [];
     }
-    const formats = selectedModel.imageFormats.split(',').map((f) => f.trim());
+    const formats = activeModel.imageFormats.split(',').map((f) => f.trim());
     return formats;
   };
 
   // 获取支持的分辨率选项
   const getAvailableResolutions = () => {
-    if (!selectedModel) {
+    const activeModel = getEffectiveModel();
+    if (!activeModel) {
       return [];
     }
     const resolutions: string[] = [];
-    if (selectedModel.imageDefaultResolution) {
-      resolutions.push(selectedModel.imageDefaultResolution);
+    if (activeModel.imageDefaultResolution) {
+      resolutions.push(activeModel.imageDefaultResolution);
     }
     if (
-      selectedModel.imageMaxResolution &&
-      selectedModel.imageMaxResolution !== selectedModel.imageDefaultResolution
+      activeModel.imageMaxResolution &&
+      activeModel.imageMaxResolution !== activeModel.imageDefaultResolution
     ) {
-      resolutions.push(selectedModel.imageMaxResolution);
+      resolutions.push(activeModel.imageMaxResolution);
     }
-    if (resolutions.length === 0 && selectedModel.imageAspectRatios) {
-      const ratios = selectedModel.imageAspectRatios.split(',').map((r) => r.trim());
+    if (resolutions.length === 0 && activeModel.imageAspectRatios) {
+      const ratios = activeModel.imageAspectRatios.split(',').map((r) => r.trim());
       ratios.forEach((ratio) => {
         const dimensions = calculateDimensionsFromRatio(ratio);
         if (dimensions) {
@@ -465,16 +406,6 @@ const TextToImageMobile: React.FC = () => {
   const handleGenerate = async (values: any) => {
     console.log('handleGenerate called with values:', values);
     
-    if (!selectedModel) {
-      message.warning(
-        intl.formatMessage({
-          id: 'create.model.select.image.placeholder',
-          defaultMessage: '请选择要使用的图片生成模型',
-        })
-      );
-      return;
-    }
-
     if (!selectedFamily) {
       message.warning(
         intl.formatMessage({
@@ -506,8 +437,11 @@ const TextToImageMobile: React.FC = () => {
     try {
       const requestData: any = {
         prompt: values.prompt || allValues.prompt,
-        modelCode: selectedModel.modelCode,
       };
+
+      if (selectedModel?.modelCode) {
+        requestData.modelCode = selectedModel.modelCode;
+      }
 
       if (selectedFamily.modelCode) {
         requestData.sdModelCheckpoint = selectedFamily.modelCode;
@@ -535,8 +469,11 @@ const TextToImageMobile: React.FC = () => {
       if (allValues.batchSize) {
         requestData.batchSize = allValues.batchSize;
       }
-      
-      // imageFormat 字段后端不支持，移除
+
+      // 添加图片格式（可选）
+      if (allValues.imageFormat) {
+        requestData.imageFormat = allValues.imageFormat;
+      }
 
       const response = await instance.post(
         '/productx/sa-ai-models/image/generate/text',
@@ -1350,11 +1287,11 @@ const TextToImageMobile: React.FC = () => {
               <Select
                 optionLabelProp="label"
                 disabled={
-                  !selectedModel ||
+                  !getEffectiveModel() ||
                   getAvailableAspectRatios().length === 0
                 }
                 placeholder={
-                  !selectedModel
+                  !getEffectiveModel()
                     ? intl.formatMessage({
                         id: 'create.model.select.placeholder',
                         defaultMessage: '请先选择模型',
@@ -1396,9 +1333,9 @@ const TextToImageMobile: React.FC = () => {
               }
             >
               <Select
-                disabled={!selectedModel || getAvailableResolutions().length === 0}
+                disabled={!getEffectiveModel() || getAvailableResolutions().length === 0}
                 placeholder={
-                  !selectedModel
+                  !getEffectiveModel()
                     ? intl.formatMessage({
                         id: 'create.model.select.placeholder',
                         defaultMessage: '请先选择模型',
@@ -1429,11 +1366,11 @@ const TextToImageMobile: React.FC = () => {
             >
               <Select
                 disabled={
-                  !selectedModel ||
+                  !getEffectiveModel() ||
                   getAvailableImageFormats().length === 0
                 }
                 placeholder={
-                  !selectedModel
+                  !getEffectiveModel()
                     ? intl.formatMessage({
                         id: 'create.model.select.placeholder',
                         defaultMessage: '请先选择模型',

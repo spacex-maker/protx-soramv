@@ -413,5 +413,8 @@ export default {
   'create.taskDetail.status.failed': 'НЕУДАЧА',
   'create.taskDetail.status.processing': 'ОБРАБОТКА',
   'create.taskDetail.status.queued': 'В ОЧЕРЕДИ',
+  'create.taskDetail.imageDimensions': 'Размеры',
+  'create.taskDetail.fileSize': 'Размер файла',
+  'create.taskDetail.loadingImageInfo': 'Загрузка информации об изображении...',
   'video.not.supported': 'Ваш браузер не поддерживает воспроизведение видео.',
 }; 

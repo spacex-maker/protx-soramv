@@ -504,5 +504,8 @@ export default {
   'create.taskDetail.status.failed': '失敗',
   'create.taskDetail.status.processing': '処理中',
   'create.taskDetail.status.queued': '待機中',
+  'create.taskDetail.imageDimensions': 'サイズ',
+  'create.taskDetail.fileSize': 'ファイルサイズ',
+  'create.taskDetail.loadingImageInfo': '画像情報を読み込み中...',
   'video.not.supported': 'お使いのブラウザは動画再生をサポートしていません。',
 }; 

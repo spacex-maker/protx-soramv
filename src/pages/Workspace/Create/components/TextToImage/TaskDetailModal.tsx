@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Modal, Typography, Tag, Image, Spin, message, Button, Tooltip, Row, Col } from 'antd';
 import {
   CloseOutlined,
@@ -20,12 +20,13 @@ import {
   ShareAltOutlined,
   FieldNumberOutlined,
   ThunderboltOutlined,
-  FileJpgOutlined
+  FileJpgOutlined,
+  InfoCircleOutlined
 } from '@ant-design/icons';
 import styled, { keyframes } from 'styled-components';
 import { FormattedMessage, useIntl } from 'react-intl';
 import instance from 'api/axios';
-import { TaskDetail } from './types';
+import { TaskDetail, TaskOutputFile } from './types';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -347,6 +348,39 @@ const ImageCard = styled.div`
   background: ${props => props.theme.mode === 'dark' ? '#303030' : '#eee'};
   border: 1px solid ${props => props.theme.mode === 'dark' ? '#303030' : 'transparent'};
   &:hover .image-actions { opacity: 1; }
+  &:hover .image-info { opacity: 1; }
+`;
+
+const ImageInfoOverlay = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 70%, transparent 100%);
+  padding: 12px;
+  color: #fff;
+  font-size: 11px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 5;
+  
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    &:last-child { margin-bottom: 0; }
+  }
+  
+  .info-label {
+    opacity: 0.8;
+    font-size: 10px;
+  }
+  
+  .info-value {
+    font-weight: 600;
+    font-size: 11px;
+  }
 `;
 
 const ImageActions = styled.div`
@@ -375,6 +409,91 @@ const normalizeImageSource = (image: string): string => {
   return `data:image/png;base64,${trimmed}`;
 };
 
+// 图片信息接口
+interface ImageInfo {
+  width?: number;
+  height?: number;
+  fileSize?: number; // 字节
+}
+
+// 格式化文件大小
+const formatFileSize = (bytes?: number): string => {
+  if (!bytes || bytes === 0) return '-';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)} ${sizes[i]}`;
+};
+
+// 从 extraMetadata 或 extraMetadataMap 中提取图片信息
+const extractImageInfoFromMetadata = (file: TaskOutputFile): ImageInfo | null => {
+  try {
+    // 尝试从 extraMetadataMap 中获取
+    if (file.extraMetadataMap) {
+      const metadata = file.extraMetadataMap;
+      const width = metadata.width || metadata.imageWidth;
+      const height = metadata.height || metadata.imageHeight;
+      const fileSize = metadata.fileSize || metadata.size || metadata.file_size;
+      
+      if (width && height) {
+        return {
+          width: typeof width === 'string' ? parseInt(width, 10) : width,
+          height: typeof height === 'string' ? parseInt(height, 10) : height,
+          fileSize: typeof fileSize === 'string' ? parseInt(fileSize, 10) : fileSize,
+        };
+      }
+    }
+    
+    // 尝试从 extraMetadata JSON 字符串中解析
+    if (file.extraMetadata) {
+      const metadata = JSON.parse(file.extraMetadata);
+      const width = metadata.width || metadata.imageWidth;
+      const height = metadata.height || metadata.imageHeight;
+      const fileSize = metadata.fileSize || metadata.size || metadata.file_size;
+      
+      if (width && height) {
+        return {
+          width: typeof width === 'string' ? parseInt(width, 10) : width,
+          height: typeof height === 'string' ? parseInt(height, 10) : height,
+          fileSize: typeof fileSize === 'string' ? parseInt(fileSize, 10) : fileSize,
+        };
+      }
+    }
+  } catch (e) {
+    // 解析失败，返回 null
+  }
+  return null;
+};
+
+// 通过加载图片获取尺寸
+const getImageDimensions = (url: string): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = reject;
+    img.src = normalizeImageSource(url);
+  });
+};
+
+// 通过 HEAD 请求获取文件大小
+const getFileSize = async (url: string): Promise<number | null> => {
+  try {
+    const normalizedUrl = normalizeImageSource(url);
+    // 如果是 data URL，无法获取大小
+    if (normalizedUrl.startsWith('data:')) {
+      return null;
+    }
+    
+    const response = await fetch(normalizedUrl, { method: 'HEAD' });
+    const contentLength = response.headers.get('Content-Length');
+    return contentLength ? parseInt(contentLength, 10) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
 // ==========================================
 // 3. 主组件
 // ==========================================
@@ -393,6 +512,9 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
   // 预览控制
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewCurrent, setPreviewCurrent] = useState(0);
+  
+  // 图片信息缓存：fileId -> ImageInfo
+  const [imageInfoMap, setImageInfoMap] = useState<Record<number, ImageInfo>>({});
 
   useEffect(() => {
     if (open && taskId) {
@@ -401,8 +523,57 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
       setTaskDetail(null);
       setPreviewVisible(false);
       setPreviewCurrent(0);
+      setImageInfoMap({});
     }
   }, [open, taskId]);
+
+  // 加载图片信息
+  const loadImageInfo = useCallback(async (file: TaskOutputFile) => {
+    // 首先尝试从 metadata 中获取
+    const metadataInfo = extractImageInfoFromMetadata(file);
+    if (metadataInfo && metadataInfo.width && metadataInfo.height) {
+      setImageInfoMap(prev => {
+        // 如果已经有缓存，直接返回
+        if (prev[file.id]) return prev;
+        return { ...prev, [file.id]: metadataInfo };
+      });
+      return;
+    }
+
+    // 如果 metadata 中没有，则通过加载图片获取尺寸
+    try {
+      const dimensions = await getImageDimensions(file.fileUrl);
+      const fileSize = await getFileSize(file.fileUrl);
+      
+      setImageInfoMap(prev => {
+        // 如果已经有缓存，直接返回
+        if (prev[file.id]) return prev;
+        return {
+          ...prev,
+          [file.id]: {
+            width: dimensions.width,
+            height: dimensions.height,
+            fileSize: fileSize || undefined,
+          },
+        };
+      });
+    } catch (e) {
+      // 加载失败，不显示信息
+      console.warn('Failed to load image info:', e);
+    }
+  }, []);
+
+  // 当任务详情加载完成后，加载所有图片信息
+  useEffect(() => {
+    if (taskDetail?.outputFiles && taskDetail.outputFiles.length > 0) {
+      taskDetail.outputFiles.forEach(file => {
+        // 检查是否已有缓存，避免重复加载
+        if (!imageInfoMap[file.id]) {
+          loadImageInfo(file);
+        }
+      });
+    }
+  }, [taskDetail, loadImageInfo, imageInfoMap]);
 
   const fetchTaskDetail = async () => {
     if (!taskId) return;
@@ -565,37 +736,73 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
             {taskDetail.outputFiles && taskDetail.outputFiles.length > 0 ? (
               <>
                 <ImageGrid>
-                  {taskDetail.outputFiles.map((file, idx) => (
-                    <ImageCard key={file.id}>
-                      <Image
-                        src={normalizeImageSource(file.fileUrl)}
-                        width="100%"
-                        height="100%"
-                        style={{ objectFit: 'cover' }}
-                        preview={false} 
-                      />
-                      <ImageActions className="image-actions">
-                        <Tooltip title={intl.formatMessage({ id: 'create.taskDetail.preview' })}>
-                          <Button 
-                            shape="circle" 
-                            size="large"
-                            icon={<EyeOutlined />} 
-                            style={{ border: 'none', background: 'rgba(255,255,255,0.95)', color: '#000' }}
-                            onClick={() => handlePreview(idx)}
-                          />
-                        </Tooltip>
-                        <Tooltip title={intl.formatMessage({ id: 'create.taskDetail.download' })}>
-                          <Button 
-                            type="primary" 
-                            shape="circle" 
-                            size="large"
-                            icon={<DownloadOutlined />} 
-                            onClick={() => downloadImage(file.fileUrl, `task-${taskId}-${idx+1}.png`)}
-                          />
-                        </Tooltip>
-                      </ImageActions>
-                    </ImageCard>
-                  ))}
+                  {taskDetail.outputFiles.map((file, idx) => {
+                    const imageInfo = imageInfoMap[file.id];
+                    return (
+                      <ImageCard key={file.id}>
+                        <Image
+                          src={normalizeImageSource(file.fileUrl)}
+                          width="100%"
+                          height="100%"
+                          style={{ objectFit: 'cover' }}
+                          preview={false} 
+                          onLoad={() => loadImageInfo(file)}
+                        />
+                        <ImageInfoOverlay className="image-info">
+                          {imageInfo && (imageInfo.width || imageInfo.height) && (
+                            <>
+                              <div className="info-row">
+                                <span className="info-label">
+                                  <FormattedMessage id="create.taskDetail.imageDimensions" />
+                                </span>
+                                <span className="info-value">
+                                  {imageInfo.width} × {imageInfo.height}
+                                </span>
+                              </div>
+                              {imageInfo.fileSize && (
+                                <div className="info-row">
+                                  <span className="info-label">
+                                    <FormattedMessage id="create.taskDetail.fileSize" />
+                                  </span>
+                                  <span className="info-value">
+                                    {formatFileSize(imageInfo.fileSize)}
+                                  </span>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {!imageInfo && (
+                            <div className="info-row">
+                              <span className="info-label" style={{ fontSize: 10, opacity: 0.6 }}>
+                                <InfoCircleOutlined style={{ marginRight: 4 }} />
+                                <FormattedMessage id="create.taskDetail.loadingImageInfo" />
+                              </span>
+                            </div>
+                          )}
+                        </ImageInfoOverlay>
+                        <ImageActions className="image-actions">
+                          <Tooltip title={intl.formatMessage({ id: 'create.taskDetail.preview' })}>
+                            <Button 
+                              shape="circle" 
+                              size="large"
+                              icon={<EyeOutlined />} 
+                              style={{ border: 'none', background: 'rgba(255,255,255,0.95)', color: '#000' }}
+                              onClick={() => handlePreview(idx)}
+                            />
+                          </Tooltip>
+                          <Tooltip title={intl.formatMessage({ id: 'create.taskDetail.download' })}>
+                            <Button 
+                              type="primary" 
+                              shape="circle" 
+                              size="large"
+                              icon={<DownloadOutlined />} 
+                              onClick={() => downloadImage(file.fileUrl, `task-${taskId}-${idx+1}.png`)}
+                            />
+                          </Tooltip>
+                        </ImageActions>
+                      </ImageCard>
+                    );
+                  })}
                 </ImageGrid>
                 {/* 隐藏的 Preview Group */}
                 <div style={{ display: 'none' }}>

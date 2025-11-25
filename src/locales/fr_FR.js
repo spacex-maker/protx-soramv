@@ -499,5 +499,8 @@ export default {
   'create.taskDetail.status.failed': 'ÉCHOUÉ',
   'create.taskDetail.status.processing': 'TRAITEMENT EN COURS',
   'create.taskDetail.status.queued': 'EN FILE D\'ATTENTE',
+  'create.taskDetail.imageDimensions': 'Dimensions',
+  'create.taskDetail.fileSize': 'Taille du fichier',
+  'create.taskDetail.loadingImageInfo': 'Chargement des informations de l\'image...',
   'video.not.supported': 'Votre navigateur ne prend pas en charge la lecture vidéo.',
 }; 

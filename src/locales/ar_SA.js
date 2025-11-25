@@ -430,5 +430,8 @@ export default {
   'create.taskDetail.status.failed': 'فشل',
   'create.taskDetail.status.processing': 'قيد المعالجة',
   'create.taskDetail.status.queued': 'في الانتظار',
+  'create.taskDetail.imageDimensions': 'الأبعاد',
+  'create.taskDetail.fileSize': 'حجم الملف',
+  'create.taskDetail.loadingImageInfo': 'جارٍ تحميل معلومات الصورة...',
   'video.not.supported': 'المتصفح الخاص بك لا يدعم تشغيل الفيديو.',
 }; 
