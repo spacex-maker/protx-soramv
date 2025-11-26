@@ -1456,7 +1456,7 @@ const TextToImage: React.FC = () => {
                 </Row>
 
                 {/* 艺术风格（可选） */}
-                <Row gutter={16} style={{ marginBottom: 20 }}>
+                <Row gutter={16} style={{ marginBottom: 32 }}>
                   <Col span={24}>
                     <Form.Item
                       name="styleModelId"

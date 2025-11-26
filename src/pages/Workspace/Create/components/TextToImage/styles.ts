@@ -26,7 +26,7 @@ export const GlobalSelectStyles = createGlobalStyle`
   .model-family-select {
     .ant-select-selector {
       padding: 0 !important;
-      min-height: 50px !important;
+      min-height: 65px !important;
       display: flex !important;
       align-items: center !important;
     }
@@ -43,7 +43,7 @@ export const GlobalSelectStyles = createGlobalStyle`
     
     .ant-select-selection-placeholder {
       padding: 0 11px !important;
-      line-height: 50px !important;
+      line-height: 65px !important;
     }
     
     /* 确保显示内容正确对齐 */
@@ -56,7 +56,7 @@ export const GlobalSelectStyles = createGlobalStyle`
   .model-style-select {
     .ant-select-selector {
       padding: 0 !important;
-      min-height: 50px !important;
+      min-height: 65px !important;
       display: flex !important;
       align-items: center !important;
     }
@@ -73,7 +73,7 @@ export const GlobalSelectStyles = createGlobalStyle`
     
     .ant-select-selection-placeholder {
       padding: 0 11px !important;
-      line-height: 50px !important;
+      line-height: 65px !important;
     }
     
     /* 确保显示内容正确对齐 */
@@ -654,8 +654,8 @@ export const ModelSelectDisplay = styled.div<{ coverImage?: string | null }>`
   position: relative;
   overflow: hidden;
   border-radius: 8px;
-  padding: 8px 12px;
-  min-height: 50px;
+  padding: 10px 12px;
+  min-height: 65px;
   height: 100%;
   
   /* 背景图样式：从右到左渐变透明，显示右边部分 */
