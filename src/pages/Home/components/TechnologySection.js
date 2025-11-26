@@ -450,6 +450,7 @@ const TechnologySection = () => {
   const [logs, setLogs] = useState(['> System initialized.', '> Waiting for user input...']);
   const [gpuLoad, setGpuLoad] = useState(12);
   const terminalRef = useRef(null);
+  const workspaceRef = useRef(null);
 
   // 修复3：自动滚动终端 (使用 scrollTop 而不是 scrollIntoView，避免页面跳动)
   useEffect(() => {
@@ -459,10 +460,24 @@ const TechnologySection = () => {
   }, [logs]);
 
   // 修复2：拖拽处理
-  // 仅更新 React 状态中的坐标，不绑定 style，避免死循环
-  const handleDrag = (id, info) => {
+  // 使用 onDragEnd 而不是 onDrag，避免在拖拽过程中持续更新状态导致无限循环
+  const handleDragEnd = (id, event, info) => {
     setNodes(prev => prev.map(n => {
       if (n.id === id) {
+        // 获取元素当前的位置（包括 transform）
+        const element = event.target;
+        const rect = element.getBoundingClientRect();
+        
+        // 获取父容器（EngineWorkspace）的位置
+        if (workspaceRef.current) {
+          const parentRect = workspaceRef.current.getBoundingClientRect();
+          return { 
+            ...n, 
+            x: rect.left - parentRect.left, 
+            y: rect.top - parentRect.top 
+          };
+        }
+        // 如果找不到父容器，使用当前状态位置加上拖拽增量
         return { ...n, x: n.x + info.delta.x, y: n.y + info.delta.y };
       }
       return n;
@@ -525,7 +540,7 @@ const TechnologySection = () => {
         <p>ComfyUI 原生集成。每一个节点，都是一次对创意的精准操控。</p>
       </SectionHeader>
 
-      <EngineWorkspace>
+      <EngineWorkspace ref={workspaceRef}>
         {/* 连线层 */}
         <SvgLayer>
           {connections.map((conn, i) => {
@@ -543,11 +558,13 @@ const TechnologySection = () => {
         {nodes.map(node => (
           <NodeCard
             key={node.id}
-            // 关键修复：使用 initial 设定初始位置，不绑定 style
+            // 关键修复：使用 initial 和 animate 来同步位置，避免无限循环
             initial={{ x: node.x, y: node.y }}
+            animate={{ x: node.x, y: node.y }}
+            transition={{ duration: 0 }} // 禁用动画，立即更新位置
             drag
             dragMomentum={false} // 禁用惯性，更像专业软件
-            onDrag={(e, info) => handleDrag(node.id, info)}
+            onDragEnd={(e, info) => handleDragEnd(node.id, e, info)}
             $color={node.color}
             $active={activeNode === node.id}
           >
