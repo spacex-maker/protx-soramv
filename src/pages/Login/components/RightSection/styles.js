@@ -27,6 +27,27 @@ const SOCIAL_COLORS = {
   linkedin: {
     color: '#0077B5',
     hoverColor: '#006399'
+  },
+  // 中国社交媒体
+  wechat: {
+    color: '#07C160',
+    hoverColor: '#06AD56'
+  },
+  qq: {
+    color: '#12B7F5',
+    hoverColor: '#0FA5E0'
+  },
+  weibo: {
+    color: '#E6162D',
+    hoverColor: '#D01428'
+  },
+  alipay: {
+    color: '#1677FF',
+    hoverColor: '#0958D9'
+  },
+  phone: {
+    color: '#52C41A',
+    hoverColor: '#389E0D'
   }
 };
 
@@ -341,6 +362,11 @@ export const SocialButton = styled.button`
   opacity: 0;
   animation: ${fadeInScale} 0.5s ease-out forwards;
   animation-delay: ${props => props.index * 0.1 + 0.8}s;
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
 
   &:hover {
     background: ${props => props.socialType ? SOCIAL_COLORS[props.socialType].hoverColor : 'transparent'};

@@ -11,7 +11,14 @@ import {
   EyeOutlined,
   EyeInvisibleOutlined,
   DownOutlined,
+  PhoneOutlined,
 } from '@ant-design/icons';
+import { 
+  SiWechat, 
+  SiTencentqq, 
+  SiSinaweibo, 
+  SiAlipay 
+} from 'react-icons/si';
 
 import {
   RightSectionWrapper,
@@ -56,7 +63,8 @@ export const RightSection = ({
   error,
   loading,
   handleSubmit,
-  intl
+  intl,
+  locale
 }) => {
   const [showSuffixDropdown, setShowSuffixDropdown] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -201,24 +209,48 @@ export const RightSection = ({
           </Divider>
 
           <SocialLogin>
-            <SocialButton type="button" socialType="google" index={0}>
-              <GoogleOutlined />
-            </SocialButton>
-            <SocialButton type="button" socialType="github" index={1}>
-              <GithubOutlined />
-            </SocialButton>
-            <SocialButton type="button" socialType="apple" index={2}>
-              <AppleOutlined />
-            </SocialButton>
-            <SocialButton type="button" socialType="facebook" index={3}>
-              <FacebookOutlined />
-            </SocialButton>
-            <SocialButton type="button" socialType="twitter" index={4}>
-              <TwitterOutlined />
-            </SocialButton>
-            <SocialButton type="button" socialType="linkedin" index={5}>
-              <LinkedinOutlined />
-            </SocialButton>
+            {locale === 'zh' ? (
+              // 中国国内登录方式
+              <>
+                <SocialButton type="button" socialType="wechat" index={0} title="微信登录">
+                  <SiWechat />
+                </SocialButton>
+                <SocialButton type="button" socialType="qq" index={1} title="QQ登录">
+                  <SiTencentqq />
+                </SocialButton>
+                <SocialButton type="button" socialType="weibo" index={2} title="微博登录">
+                  <SiSinaweibo />
+                </SocialButton>
+                <SocialButton type="button" socialType="alipay" index={3} title="支付宝登录">
+                  <SiAlipay />
+                </SocialButton>
+                <SocialButton type="button" socialType="phone" index={4} title="手机号登录">
+                  <PhoneOutlined />
+                </SocialButton>
+              </>
+            ) : (
+              // 国际登录方式
+              <>
+                <SocialButton type="button" socialType="google" index={0} title="Google">
+                  <GoogleOutlined />
+                </SocialButton>
+                <SocialButton type="button" socialType="github" index={1} title="GitHub">
+                  <GithubOutlined />
+                </SocialButton>
+                <SocialButton type="button" socialType="apple" index={2} title="Apple">
+                  <AppleOutlined />
+                </SocialButton>
+                <SocialButton type="button" socialType="facebook" index={3} title="Facebook">
+                  <FacebookOutlined />
+                </SocialButton>
+                <SocialButton type="button" socialType="twitter" index={4} title="Twitter">
+                  <TwitterOutlined />
+                </SocialButton>
+                <SocialButton type="button" socialType="linkedin" index={5} title="LinkedIn">
+                  <LinkedinOutlined />
+                </SocialButton>
+              </>
+            )}
           </SocialLogin>
 
           <Footer>

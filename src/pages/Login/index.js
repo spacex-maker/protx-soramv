@@ -112,6 +112,7 @@ const LoginPage = () => {
           loading={loading}
           handleSubmit={handleSubmit}
           intl={intl}
+          locale={locale}
         />
 
         <PhilosophyQuote>
