@@ -445,10 +445,9 @@ const ProfileContent = () => {
         formData.append('file', avatarFile);
         
         try {
-          // 注意：不要手动设置 Content-Type，让浏览器自动设置（包含 boundary）
           const uploadResponse = await instance.post('/productx/user/avatar', formData, {
             headers: {
-              // 移除 Content-Type，让浏览器自动设置
+              'Content-Type': 'multipart/form-data',
             },
           });
           
