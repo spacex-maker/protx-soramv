@@ -34,8 +34,11 @@ import {
   HistoryOutlined,
   ClockCircleOutlined,
   ReloadOutlined,
+  BulbOutlined,
+  UndoOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { useLocale } from 'contexts/LocaleContext';
 import instance from 'api/axios';
 import ModelDetailModal, { ModelDetail } from '../../ModelDetailModal';
 import { ModelFamily, Model, GenerationTask, GenerationTaskPageResponse } from '../types';
@@ -115,6 +118,7 @@ const normalizeImageData = (image: any): string | null => {
 
 const TextToImageMobile: React.FC = () => {
   const intl = useIntl();
+  const { locale } = useLocale();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
@@ -138,6 +142,107 @@ const TextToImageMobile: React.FC = () => {
     pageSize: 10,
     total: 0,
   });
+
+  // AI生成提示词相关状态
+  const [generatingPrompt, setGeneratingPrompt] = useState(false);
+  const [promptValue, setPromptValue] = useState(''); // 监听提示词输入框的值
+  const [originalPrompt, setOriginalPrompt] = useState<string | null>(null); // 保存AI生成/丰富之前的原始提示词
+  const [promptHistory, setPromptHistory] = useState<string[]>([]); // 提示词版本历史（最多保存10个版本）
+
+  // AI生成提示词
+  const handleGeneratePrompt = async () => {
+    setGeneratingPrompt(true);
+    try {
+      // 获取当前输入框中的提示词（作为基础提示词）
+      const currentPrompt = form.getFieldValue('prompt') || '';
+      
+      // 保存当前提示词作为原始值（如果还没有保存过，或者当前值与原始值不同）
+      if (!originalPrompt || originalPrompt !== currentPrompt.trim()) {
+        setOriginalPrompt(currentPrompt.trim() || null);
+        // 如果当前提示词不为空，添加到历史记录
+        if (currentPrompt.trim()) {
+          setPromptHistory((prev) => {
+            const newHistory = [currentPrompt.trim(), ...prev].slice(0, 10); // 最多保存10个版本
+            return newHistory;
+          });
+        }
+      }
+      
+      const requestData: any = {
+        language: locale || 'zh',
+      };
+      
+      // 如果有基础提示词，则传递
+      if (currentPrompt.trim()) {
+        requestData.basePrompt = currentPrompt.trim();
+      }
+      
+      const response = await instance.post('/productx/sa-ai-models/image/prompt/generate', requestData);
+
+      if (response.data.success && response.data.data) {
+        // 处理响应数据：可能是 { prompt: "..." } 或直接是字符串
+        const generatedPrompt = 
+          typeof response.data.data === 'string' 
+            ? response.data.data 
+            : response.data.data.prompt || response.data.data;
+        
+        if (generatedPrompt) {
+          // 将生成的提示词填充到输入框
+          form.setFieldsValue({ prompt: generatedPrompt });
+          setPromptValue(generatedPrompt); // 更新状态
+          message.success(
+            intl.formatMessage({
+              id: 'create.prompt.generate.success',
+              defaultMessage: '提示词生成成功！',
+            })
+          );
+        } else {
+          message.warning(
+            intl.formatMessage({
+              id: 'create.prompt.generate.empty',
+              defaultMessage: '未生成提示词，请重试',
+            })
+          );
+        }
+      } else {
+        message.error(
+          response.data.message ||
+          intl.formatMessage({
+            id: 'create.prompt.generate.error',
+            defaultMessage: '提示词生成失败，请重试',
+          })
+        );
+      }
+    } catch (error: any) {
+      console.error('生成提示词失败:', error);
+      message.error(
+        error.response?.data?.message ||
+        intl.formatMessage({
+          id: 'create.prompt.generate.error',
+          defaultMessage: '提示词生成失败，请重试',
+        })
+      );
+    } finally {
+      setGeneratingPrompt(false);
+    }
+  };
+
+  // 恢复原始提示词
+  const handleRestorePrompt = () => {
+    if (originalPrompt !== null) {
+      form.setFieldsValue({ prompt: originalPrompt });
+      setPromptValue(originalPrompt);
+      message.success(
+        intl.formatMessage({
+          id: 'create.prompt.restore.success',
+          defaultMessage: '已恢复到原始提示词',
+        })
+      );
+    }
+  };
+
+  // 检查是否可以恢复（有原始值且当前值不等于原始值）
+  const canRestore = originalPrompt !== null && promptValue.trim() !== originalPrompt;
 
   // 获取模型家族列表
   useEffect(() => {
@@ -882,14 +987,110 @@ const TextToImageMobile: React.FC = () => {
             {/* 提示词输入 */}
             <Form.Item
               name="prompt"
+              className="prompt-form-item"
               label={
-                <Space>
-                  <EditOutlined style={{ color: '#1890ff', fontSize: 14 }} />
-                  <FormattedMessage
-                    id="create.prompt"
-                    defaultMessage="提示词 (Prompt)"
-                  />
-                </Space>
+                <div className="prompt-label-wrapper">
+                  <Space>
+                    <EditOutlined style={{ color: '#1890ff', fontSize: 14 }} />
+                    <FormattedMessage
+                      id="create.prompt"
+                      defaultMessage="提示词 (Prompt)"
+                    />
+                  </Space>
+                  <div className="prompt-button-wrapper">
+                    <Space size={6}>
+                      {/* 恢复按钮 - 只在可以恢复时显示 */}
+                      {canRestore && (
+                        <Tooltip
+                          title={intl.formatMessage({
+                            id: 'create.prompt.restore.tooltip',
+                            defaultMessage: '恢复到AI生成/丰富之前的提示词',
+                          })}
+                        >
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<UndoOutlined />}
+                            onClick={handleRestorePrompt}
+                            style={{
+                              fontSize: 10,
+                              height: 26,
+                              padding: '0 8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 3,
+                              borderRadius: 6,
+                              background: 'rgba(0, 0, 0, 0.04)',
+                              color: '#666',
+                              border: '1px solid rgba(0, 0, 0, 0.1)',
+                              fontWeight: 500,
+                              transition: 'all 0.3s ease',
+                              marginTop: 4,
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)';
+                              e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.2)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'rgba(0, 0, 0, 0.04)';
+                              e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.1)';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                          >
+                            <FormattedMessage
+                              id="create.prompt.restore"
+                              defaultMessage="恢复"
+                            />
+                          </Button>
+                        </Tooltip>
+                      )}
+                      <Button
+                      type="text"
+                      size="small"
+                      icon={<BulbOutlined />}
+                      loading={generatingPrompt}
+                      onClick={handleGeneratePrompt}
+                      style={{ 
+                        fontSize: 11,
+                        height: 26,
+                        padding: '0 10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        borderRadius: 6,
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: '#fff',
+                        border: 'none',
+                        fontWeight: 500,
+                        transition: 'all 0.3s ease',
+                        boxShadow: '0 2px 6px rgba(102, 126, 234, 0.3)',
+                        marginTop: 4,
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 3px 10px rgba(102, 126, 234, 0.4)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 6px rgba(102, 126, 234, 0.3)';
+                      }}
+                    >
+                      {promptValue.trim() ? (
+                        <FormattedMessage
+                          id="create.prompt.enrich"
+                          defaultMessage="AI 丰富提示词"
+                        />
+                      ) : (
+                        <FormattedMessage
+                          id="create.prompt.generate"
+                          defaultMessage="AI 生成提示词"
+                        />
+                      )}
+                    </Button>
+                    </Space>
+                  </div>
+                </div>
               }
               rules={[
                 {
@@ -900,6 +1101,7 @@ const TextToImageMobile: React.FC = () => {
                   }),
                 },
               ]}
+              style={{ marginTop: 24 }}
             >
               <TextArea
                 rows={4}
@@ -910,6 +1112,9 @@ const TextToImageMobile: React.FC = () => {
                 })}
                 maxLength={1000}
                 showCount
+                onChange={(e) => {
+                  setPromptValue(e.target.value);
+                }}
               />
             </Form.Item>
 

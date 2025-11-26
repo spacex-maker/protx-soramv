@@ -126,6 +126,31 @@ export const GlobalSelectStyles = createGlobalStyle`
       }
     }
   }
+  
+  /* 提示词输入框标签样式 - 确保按钮靠右 */
+  .prompt-form-item {
+    .ant-form-item-label {
+      width: 100% !important;
+      max-width: 100% !important;
+      
+      > label {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+    }
+    
+    .prompt-label-wrapper {
+      display: flex !important;
+      align-items: center !important;
+      width: 100% !important;
+      justify-content: space-between !important;
+      
+      .prompt-button-wrapper {
+        margin-left: auto !important;
+        flex-shrink: 0 !important;
+      }
+    }
+  }
 `;
 
 export const StyledCard = styled(Card)`
