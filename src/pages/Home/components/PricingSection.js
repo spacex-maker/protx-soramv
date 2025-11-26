@@ -1,105 +1,81 @@
-import React from 'react';
-import { Typography, Row, Col, List } from 'antd';
+import React, { useContext } from 'react';
+import styled, { ThemeContext } from 'styled-components';
+import { Row, Col, List } from 'antd';
+import { CheckCircleFilled } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { ContentWrapper, Section, PriceCard, StyledButton } from '../styles';
-import GradientButton from 'components/buttons/GradientButton';
+import { Section, ContentWrapper, SectionTitle, BentoCard, StyledButton } from '../styles';
 
-const { Title, Text } = Typography;
-
-const plans = [
-  {
-    title: '免费版',
-    price: '0',
-    credits: '5次/月',
-    features: [
-      '每月 5 次视频生成',
-      '基础 AI 模型',
-      '标准视频质量（720p）',
-      '基础技术支持',
-      '作品保存 30 天'
-    ]
-  },
-  {
-    title: '专业版',
-    price: '29',
-    credits: '100次/月',
-    popular: true,
-    features: [
-      '每月 100 次视频生成',
-      '所有 AI 模型',
-      '高清视频质量（1080p）',
-      '优先技术支持',
-      '作品永久保存',
-      '批量生成功能'
-    ]
-  },
-  {
-    title: '企业版',
-    price: '99',
-    credits: '无限',
-    features: [
-      '无限次视频生成',
-      '所有 AI 模型 + 定制模型',
-      '超高清视频质量（4K）',
-      '24/7 专属支持',
-      'API 接口访问',
-      '团队协作功能',
-      '自定义水印和品牌'
-    ]
+const PricingCard = styled(BentoCard)`
+  padding: 48px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  border: ${props => props.$popular ? '2px solid #2997ff' : '1px solid rgba(255,255,255,0.1)'};
+  transform: ${props => props.$popular ? 'scale(1.05)' : 'scale(1)'};
+  z-index: ${props => props.$popular ? '2' : '1'};
+  
+  @media (max-width: 768px) {
+    transform: scale(1);
+    margin-bottom: 24px;
   }
-];
+
+  .price {
+    font-size: 56px;
+    font-weight: 800;
+    margin: 24px 0;
+    color: ${props => props.theme.mode === 'dark' ? '#fff' : '#000'};
+    
+    span { font-size: 18px; font-weight: 500; color: #86868b; }
+  }
+
+  .title {
+    font-size: 24px;
+    font-weight: 600;
+    color: ${props => props.$popular ? '#2997ff' : 'inherit'};
+  }
+`;
 
 const PricingSection = () => {
+  const theme = useContext(ThemeContext);
   const navigate = useNavigate();
+
+  const plans = [
+    { title: '基础版', price: '0', features: ['每月 5 次生成', '720P 分辨率', '标准队列'] },
+    { title: '专业版', price: '29', popular: true, features: ['每月 100 次生成', '1080P 高清', '优先极速模式', '商业授权'] },
+    { title: '团队版', price: '99', features: ['无限量生成', '4K 超清画质', '专属客服支持', 'API 访问权限'] }
+  ];
 
   return (
     <Section>
       <ContentWrapper>
-        <Title level={2} style={{ textAlign: 'center', marginBottom: '48px' }}>
-          价格方案
-        </Title>
-        <Row gutter={[24, 24]}>
-          {plans.map((plan, index) => (
-            <Col xs={24} sm={8} key={index}>
-              <PriceCard popular={plan.popular}>
-                <Title level={3}>{plan.title}</Title>
-                <div className="price">
-                  <span className="currency">¥</span>
-                  {plan.price}
-                  <span className="period">/月</span>
-                </div>
-                {plan.credits && (
-                  <Text type="secondary" style={{ display: 'block', marginBottom: '16px', fontSize: '14px' }}>
-                    {plan.credits}
-                  </Text>
-                )}
+        <SectionTitle theme={theme}>选择适合您的方案。</SectionTitle>
+        
+        <Row gutter={[24, 24]} align="middle" style={{ marginTop: 60 }}>
+          {plans.map((plan, i) => (
+            <Col xs={24} md={8} key={i}>
+              <PricingCard theme={theme} $popular={plan.popular}>
+                <div className="title">{plan.title}</div>
+                <div className="price">¥{plan.price}<span>/月</span></div>
                 <List
                   dataSource={plan.features}
                   renderItem={item => (
-                    <List.Item>
-                      <Text>{item}</Text>
+                    <List.Item style={{ border: 'none', justifyContent: 'center', padding: '8px 0' }}>
+                      <CheckCircleFilled style={{ color: '#2997ff', marginRight: 8 }} />
+                      <span style={{ color: theme.mode === 'dark' ? '#f5f5f7' : '#1d1d1f' }}>{item}</span>
                     </List.Item>
                   )}
+                  style={{ marginBottom: 32, width: '100%' }}
                 />
-                {plan.title === '企业版' ? (
-                  <GradientButton
-                    size="large"
-                    style={{ marginTop: '24px', width: '100%' }}
-                    onClick={() => navigate('/signup')}
-                  >
-                    开始使用
-                  </GradientButton>
-                ) : (
-                  <StyledButton
-                    type={plan.popular ? 'primary' : 'default'}
-                    size="large"
-                    style={{ marginTop: '24px', width: '100%' }}
-                    onClick={() => navigate('/signup')}
-                  >
-                    开始使用
-                  </StyledButton>
-                )}
-              </PriceCard>
+                <StyledButton 
+                  type={plan.popular ? "primary" : "default"} 
+                  size="large" 
+                  block
+                  onClick={() => navigate('/signup')}
+                >
+                  {plan.popular ? '立即订阅' : '选择此方案'}
+                </StyledButton>
+              </PricingCard>
             </Col>
           ))}
         </Row>
@@ -108,4 +84,4 @@ const PricingSection = () => {
   );
 };
 
-export default PricingSection; 
+export default PricingSection;

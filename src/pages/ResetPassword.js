@@ -1,7 +1,7 @@
 import React, { useState, useContext, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import styled, { ThemeContext, keyframes } from 'styled-components';
-import { message, Dropdown } from 'antd';
+import styled, { ThemeContext, keyframes, css } from 'styled-components';
+import { message, Dropdown, ConfigProvider, theme, Button } from 'antd';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { Helmet } from 'react-helmet';
 import axios from '../api/axios';
@@ -12,249 +12,296 @@ import {
   MoonOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
-  DownOutlined
+  DownOutlined,
+  LockOutlined,
+  MailOutlined,
+  SafetyCertificateOutlined,
+  ArrowLeftOutlined,
+  CheckCircleFilled
 } from '@ant-design/icons';
 import { useLocale } from '../contexts/LocaleContext';
+import { motion, AnimatePresence } from "framer-motion";
 
-// 定义跑马灯效果
-const marqueeGlow = keyframes`
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 200% 50%;
-  }
+// ==========================================
+// 1. 动效定义
+// ==========================================
+
+const pulseAnimation = keyframes`
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+  70% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
 `;
 
-// 添加发送验证码时的脉冲动画
-const sendingPulse = keyframes`
-  0% {
-    transform: translateY(-50%) scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: translateY(-50%) scale(0.95);
-    opacity: 0.8;
-  }
-  100% {
-    transform: translateY(-50%) scale(1);
-    opacity: 1;
-  }
+const floatAnimation = keyframes`
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
 `;
 
-// 添加发光扩散动画
-const glowRipple = keyframes`
-  0% {
-    transform: scale(1);
-    opacity: 0.8;
-  }
-  100% {
-    transform: scale(2);
-    opacity: 0;
-  }
-`;
+// ==========================================
+// 2. 样式组件
+// ==========================================
 
-// 复用 Login 页面的样式组件
-const PageContainer = styled.div`
+const PageLayout = styled.div`
   min-height: 100vh;
-  display: flex;
-  background: ${props => props.theme.mode === 'dark' 
-    ? 'var(--ant-color-bg-container)' 
-    : '#f5f7fa'};
-`;
-
-const TopRightControls = styled.div`
-  position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
-  display: flex;
-  gap: 1rem;
-  z-index: 10;
-`;
-
-const IconButton = styled.button`
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid ${props => props.theme.mode === 'dark' 
-    ? 'rgba(255, 255, 255, 0.15)' 
-    : 'rgba(0, 0, 0, 0.06)'};
-  background: ${props => props.theme.mode === 'dark' 
-    ? 'rgba(255, 255, 255, 0.04)' 
-    : '#ffffff'};
-  color: var(--ant-color-text-secondary);
+  background-color: ${props => props.$token.colorBgLayout};
+  background-image: 
+    radial-gradient(at 0% 0%, ${props => props.$token.colorPrimary}15 0px, transparent 50%),
+    radial-gradient(at 100% 100%, #8b5cf615 0px, transparent 50%);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+`;
+
+// 顶部控制栏 (固定在右上角)
+const TopRightControls = styled.div`
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  display: flex;
+  gap: 12px;
+  z-index: 20;
+`;
+
+const ControlButton = styled.button`
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid ${props => props.$token.colorBorder};
+  background: ${props => props.$token.colorBgContainer};
+  color: ${props => props.$token.colorTextSecondary};
   cursor: pointer;
   transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
 
   &:hover {
-    color: var(--ant-color-primary);
-    border-color: var(--ant-color-primary);
-    background: var(--ant-color-primary-bg);
-  }
-
-  svg {
-    width: 1.25rem;
-    height: 1.25rem;
+    color: ${props => props.$token.colorPrimary};
+    border-color: ${props => props.$token.colorPrimary};
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
   }
 `;
 
-const RightSection = styled.div`
+// 核心卡片容器 (左右分栏布局)
+const AuthCard = styled(motion.div)`
+  display: flex;
+  width: 100%;
+  max-width: 1000px;
+  min-height: 600px;
+  background: ${props => props.$token.colorBgContainer};
+  border-radius: 32px;
+  box-shadow: 
+    0 20px 40px -10px rgba(0,0,0,0.1),
+    0 0 0 1px ${props => props.$token.colorBorderSecondary};
+  overflow: hidden;
+  position: relative;
+  z-index: 10;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    min-height: auto;
+  }
+`;
+
+// 左侧视觉面板
+const LeftPanel = styled.div`
   flex: 1;
+  background: linear-gradient(135deg, ${props => props.$token.colorPrimary} 0%, #6366f1 100%);
+  padding: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: white;
+  position: relative;
+  overflow: hidden;
+
+  /* 装饰背景 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    opacity: 0.6;
+  }
+
+  @media (max-width: 768px) {
+    display: none; /* 移动端隐藏左侧 */
+  }
+`;
+
+const BrandIcon = styled.div`
+  width: 64px;
+  height: 64px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.2);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: white;
+  animation: ${floatAnimation} 6s ease-in-out infinite;
+`;
+
+const Quote = styled.div`
+  position: relative;
+  z-index: 1;
+  
+  h2 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: white;
+    line-height: 1.2;
+  }
+  
+  p {
+    font-size: 16px;
+    opacity: 0.8;
+    line-height: 1.6;
+  }
+`;
+
+// 右侧表单面板
+const FormPanel = styled.div`
+  flex: 1.2;
+  padding: 60px;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
-  padding: 2rem;
-  background: ${props => props.theme.mode === 'dark' 
-    ? 'var(--ant-color-bg-container)' 
-    : '#ffffff'};
+  background: ${props => props.$token.colorBgContainer};
+
+  @media (max-width: 768px) {
+    padding: 40px 24px;
+  }
 `;
 
-const ResetBox = styled.div`
-  width: 100%;
-  max-width: 420px;
-  padding: 2rem;
-  background: ${props => props.theme.mode === 'dark' 
-    ? 'transparent' 
-    : '#ffffff'};
-  border-radius: 1rem;
-  box-shadow: ${props => props.theme.mode === 'dark' 
-    ? 'none' 
-    : '0 4px 24px rgba(0, 0, 0, 0.08)'};
-`;
-
-const Logo = styled.h1`
-  font-size: 1.75rem;
-  font-weight: bold;
-  text-align: center;
-  margin-bottom: 2rem;
-  color: var(--ant-color-text);
+const FormHeader = styled.div`
+  margin-bottom: 40px;
+  
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: ${props => props.$token.colorText};
+    margin-bottom: 8px;
+  }
+  
+  p {
+    color: ${props => props.$token.colorTextSecondary};
+    font-size: 15px;
+  }
 `;
 
 const Form = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 24px;
 `;
 
-const FormItem = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-`;
-
-const InputWrapper = styled.div`
+// 自定义输入框包装器
+const InputGroup = styled.div`
   position: relative;
-  width: 100%;
+  
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: ${props => props.$token.colorText};
+  }
 `;
 
-const Input = styled.input`
+const StyledInput = styled.input`
   width: 100%;
-  padding: 1rem 1.25rem;
-  border-radius: 9999px;
-  border: 1px solid ${props => props.theme.mode === 'dark' 
-    ? 'var(--ant-color-border)' 
-    : '#e5e7eb'};
-  background: ${props => props.theme.mode === 'dark' 
-    ? 'rgba(255, 255, 255, 0.04)' 
-    : '#f9fafb'};
-  color: var(--ant-color-text);
-  font-size: 0.875rem;
-  transition: all 0.3s;
+  height: 52px;
+  padding: 0 16px;
+  padding-left: 48px; /* Space for icon */
+  border-radius: 12px;
+  border: 1px solid ${props => props.$token.colorBorder};
+  background: ${props => props.$token.colorBgLayout};
+  color: ${props => props.$token.colorText};
+  font-size: 15px;
+  transition: all 0.2s;
+  outline: none;
 
   &:focus {
-    outline: none;
-    border-color: var(--ant-color-primary);
+    border-color: ${props => props.$token.colorPrimary};
+    background: ${props => props.$token.colorBgContainer};
+    box-shadow: 0 0 0 4px ${props => props.$token.colorPrimaryBg};
   }
 
   &::placeholder {
-    color: ${props => props.theme.mode === 'dark' 
-      ? 'rgba(255, 255, 255, 0.25)' 
-      : 'rgba(0, 0, 0, 0.25)'};
+    color: ${props => props.$token.colorTextPlaceholder};
   }
 `;
 
-const VerifyCodeButton = styled.button`
+const InputIcon = styled.div`
   position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  color: var(--ant-color-primary);
-  cursor: pointer;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.875rem;
-  transition: all 0.3s;
-  z-index: 3;
-  border-radius: 4px;
+  left: 16px;
+  top: ${props => props.$hasLabel ? '44px' : '16px'}; /* Adjust based on label presence */
+  color: ${props => props.$token.colorTextTertiary};
+  font-size: 18px;
+  pointer-events: none;
+  transition: color 0.2s;
 
-  &:disabled {
-    color: var(--ant-color-text-disabled);
-    cursor: not-allowed;
+  ${StyledInput}:focus ~ & {
+    color: ${props => props.$token.colorPrimary};
   }
+`;
+
+const ActionButton = styled.button`
+  position: absolute;
+  right: 12px;
+  top: ${props => props.$hasLabel ? '38px' : '10px'};
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: none;
+  background: ${props => props.$disabled ? 'transparent' : props.$token.colorPrimaryBg};
+  color: ${props => props.$disabled ? props.$token.colorTextDisabled : props.$token.colorPrimary};
+  font-size: 13px;
+  font-weight: 600;
+  cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.2s;
 
   &:hover:not(:disabled) {
-    color: var(--ant-color-primary-hover);
+    background: ${props => props.$token.colorPrimary};
+    color: white;
   }
 
   &.sending {
-    animation: ${sendingPulse} 1.5s ease-in-out infinite;
-    background: var(--ant-color-primary);
-    color: white;
-    
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: inherit;
-      background: var(--ant-color-primary);
-      animation: ${glowRipple} 1.5s ease-out infinite;
-      z-index: -1;
-    }
+    animation: ${pulseAnimation} 1.5s infinite;
   }
 `;
 
-const PasswordToggle = styled.button`
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  color: var(--ant-color-text-secondary);
-  cursor: pointer;
-  padding: 0.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s;
-  font-size: 1.1rem;
-  z-index: 3;
-  
-  &:hover {
-    color: var(--ant-color-text);
-  }
-`;
-
-const SubmitButton = styled.button`
+const SubmitButton = styled(motion.button)`
   width: 100%;
-  padding: 0.875rem;
-  border-radius: 0.5rem;
+  height: 52px;
+  border-radius: 12px;
   border: none;
-  background: var(--ant-color-primary);
-  color: ${props => props.theme.mode === 'dark' ? '#ffffff' : '#000000'};
-  font-weight: 500;
-  font-size: 0.875rem;
+  background: linear-gradient(135deg, ${props => props.$token.colorPrimary} 0%, #6366f1 100%);
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  transition: all 0.3s;
-  margin-top: 0.5rem;
+  box-shadow: 0 4px 12px ${props => props.$token.colorPrimary}40;
+  transition: all 0.2s;
+  margin-top: 8px;
 
-  &:hover {
-    background: var(--ant-color-primary-hover);
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px ${props => props.$token.colorPrimary}60;
   }
 
   &:disabled {
@@ -263,282 +310,166 @@ const SubmitButton = styled.button`
   }
 `;
 
-const ErrorText = styled.div`
-  color: var(--ant-color-error);
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
-`;
-
-const Footer = styled.div`
-  text-align: center;
-  margin-top: 2rem;
-  color: var(--ant-color-text-secondary);
-  font-size: 0.875rem;
-
-  a {
-    color: var(--ant-color-primary);
-    text-decoration: none;
-    font-weight: 500;
-
-    &:hover {
-      color: var(--ant-color-primary-hover);
-    }
-  }
-`;
-
-// 添加发光边框效果
-const BorderGlow = styled.div`
+const SuffixDropdown = styled.div`
   position: absolute;
-  top: 0;
+  top: 100%;
   left: 0;
   right: 0;
-  bottom: 0;
-  border-radius: 9999px;
-  pointer-events: none;
-  z-index: 2;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    padding: 2px;
-    border-radius: inherit;
-    background: linear-gradient(
-      90deg, 
-      transparent 0%, 
-      #1890ff 25%, 
-      #40a9ff 50%, 
-      #1890ff 75%, 
-      transparent 100%
-    );
-    background-size: 200% 100%;
-    -webkit-mask: 
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask: 
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    mask-composite: exclude;
-    animation: ${marqueeGlow} 3s linear infinite;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-  
-  &.active::before {
-    opacity: 1;
-  }
-`;
-
-const EmailSuffixButton = styled.button`
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  background: transparent;
-  border: none;
-  color: var(--ant-color-text-secondary);
-  cursor: pointer;
-  padding: 0.25rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s;
-  z-index: 3;
-
-  &:hover {
-    color: var(--ant-color-text);
-  }
-`;
-
-const EmailSuffixDropdown = styled.div`
-  position: absolute;
-  top: calc(100% + 0.5rem);
-  left: 0;
-  right: 0;
-  background: ${props => props.theme.mode === 'dark' 
-    ? 'rgba(255, 255, 255, 0.08)' 
-    : '#ffffff'};
-  backdrop-filter: blur(10px);
-  border: 1px solid ${props => props.theme.mode === 'dark' 
-    ? 'var(--ant-color-border)' 
-    : '#e5e7eb'};
-  border-radius: 0.5rem;
-  box-shadow: ${props => props.theme.mode === 'dark' 
-    ? '0 4px 12px rgba(0, 0, 0, 0.2)' 
-    : '0 4px 12px rgba(0, 0, 0, 0.1)'};
+  margin-top: 4px;
+  background: ${props => props.$token.colorBgElevated};
+  border: 1px solid ${props => props.$token.colorBorderSecondary};
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  z-index: 50;
   max-height: 200px;
   overflow-y: auto;
-  z-index: 1000;
-  display: none;
-  
-  &.show {
-    display: block;
-  }
+  padding: 6px;
 `;
 
-const EmailSuffixOption = styled.button`
-  width: 100%;
-  padding: 0.75rem 1rem;
-  text-align: left;
-  background: transparent;
-  border: none;
-  color: var(--ant-color-text);
+const SuffixItem = styled.div`
+  padding: 10px 12px;
+  font-size: 14px;
+  color: ${props => props.$token.colorText};
   cursor: pointer;
-  transition: all 0.3s;
+  border-radius: 8px;
+  transition: all 0.2s;
 
   &:hover {
-    background: ${props => props.theme.mode === 'dark' 
-      ? 'rgba(255, 255, 255, 0.12)' 
-      : 'var(--ant-color-primary-bg)'};
-    color: var(--ant-color-primary);
+    background: ${props => props.$token.colorFillTertiary};
+    color: ${props => props.$token.colorPrimary};
   }
 `;
 
-// 邮箱后缀列表
-const emailSuffixes = [
-  "@qq.com",
-  "@gmail.com",
-  "@163.com",
-  "@126.com",
-  "@outlook.com",
-  "@hotmail.com",
-  "@yahoo.com",
-  "@foxmail.com"
-];
+const SuccessView = styled(motion.div)`
+  text-align: center;
+  padding: 40px 0;
 
-export default function ResetPasswordPage() {
+  .icon-box {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: ${props => props.$token.colorSuccessBg};
+    color: ${props => props.$token.colorSuccess};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    margin: 0 auto 24px;
+  }
+
+  h2 {
+    font-size: 24px;
+    color: ${props => props.$token.colorText};
+    margin-bottom: 12px;
+  }
+
+  p {
+    color: ${props => props.$token.colorTextSecondary};
+    margin-bottom: 32px;
+  }
+`;
+
+// ==========================================
+// 3. 逻辑组件
+// ==========================================
+
+const ResetPasswordContent = () => {
+  const { token } = theme.useToken();
   const navigate = useNavigate();
+  const intl = useIntl();
+  const { locale, changeLocale } = useLocale();
+  
+  // Contexts (User logic)
+  const themeContext = useContext(ThemeContext);
+  const [isDark, setIsDark] = useState(themeContext.mode === 'dark');
+  
+  // Form State
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [countdown, setCountdown] = useState(0);
-  const theme = useContext(ThemeContext);
-  const [isDark, setIsDark] = useState(theme.mode === 'dark');
-  const { locale, changeLocale } = useLocale();
-  const intl = useIntl();
-  const [languages, setLanguages] = useState([]);
   
-  // 添加邮箱下拉框相关状态
-  const [showSuffixDropdown, setShowSuffixDropdown] = useState(false);
-  const dropdownRef = useRef(null);
-  const emailSuffixButtonRef = useRef(null);
-  
-  // 添加输入框焦点状态
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [codeFocused, setCodeFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
-
+  // UI State
+  const [loading, setLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [countdown, setCountdown] = useState(0);
+  const [isSuccess, setIsSuccess] = useState(false);
+  
+  // Dropdown State
+  const [showSuffix, setShowSuffix] = useState(false);
+  const dropdownRef = useRef(null);
+  const [languages, setLanguages] = useState([]);
 
-  // 获取支持的语言列表
+  // Fetch Languages
   useEffect(() => {
-    const fetchLanguages = async () => {
-      const result = await base.getEnabledLanguages();
-      if (result.success) {
-        const sortedLanguages = result.data.sort((a, b) => b.usageCount - a.usageCount);
-        setLanguages(sortedLanguages);
-      }
+    const fetchLangs = async () => {
+      const res = await base.getEnabledLanguages();
+      if (res.success) setLanguages(res.data.sort((a, b) => b.usageCount - a.usageCount));
     };
-    fetchLanguages();
+    fetchLangs();
   }, []);
 
+  // Theme Toggle
   const toggleTheme = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
-    theme.setTheme(newIsDark);
+    const newMode = !isDark;
+    setIsDark(newMode);
+    themeContext.setTheme(newMode);
   };
 
-  // 构建语言菜单项
-  const items = languages.map(language => ({
-    key: language.languageCode,
-    label: language.languageNameNative
-  }));
+  // Countdown Timer
+  useEffect(() => {
+    let timer;
+    if (countdown > 0) {
+      timer = setInterval(() => setCountdown(c => c - 1), 1000);
+    }
+    return () => clearInterval(timer);
+  }, [countdown]);
 
-  // 处理邮箱输入
+  // Email Handler
   const handleEmailChange = (e) => {
-    const value = e.target.value;
-    setEmail(value);
-    
-    // 只有当输入了@并且@后面有内容时才隐藏下拉框
-    const atIndex = value.indexOf('@');
-    if (atIndex !== -1 && value.length > atIndex + 1) {
-      setShowSuffixDropdown(false);
+    const val = e.target.value;
+    setEmail(val);
+    const atIndex = val.indexOf('@');
+    // Show suffix only if @ is not present or is the last char
+    if (val && (atIndex === -1 || atIndex === val.length - 1)) {
+      setShowSuffix(true);
     } else {
-      setShowSuffixDropdown(true);
+      setShowSuffix(false);
     }
   };
 
-  // 处理邮箱后缀点击
   const handleSuffixClick = (suffix) => {
-    const emailPrefix = email.split("@")[0];
-    setEmail(emailPrefix + suffix);
-    setShowSuffixDropdown(false);
+    const prefix = email.split('@')[0];
+    setEmail(prefix + suffix);
+    setShowSuffix(false);
   };
 
-  // 修改邮箱后缀下拉框的处理逻辑
-  const handleSuffixButtonClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowSuffixDropdown(!showSuffixDropdown);
-  };
-
-  // 处理点击文档其他地方关闭下拉框
-  React.useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        dropdownRef.current && 
-        !dropdownRef.current.contains(event.target) &&
-        emailSuffixButtonRef.current && 
-        !emailSuffixButtonRef.current.contains(event.target)
-      ) {
-        setShowSuffixDropdown(false);
+  // Click Outside Dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setShowSuffix(false);
       }
     };
-
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const startCountdown = () => {
-    setCountdown(300); // 5分钟 = 300秒
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-  };
-
+  // API Handlers
   const handleSendCode = async () => {
-    if (!email) {
-      setError(intl.formatMessage({ id: 'resetPassword.error.emailRequired' }));
-      return;
-    }
-
+    if (!email) return message.error(intl.formatMessage({ id: 'resetPassword.error.emailRequired', defaultMessage: '请输入邮箱' }));
+    
     setIsSending(true);
-
     try {
-      const response = await axios.post('/base/productx/user/reset-pass-send-email', {
-        email
-      });
-
-      if (response.data.success) {
-        message.success(intl.formatMessage({ id: 'resetPassword.success.codeSent' }));
-        startCountdown();
+      const res = await axios.post('/base/productx/user/reset-pass-send-email', { email });
+      if (res.data.success) {
+        message.success(intl.formatMessage({ id: 'resetPassword.success.codeSent', defaultMessage: '验证码已发送' }));
+        setCountdown(60);
       } else {
-        setError(response.data.message || intl.formatMessage({ id: 'resetPassword.error.sendFailed' }));
+        message.error(res.data.message || '发送失败');
       }
-    } catch (error) {
-      setError(error.response?.data?.message || intl.formatMessage({ id: 'resetPassword.error.sendFailed' }));
+    } catch (err) {
+      message.error('发送失败，请稍后重试');
     } finally {
       setIsSending(false);
     }
@@ -546,207 +477,227 @@ export default function ResetPasswordPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-
-    if (!email || !code || !password) {
-      if (!email) {
-        setError(intl.formatMessage({ id: 'resetPassword.error.emailRequired' }));
-      } else if (!code) {
-        setError(intl.formatMessage({ id: 'resetPassword.error.codeRequired' }));
-      } else {
-        setError(intl.formatMessage({ id: 'resetPassword.error.passwordRequired' }));
-      }
-      return;
-    }
-
-    if (password.length < 6 || password.length > 20) {
-      setError(intl.formatMessage({ id: 'resetPassword.error.passwordLength' }));
-      return;
-    }
-
-    if (code.length !== 6) {
-      setError(intl.formatMessage({ id: 'resetPassword.error.codeLength' }));
-      return;
-    }
+    if (!email || !code || !password) return message.error('请填写完整信息');
+    if (password.length < 6) return message.error('密码长度至少6位');
 
     setLoading(true);
-
     try {
-      const response = await axios.post('/base/productx/user/reset-pass', {
-        email,
-        code,
-        password
-      });
-
-      if (response.data.success) {
-        message.success(intl.formatMessage({ id: 'resetPassword.success.reset' }));
-        navigate('/login');
+      const res = await axios.post('/base/productx/user/reset-pass', { email, code, password });
+      if (res.data.success) {
+        setIsSuccess(true);
       } else {
-        setError(response.data.message || intl.formatMessage({ id: 'resetPassword.error.resetFailed' }));
+        message.error(res.data.message || '重置失败');
       }
-    } catch (error) {
-      setError(error.response?.data?.message || intl.formatMessage({ id: 'resetPassword.error.resetFailed' }));
-      setError(error.response?.data?.message || '重置密码失败，请稍后重试');
+    } catch (err) {
+      message.error('重置失败，请稍后重试');
     } finally {
       setLoading(false);
     }
   };
 
+  const emailSuffixes = ["@qq.com", "@gmail.com", "@163.com", "@outlook.com", "@hotmail.com"];
+
   return (
-    <>
+    <PageLayout $token={token}>
       <Helmet>
-        <title>{intl.formatMessage({ id: 'resetPassword.page.title',             defaultMessage: '重置密码 - Sora MV' })}</title>
-        <meta 
-          name="description" 
-          content={intl.formatMessage({ 
-            id: 'resetPassword.page.description', 
-            defaultMessage: '重置您的 Sora MV 账户密码'
-          })} 
-        />
+        <title>Reset Password - Sora MV</title>
       </Helmet>
-      <PageContainer>
-        <TopRightControls>
-          <IconButton onClick={toggleTheme}>
-            {isDark ? <SunOutlined /> : <MoonOutlined />}
-          </IconButton>
-          <Dropdown
-            menu={{
-              items,
-              selectedKeys: [locale],
-              onClick: ({ key }) => changeLocale(key),
-            }}
-            placement="bottomRight"
-          >
-            <IconButton>
-              <GlobalOutlined />
-            </IconButton>
-          </Dropdown>
-        </TopRightControls>
 
-        <RightSection>
-          <ResetBox>
-            <Logo>
-              <FormattedMessage id="resetPassword.title" defaultMessage="重置密码" />
-            </Logo>
-            <Form onSubmit={handleSubmit}>
-              <FormItem>
-                <InputWrapper>
-                  <Input
-                    type="text"
-                    value={email}
-                    onChange={handleEmailChange}
-                    required
-                    placeholder={intl.formatMessage({ id: 'resetPassword.email.placeholder', defaultMessage: '请输入邮箱地址' })}
-                    autoComplete="off"
-                    onFocus={() => setEmailFocused(true)}
-                    onBlur={(e) => {
-                      if (
-                        emailSuffixButtonRef.current && 
-                        !emailSuffixButtonRef.current.contains(e.relatedTarget)
-                      ) {
-                        setEmailFocused(false);
-                      }
-                    }}
-                  />
-                  <BorderGlow className={emailFocused ? "active" : ""} />
-                  {!email.includes('@') && (
-                    <EmailSuffixButton
-                      type="button"
-                      onClick={handleSuffixButtonClick}
-                      ref={emailSuffixButtonRef}
-                    >
-                      <DownOutlined />
-                    </EmailSuffixButton>
-                  )}
-                  <EmailSuffixDropdown 
-                    ref={dropdownRef}
-                    className={showSuffixDropdown ? "show" : ""}
-                  >
-                    {emailSuffixes.map((suffix, index) => (
-                      <EmailSuffixOption
-                        key={index}
+      <TopRightControls>
+        <ControlButton $token={token} onClick={toggleTheme}>
+          {isDark ? <SunOutlined /> : <MoonOutlined />}
+        </ControlButton>
+        <Dropdown 
+          menu={{ 
+            items: languages.map(l => ({ key: l.languageCode, label: l.languageNameNative })),
+            onClick: ({ key }) => changeLocale(key)
+          }} 
+          placement="bottomRight"
+        >
+          <ControlButton $token={token}><GlobalOutlined /></ControlButton>
+        </Dropdown>
+      </TopRightControls>
+
+      <ContentContainer
+        initial={{ opacity: 0, y: 20, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+      >
+        <AuthCard $token={token}>
+          
+          {/* Left Visual Panel */}
+          <LeftPanel $token={token}>
+            <BrandIcon>
+              <SafetyCertificateOutlined />
+            </BrandIcon>
+            <Quote>
+              <h2>Secure your account,<br/>Protect your creativity.</h2>
+              <p>We implement bank-grade security protocols to ensure your data and creations remain exclusively yours.</p>
+            </Quote>
+          </LeftPanel>
+
+          {/* Right Form Panel */}
+          <FormPanel $token={token}>
+            <AnimatePresence mode="wait">
+              {!isSuccess ? (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <FormHeader $token={token}>
+                    <div style={{ marginBottom: 16 }}>
+                      <Link to="/login" style={{ color: token.colorTextSecondary, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
+                        <ArrowLeftOutlined /> <FormattedMessage id="resetPassword.backToLogin" defaultMessage="返回登录" />
+                      </Link>
+                    </div>
+                    <h1><FormattedMessage id="resetPassword.title" defaultMessage="重置密码" /></h1>
+                    <p><FormattedMessage id="resetPassword.subtitle" defaultMessage="输入您的邮箱地址和新密码以重置账户访问权限。" /></p>
+                  </FormHeader>
+
+                  <Form onSubmit={handleSubmit}>
+                    {/* Email Input */}
+                    <InputGroup $token={token} ref={dropdownRef}>
+                      <label>电子邮箱</label>
+                      <StyledInput 
+                        $token={token} 
+                        value={email}
+                        onChange={handleEmailChange}
+                        placeholder="name@example.com" 
+                        type="email"
+                      />
+                      <InputIcon $token={token} $hasLabel><MailOutlined /></InputIcon>
+                      <AnimatePresence>
+                        {showSuffix && (
+                          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                            <SuffixDropdown $token={token}>
+                              {emailSuffixes.map(s => (
+                                <SuffixItem key={s} $token={token} onMouseDown={() => handleSuffixClick(s)}>
+                                  {email.split('@')[0]}{s}
+                                </SuffixItem>
+                              ))}
+                            </SuffixDropdown>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </InputGroup>
+
+                    {/* Code Input */}
+                    <InputGroup $token={token}>
+                      <label>验证码</label>
+                      <StyledInput 
+                        $token={token} 
+                        value={code}
+                        onChange={e => setCode(e.target.value)}
+                        placeholder="6位数字验证码" 
+                        maxLength={6}
+                      />
+                      <InputIcon $token={token} $hasLabel><SafetyCertificateOutlined /></InputIcon>
+                      <ActionButton 
+                        $token={token} 
+                        $hasLabel 
+                        $disabled={countdown > 0 || isSending}
+                        className={isSending ? 'sending' : ''}
                         type="button"
-                        onClick={() => handleSuffixClick(suffix)}
+                        onClick={handleSendCode}
                       >
-                        {suffix}
-                      </EmailSuffixOption>
-                    ))}
-                  </EmailSuffixDropdown>
-                </InputWrapper>
-              </FormItem>
+                        {isSending ? '发送中...' : countdown > 0 ? `${countdown}s 后重试` : '发送验证码'}
+                      </ActionButton>
+                    </InputGroup>
 
-              <FormItem>
-                <InputWrapper>
-                  <Input
-                    type="text"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    required
-                    placeholder={intl.formatMessage({ id: 'resetPassword.code.placeholder', defaultMessage: '请输入验证码' })}
-                    maxLength={6}
-                    onFocus={() => setCodeFocused(true)}
-                    onBlur={() => setCodeFocused(false)}
-                  />
-                  <BorderGlow className={codeFocused ? "active" : ""} />
-                  <VerifyCodeButton
-                    type="button"
-                    onClick={handleSendCode}
-                    disabled={countdown > 0}
-                    className={isSending ? 'sending' : ''}
-                  >
-                    {isSending 
-                      ? intl.formatMessage({ id: 'resetPassword.sendCode.sending' })
-                      : countdown > 0 
-                        ? intl.formatMessage(
-                            { id: 'resetPassword.sendCode.retry' },
-                            { seconds: Math.floor(countdown) }
-                          )
-                        : intl.formatMessage({ id: 'resetPassword.sendCode' })
-                    }
-                  </VerifyCodeButton>
-                </InputWrapper>
-              </FormItem>
+                    {/* Password Input */}
+                    <InputGroup $token={token}>
+                      <label>新密码</label>
+                      <StyledInput 
+                        $token={token} 
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={e => setPassword(e.target.value)}
+                        placeholder="设置新密码 (至少6位)" 
+                      />
+                      <InputIcon $token={token} $hasLabel><LockOutlined /></InputIcon>
+                      <ActionButton 
+                        $token={token} 
+                        $hasLabel
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        style={{ background: 'transparent', color: token.colorTextSecondary }}
+                      >
+                        {showPassword ? <EyeInvisibleOutlined /> : <EyeOutlined />}
+                      </ActionButton>
+                    </InputGroup>
 
-              <FormItem>
-                <InputWrapper>
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    placeholder={intl.formatMessage({ id: 'resetPassword.password.placeholder', defaultMessage: '请输入新密码' })}
-                    onFocus={() => setPasswordFocused(true)}
-                    onBlur={() => setPasswordFocused(false)}
-                  />
-                  <BorderGlow className={passwordFocused ? "active" : ""} />
-                  <PasswordToggle
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    tabIndex="-1"
-                  >
-                    {showPassword ? <EyeInvisibleOutlined /> : <EyeOutlined />}
-                  </PasswordToggle>
-                </InputWrapper>
-              </FormItem>
-
-              {error && <ErrorText>{error}</ErrorText>}
-
-              <SubmitButton type="submit" disabled={loading}>
-                <FormattedMessage 
-                  id={loading ? 'resetPassword.button.loading' : 'resetPassword.button'} 
-                  defaultMessage={loading ? '重置中...' : '重置密码'}
-                />
-              </SubmitButton>
-
-              <Footer>
-                <Link to="/login">
-                  <FormattedMessage id="resetPassword.backToLogin" defaultMessage="返回登录" />
-                </Link>
-              </Footer>
-            </Form>
-          </ResetBox>
-        </RightSection>
-      </PageContainer>
-    </>
+                    <SubmitButton 
+                      $token={token} 
+                      type="submit" 
+                      disabled={loading}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {loading ? '提交中...' : '确认重置'}
+                    </SubmitButton>
+                  </Form>
+                </motion.div>
+              ) : (
+                <SuccessView 
+                  key="success"
+                  $token={token}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
+                  <div className="icon-box"><CheckCircleFilled /></div>
+                  <h2>重置成功</h2>
+                  <p>您的密码已成功更新，现在可以使用新密码登录了。</p>
+                  <SubmitButton $token={token} onClick={() => navigate('/login')}>
+                    立即登录
+                  </SubmitButton>
+                </SuccessView>
+              )}
+            </AnimatePresence>
+          </FormPanel>
+        </AuthCard>
+      </ContentContainer>
+    </PageLayout>
   );
-} 
+};
+
+// ==========================================
+// 4. 根组件配置
+// ==========================================
+
+const ContentContainer = styled(motion.div)`
+  width: 100%;
+  max-width: 1000px;
+  position: relative;
+  z-index: 10;
+  padding: 20px;
+`;
+
+const ResetPasswordPage = () => {
+  const themeContext = useContext(ThemeContext);
+  const isDark = themeContext.mode === 'dark';
+
+  // 自定义主题 Token，根据暗黑模式切换
+  const customTheme = {
+    algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
+    token: {
+      colorPrimary: '#6366f1', // Indigo 风格
+      borderRadius: 10,
+      fontFamily: "'Inter', sans-serif",
+      controlHeight: 48,
+    },
+    components: {
+      Button: { borderRadius: 12 },
+      Input: { borderRadius: 12 }
+    }
+  };
+
+  return (
+    <ConfigProvider theme={customTheme}>
+      <ResetPasswordContent />
+    </ConfigProvider>
+  );
+};
+
+export default ResetPasswordPage;

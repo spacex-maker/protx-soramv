@@ -1,259 +1,122 @@
-import React from 'react';
-import { Typography, Row, Col } from 'antd';
-import {
-  PlayCircleOutlined,
-  FileTextOutlined,
-  PictureOutlined,
-  ThunderboltOutlined,
-  RobotOutlined,
-  VideoCameraAddOutlined,
-} from '@ant-design/icons';
-import styled, { keyframes } from 'styled-components';
-import { ContentWrapper, Section } from '../styles';
+import React, { useContext } from 'react';
+import styled, { ThemeContext } from 'styled-components';
+import { Section, ContentWrapper, SectionTitle, SectionSubtitle, BentoCard } from '../styles';
+import { PlayCircleFilled, ThunderboltFilled, AppstoreFilled } from '@ant-design/icons';
 
-const { Title, Text } = Typography;
+// 网格布局
+const Grid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 500px 400px;
+  gap: 24px;
 
-// 渐变动画
-const gradientShift = keyframes`
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
+  @media (max-width: 1024px) {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
   }
 `;
 
-// 浮动动画
-const float = keyframes`
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-`;
-
-// 脉冲动画
-const pulse = keyframes`
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
-`;
-
-const FeaturesContainer = styled(Section)`
+// 卡片内容样式
+const CardContent = styled.div`
   position: relative;
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: ${props => props.theme.mode === 'dark'
-      ? 'radial-gradient(circle at 20% 50%, rgba(99, 179, 237, 0.1) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(139, 92, 246, 0.1) 0%, transparent 50%)'
-      : 'radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 50%), radial-gradient(circle at 80% 50%, rgba(139, 92, 246, 0.05) 0%, transparent 50%)'};
-    pointer-events: none;
-  }
-`;
-
-const StyledFeatureCard = styled.div`
-  position: relative;
+  z-index: 2;
   height: 100%;
-  padding: 32px 24px;
-  border-radius: 24px;
-  background: ${props => props.theme.mode === 'dark'
-    ? 'linear-gradient(135deg, rgba(30, 41, 59, 0.8) 0%, rgba(15, 23, 42, 0.8) 100%)'
-    : 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(249, 250, 251, 0.9) 100%)'};
-  backdrop-filter: blur(20px);
-  border: 1px solid ${props => props.theme.mode === 'dark'
-    ? 'rgba(99, 179, 237, 0.2)'
-    : 'rgba(59, 130, 246, 0.15)'};
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
 
-  &::before {
-    content: '';
+  h3 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    background: linear-gradient(to right, #fff, #ccc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  p {
+    font-size: 17px;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.5;
+  }
+
+  .icon-bg {
     position: absolute;
     top: 0;
-    left: 0;
     right: 0;
-    height: 3px;
-    background: linear-gradient(
-      90deg,
-      #3b82f6,
-      #8b5cf6,
-      #ec4899,
-      #3b82f6
-    );
-    background-size: 200% 100%;
-    animation: ${gradientShift} 3s ease infinite;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-  }
-
-  &:hover {
-    transform: translateY(-8px) scale(1.02);
-    border-color: ${props => props.theme.mode === 'dark'
-      ? 'rgba(99, 179, 237, 0.5)'
-      : 'rgba(59, 130, 246, 0.4)'};
-    box-shadow: ${props => props.theme.mode === 'dark'
-      ? '0 20px 40px rgba(99, 179, 237, 0.2), 0 0 0 1px rgba(99, 179, 237, 0.1)'
-      : '0 20px 40px rgba(59, 130, 246, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.1)'};
-
-    &::before {
-      opacity: 1;
-    }
-
-    .icon-wrapper {
-      transform: scale(1.1) rotate(5deg);
-      background: ${props => props.theme.mode === 'dark'
-        ? 'linear-gradient(135deg, rgba(99, 179, 237, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%)'
-        : 'linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)'};
-    }
-  }
-
-  .icon-wrapper {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 80px;
-    height: 80px;
-    margin-bottom: 24px;
-    border-radius: 20px;
-    background: ${props => props.theme.mode === 'dark'
-      ? 'linear-gradient(135deg, rgba(99, 179, 237, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%)'
-      : 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)'};
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    animation: ${float} 3s ease-in-out infinite;
-
-    .anticon {
-      font-size: 40px;
-      background: ${props => props.theme.mode === 'dark'
-        ? 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)'
-        : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)'};
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    &::after {
-      content: '';
-      position: absolute;
-      inset: -2px;
-      border-radius: 20px;
-      padding: 2px;
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-  }
-
-  &:hover .icon-wrapper::after {
-    opacity: 0.5;
-    animation: ${pulse} 2s ease-in-out infinite;
+    font-size: 200px;
+    opacity: 0.05;
+    transform: rotate(-15deg);
   }
 `;
 
-const FeatureTitle = styled(Title)`
-  margin-bottom: 12px !important;
-  font-size: 20px !important;
-  font-weight: 600 !important;
-  color: ${props => props.theme.mode === 'dark' ? '#e2e8f0' : '#1e293b'} !important;
+// 特定卡片背景
+const LargeCard = styled(BentoCard)`
+  grid-column: span 2;
+  background: radial-gradient(circle at top right, #1e1e24, #000);
+  
+  @media (max-width: 1024px) { grid-column: span 1; }
 `;
 
-const FeatureDescription = styled(Text)`
-  font-size: 14px !important;
-  line-height: 1.6 !important;
-  color: ${props => props.theme.mode === 'dark' ? 'rgba(226, 232, 240, 0.7)' : 'rgba(30, 41, 59, 0.7)'} !important;
-`;
-
-const SectionTitle = styled(Title)`
-  text-align: center;
-  margin-bottom: 16px !important;
-  font-size: 42px !important;
-  font-weight: 700 !important;
-  background: ${props => props.theme.mode === 'dark'
-    ? 'linear-gradient(135deg, #60a5fa 0%, #a78bfa 50%, #f472b6 100%)'
-    : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)'};
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-`;
-
-const SectionSubtitle = styled(Text)`
-  display: block;
-  text-align: center;
-  margin-bottom: 64px !important;
-  font-size: 18px !important;
-  color: ${props => props.theme.mode === 'dark' ? 'rgba(226, 232, 240, 0.6)' : 'rgba(30, 41, 59, 0.6)'} !important;
-`;
-
-const features = [
-  {
-    icon: <PlayCircleOutlined />,
-    title: '文本生成视频',
-    description: '输入文字描述，Sora AI 将您的创意转化为高质量视频，支持复杂的场景和动作描述'
-  },
-  {
-    icon: <PictureOutlined />,
-    title: '图片生成视频',
-    description: '上传参考图片，AI 自动生成动态视频内容，让静态图片焕发生机'
-  },
-  {
-    icon: <RobotOutlined />,
-    title: '多种 AI 模型',
-    description: '提供多种 Sora 模型选择，满足不同创作需求和风格偏好，从写实到艺术风格'
-  },
-  {
-    icon: <VideoCameraAddOutlined />,
-    title: '高质量输出',
-    description: '支持 720p、1080p 和 4K 超高清分辨率，生成电影级质量的视频作品'
-  },
-  {
-    icon: <ThunderboltOutlined />,
-    title: '快速生成',
-    description: '优化的 AI 模型和强大的计算资源，快速完成视频生成，节省创作时间'
-  },
-  {
-    icon: <FileTextOutlined />,
-    title: '参数自定义',
-    description: '支持视频时长、帧率、风格等参数自定义，让您完全掌控创作过程'
+const MediaCard = styled(BentoCard)`
+  background-image: url('https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?auto=format&fit=crop&w=800');
+  background-size: cover;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
   }
-];
+`;
 
 const FeaturesSection = () => {
+  const theme = useContext(ThemeContext);
+
   return (
-    <FeaturesContainer>
+    <Section>
       <ContentWrapper>
-        <SectionTitle level={2}>核心功能</SectionTitle>
-        <SectionSubtitle>
-          基于 Sora 先进 AI 技术，为您提供全方位的视频生成解决方案
-        </SectionSubtitle>
-        <Row gutter={[24, 24]}>
-          {features.map((feature, index) => (
-            <Col xs={24} sm={12} lg={8} key={index}>
-              <StyledFeatureCard>
-                <div className="icon-wrapper">{feature.icon}</div>
-                <FeatureTitle level={4}>{feature.title}</FeatureTitle>
-                <FeatureDescription>{feature.description}</FeatureDescription>
-              </StyledFeatureCard>
-            </Col>
-          ))}
-        </Row>
+        <SectionTitle theme={theme}>全能创作工坊。</SectionTitle>
+        <SectionSubtitle theme={theme}>不仅仅是生成视频，更是对创意的全方位赋能。</SectionSubtitle>
+        
+        <Grid>
+          {/* 大卡片 1 */}
+          <LargeCard theme={theme}>
+            <CardContent>
+              <ThunderboltFilled className="icon-bg" />
+              <h3>实时渲染引擎</h3>
+              <p>告别漫长的等待。依托分布式 GPU 集群与优化的 DiT 架构，我们实现了近乎实时的视频生成体验。所见即所得，灵感不掉线。</p>
+            </CardContent>
+          </LargeCard>
+
+          {/* 视觉卡片 */}
+          <MediaCard theme={theme}>
+            <CardContent>
+              <h3>电影级画质</h3>
+              <p>原生支持 4K 分辨率输出，每一帧都细腻如画。</p>
+            </CardContent>
+          </MediaCard>
+
+          {/* 普通卡片 */}
+          <BentoCard theme={theme}>
+            <CardContent>
+              <PlayCircleFilled className="icon-bg" style={{ fontSize: 150 }} />
+              <h3>图生视频</h3>
+              <p>上传一张静态图片，AI 将理解画面中的光影与物理关系，自动推演后续动态，让照片活过来。</p>
+            </CardContent>
+          </BentoCard>
+
+          {/* 大卡片 2 */}
+          <LargeCard theme={theme} style={{ background: 'radial-gradient(circle at bottom left, #2a2a35, #000)' }}>
+            <CardContent>
+              <AppstoreFilled className="icon-bg" />
+              <h3>多模态生态</h3>
+              <p>不仅支持 Stable Diffusion 文生图，更集成了 Midjourney 风格迁移与 ElevenLabs 音频合成。在一个工作流中完成所有创作。</p>
+            </CardContent>
+          </LargeCard>
+        </Grid>
       </ContentWrapper>
-    </FeaturesContainer>
+    </Section>
   );
 };
 

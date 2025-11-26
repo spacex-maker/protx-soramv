@@ -1,13 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from "react";
+import styled, { keyframes, css } from "styled-components";
 import { useNavigate } from 'react-router-dom';
-import styled from 'styled-components';
-import { marqueeGlow, pulseEffect } from './styles';
+import { motion, AnimatePresence } from "framer-motion";
+import { Avatar, theme, Tag, Divider } from "antd";
+import { 
+  UserOutlined, 
+  SettingOutlined, 
+  SafetyCertificateOutlined, 
+  LockOutlined,
+  WalletOutlined,
+  ContainerOutlined,
+  BellOutlined,
+  QuestionCircleOutlined,
+  UserAddOutlined,
+  MessageOutlined,
+  InfoCircleOutlined,
+  LogoutOutlined,
+  CreditCardOutlined,
+  FileTextOutlined,
+  RightOutlined
+} from "@ant-design/icons";
+
+// ==========================================
+// 1. 恢复您原本的按钮样式 (及动画)
+// ==========================================
+
+const marqueeGlow = keyframes`
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+`;
+
+const pulseEffect = keyframes`
+  0% { transform: scale(0.97); opacity: 0.8; }
+  50% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(0.97); opacity: 0.8; }
+`;
 
 const UserMenuContainer = styled.div`
   position: relative;
   display: inline-block;
-  margin: 0.5rem 0;
   margin-left: 1.5rem;
+  z-index: 100;
 `;
 
 const UserButton = styled.button`
@@ -48,17 +81,14 @@ const ButtonGlow = styled.div`
   &::before {
     content: '';
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     border-radius: 50px;
     background: linear-gradient(
       90deg, 
       transparent 0%, 
-      #1890ff 25%, 
-      #40a9ff 50%, 
-      #1890ff 75%, 
+      ${props => props.$token.colorPrimary} 25%, 
+      ${props => props.$token.colorInfo} 50%, 
+      ${props => props.$token.colorPrimary} 75%, 
       transparent 100%
     );
     background-size: 200% 100%;
@@ -72,12 +102,10 @@ const ButtonGlow = styled.div`
   &::after {
     content: '';
     position: absolute;
-    top: 2px;
-    left: 2px;
-    right: 2px;
-    bottom: 2px;
+    inset: 2px;
     border-radius: 48px;
-    background: ${props => props.isDark ? '#141414' : '#ffffff'};
+    /* 适配背景色 */
+    background: ${props => props.$token.colorBgContainer};
     z-index: 0;
     
     @media (max-width: 768px) {
@@ -88,12 +116,9 @@ const ButtonGlow = styled.div`
 
 const GlowOverlay = styled.div`
   position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  bottom: -2px;
+  inset: -2px;
   border-radius: 50px;
-  box-shadow: 0 0 8px 2px rgba(24, 144, 255, 0.3);
+  box-shadow: 0 0 8px 2px ${props => props.$token.colorPrimary}4D; /* 30% opacity */
   opacity: 0.7;
   z-index: -1;
   animation: ${pulseEffect} 2s ease-in-out infinite;
@@ -129,7 +154,7 @@ const AvatarFallback = styled.div`
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background-color: #1890ff;
+  background-color: ${props => props.$token.colorPrimary};
   color: white;
   display: flex;
   align-items: center;
@@ -150,7 +175,7 @@ const StatusIndicator = styled.div`
   height: 10px;
   border-radius: 50%;
   background-color: #52c41a;
-  border: 2px solid ${props => props.isDark ? '#141414' : '#ffffff'};
+  border: 2px solid ${props => props.$token.colorBgContainer};
   z-index: 3;
 `;
 
@@ -158,7 +183,7 @@ const UserInfo = styled.div`
   display: flex;
   flex-direction: column;
   justify-content: center;
-  transition: opacity 0.2s ease;
+  text-align: left; /* 确保文字左对齐 */
 
   @media (max-width: 768px) {
     display: none;
@@ -168,7 +193,7 @@ const UserInfo = styled.div`
 const UserName = styled.span`
   font-weight: 600;
   font-size: 0.875rem;
-  color: var(--ant-color-text);
+  color: ${props => props.$token.colorText};
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -177,183 +202,296 @@ const UserName = styled.span`
 
 const UserEmail = styled.span`
   font-size: 0.75rem;
-  color: var(--ant-color-text-secondary);
+  color: ${props => props.$token.colorTextSecondary};
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
 
-const UserDropdown = styled.div`
+// ==========================================
+// 2. 新的现代化下拉菜单样式
+// ==========================================
+
+const DropdownPanel = styled(motion.div)`
   position: absolute;
+  top: calc(100% + 12px);
   right: 0;
-  top: calc(100% + 8px);
-  width: 220px;
-  background: ${props => props.isDark ? 'rgba(22, 24, 29, 0.85)' : 'rgba(255, 255, 255, 0.7)'};
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border: 1px solid ${props => props.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
-  box-shadow: 0 8px 32px ${props => props.isDark ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0.1)'};
-  border-radius: 12px;
-  display: ${props => props.show ? 'block' : 'none'};
-  z-index: 50;
+  width: 280px;
+  background: ${props => props.$token.colorBgElevated};
+  border: 1px solid ${props => props.$token.colorBorderSecondary};
+  border-radius: 16px;
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.1), 
+    0 2px 4px -1px rgba(0, 0, 0, 0.06),
+    0 12px 32px rgba(0, 0, 0, 0.08);
+  z-index: 1000;
   overflow: hidden;
-  padding: 8px;
-
-  &:before {
-    content: '';
-    position: absolute;
-    top: -4px;
-    right: 20px;
-    width: 8px;
-    height: 8px;
-    background: ${props => props.isDark ? 'rgba(22, 24, 29, 0.85)' : 'rgba(255, 255, 255, 0.7)'};
-    backdrop-filter: blur(10px);
-    transform: rotate(45deg);
-    border-left: 1px solid ${props => props.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
-    border-top: 1px solid ${props => props.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
-    z-index: 1;
-  }
+  transform-origin: top right;
+  cursor: default;
 `;
 
-const DropdownHeader = styled.div`
-  padding: 8px 12px;
-  font-weight: 600;
-  color: ${props => props.isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.85)'};
-  border-bottom: 1px solid ${props => props.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
-  margin-bottom: 8px;
-`;
-
-const UserMenuItem = styled.button`
-  width: 100%;
-  padding: 8px 12px;
-  text-align: left;
-  font-size: 0.875rem;
-  color: ${props => props.isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.85)'};
-  background: transparent;
-  border: none;
-  cursor: pointer;
+const MenuHeader = styled.div`
+  padding: 20px;
+  background: ${props => props.$token.colorFillQuaternary};
+  border-bottom: 1px solid ${props => props.$token.colorBorderSecondary};
   display: flex;
   align-items: center;
-  border-radius: 6px;
+  gap: 16px;
+  
+  .user-info {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    
+    h4 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      color: ${props => props.$token.colorText};
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    p {
+      margin: 2px 0 0;
+      font-size: 12px;
+      color: ${props => props.$token.colorTextSecondary};
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+`;
+
+const ScrollArea = styled.div`
+  max-height: calc(80vh - 100px);
+  overflow-y: auto;
+  padding: 8px;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${props => props.$token.colorFillSecondary};
+    border-radius: 2px;
+  }
+`;
+
+const GroupTitle = styled.div`
+  padding: 12px 12px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: ${props => props.$token.colorTextTertiary};
+  text-align: left;
+`;
+
+const MenuItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  margin: 2px 0;
+  border-radius: 8px;
+  cursor: pointer;
+  color: ${props => props.$isDanger ? props.$token.colorError : props.$token.colorText};
   transition: all 0.2s;
+  font-size: 14px;
 
   &:hover {
-    background: ${props => props.isDark ? 'rgba(59, 130, 246, 0.25)' : 'rgba(59, 130, 246, 0.1)'};
-    color: ${props => props.isDark ? '#61dafb' : '#3b82f6'};
+    background: ${props => props.$isDanger ? props.$token.colorErrorBg : props.$token.colorFillTertiary};
   }
 
-  .icon {
-    margin-right: 10px;
-    font-size: 1rem;
-    color: ${props => props.isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.45)'};
+  .icon-wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    font-size: 16px;
+    color: ${props => props.$isDanger ? props.$token.colorError : props.$token.colorTextSecondary};
   }
 
-  &:hover .icon {
-    color: ${props => props.isDark ? '#61dafb' : '#3b82f6'};
+  .label {
+    flex: 1;
+    text-align: left;
+  }
+
+  .arrow {
+    font-size: 10px;
+    color: ${props => props.$token.colorTextQuaternary};
   }
 `;
 
-const LogoutMenuItem = styled(UserMenuItem)`
-  margin-top: 8px;
-  border-top: 1px solid ${props => props.isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
-  padding-top: 12px;
-  
-  &:hover {
-    color: #ff4d4f;
-    background: ${props => props.isDark ? 'rgba(255, 77, 79, 0.25)' : 'rgba(255, 77, 79, 0.1)'};
-  }
-  
-  &:hover .icon {
-    color: #ff4d4f;
-  }
-`;
+// ==========================================
+// 3. 逻辑组件
+// ==========================================
 
-const UserMenu = ({ userInfo, isDark, onLogout }) => {
+const UserMenu = ({ userInfo, onLogout }) => {
   const navigate = useNavigate();
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const { token } = theme.useToken();
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef(null);
 
+  // 点击外部关闭
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!event.target.closest('.user-menu')) {
-        setShowUserMenu(false);
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsOpen(false);
       }
     };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleNavigate = (path) => {
+    setIsOpen(false);
+    navigate(path);
+  };
+
+  const handleLogout = () => {
+    setIsOpen(false);
+    onLogout();
+  };
 
   const getInitial = (username) => {
     if (!username) return '?';
     return username.charAt(0).toUpperCase();
   };
 
+  const menuGroups = [
+    {
+      title: '账户设置',
+      items: [
+        { label: '个人中心', icon: <UserOutlined />, path: '/profile' },
+        { label: '系统设置', icon: <SettingOutlined />, path: '/settings' },
+        { label: '安全设置', icon: <SafetyCertificateOutlined />, path: '/security' },
+        { label: '隐私偏好', icon: <LockOutlined />, path: '/privacy' },
+      ]
+    },
+    {
+      title: '资产与订单',
+      items: [
+        { label: '我的钱包', icon: <WalletOutlined />, path: '/billing' },
+        { label: '订阅管理', icon: <CreditCardOutlined />, path: '/subscription' },
+        { label: '订单记录', icon: <FileTextOutlined />, path: '/orders' },
+      ]
+    },
+    {
+      title: '工作台',
+      items: [
+        { label: '我的作品', icon: <ContainerOutlined />, path: '/works' },
+        { label: '消息通知', icon: <BellOutlined />, path: '/notifications' },
+      ]
+    },
+    {
+      title: '支持',
+      items: [
+        { label: '帮助中心', icon: <QuestionCircleOutlined />, path: '/help' },
+        { label: '邀请好友', icon: <UserAddOutlined />, path: '/invite' },
+        { label: '反馈建议', icon: <MessageOutlined />, path: '/feedback' },
+        { label: '关于我们', icon: <InfoCircleOutlined />, path: '/about' },
+      ]
+    }
+  ];
+
   return (
-    <UserMenuContainer className="user-menu">
-      <UserButton onClick={() => setShowUserMenu(!showUserMenu)}>
-        <ButtonGlow isDark={isDark} />
-        <GlowOverlay />
+    <UserMenuContainer ref={menuRef}>
+      {/* 恢复的 UserButton，作为触发器 */}
+      <UserButton onClick={() => setIsOpen(!isOpen)}>
+        <ButtonGlow $token={token} />
+        <GlowOverlay $token={token} />
+        
         <AvatarContainer>
           {userInfo.avatar ? (
             <UserAvatar 
               src={userInfo.avatar} 
               alt={userInfo.username} 
-              isDark={isDark}
-              onError={(e) => {
-                e.target.style.display = 'none';
-                e.target.nextSibling.style.display = 'flex';
-              }}
             />
           ) : (
-            <AvatarFallback isDark={isDark}>{getInitial(userInfo.username)}</AvatarFallback>
+            <AvatarFallback $token={token}>
+              {getInitial(userInfo.username)}
+            </AvatarFallback>
           )}
-          <StatusIndicator isDark={isDark} />
+          <StatusIndicator $token={token} />
         </AvatarContainer>
+
         <UserInfo>
-          <UserName>{userInfo.username}</UserName>
-          <UserEmail>{userInfo.email}</UserEmail>
+          <UserName $token={token}>{userInfo.username}</UserName>
+          <UserEmail $token={token}>{userInfo.email}</UserEmail>
         </UserInfo>
       </UserButton>
-      
-      <UserDropdown 
-        show={showUserMenu} 
-        isDark={isDark}
-      >
-        <DropdownHeader isDark={isDark}>账号</DropdownHeader>
-        <UserMenuItem 
-          isDark={isDark}
-          onClick={() => {
-            setShowUserMenu(false);
-            navigate('/profile');
-          }}
-        >
-          <i className="bi bi-person icon" />
-          个人中心
-        </UserMenuItem>
-        <UserMenuItem 
-          isDark={isDark}
-          onClick={() => {
-            setShowUserMenu(false);
-            navigate('/settings');
-          }}
-        >
-          <i className="bi bi-gear icon" />
-          账号设置
-        </UserMenuItem>
-        <LogoutMenuItem 
-          isDark={isDark}
-          onClick={() => {
-            setShowUserMenu(false);
-            onLogout();
-          }}
-        >
-          <i className="bi bi-box-arrow-right icon" />
-          退出登录
-        </LogoutMenuItem>
-      </UserDropdown>
+
+      {/* 新的下拉菜单 */}
+      <AnimatePresence>
+        {isOpen && (
+          <DropdownPanel
+            $token={token}
+            initial={{ opacity: 0, y: 10, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
+            {/* 1. 详细头部 */}
+            <MenuHeader $token={token}>
+              <Avatar 
+                size={48} 
+                src={userInfo?.avatar} 
+                icon={<UserOutlined />}
+                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+              />
+              <div className="user-info">
+                <h4>{userInfo?.nickname || userInfo?.username}</h4>
+                <p>{userInfo?.email || '未绑定邮箱'}</p>
+                <div style={{ marginTop: 6 }}>
+                   <Tag color={userInfo?.isActive ? "success" : "default"} style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
+                     {userInfo?.isActive ? "已认证" : "游客"}
+                   </Tag>
+                </div>
+              </div>
+            </MenuHeader>
+
+            {/* 2. 菜单列表 */}
+            <ScrollArea $token={token}>
+              {menuGroups.map((group, index) => (
+                <div key={group.title}>
+                  <GroupTitle $token={token}>{group.title}</GroupTitle>
+                  {group.items.map(item => (
+                    <MenuItem 
+                      key={item.path} 
+                      $token={token}
+                      onClick={() => handleNavigate(item.path)}
+                    >
+                      <div className="icon-wrapper">{item.icon}</div>
+                      <span className="label">{item.label}</span>
+                      <RightOutlined className="arrow" />
+                    </MenuItem>
+                  ))}
+                  {index < menuGroups.length - 1 && (
+                    <Divider style={{ margin: '8px 0', borderColor: token.colorBorderSecondary }} />
+                  )}
+                </div>
+              ))}
+
+              <Divider style={{ margin: '8px 0', borderColor: token.colorBorderSecondary }} />
+              
+              <MenuItem 
+                $token={token} 
+                $isDanger 
+                onClick={handleLogout}
+              >
+                <div className="icon-wrapper"><LogoutOutlined /></div>
+                <span className="label">退出登录</span>
+              </MenuItem>
+            </ScrollArea>
+          </DropdownPanel>
+        )}
+      </AnimatePresence>
     </UserMenuContainer>
   );
 };
 
-export default UserMenu; 
+export default UserMenu;

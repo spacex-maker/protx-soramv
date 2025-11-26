@@ -1,870 +1,785 @@
 import React, { useState, useEffect } from "react";
-import styled, { keyframes } from "styled-components";
-import SimpleHeader from "components/headers/simple";
-import { ReactComponent as EditIcon } from "feather-icons/dist/icons/edit-2.svg";
-import { ReactComponent as SaveIcon } from "feather-icons/dist/icons/check.svg";
-import { ReactComponent as CancelIcon } from "feather-icons/dist/icons/x.svg";
-import { Modal } from 'antd';
+import styled from "styled-components";
 import { motion } from "framer-motion";
-import tw from "twin.macro";
-import { Button, Input } from "antd";
-import { UserOutlined, CloudUploadOutlined, ProfileOutlined, ContactsOutlined, ToolOutlined } from "@ant-design/icons";
-import { Space } from "antd";
-import { message } from "antd";
+import SimpleHeader from "components/headers/simple";
+import instance from "api/axios";
+import { auth } from "api/auth";
+import { 
+  Button, 
+  Input, 
+  message, 
+  Modal, 
+  Tabs, 
+  Avatar as AntAvatar,
+  ConfigProvider,
+  Spin,
+  Upload,
+  theme // 引入 theme
+} from "antd";
+import { 
+  UserOutlined, 
+  EditOutlined, 
+  PhoneOutlined, 
+  IdcardOutlined,
+  WalletOutlined,
+  SafetyCertificateOutlined,
+  ToolOutlined,
+  CloudUploadOutlined,
+  SettingOutlined
+} from "@ant-design/icons";
 
-const PageWrapper = styled.div`
-  ${tw`
-    w-full
-    h-screen  // 改为固定高度
-    flex
-    flex-col
-    overflow-hidden  // 防止整体滚动
-  `}
-`;
+// ==========================================
+// 样式组件 (接收 $token 作为 props)
+// ==========================================
 
-const Container = styled.div`
-  ${tw`
-    relative 
-    w-full
-    flex-grow
-  `}
-  background: var(--ant-color-bg-container);
-`;
-
-const Content = styled.div`
-  ${tw`
-    mx-auto 
-    w-full
-    h-full
-  `}
-  height: calc(100vh - 64px);
-  overflow: auto;
-  margin-top: 64px;
-  padding: 24px;
-  max-width: 1000px;  // 限制最大宽度
-`;
-
-// 定义跑马灯效果
-const marqueeGlow = keyframes`
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 200% 50%;
-  }
-`;
-
-// 定义脉冲效果
-const pulseEffect = keyframes`
-  0% {
-    transform: scale(0.97);
-    opacity: 0.8;
-  }
-  50% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(0.97);
-    opacity: 0.8;
-  }
-`;
-
-const ProfileHeader = styled(motion.div)`
-  background: var(--ant-color-bg-container);
-  border-radius: 12px;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
-  padding: 32px;
-  margin-bottom: 24px;
-  display: flex;
-  align-items: center;
-  gap: 32px;
+const PageBackground = styled.div`
+  min-height: 100vh;
   width: 100%;
-  position: relative;  // 为绝对定位的编辑按钮做准备
-
-  &:after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 12px;
-    border: 1px solid var(--ant-color-border);
-    pointer-events: none;
-  }
+  /* 直接使用 Token 颜色 */
+  background: ${props => props.$token.colorBgLayout};
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  flex-direction: column;
+  color: ${props => props.$token.colorText};
+  overflow-x: hidden;
 `;
 
-const AvatarSection = styled.div`
-  position: relative;
-  flex-shrink: 0;
-`;
-
-const AvatarGlow = styled.div`
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  border-radius: 16px;
-  z-index: 0;
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border-radius: 16px;
-    background: linear-gradient(
-      90deg, 
-      transparent 0%, 
-      #1890ff 25%, 
-      #40a9ff 50%, 
-      #1890ff 75%, 
-      transparent 100%
-    );
-    background-size: 200% 100%;
-    animation: ${marqueeGlow} 3s linear infinite;
-  }
-  
-  &::after {
-    content: '';
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    right: 2px;
-    bottom: 2px;
-    border-radius: 14px;
-    background: ${props => props.isDark ? '#141414' : '#ffffff'};
-    z-index: 0;
-  }
-`;
-
-const GlowOverlay = styled.div`
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  border-radius: 16px;
-  box-shadow: 0 0 8px 2px rgba(24, 144, 255, 0.3);
-  opacity: 0.7;
-  z-index: 0;
-  animation: ${pulseEffect} 2s ease-in-out infinite;
-`;
-
-const Avatar = styled.div`
-  width: 88px;
-  height: 88px;
-  border-radius: 12px;
-  background-image: url(${props => props.src});
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  position: relative;
-  z-index: 1;
-`;
-
-const AvatarFallback = styled.div`
-  width: 88px;
-  height: 88px;
-  border-radius: 12px;
-  background-color: #1890ff;
-  color: white;
+const ConstructionBanner = styled.div`
+  background: ${props => props.$token.colorWarningBg};
+  border-bottom: 1px solid ${props => props.$token.colorWarningBorder};
+  color: ${props => props.$token.colorWarning};
+  padding: 10px 16px;
+  text-align: center;
+  font-size: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 2.5rem;
+  gap: 8px;
   position: relative;
-  z-index: 1;
+  z-index: 50;
 `;
 
-const UserInfo = styled.div`
-  flex-grow: 1;
-`;
-
-const Username = styled.h1`
-  font-size: 24px;
-  font-weight: 600;
-  color: var(--ant-color-text);
-  margin-bottom: 8px;
-`;
-
-const UserDescription = styled.p`
-  font-size: 14px;
-  color: var(--ant-color-text-secondary);
-  margin-bottom: 16px;
-`;
-
-const Stats = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  padding-top: 16px;
-  margin-top: 16px;
-  border-top: 1px solid var(--ant-color-border);
-`;
-
-const StatItem = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 16px;
-  background: var(--ant-color-bg-elevated);
-  border-radius: 8px;
-  border: 1px solid var(--ant-color-border);
-`;
-
-const StatValue = styled.div`
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--ant-color-text);
-`;
-
-const StatLabel = styled.div`
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
-`;
-
-const TabsContainer = styled.div`
-  background: var(--ant-color-bg-container);
-  border-radius: 12px;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+const ContentWrapper = styled.div`
+  flex: 1;
+  position: relative;
+  padding-bottom: 40px;
   width: 100%;
-  position: relative;
-
-  &:after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 12px;
-    border: 1px solid var(--ant-color-border);
-    pointer-events: none;
-  }
-`;
-
-const TabList = styled.div`
-  display: flex;
-  padding: 16px 24px;
-  gap: 8px;
-  border-bottom: 1px solid var(--ant-color-border);
-`;
-
-const Tab = styled.button`
-  padding: 8px 24px;
-  font-size: 14px;
-  font-weight: 500;
-  color: ${props => props.active ? 'var(--ant-color-primary)' : 'var(--ant-color-text-secondary)'};
-  background: ${props => props.active ? 'var(--ant-color-primary-bg)' : 'transparent'};
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    color: var(--ant-color-primary);
-    background: var(--ant-color-primary-bg);
-  }
-`;
-
-const InfoSection = styled.div`
-  padding: 24px;
-`;
-
-const Grid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);  // 固定两列
-  gap: 20px;
-`;
-
-const InfoItem = styled.div`
-  padding: 20px;
-  background: var(--ant-color-bg-container);
-  border-radius: 8px;
-  transition: all 0.3s;
-  position: relative;
-
-  &:after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: 8px;
-    border: 1px solid var(--ant-color-border);
-    pointer-events: none;
-  }
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  }
-`;
-
-const Label = styled.div`
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
-  margin-bottom: 8px;
-`;
-
-const Value = styled.div`
-  font-size: 15px;
-  color: var(--ant-color-text);
-  font-weight: 500;
-`;
-
-const StyledButton = styled.button`
-  ${tw`
-    px-6 py-3 
-    rounded-xl 
-    font-medium 
-    transition duration-200 
-    flex items-center gap-2
-  `}
-  ${props => props.primary 
-    ? tw`
-      bg-primary-500 text-white 
-      hover:bg-primary-600 
-      dark:bg-primary-600 dark:hover:bg-primary-500
-      transform hover:scale-105
-      shadow-md hover:shadow-lg
-    ` 
-    : tw`
-      bg-gray-200 text-gray-700 
-      hover:bg-gray-300 
-      dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600
-      transform hover:scale-105
-    `}
-`;
-
-const EditButton = styled.button`
-  position: absolute;
-  right: 32px;
-  top: 32px;
-  padding: 8px 16px;
-  border-radius: 8px;
-  background: var(--ant-color-bg-container);
-  color: var(--ant-color-text);
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 1px solid var(--ant-color-border);
-  position: relative;
-  overflow: hidden;
-
+  
+  /* 背景装饰 */
   &::before {
     content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(
-      90deg, 
-      transparent 0%, 
-      rgba(24, 144, 255, 0.1) 25%, 
-      rgba(64, 169, 255, 0.2) 50%, 
-      rgba(24, 144, 255, 0.1) 75%, 
-      transparent 100%
-    );
-    background-size: 200% 100%;
-    animation: ${marqueeGlow} 3s linear infinite;
-    opacity: 0;
-    transition: opacity 0.3s;
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-  }
-
-  &:hover {
-    color: var(--ant-color-primary);
-    border-color: var(--ant-color-primary);
-    background: var(--ant-color-primary-bg);
-    
-    &::before {
-      opacity: 1;
-    }
+    position: fixed;
+    top: -100px;
+    right: -100px;
+    width: 600px;
+    height: 600px;
+    /* 使用 Token 中的 primary 颜色 */
+    background: radial-gradient(circle, ${props => props.$token.colorPrimaryBg} 0%, transparent 70%);
+    opacity: 0.4;
+    border-radius: 50%;
+    z-index: 0;
+    pointer-events: none;
   }
 `;
 
-const StyledModal = styled(Modal)`
-  .ant-modal-content {
-    border-radius: 16px;
-    padding: 0;
-    background: ${props => props.theme.mode === 'dark' ? '#1c1c1e' : '#ffffff'};
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-  }
-
-  .ant-modal-header {
-    padding: 24px 32px;
-    border-bottom: none;
-    margin: 0;
-    
-    .ant-modal-title {
-      font-size: 24px;
-      font-weight: 500;
-      color: var(--ant-color-text);
-    }
-  }
-
-  .ant-modal-body {
-    padding: 0 32px 32px;
-  }
-
-  .ant-modal-footer {
-    margin: 0;
-    padding: 20px 32px;
-    border-top: 1px solid var(--ant-color-border);
-  }
-`;
-
-const FormSection = styled.div`
-  margin-bottom: 40px;
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const SectionTitle = styled.div`
-  margin-bottom: 20px;
-
-  h3 {
-    font-size: 17px;
-    font-weight: 500;
-    color: var(--ant-color-text);
-    margin: 0;
-  }
-
-  p {
-    font-size: 13px;
-    color: var(--ant-color-text-secondary);
-    margin: 4px 0 0 0;
-    line-height: 1.5;
-  }
-`;
-
-const FormRow = styled.div`
+const MainContainer = styled(motion.div)`
+  position: relative;
+  z-index: 10;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px 16px;
   display: flex;
-  gap: 16px;
-  margin-bottom: 16px;
-`;
+  flex-direction: column;
 
-const FormItem = styled.div`
-  flex: 1;
-`;
-
-const FormLabel = styled.label`
-  display: block;
-  font-size: 13px;
-  color: var(--ant-color-text-secondary);
-  margin-bottom: 8px;
-`;
-
-const StyledInput = styled(Input)`
-  border-radius: 8px;
-  border: 1px solid var(--ant-color-border);
-  padding: 8px 12px;
-  font-size: 15px;
-  transition: all 0.2s;
-
-  &:hover, &:focus {
-    border-color: var(--ant-color-primary);
+  @media (min-width: 768px) {
+    padding: 32px 24px;
   }
 `;
 
-const StyledTextArea = styled(Input.TextArea)`
-  border-radius: 8px;
-  border: 1px solid var(--ant-color-border);
-  padding: 8px 12px;
-  font-size: 15px;
-  min-height: 100px;
-  transition: all 0.2s;
-
-  &:hover, &:focus {
-    border-color: var(--ant-color-primary);
-  }
-`;
-
-const AvatarUpload = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 24px;
-  background: var(--ant-color-bg-elevated);
-  border-radius: 12px;
-`;
-
-const AvatarPreview = styled.div`
-  width: 80px;
-  height: 80px;
-  border-radius: 40px;
+const CoverSection = styled.div`
+  width: 100%;
+  height: 200px;
+  border-radius: 20px;
+  position: relative;
   overflow: hidden;
-  flex-shrink: 0;
+  background-color: ${props => props.$token.colorBgContainerDisabled};
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
 
   img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    display: block;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.2) 100%);
+    pointer-events: none;
+  }
+
+  @media (min-width: 768px) {
+    height: 280px;
   }
 `;
 
-const UploadInfo = styled.div`
-  flex: 1;
+// 核心修复：ProfileCard
+const ProfileCard = styled.div`
+  /* 使用 colorBgElevated (浮层背景色)，在暗黑模式下比纯黑稍微浅一点，有区分度 */
+  background: ${props => props.$token.colorBgElevated}; 
+  border-radius: 20px;
+  /* 增加边框，确保在暗黑模式下边缘清晰 */
+  border: 1px solid ${props => props.$token.colorBorder};
+  /* 添加阴影 */
+  box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.15);
+  
+  margin-top: -60px; 
+  margin-left: 12px;
+  margin-right: 12px;
+  padding: 0 24px 32px;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 2;
 
-  h4 {
-    font-size: 15px;
-    font-weight: 500;
+  @media (min-width: 768px) {
+    margin-left: 40px;
+    margin-right: 40px;
+    margin-top: -80px;
+    padding: 0 40px 40px;
+  }
+`;
+
+const HeaderRow = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+  }
+`;
+
+const UserInfoSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+  position: relative;
+
+  @media (min-width: 768px) {
+    flex-direction: row;
+    text-align: left;
+    gap: 24px;
+    padding-bottom: 10px;
+  }
+`;
+
+const AvatarWrapper = styled(motion.div)`
+  position: relative;
+  margin-top: -50px; 
+  padding: 4px;
+  /* 这里的背景要和卡片背景一致，看起来才自然 */
+  background: ${props => props.$token.colorBgElevated};
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 120px;
+  height: 120px;
+  flex-shrink: 0;
+  z-index: 3;
+  
+  .avatar-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    /* 内圈边框 */
+    border: 4px solid ${props => props.$token.colorBgElevated};
+    background: ${props => props.$token.colorBgLayout};
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    img { width: 100%; height: 100%; object-fit: cover; }
+    .fallback { font-size: 40px; color: ${props => props.$token.colorPrimary}; font-weight: 600; }
+  }
+
+  @media (min-width: 768px) {
+    width: 140px;
+    height: 140px;
+    margin-top: -60px;
+  }
+`;
+
+const UserMeta = styled.div`
+  padding-top: 4px;
+  h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: ${props => props.$token.colorText};
     margin: 0 0 4px 0;
   }
-
   p {
-    font-size: 13px;
-    color: var(--ant-color-text-secondary);
-    margin: 0 0 12px 0;
+    color: ${props => props.$token.colorTextSecondary};
+    font-size: 14px;
+    margin: 0;
+    max-width: 400px;
+    line-height: 1.5;
+  }
+
+  @media (min-width: 768px) {
+    padding-top: 30px;
+    h1 { font-size: 28px; }
   }
 `;
 
-// 添加样式组件
-const ConstructionBanner = styled.div`
-  position: fixed;
-  top: 64px;  // SimpleHeader 的高度
-  left: 0;
-  right: 0;
-  background: var(--ant-color-warning-bg);
-  padding: 8px;
-  text-align: center;
-  font-size: 14px;
-  color: var(--ant-color-warning);
-  border-bottom: 1px solid var(--ant-color-warning-border);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+const RainbowText = styled(motion.h1)`
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 4px 0;
+  background: linear-gradient(
+    135deg,
+    ${props => props.$token.colorPrimary} 0%,
+    #8b5cf6 50%,
+    ${props => props.$token.colorPrimary} 100%
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+
+  @media (min-width: 768px) {
+    font-size: 28px;
+  }
 `;
 
-const ProfilePage = () => {
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  padding: 24px 0;
+  border-bottom: 1px solid ${props => props.$token.colorBorderSecondary};
+  margin-bottom: 24px;
+  width: 100%;
+
+  @media (min-width: 768px) {
+    gap: 60px;
+    justify-content: flex-start;
+    display: flex;
+  }
+`;
+
+const StatItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  /* 手机端稍微给点背景区分 */
+  background: ${props => props.$token.colorBgLayout}; 
+  min-width: 80px;
+  
+  @media (min-width: 768px) {
+    min-width: 120px;
+    background: transparent;
+    align-items: flex-start;
+    padding: 0;
+  }
+
+  .value {
+    font-size: 18px;
+    font-weight: 700;
+    color: ${props => props.$token.colorText};
+    @media (min-width: 768px) { font-size: 22px; }
+  }
+  .label {
+    font-size: 12px;
+    color: ${props => props.$token.colorTextSecondary};
+    margin-top: 4px;
+  }
+`;
+
+const ContentGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+  @media (min-width: 768px) { grid-template-columns: 1fr 1fr; }
+`;
+
+const InfoCard = styled(motion.div)`
+  /* 使用 colorBgContainer，通常比 Elevated 稍微深/浅一点，视主题而定 */
+  background: ${props => props.$token.colorBgContainer};
+  border: 1px solid ${props => props.$token.colorBorderSecondary};
+  border-radius: 16px;
+  padding: 24px;
+  height: 100%;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    font-size: 16px;
+    font-weight: 600;
+    color: ${props => props.$token.colorText};
+    
+    .anticon { color: ${props => props.$token.colorPrimary}; font-size: 18px; }
+  }
+`;
+
+const DetailItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid ${props => props.$token.colorBorderSecondary};
+  
+  &:last-child { border-bottom: none; }
+  
+  .label { font-size: 14px; color: ${props => props.$token.colorTextSecondary}; }
+  .value { font-size: 14px; font-weight: 500; color: ${props => props.$token.colorText}; text-align: right; }
+`;
+
+const USDTBox = styled.div`
+  background: ${props => props.$token.colorFillAlter}; /* 使用填充色 */
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  word-break: break-all;
+  color: ${props => props.$token.colorPrimaryText};
+  font-size: 13px;
+  border: 1px dashed ${props => props.$token.colorPrimaryBorder};
+  text-align: center;
+  font-family: monospace;
+`;
+
+// 模态框样式
+const FormSection = styled.div`
+  margin-bottom: 24px;
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: ${props => props.$token.colorText};
+  }
+`;
+
+const FormLabel = styled.div`
+  margin-bottom: 6px; 
+  font-size: 13px; 
+  color: ${props => props.$token.colorTextSecondary};
+`;
+
+// ==========================================
+// 逻辑组件 (ProfileContent)
+// 为了使用 Token，我们需要把内容拆分出来，或者在内部使用
+// ==========================================
+
+const ProfileContent = () => {
+  // 1. 获取 Ant Design 真实的 Token (Hex 颜色值)
+  const { token } = theme.useToken();
+  
   const [userInfo, setUserInfo] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [afterOpen, setAfterOpen] = useState(false);
-  const [editedInfo, setEditedInfo] = useState({});
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [activeTab, setActiveTab] = useState('basic');
   const [loading, setLoading] = useState(false);
+  const [editedInfo, setEditedInfo] = useState({});
+  const [avatarFile, setAvatarFile] = useState(null); // 保存选中的头像文件对象
 
   useEffect(() => {
     const storedUserInfo = localStorage.getItem('userInfo');
     if (storedUserInfo) {
-      const parsedInfo = JSON.parse(storedUserInfo);
-      setUserInfo(parsedInfo);
-      setEditedInfo(parsedInfo);
+      try {
+        setUserInfo(JSON.parse(storedUserInfo));
+      } catch (e) {
+        console.error("Failed to parse user info", e);
+      }
+    } else {
+      setUserInfo({
+        username: "GuestUser",
+        nickname: "Guest",
+        description: "尚未设置简介",
+        email: "guest@example.com",
+        phoneNumber: "未绑定",
+        avatar: "",
+        creditScore: 0,
+        level: 1,
+        balance: 0,
+        usdtAddress: "暂无地址",
+        usdtAmount: 0,
+        usdtFrozenAmount: 0,
+        createTime: "2024-01-01",
+        isActive: true,
+        fullName: ""
+      });
     }
   }, []);
+
 
   const handleEditClick = () => {
     setEditedInfo({
       username: userInfo?.username || '',
       nickname: userInfo?.nickname || '',
-      bio: userInfo?.bio || '',
+      description: userInfo?.description || '',
       email: userInfo?.email || '',
-      phone: userInfo?.phone || '',
+      phoneNumber: userInfo?.phoneNumber || '',
       avatar: userInfo?.avatar || ''
     });
+    setAvatarFile(null); // 重置文件对象
     setIsModalOpen(true);
-  };
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        message.error('图片大小不能超过 2MB');
-        return;
-      }
-      setSelectedFile(file);
-    }
   };
 
   const handleSave = async () => {
     setLoading(true);
     try {
-      // 处理保存逻辑
-      // TODO: 实现实际的保存功能
+      let finalAvatarUrl = editedInfo.avatar || userInfo?.avatar;
       
-      message.success('保存成功');
-      setIsModalOpen(false);
+      // 如果有新头像文件，先上传头像
+      if (avatarFile) {
+        const formData = new FormData();
+        formData.append('file', avatarFile);
+        
+        try {
+          const uploadResponse = await instance.post('/productx/user/avatar', formData, {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+            },
+          });
+          
+          if (uploadResponse.data.success) {
+            message.success('头像上传成功');
+            // 上传成功后，重新获取用户信息以获取最新的头像 URL
+            const userInfoResult = await auth.getUserInfo();
+            if (userInfoResult.success) {
+              finalAvatarUrl = userInfoResult.data.avatar || finalAvatarUrl;
+              // 更新 editedInfo 中的 avatar 为最新的头像 URL
+              setEditedInfo(prev => ({ ...prev, avatar: finalAvatarUrl }));
+            }
+          } else {
+            message.error(uploadResponse.data.message || '头像上传失败');
+            setLoading(false);
+            return;
+          }
+        } catch (uploadError) {
+          message.error(uploadError.response?.data?.message || '头像上传失败');
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // 调用用户信息更新接口
+      const updateData = {
+        nickname: editedInfo.nickname || userInfo?.nickname,
+        description: editedInfo.description || userInfo?.description,
+        avatar: finalAvatarUrl,
+        // 如果 editedInfo 中有其他字段，也可以包含进来
+        address: editedInfo.address || userInfo?.address,
+        city: editedInfo.city || userInfo?.city,
+        state: editedInfo.state || userInfo?.state,
+        postalCode: editedInfo.postalCode || userInfo?.postalCode,
+      };
+      
+      try {
+        const updateResponse = await instance.post('/productx/user/update', updateData);
+        
+        if (updateResponse.data.success) {
+          // 更新成功后，重新获取用户信息
+          const userInfoResult = await auth.getUserInfo();
+          if (userInfoResult.success) {
+            setUserInfo(userInfoResult.data);
+            localStorage.setItem('userInfo', JSON.stringify(userInfoResult.data));
+          }
+          message.success('保存成功');
+          setIsModalOpen(false);
+          setAvatarFile(null); // 清空文件对象
+        } else {
+          message.error(updateResponse.data.message || '保存失败');
+        }
+      } catch (updateError) {
+        message.error(updateError.response?.data?.message || '保存失败');
+      }
     } catch (error) {
-      message.error('保存失败');
+      message.error(error.response?.data?.message || '操作失败');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChange = (field, value) => {
-    setEditedInfo(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  const handleAfterOpen = () => {
-    requestAnimationFrame(() => {
-      setAfterOpen(true);
-    });
-  };
-
-  const currentModalStyles = {
-    overlay: {
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: afterOpen ? 'rgba(0, 0, 0, 0.5)' : 'rgba(0, 0, 0, 0)'
-    },
-    content: {
-      position: 'relative',
-      top: 'auto',
-      left: 'auto',
-      right: 'auto',
-      bottom: 'auto',
-      maxWidth: '600px',
-      width: '90%',
-      margin: '20px',
-      padding: 0,
-      border: 'none',
-      borderRadius: '1.25rem',
-      backgroundColor: document.documentElement.classList.contains('dark') ? '#1F2937' : '#ffffff',
-      boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-      transform: afterOpen ? 'translateY(0)' : 'translateY(20px)',
-      opacity: afterOpen ? 1 : 0,
-      transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-    }
-  };
-
-  if (!userInfo) return <div>加载中...</div>;
+  if (!userInfo) return (
+    <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 100, background: token.colorBgLayout, minHeight: '100vh' }}>
+      <Spin size="large" />
+    </div>
+  );
 
   return (
-    <PageWrapper>
+    // 2. 将 token 传给所有的 Styled Components
+    <PageBackground $token={token}>
       <SimpleHeader />
-      <ConstructionBanner>
+      
+      <ConstructionBanner $token={token}>
         <ToolOutlined /> 本页面正在建设中...
       </ConstructionBanner>
-      <Container>
-        <Content>
-          <ProfileHeader
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <AvatarSection>
-              <AvatarGlow isDark={document.documentElement.getAttribute('data-theme') === 'dark'} />
-              <GlowOverlay />
-              {userInfo.avatar ? (
-                <Avatar src={userInfo.avatar} />
-              ) : (
-                <AvatarFallback>{userInfo.username.charAt(0).toUpperCase()}</AvatarFallback>
-              )}
-            </AvatarSection>
-            
-            <UserInfo>
-              <Username>{userInfo.username}</Username>
-              <UserDescription>
-                {userInfo.description || '这个用户很懒，还没有填写简介'}
-              </UserDescription>
-              <Stats>
-                <StatItem>
-                  <StatValue>{userInfo.creditScore || 0}</StatValue>
-                  <StatLabel>信用分</StatLabel>
-                </StatItem>
-                <StatItem>
-                  <StatValue>{userInfo.level || 1}</StatValue>
-                  <StatLabel>等级</StatLabel>
-                </StatItem>
-                <StatItem>
-                  <StatValue>{(userInfo.balance || 0).toFixed(2)}</StatValue>
-                  <StatLabel>余额</StatLabel>
-                </StatItem>
-              </Stats>
-            </UserInfo>
-            
-            <EditButton onClick={handleEditClick}>
-              <EditIcon />
-              编辑资料
-            </EditButton>
-          </ProfileHeader>
 
-          <TabsContainer>
-            <TabList>
-              <Tab 
-                active={activeTab === 'basic'} 
-                onClick={() => setActiveTab('basic')}
+      <ContentWrapper $token={token}>
+        <MainContainer
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <CoverSection $token={token}>
+              <img 
+                src={userInfo.cover || "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1200&q=80"} 
+                alt="Cover Background" 
+              />
+          </CoverSection>
+
+          <ProfileCard $token={token}>
+            <HeaderRow>
+              <UserInfoSection>
+                <AvatarWrapper whileHover={{ scale: 1.05 }} $token={token}>
+                  <div className="avatar-inner">
+                    {userInfo.avatar ? (
+                      <img src={userInfo.avatar} alt="Avatar" />
+                    ) : (
+                      <div className="fallback">{userInfo.username?.charAt(0).toUpperCase()}</div>
+                    )}
+                  </div>
+                </AvatarWrapper>
+                
+                <UserMeta $token={token}>
+                  <RainbowText
+                    $token={token}
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    {userInfo.nickname || userInfo.username}
+                  </RainbowText>
+                  <p>{userInfo.description || '这个人很懒，什么都没写'}</p>
+                </UserMeta>
+              </UserInfoSection>
+
+              <Button 
+                type="primary" 
+                icon={<EditOutlined />} 
+                onClick={handleEditClick}
+                size="large"
               >
-                基本信息
-              </Tab>
-              <Tab 
-                active={activeTab === 'account'} 
-                onClick={() => setActiveTab('account')}
-              >
-                账户信息
-              </Tab>
-            </TabList>
+                编辑资料
+              </Button>
+            </HeaderRow>
 
-            {activeTab === 'basic' && (
-              <InfoSection>
-                <Grid>
-                  <InfoItem>
-                    <Label>昵称</Label>
-                    <Value>{userInfo.nickname || '未设置'}</Value>
-                  </InfoItem>
-                  <InfoItem>
-                    <Label>邮箱</Label>
-                    <Value>{userInfo.email}</Value>
-                  </InfoItem>
-                  <InfoItem>
-                    <Label>手机号码</Label>
-                    <Value>{userInfo.phoneNumber || '未设置'}</Value>
-                  </InfoItem>
-                  <InfoItem>
-                    <Label>真实姓名</Label>
-                    <Value>{userInfo.fullName || '未设置'}</Value>
-                  </InfoItem>
-                </Grid>
-              </InfoSection>
-            )}
+            <StatsGrid $token={token}>
+              <StatItem $token={token}>
+                <span className="value">{userInfo.creditScore || 0}</span>
+                <span className="label">信用分</span>
+              </StatItem>
+              <StatItem $token={token}>
+                <span className="value">{userInfo.level || 1}</span>
+                <span className="label">等级</span>
+              </StatItem>
+              <StatItem $token={token}>
+                <span className="value">¥ {(userInfo.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                <span className="label">余额</span>
+              </StatItem>
+            </StatsGrid>
 
-            {activeTab === 'account' && (
-              <InfoSection>
-                <Grid>
-                  <InfoItem>
-                    <Label>USDT 地址</Label>
-                    <Value>{userInfo.usdtAddress || '未设置'}</Value>
-                  </InfoItem>
-                  <InfoItem>
-                    <Label>USDT 余额</Label>
-                    <Value>{(userInfo.usdtAmount || 0).toFixed(6)}</Value>
-                  </InfoItem>
-                  <InfoItem>
-                    <Label>USDT 冻结金额</Label>
-                    <Value>{(userInfo.usdtFrozenAmount || 0).toFixed(6)}</Value>
-                  </InfoItem>
-                  <InfoItem>
-                    <Label>注册时间</Label>
-                    <Value>{userInfo.createTime || '未知'}</Value>
-                  </InfoItem>
-                  <InfoItem>
-                    <Label>账户状态</Label>
-                    <Value>{userInfo.isActive ? '正常' : '已禁用'}</Value>
-                  </InfoItem>
-                </Grid>
-              </InfoSection>
-            )}
-          </TabsContainer>
-        </Content>
-      </Container>
-      <StyledModal
+            <Tabs
+              defaultActiveKey="basic"
+              items={[
+                {
+                  key: 'basic',
+                  label: <span><UserOutlined /> 基本信息</span>,
+                  children: (
+                    <ContentGrid>
+                      <InfoCard $token={token}>
+                        <div className="header"><IdcardOutlined /> 个人资料</div>
+                        <DetailItem $token={token}>
+                          <span className="label">用户名</span>
+                          <span className="value">{userInfo.username}</span>
+                        </DetailItem>
+                        <DetailItem $token={token}>
+                          <span className="label">真实姓名</span>
+                          <span className="value">{userInfo.fullName || '未认证'}</span>
+                        </DetailItem>
+                        <DetailItem $token={token}>
+                          <span className="label">账户状态</span>
+                          <span className="value" style={{ color: userInfo.isActive ? token.colorSuccess : token.colorError }}>
+                            {userInfo.isActive ? '正常' : '已禁用'}
+                          </span>
+                        </DetailItem>
+                      </InfoCard>
+
+                      <InfoCard $token={token}>
+                        <div className="header"><PhoneOutlined /> 联系方式</div>
+                        <DetailItem $token={token}>
+                          <span className="label">手机号码</span>
+                          <span className="value">{userInfo.phoneNumber || '未绑定'}</span>
+                        </DetailItem>
+                        <DetailItem $token={token}>
+                          <span className="label">电子邮箱</span>
+                          <span className="value">{userInfo.email || '未绑定'}</span>
+                        </DetailItem>
+                        <DetailItem $token={token}>
+                          <span className="label">注册时间</span>
+                          <span className="value">{userInfo.createTime}</span>
+                        </DetailItem>
+                      </InfoCard>
+                    </ContentGrid>
+                  )
+                },
+                {
+                  key: 'account',
+                  label: <span><WalletOutlined /> 账户资产</span>,
+                  children: (
+                    <ContentGrid>
+                      <InfoCard $token={token}>
+                        <div className="header"><SafetyCertificateOutlined /> USDT 钱包</div>
+                        <USDTBox $token={token}>
+                          {userInfo.usdtAddress || '暂无 TRC20 地址'}
+                        </USDTBox>
+                        <DetailItem $token={token}>
+                          <span className="label">可用余额</span>
+                          <span className="value" style={{ color: token.colorSuccess, fontWeight: 'bold' }}>
+                            {(userInfo.usdtAmount || 0).toFixed(6)} USDT
+                          </span>
+                        </DetailItem>
+                        <DetailItem $token={token}>
+                          <span className="label">冻结金额</span>
+                          <span className="value">
+                            {(userInfo.usdtFrozenAmount || 0).toFixed(6)} USDT
+                          </span>
+                        </DetailItem>
+                      </InfoCard>
+                    </ContentGrid>
+                  )
+                }
+              ]}
+            />
+          </ProfileCard>
+        </MainContainer>
+      </ContentWrapper>
+
+      {/* 编辑弹窗 */}
+      <Modal
         title="编辑个人资料"
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
-        width={600}
         footer={[
-          <Button key="cancel" onClick={() => setIsModalOpen(false)}>
-            取消
-          </Button>,
-          <Button
-            key="save"
-            type="primary"
-            onClick={handleSave}
-            loading={loading}
-          >
-            保存
-          </Button>
+          <Button key="cancel" onClick={() => setIsModalOpen(false)}>取消</Button>,
+          <Button key="save" type="primary" onClick={handleSave} loading={loading}>保存更改</Button>
         ]}
+        width={500}
+        centered
       >
-        <FormSection>
-          <SectionTitle>
-            <h3>头像</h3>
-          </SectionTitle>
-          <AvatarUpload>
-            <AvatarPreview>
-              <img src={editedInfo.avatar || userInfo?.avatar} alt="Avatar" />
-            </AvatarPreview>
-            <UploadInfo>
-              <Button icon={<CloudUploadOutlined />}>
-                更换头像
-                <input
-                  type="file"
-                  hidden
-                  accept="image/*"
-                  onChange={handleFileSelect}
-                />
-              </Button>
-            </UploadInfo>
-          </AvatarUpload>
+        <FormSection $token={token}>
+          <h3>头像设置</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+            <AntAvatar src={editedInfo.avatar} size={72} icon={<UserOutlined />} />
+            <div style={{ flex: 1 }}>
+              <Upload
+                showUploadList={false}
+                beforeUpload={(file) => {
+                  // 阻止自动上传，我们会在保存时手动上传
+                  if (file.size > 2 * 1024 * 1024) {
+                    message.error('图片大小不能超过 2MB');
+                    return false;
+                  }
+                  // 保存文件对象用于上传
+                  setAvatarFile(file);
+                  // 生成预览图
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    setEditedInfo(prev => ({ ...prev, avatar: reader.result }));
+                  };
+                  reader.readAsDataURL(file);
+                  return false; // 阻止自动上传
+                }}
+                accept="image/*"
+              >
+                <Button icon={<CloudUploadOutlined />}>
+                  更换头像
+                </Button>
+              </Upload>
+              <div style={{ marginTop: 8, fontSize: 12, color: token.colorTextSecondary }}>
+                支持 JPG, PNG 格式，大小不超过 2MB
+              </div>
+            </div>
+          </div>
         </FormSection>
 
-        <FormSection>
-          <SectionTitle>
-            <h3>基本信息</h3>
-          </SectionTitle>
-          <FormRow>
-            <FormItem>
-              <FormLabel>用户名</FormLabel>
-              <StyledInput
-                value={editedInfo.username || ''}
-                onChange={(e) => setEditedInfo({...editedInfo, username: e.target.value})}
-                placeholder="请输入用户名"
+        <FormSection $token={token}>
+          <h3>基本信息</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div>
+              <FormLabel $token={token}>昵称</FormLabel>
+              <Input
+                value={editedInfo.nickname}
+                onChange={(e) => setEditedInfo({ ...editedInfo, nickname: e.target.value })}
+                placeholder="请输入您的昵称"
               />
-            </FormItem>
-            <FormItem>
-              <FormLabel>昵称</FormLabel>
-              <StyledInput
-                value={editedInfo.nickname || ''}
-                onChange={(e) => setEditedInfo({...editedInfo, nickname: e.target.value})}
-                placeholder="请输入昵称"
+            </div>
+            <div>
+              <FormLabel $token={token}>个人简介</FormLabel>
+              <Input.TextArea
+                value={editedInfo.description}
+                onChange={(e) => setEditedInfo({ ...editedInfo, description: e.target.value })}
+                placeholder="一句话介绍自己..."
+                rows={3}
+                showCount
+                maxLength={100}
               />
-            </FormItem>
-          </FormRow>
-          <FormItem>
-            <FormLabel>个人简介</FormLabel>
-            <StyledTextArea
-              value={editedInfo.bio || ''}
-              onChange={(e) => setEditedInfo({...editedInfo, bio: e.target.value})}
-              placeholder="介绍一下自己..."
-            />
-          </FormItem>
+            </div>
+          </div>
         </FormSection>
 
-        <FormSection>
-          <SectionTitle>
-            <h3>联系方式</h3>
-          </SectionTitle>
-          <FormRow>
-            <FormItem>
-              <FormLabel>电子邮箱</FormLabel>
-              <StyledInput
-                value={editedInfo.email || ''}
-                onChange={(e) => setEditedInfo({...editedInfo, email: e.target.value})}
-                placeholder="请输入邮箱"
+        <FormSection $token={token}>
+          <h3>联系方式</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div>
+              <FormLabel $token={token}>手机号</FormLabel>
+              <Input
+                value={editedInfo.phoneNumber}
+                onChange={(e) => setEditedInfo({ ...editedInfo, phoneNumber: e.target.value })}
               />
-            </FormItem>
-            <FormItem>
-              <FormLabel>手机号码</FormLabel>
-              <StyledInput
-                value={editedInfo.phone || ''}
-                onChange={(e) => setEditedInfo({...editedInfo, phone: e.target.value})}
-                placeholder="请输入手机号"
+            </div>
+            <div>
+              <FormLabel $token={token}>邮箱</FormLabel>
+              <Input
+                value={editedInfo.email}
+                onChange={(e) => setEditedInfo({ ...editedInfo, email: e.target.value })}
               />
-            </FormItem>
-          </FormRow>
+            </div>
+          </div>
         </FormSection>
-      </StyledModal>
-    </PageWrapper>
+      </Modal>
+    </PageBackground>
   );
 };
 
-export default ProfilePage; 
+// 主组件：提供 ConfigProvider，确保 useToken 能工作
+const ProfilePage = () => {
+  const customTheme = {
+    token: {
+      borderRadius: 8,
+      fontFamily: "'Inter', sans-serif",
+    },
+    components: {
+      Button: { borderRadius: 8, boxShadow: 'none' },
+      Modal: { borderRadiusLG: 16 }
+    }
+  };
+
+  return (
+    <ConfigProvider theme={customTheme}>
+      <ProfileContent />
+    </ConfigProvider>
+  );
+};
+
+export default ProfilePage;

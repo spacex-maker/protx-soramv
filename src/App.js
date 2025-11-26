@@ -11,7 +11,12 @@ import ResetPasswordPage from "./pages/ResetPassword";
 import JoinUs from "pages/JoinUs";
 import Navigation from "pages/Navigation";
 import ProfilePage from "pages/Profile";
-import About from "pages/About";
+import BillingPage from "pages/Billing";
+import NotificationsPage from "pages/Notifications";
+import InvitePage from "pages/Invite";
+import FeedbackPage from "pages/Feedback";
+import HelpPage from "pages/Help";
+import AboutPage from "pages/About";
 import PartnerSurvey from "pages/PartnerSurvey";
 import CloudDrivePage from "./pages/Workspace"; // 工作台页面组件
 import zhCN from 'antd/locale/zh_CN';
@@ -251,6 +256,36 @@ export default function App() {
               <Route path="/profile" element={
                 <PrivateRoute>
                   <ProfilePage />
+                </PrivateRoute>
+              } />
+              <Route path="/billing" element={
+                <PrivateRoute>
+                  <BillingPage />
+                </PrivateRoute>
+              } />
+              <Route path="/notifications" element={
+                <PrivateRoute>
+                  <NotificationsPage />
+                </PrivateRoute>
+              } />
+              <Route path="/invite" element={
+                <PrivateRoute>
+                  <InvitePage />
+                </PrivateRoute>
+              } />
+              <Route path="/feedback" element={
+                <PrivateRoute>
+                  <FeedbackPage />
+                </PrivateRoute>
+              } />
+              <Route path="/help" element={
+                <PrivateRoute>
+                  <HelpPage />
+                </PrivateRoute>
+              } />
+              <Route path="/about" element={
+                <PrivateRoute>
+                  <AboutPage />
                 </PrivateRoute>
               } />
               <Route path="/decrypt" element={<FileDecryptPage />} />

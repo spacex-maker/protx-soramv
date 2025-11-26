@@ -1,13 +1,37 @@
 import styled, { keyframes } from 'styled-components';
-import { Card, Button } from 'antd';
+import { Button, Card } from 'antd';
+import { motion } from 'framer-motion';
 
-export const PageContainer = styled.div`
-  min-height: 100vh;
-  background: var(--ant-color-bg-container);
+// --- 1. 动画定义 ---
+export const colorRotate = keyframes`
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
 `;
 
-export const ContentWrapper = styled.div`
-  max-width: 1200px;
+export const float = keyframes`
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+`;
+
+export const gradientShift = keyframes`
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+`;
+
+// --- 2. 基础容器 ---
+export const PageContainer = styled.div`
+  min-height: 100vh;
+  /* 适配暗黑模式的背景 */
+  background: ${props => props.theme.mode === 'dark' ? '#000' : '#f5f5f7'};
+  color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1d1d1f'};
+  font-family: "SF Pro Display", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  overflow-x: hidden;
+`;
+
+export const ContentWrapper = styled(motion.div)`
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 24px;
   position: relative;
@@ -15,140 +39,111 @@ export const ContentWrapper = styled.div`
 `;
 
 export const Section = styled.section`
-  padding: 80px 0;
-  background: ${props => props.background || 'transparent'};
+  padding: 120px 0;
+  position: relative;
+  background: transparent;
+  
+  @media (max-width: 768px) {
+    padding: 80px 0;
+  }
 `;
 
+// --- 3. 排版组件 (新增) ---
+export const SectionTitle = styled(motion.h2)`
+  font-size: clamp(32px, 5vw, 56px);
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 24px;
+  letter-spacing: -0.02em;
+  color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1d1d1f'};
+`;
+
+export const SectionSubtitle = styled(motion.p)`
+  font-size: clamp(16px, 2vw, 20px);
+  text-align: center;
+  color: ${props => props.theme.mode === 'dark' ? '#86868b' : '#6e6e73'};
+  max-width: 800px;
+  margin: 0 auto 60px;
+  line-height: 1.6;
+`;
+
+// --- 4. 按钮组件 ---
 export const StyledButton = styled(Button)`
-  border-radius: 20px !important;
-  height: 36px;
-  padding: 0 20px;
+  border-radius: 100px !important;
+  height: 48px;
+  padding: 0 32px;
+  font-weight: 600;
+  font-size: 16px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
 
-  &.ant-btn-lg {
-    height: 40px;
-    padding: 0 24px;
-    font-size: 16px;
-  }
-`;
-
-const colorRotate = keyframes`
-  0% {
-    filter: hue-rotate(0deg);
-  }
-  100% {
-    filter: hue-rotate(360deg);
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.15);
   }
 `;
 
 export const EnterpriseButton = styled(StyledButton)`
-  &&.ant-btn {
-    position: relative;
-    overflow: hidden;
-    border: none !important;
-    background: linear-gradient(
-      45deg,
-      #ff0080,
-      #ff8c00,
-      #40e0d0,
-      #7b68ee,
-      #ff0080
-    ) !important;
-    background-size: 200% 200% !important;
-    animation: ${colorRotate} 10s linear infinite;
-    transition: all 0.3s ease;
-    color: white !important;
-    font-weight: 500;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-
+  && {
+    background: linear-gradient(45deg, #ff0080, #7928ca, #40e0d0);
+    background-size: 200% 200%;
+    color: white;
+    animation: ${gradientShift} 5s ease infinite;
+    border: none;
+    
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-      opacity: 0.95;
-      animation-play-state: paused;
-    }
-
-    &:active {
-      transform: translateY(1px);
-    }
-
-    &::before {
-      content: '';
-      position: absolute;
-      top: -2px;
-      left: -2px;
-      right: -2px;
-      bottom: -2px;
-      background: inherit;
-      filter: blur(10px);
-      opacity: 0.5;
-      z-index: -1;
+      opacity: 0.9;
+      box-shadow: 0 8px 24px rgba(121, 40, 202, 0.4);
     }
   }
 `;
 
-export const FeatureCard = styled(Card)`
-  height: 100%;
-  text-align: center;
-  transition: all 0.3s ease;
-  background: ${props => props.theme.mode === 'dark' ? 'rgba(45, 55, 72, 0.3)' : 'rgba(255, 255, 255, 0.8)'};
-  backdrop-filter: blur(10px);
-  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'};
-  
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: ${props => props.theme.mode === 'dark' 
-      ? '0 8px 24px rgba(0, 0, 0, 0.3)' 
-      : '0 8px 24px rgba(0, 0, 0, 0.1)'};
-  }
+// --- 5. 卡片组件 (核心新增) ---
 
-  .ant-card-body {
-    padding: 24px;
-  }
-
-  .icon-wrapper {
-    font-size: 36px;
-    color: ${props => props.theme.mode === 'dark' ? '#63b3ed' : '#3182ce'};
-    margin-bottom: 16px;
-  }
+// 通用毛玻璃卡片基类
+export const GlassCard = styled(motion.div)`
+  background: ${props => props.theme.mode === 'dark' 
+    ? 'rgba(30, 30, 32, 0.6)' 
+    : 'rgba(255, 255, 255, 0.7)'};
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid ${props => props.theme.mode === 'dark' 
+    ? 'rgba(255, 255, 255, 0.1)' 
+    : 'rgba(0, 0, 0, 0.05)'};
+  border-radius: 24px;
+  transition: all 0.4s cubic-bezier(0.25, 0.1, 0.25, 1);
 `;
 
-export const PriceCard = styled(Card)`
+// Bento Grid 风格卡片
+export const BentoCard = styled(GlassCard)`
+  padding: 40px;
   height: 100%;
-  text-align: center;
-  background: ${props => props.theme.mode === 'dark' ? 'rgba(45, 55, 72, 0.3)' : 'rgba(255, 255, 255, 0.8)'};
-  backdrop-filter: blur(10px);
-  border: ${props => props.popular 
-    ? `2px solid ${props.theme.mode === 'dark' ? '#63b3ed' : '#3182ce'}`
-    : `1px solid ${props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'}`};
-  transition: all 0.3s ease;
-  border-radius: 20px !important;
   overflow: hidden;
-  
-  .ant-card-body {
-    padding: 24px;
-  }
+  position: relative;
+  box-shadow: ${props => props.theme.mode === 'dark' 
+    ? '0 20px 40px -10px rgba(0, 0, 0, 0.3)' 
+    : '0 20px 40px -10px rgba(0, 0, 0, 0.05)'};
 
   &:hover {
-    transform: translateY(-5px);
+    transform: scale(1.02);
+    z-index: 2;
     box-shadow: ${props => props.theme.mode === 'dark' 
-      ? '0 8px 24px rgba(0, 0, 0, 0.3)' 
-      : '0 8px 24px rgba(0, 0, 0, 0.1)'};
+      ? '0 30px 60px -12px rgba(0, 0, 0, 0.5)' 
+      : '0 30px 60px -12px rgba(0, 0, 0, 0.1)'};
   }
+`;
 
-  .price {
-    font-size: 48px;
-    font-weight: bold;
-    color: ${props => props.theme.mode === 'dark' ? '#63b3ed' : '#3182ce'};
-    margin: 16px 0;
-    
-    .currency {
-      font-size: 24px;
-      vertical-align: super;
-    }
-    
-    .period {
-      font-size: 16px;
-      color: ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(0, 0, 0, 0.6)'};
-    }
-  }
-`; 
+// 兼容旧代码的 FeatureCard (映射到新 BentoCard)
+export const FeatureCard = styled(BentoCard)`
+  text-align: center;
+`;
+
+// 兼容旧代码的 PriceCard
+export const PriceCard = styled(BentoCard)`
+  text-align: center;
+  border: ${props => props.popular 
+    ? `2px solid ${props.theme.mode === 'dark' ? '#2997ff' : '#0071e3'}`
+    : `1px solid ${props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'}`
+  };
+`;
