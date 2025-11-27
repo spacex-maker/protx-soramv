@@ -1,0 +1,129 @@
+// 视频结果类型
+export interface VideoResult {
+  url: string;
+  aspectRatio: string;
+  duration: number;
+  thumbnail: string;
+}
+
+// 模型类型定义
+export interface Model {
+  id: number;
+  modelName: string;
+  modelCode: string;
+  description: string;
+  videoDefaultResolution: string | null;
+  videoMaxResolution: string | null;
+  videoDuration: number | null;
+  videoFps: number | null;
+  videoMaxFrames: number | null;
+  videoAspectRatios: string | null; // 视频比例（文生视频使用此字段）
+  videoAspectResolution: string | null;
+  videoFormats: string | null;
+  imageAspectRatios: string | null; // 图片比例（文生视频不使用此字段）
+  supportCameraMotion: boolean;
+  supportImg2video: boolean;
+  supportVideoEdit: boolean;
+  supportCharacterConsistency: boolean;
+  supportReference: boolean;
+  currency: string | null;
+  outputPrice: number | null;
+}
+
+// 生成任务记录类型
+export interface GenerationTask {
+  id: number;
+  taskType: string;
+  modelName: string;
+  modelCode: string;
+  status: number; // 0: 处理中, 2: 成功, 3: 失败
+  inputType: string;
+  outputType: string;
+  resultUrls: string[] | null;
+  thumbnailUrl: string | null;
+  errorMessage: string | null;
+  createTime: string;
+  updateTime: string;
+  startTime: string | null;
+  endTime: string | null;
+  // 可选字段（列表接口可能不返回）
+  prompt?: string | null;
+  creditsCost?: number | null;
+  durationMs?: number | null;
+  model?: {
+    videoAspectRatios?: string | null;
+    imageAspectRatios?: string | null;
+  } | null;
+}
+
+export interface GenerationTaskPageResponse {
+  records: GenerationTask[];
+  total: number;
+  size: number;
+  current: number;
+  pages: number;
+}
+
+// 任务详情类型定义
+export interface TaskOutputFile {
+  id: number;
+  taskId: number;
+  fileUrl: string;
+  fileType: string;
+  extraMetadata: string | null;
+  sortOrder: number;
+  createTime: string;
+  extraMetadataMap: any | null;
+}
+
+export interface TaskDetailModel {
+  id: number;
+  modelName: string;
+  modelCode: string;
+  modelType: string;
+  description: string;
+  releaseYear: string;
+  coverImage: string;
+  videoDefaultResolution: string;
+  videoMaxResolution: string;
+  videoDuration: number;
+  videoFps: number;
+  videoMaxFrames: number;
+  videoAspectRatios: string;
+  videoFormats: string;
+  supportCameraMotion: boolean;
+  supportImg2video: boolean;
+  supportVideoEdit: boolean;
+  supportCharacterConsistency: boolean;
+  supportReference: boolean;
+}
+
+export interface TaskDetail {
+  taskType: string;
+  modelCode: string;
+  modelName: string;
+  prompt: string;
+  status: number;
+  inputType: string;
+  outputType: string;
+  thumbnailUrl: string | null;
+  coverImage?: string | null; // 封面图，可能是视频或图片链接
+  seed: number | null;
+  version: string | null;
+  creditsCost: number;
+  billingStatus: number;
+  durationMs: number | null;
+  workerNode: string | null;
+  gpuType: string | null;
+  queueName: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  startTime: string;
+  endTime: string;
+  createTime: string;
+  updateTime: string;
+  inputFiles: any[];
+  outputFiles: TaskOutputFile[];
+  model: TaskDetailModel;
+}
+

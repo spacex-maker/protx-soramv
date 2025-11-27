@@ -1,0 +1,86 @@
+import React from 'react';
+import {
+  DesktopOutlined,
+  MobileOutlined,
+  VideoCameraOutlined,
+  AppstoreOutlined,
+  TabletOutlined,
+  BorderOutlined,
+} from '@ant-design/icons';
+
+// 根据比例值获取对应的图标和标签
+export const getAspectRatioOption = (ratio: string, intl: any) => {
+  const ratioMap: { [key: string]: { labelKey: string; defaultLabel: string; icon: React.ReactNode } } = {
+    '16:9': {
+      labelKey: 'create.aspectRatio.16:9',
+      defaultLabel: '16:9 (Landscape)',
+      icon: <DesktopOutlined />
+    },
+    '9:16': {
+      labelKey: 'create.aspectRatio.9:16',
+      defaultLabel: '9:16 (Portrait)',
+      icon: <MobileOutlined />
+    },
+    '21:9': {
+      labelKey: 'create.aspectRatio.21:9',
+      defaultLabel: '21:9 (Cinema)',
+      icon: <VideoCameraOutlined />
+    },
+    '1:1': {
+      labelKey: 'create.aspectRatio.1:1',
+      defaultLabel: '1:1 (Square)',
+      icon: <AppstoreOutlined />
+    },
+    '4:3': {
+      labelKey: 'create.aspectRatio.4:3',
+      defaultLabel: '4:3 (Classic)',
+      icon: <TabletOutlined />
+    },
+    '3:4': {
+      labelKey: 'create.aspectRatio.3:4',
+      defaultLabel: '3:4 (Portrait Classic)',
+      icon: <MobileOutlined />
+    },
+  };
+
+  const option = ratioMap[ratio];
+  if (option) {
+    return {
+      label: intl.formatMessage({ id: option.labelKey, defaultMessage: option.defaultLabel }),
+      value: ratio,
+      icon: option.icon
+    };
+  }
+
+  // 如果没有预定义的比例，返回默认格式
+  return {
+    label: ratio,
+    value: ratio,
+    icon: <BorderOutlined />
+  };
+};
+
+// 镜头运动 - 使用国际化函数生成选项
+export const getCameraMotions = (intl: any) => [
+  { label: intl.formatMessage({ id: 'create.cameraMotion.none', defaultMessage: '无运动 (None)' }), value: 'none' },
+  { label: intl.formatMessage({ id: 'create.cameraMotion.zoomIn', defaultMessage: '向前推 (Zoom In)' }), value: 'zoom_in' },
+  { label: intl.formatMessage({ id: 'create.cameraMotion.dollyOut', defaultMessage: '向后拉 (Dolly Out)' }), value: 'dolly_out' },
+  { label: intl.formatMessage({ id: 'create.cameraMotion.panLeft', defaultMessage: '向左平移 (Pan Left)' }), value: 'pan_left' },
+  { label: intl.formatMessage({ id: 'create.cameraMotion.tiltUp', defaultMessage: '向上倾斜 (Tilt Up)' }), value: 'tilt_up' },
+  { label: intl.formatMessage({ id: 'create.cameraMotion.orbital', defaultMessage: '360° 环绕 (Orbital)' }), value: 'orbital' },
+];
+
+// 判断 URL 是否是视频
+export const isVideoUrl = (url: string | null | undefined): boolean => {
+  if (!url) return false;
+  const ext = url.split('.').pop()?.toLowerCase();
+  return ['mp4', 'webm', 'mov', 'mkv'].includes(ext || '') || url.startsWith('data:video');
+};
+
+// 规范化 URL
+export const normalizeUrl = (url: string | null | undefined): string => {
+  if (!url) return '';
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  return `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
