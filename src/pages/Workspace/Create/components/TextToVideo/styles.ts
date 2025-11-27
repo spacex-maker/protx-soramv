@@ -1,5 +1,5 @@
 import styled, { createGlobalStyle } from 'styled-components';
-import { Card, Select } from 'antd';
+import { Card, Select, Button } from 'antd';
 
 // 全局下拉菜单样式
 export const GlobalSelectStyles = createGlobalStyle`
@@ -388,8 +388,8 @@ export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVid
       bottom: 0;
       width: 45%;
       background-image: url(${props.coverImage});
-      background-size: cover;
-      background-position: center right;
+      background-size: auto 100%;
+      background-position: right center;
       background-repeat: no-repeat;
       z-index: 0;
       mask-image: linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0) 100%);
@@ -452,7 +452,9 @@ export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVid
     right: 0;
     bottom: 0;
     width: 45%;
+    height: 100%;
     object-fit: cover;
+    object-position: right center;
     z-index: 0;
     mask-image: linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0) 100%);
     -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0) 100%);
@@ -528,6 +530,67 @@ export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVid
     color: #666;
     margin-top: 4px;
     line-height: 1.4;
+    white-space: normal;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+
+  .model-bottom-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    gap: 8px;
+    padding-left: 26px;
+  }
+
+  .model-aspect-ratios {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    flex: 1;
+  }
+
+  .model-detail-button {
+    flex-shrink: 0;
+    opacity: 1;
+    transition: opacity 0.3s ease, transform 0.2s ease;
+    
+    &:hover {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+  }
+`;
+
+export const DetailButton = styled(Button)`
+  height: 28px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 14px;
+  background: ${(props) =>
+    props.theme.mode === 'dark'
+      ? 'rgba(24, 144, 255, 0.35)'
+      : 'rgba(24, 144, 255, 0.2)'};
+  border: 1px solid
+    ${(props) =>
+      props.theme.mode === 'dark'
+        ? 'rgba(24, 144, 255, 0.4)'
+        : 'rgba(24, 144, 255, 0.35)'};
+  color: #1890ff;
+  
+  &:hover {
+    background: ${(props) =>
+      props.theme.mode === 'dark'
+        ? 'rgba(24, 144, 255, 0.45)'
+        : 'rgba(24, 144, 255, 0.3)'};
+    border-color: #1890ff;
+    color: #1890ff;
+  }
+  
+  .anticon {
+    font-size: 12px;
   }
 `;
 

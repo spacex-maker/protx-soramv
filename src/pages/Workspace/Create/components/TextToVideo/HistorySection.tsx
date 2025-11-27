@@ -1,12 +1,12 @@
 import React from 'react';
-import { Button, Spin, Empty, Pagination, Tooltip, Tag } from 'antd';
+import { Button, Spin, Empty, Pagination, Tooltip } from 'antd';
 import { 
   ReloadOutlined, 
-  PlayCircleFilled, 
+  // PlayCircleFilled, // 已删除
   CheckCircleFilled, 
   CloseCircleFilled, 
   SyncOutlined,
-  EyeOutlined,
+  // EyeOutlined, // 已删除
   FileTextOutlined,
   CopyOutlined,
   DownloadOutlined,
@@ -21,11 +21,12 @@ import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ==========================================
-// 1. 样式系统
+// 1. 样式系统 (Styled System)
 // ==========================================
 
 const Container = styled.div`
   margin-top: 40px;
+  width: 100%;
 `;
 
 const Header = styled.div`
@@ -61,8 +62,10 @@ const Grid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 24px;
+  width: 100%;
 `;
 
+// 核心卡片
 const Card = styled(motion.div as any)`
   position: relative;
   border-radius: 16px;
@@ -71,23 +74,23 @@ const Card = styled(motion.div as any)`
   box-shadow: 0 4px 20px rgba(0,0,0,0.05);
   border: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : '#eee'};
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 9;
+  display: flex; 
+  flex-direction: column;
+  transform: translateZ(0); 
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
     border-color: transparent;
+    box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);
     z-index: 10;
 
-    .overlay { opacity: 1; }
-    /* 悬停时，底部信息栏向上滑动并完全显示 */
+    .media-content { transform: scale(1.05); }
+    /* .play-btn 和 .overlay 的相关样式已移除 */
     .info-bar { 
       transform: translateY(0); 
-      background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 60%, transparent 100%);
+      background: linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.6) 80%, transparent 100%);
     }
-    .play-btn { transform: scale(1); opacity: 1; }
-    .actions-bar { opacity: 1; transform: translateY(0); }
+    .top-actions { opacity: 1; transform: translateY(0); }
     .prompt-preview { height: auto; opacity: 1; margin-top: 8px; }
     .meta-tags { height: auto; opacity: 1; margin-top: 8px; }
   }
@@ -98,57 +101,20 @@ const MediaWrapper = styled.div`
   height: 100%;
   background: #000;
   position: relative;
+  flex: 1;
 
   img, video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     display: block;
-    transition: transform 0.5s;
-  }
-
-  ${Card}:hover & img, ${Card}:hover & video {
-    transform: scale(1.05); /* 背景微放大 */
+    transition: transform 0.7s cubic-bezier(0.25, 0.8, 0.25, 1);
   }
 `;
 
-const HoverOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  /* 遮罩层稍微加深，以便显示更多白色文字 */
-  background: rgba(0,0,0,0.2); 
-  opacity: 0;
-  transition: opacity 0.3s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2;
-`;
+// 已删除 HoverOverlay 和 PlayBtn 样式定义
 
-const PlayBtn = styled.div`
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 24px;
-  transition: all 0.3s;
-  transform: scale(0.8);
-  opacity: 0;
-  
-  &:hover {
-    background: rgba(255, 255, 255, 0.3);
-    transform: scale(1.1) !important;
-  }
-`;
-
-// 顶部操作栏 (下载/复制/删除)
-const ActionsBar = styled.div`
+const TopActions = styled.div`
   position: absolute;
   top: 12px;
   right: 12px;
@@ -157,25 +123,26 @@ const ActionsBar = styled.div`
   z-index: 10;
   opacity: 0;
   transform: translateY(-10px);
-  transition: all 0.3s;
+  transition: all 0.2s ease-in-out;
 `;
 
 const ActionBtn = styled.div`
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255,255,255,0.8);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 14px;
+  cursor: pointer;
   transition: all 0.2s;
-  border: 1px solid rgba(255,255,255,0.1);
 
   &:hover {
-    background: rgba(255, 255, 255, 0.9);
+    background: #fff;
     color: #000;
   }
   
@@ -186,22 +153,23 @@ const ActionBtn = styled.div`
   }
 `;
 
-// 底部详细信息栏
 const InfoBar = styled.div`
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 20px;
-  /* 默认只显示底部一点渐变 */
-  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, transparent 100%);
-  transform: translateY(0);
-  transition: all 0.4s ease;
+  padding: 24px 20px 20px;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 50%, transparent 100%);
+  transform: translateY(40%);
+  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.3s;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   z-index: 3;
-  pointer-events: none; /* 文字部分穿透 */
+  pointer-events: none; 
+  
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
 `;
 
 const ModelInfo = styled.div`
@@ -214,22 +182,26 @@ const ModelInfo = styled.div`
     font-weight: 600;
     font-size: 14px;
     text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   
   .time {
-    color: rgba(255,255,255,0.6);
+    color: rgba(255,255,255,0.7);
     font-size: 12px;
     font-family: 'SF Mono', monospace;
+    display: flex;
+    align-items: center;
   }
 `;
 
-// 提示词预览 (默认隐藏，悬停显示)
 const PromptPreview = styled.div`
   height: 0;
   opacity: 0;
   overflow: hidden;
-  color: rgba(255,255,255,0.8);
-  font-size: 12px;
+  color: rgba(255,255,255,0.85);
+  font-size: 13px;
   line-height: 1.5;
   transition: all 0.3s;
   display: -webkit-box;
@@ -238,7 +210,6 @@ const PromptPreview = styled.div`
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 `;
 
-// 元数据标签 (默认隐藏，悬停显示)
 const MetaTags = styled.div`
   height: 0;
   opacity: 0;
@@ -252,11 +223,12 @@ const MetaTags = styled.div`
     align-items: center;
     gap: 4px;
     font-size: 11px;
-    color: rgba(255,255,255,0.6);
-    background: rgba(255,255,255,0.1);
-    padding: 2px 6px;
+    color: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.15);
+    padding: 2px 8px;
     border-radius: 4px;
     font-family: 'SF Mono', monospace;
+    backdrop-filter: blur(4px);
   }
 `;
 
@@ -264,7 +236,7 @@ const StatusTag = styled.div<{ $status: number }>`
   position: absolute;
   top: 12px;
   left: 12px;
-  z-index: 3;
+  z-index: 5;
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 11px;
@@ -276,9 +248,9 @@ const StatusTag = styled.div<{ $status: number }>`
   
   ${props => {
     switch (props.$status) {
-      case 2: return css`display: none;`; // 成功状态不显示，保持干净
-      case 3: return css`background: rgba(239, 68, 68, 0.9); color: #fff;`;
-      default: return css`background: rgba(59, 130, 246, 0.9); color: #fff;`;
+      case 2: return css`display: none;`;
+      case 3: return css`background: rgba(239, 68, 68, 0.8); color: #fff;`;
+      default: return css`background: rgba(59, 130, 246, 0.8); color: #fff;`;
     }
   }}
 `;
@@ -292,6 +264,7 @@ const LoadingPlaceholder = styled.div`
   background: ${props => props.theme.mode === 'dark' ? '#222' : '#f5f5f5'};
   color: ${props => props.theme.mode === 'dark' ? '#666' : '#999'};
   gap: 12px;
+  
   .anticon { font-size: 24px; }
   span { font-size: 12px; }
 `;
@@ -311,7 +284,7 @@ interface HistorySectionProps {
   onRefresh: () => void;
   onPageChange: (page: number, pageSize: number) => void;
   onTaskClick: (taskId: number) => void;
-  getStatusText?: (status: number) => string; 
+  getStatusText?: (status: number) => string;
 }
 
 const HistorySection: React.FC<HistorySectionProps> = ({
@@ -372,17 +345,21 @@ const HistorySection: React.FC<HistorySectionProps> = ({
     }
 
     return (
-      <MediaWrapper>
+      <MediaWrapper className="media-content">
         {isVideo ? (
-          <video src={mediaUrl} muted loop playsInline onMouseOver={e => e.currentTarget.play()} onMouseOut={e => e.currentTarget.pause()} />
+          <video 
+            src={mediaUrl} 
+            muted 
+            loop 
+            playsInline 
+            onMouseOver={e => e.currentTarget.play()} 
+            onMouseOut={e => e.currentTarget.pause()} 
+          />
         ) : (
           <img src={mediaUrl} alt={task.modelName} loading="lazy" />
         )}
-        <HoverOverlay className="overlay">
-          <PlayBtn className="play-btn">
-            {isVideo ? <PlayCircleFilled /> : <EyeOutlined />}
-          </PlayBtn>
-        </HoverOverlay>
+        
+        {/* 已删除 HoverOverlay 和 PlayBtn */}
       </MediaWrapper>
     );
   };
@@ -394,13 +371,21 @@ const HistorySection: React.FC<HistorySectionProps> = ({
           <h3>历史记录</h3>
           <span className="count-badge">{historyPagination.total}</span>
         </TitleArea>
-        <Button type="text" icon={<ReloadOutlined />} onClick={onRefresh} loading={historyLoading} style={{ borderRadius: '8px' }}>
+        <Button 
+          type="text" 
+          icon={<ReloadOutlined />} 
+          onClick={onRefresh} 
+          loading={historyLoading}
+          style={{ borderRadius: '8px' }}
+        >
           刷新
         </Button>
       </Header>
 
       {historyLoading && historyTasks.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '80px 0' }}><Spin size="large" /></div>
+        <div style={{ textAlign: 'center', padding: '80px 0' }}>
+          <Spin size="large" />
+        </div>
       ) : historyTasks.length > 0 ? (
         <>
           <Grid>
@@ -414,14 +399,12 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                   transition={{ delay: index * 0.05 }}
                   layout
                 >
-                  {/* 左上角状态 (仅在非成功时显示) */}
                   <StatusTag $status={task.status}>
                     {task.status === 1 ? <SyncOutlined spin /> : <CloseCircleFilled />}
                     {task.status === 1 ? 'Processing' : 'Failed'}
                   </StatusTag>
 
-                  {/* 右上角操作栏 (悬停显示) */}
-                  <ActionsBar className="actions-bar">
+                  <TopActions className="top-actions">
                     {task.prompt && (
                       <Tooltip title="复制提示词">
                         <ActionBtn onClick={(e) => handleCopyPrompt(e, task.prompt)}>
@@ -437,50 +420,41 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                       </Tooltip>
                     )}
                     <Tooltip title="删除">
-                      <ActionBtn className="delete" onClick={(e) => { e.stopPropagation(); /* Add delete logic */ }}>
+                      <ActionBtn className="delete" onClick={(e) => { e.stopPropagation(); }}>
                         <DeleteOutlined />
                       </ActionBtn>
                     </Tooltip>
-                  </ActionsBar>
+                  </TopActions>
 
-                  {/* 媒体内容 */}
                   {renderCardContent(task)}
 
-                  {/* 底部详细信息 (悬停展开更多) */}
                   <InfoBar className="info-bar">
                     <ModelInfo>
                       <div className="name">{task.modelName || 'Untitled Task'}</div>
-                      <div className="time">{dayjs(task.createTime).fromNow()}</div>
+                      <div className="time">
+                        <ClockCircleOutlined style={{fontSize: 10, marginRight: 4}} />
+                        {dayjs(task.createTime).fromNow()}
+                      </div>
                     </ModelInfo>
                     
-                    {/* 额外信息：Prompt + Meta */}
                     <PromptPreview className="prompt-preview">
-                      {task.prompt || intl.formatMessage({ 
-                        id: 'create.history.noPrompt', 
-                        defaultMessage: '暂无提示词' 
-                      })}
+                      {task.prompt || intl.formatMessage({ id: 'create.history.noPrompt', defaultMessage: '暂无提示词' })}
                     </PromptPreview>
                     
                     <MetaTags className="meta-tags">
                       {task.creditsCost !== null && task.creditsCost !== undefined && (
                         <div className="tag">
-                          <ThunderboltFilled style={{color:'#eab308'}}/> 
-                          {task.creditsCost} {intl.formatMessage({ 
-                            id: 'create.taskDetail.points', 
-                            defaultMessage: 'pts' 
-                          })}
+                          <ThunderboltFilled style={{color:'#fbbf24'}}/> {task.creditsCost}
                         </div>
                       )}
                       {task.durationMs && (
                         <div className="tag">
-                          <ClockCircleOutlined /> 
-                          {(task.durationMs/1000).toFixed(1)}s
+                          <ClockCircleOutlined /> {(task.durationMs/1000).toFixed(1)}s
                         </div>
                       )}
                       {(task.model?.videoAspectRatios || task.model?.imageAspectRatios) && (
                         <div className="tag">
-                          <ColumnHeightOutlined /> 
-                          {task.model?.videoAspectRatios || task.model?.imageAspectRatios}
+                          <ColumnHeightOutlined /> {task.model?.videoAspectRatios || task.model?.imageAspectRatios}
                         </div>
                       )}
                     </MetaTags>
@@ -502,7 +476,11 @@ const HistorySection: React.FC<HistorySectionProps> = ({
           </div>
         </>
       ) : (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<span style={{ color: '#999' }}>暂无历史记录</span>} style={{ margin: '80px 0' }} />
+        <Empty 
+          image={Empty.PRESENTED_IMAGE_SIMPLE} 
+          description={<span style={{ color: '#999' }}>暂无历史记录</span>} 
+          style={{ margin: '80px 0' }}
+        />
       )}
     </Container>
   );

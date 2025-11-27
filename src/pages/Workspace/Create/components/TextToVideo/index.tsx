@@ -22,6 +22,7 @@ import {
   PlayCircleOutlined,
   InfoCircleOutlined,
   EditOutlined,
+  EyeOutlined,
   FileImageOutlined,
   ClockCircleOutlined,
   CameraOutlined,
@@ -47,11 +48,13 @@ import {
   ModelSelectDisplay,
   AspectRatioTag,
   ResolutionTag,
+  DetailButton,
 } from './styles';
-import { getAspectRatioOption, getCameraMotions, isVideoUrl, normalizeUrl } from './utils';
+import { getAspectRatioOption, getCameraMotions, isVideoUrl, normalizeUrl, getModelAspectRatios, getModelDurationOptions } from './utils';
 import HistorySection from './HistorySection';
 import TaskDetailModal from './TaskDetailModal';
 import WaitingTaskQueue, { WaitingTask } from './WaitingTaskQueue';
+import ModelDetailModal from './ModelDetailModal';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -84,6 +87,10 @@ const TextToVideo: React.FC = () => {
   // 任务详情模态框相关状态
   const [taskDetailModalVisible, setTaskDetailModalVisible] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  
+  // 模型详情模态框相关状态
+  const [modelDetailModalVisible, setModelDetailModalVisible] = useState(false);
+  const [selectedModelForDetail, setSelectedModelForDetail] = useState<Model | null>(null);
 
   // 初始化时确保标志为 false
   useEffect(() => {
@@ -156,27 +163,37 @@ const TextToVideo: React.FC = () => {
     const updates: any = {};
 
     // 设置视频比例（如果有支持的比例）
-    if (model.videoAspectRatios) {
-      const ratios = model.videoAspectRatios.split(',').map(r => r.trim());
-      if (ratios.length > 0) {
-        // 检查当前选择的比例是否在支持列表中，如果不在则使用第一个
-        const currentRatio = form.getFieldValue('aspectRatio');
-        if (!ratios.includes(currentRatio)) {
-          updates.aspectRatio = ratios[0];
-        }
+    const supportedRatios = getModelAspectRatios(model);
+    if (supportedRatios.length > 0) {
+      // 检查当前选择的比例是否在支持列表中，如果不在则使用第一个
+      const currentRatio = form.getFieldValue('aspectRatio');
+      if (!supportedRatios.includes(currentRatio)) {
+        updates.aspectRatio = supportedRatios[0];
       }
     }
 
-    // 设置视频时长（如果有最大时长限制）
-    if (model.videoDuration) {
-      const currentDuration = form.getFieldValue('duration') || 8;
-      if (currentDuration > model.videoDuration) {
-        updates.duration = model.videoDuration;
-      } else if (currentDuration < 4) {
-        // 确保最小值为4秒
-        updates.duration = 4;
+    // 设置视频时长
+    const durationOptions = getModelDurationOptions(model);
+    if (durationOptions === null) {
+      // 使用 Slider（videoDuration 有值）
+      if (model.videoDuration) {
+        const currentDuration = form.getFieldValue('duration') || 8;
+        if (currentDuration > model.videoDuration) {
+          updates.duration = model.videoDuration;
+        } else if (currentDuration < 4) {
+          // 确保最小值为4秒
+          updates.duration = 4;
+        }
+      }
+    } else if (durationOptions.length > 0) {
+      // 使用 Select（videoDurationEnum 有值）
+      const currentDuration = form.getFieldValue('duration');
+      if (!currentDuration || !durationOptions.includes(currentDuration)) {
+        // 如果当前值不在选项中，使用第一个选项
+        updates.duration = durationOptions[0];
       }
     }
+    // 如果 durationOptions 为空数组，表示不支持时长指定，不做任何处理
 
     // 如果不支持镜头运动，设置为 none
     if (!model.supportCameraMotion) {
@@ -262,22 +279,32 @@ const TextToVideo: React.FC = () => {
   };
 
   // 获取支持的视频比例选项（根据选中的模型）
-  // 注意：文生视频只使用 videoAspectRatios，不使用 imageAspectRatios
+  // 注意：文生视频只使用 videoAspectRatios 或 videoAspectRatiosEnum，不使用 imageAspectRatios
   const getAvailableAspectRatios = () => {
-    if (!selectedModel || !selectedModel.videoAspectRatios) {
+    if (!selectedModel) {
       return [];
     }
 
-    // 只使用 videoAspectRatios，不使用 imageAspectRatios
-    const supportedRatios = selectedModel.videoAspectRatios.split(',').map(r => r.trim());
+    // 使用辅助函数获取支持的比例列表（优先 videoAspectRatios，如果为空则使用 videoAspectRatiosEnum）
+    const supportedRatios = getModelAspectRatios(selectedModel);
+    
+    if (supportedRatios.length === 0) {
+      return [];
+    }
     
     // 根据后端返回的比例动态生成选项
     return supportedRatios.map(ratio => getAspectRatioOption(ratio, intl));
   };
 
   // 获取最大视频时长（根据选中的模型）
+  // 只有在使用 Slider 时才需要此函数
   const getMaxDuration = () => {
     return selectedModel?.videoDuration || 15;
+  };
+
+  // 获取视频时长选项（用于判断是使用 Slider 还是 Select）
+  const getDurationOptions = () => {
+    return getModelDurationOptions(selectedModel);
   };
 
   // 计算预估价格
@@ -305,13 +332,38 @@ const TextToVideo: React.FC = () => {
     return formats;
   };
 
+  // 获取支持的视频风格选项（根据选中的模型）
+  const getAvailableVideoStyles = () => {
+    if (!selectedModel || !selectedModel.videoSupportStyle) {
+      return [];
+    }
+
+    const styles = selectedModel.videoSupportStyle.split(',').map(s => s.trim()).filter(s => s);
+    return styles;
+  };
+
+  // 获取支持的视频质量选项（根据选中的模型）
+  const getAvailableVideoQualities = () => {
+    if (!selectedModel || !selectedModel.videoQuality) {
+      return [];
+    }
+
+    const qualities = selectedModel.videoQuality.split(',').map(q => q.trim()).filter(q => q);
+    return qualities;
+  };
+
   // 根据选中的比例获取对应的分辨率
   const getResolutionByAspectRatio = (aspectRatio: string): string | null => {
-    if (!selectedModel || !selectedModel.videoAspectRatios || !selectedModel.videoAspectResolution) {
+    if (!selectedModel || !selectedModel.videoAspectResolution) {
       return null;
     }
 
-    const ratios = selectedModel.videoAspectRatios.split(',').map(r => r.trim());
+    // 使用辅助函数获取支持的比例列表
+    const ratios = getModelAspectRatios(selectedModel);
+    if (ratios.length === 0) {
+      return null;
+    }
+
     const resolutions = selectedModel.videoAspectResolution.split(',').map(r => r.trim());
     
     const index = ratios.indexOf(aspectRatio);
@@ -533,6 +585,19 @@ const TextToVideo: React.FC = () => {
     setSelectedTaskId(null);
   };
 
+  // 显示模型详情
+  const handleShowModelDetail = (e: React.MouseEvent, model: Model) => {
+    e.stopPropagation(); // 阻止触发选择
+    setSelectedModelForDetail(model);
+    setModelDetailModalVisible(true);
+  };
+
+  // 关闭模型详情模态框
+  const handleCloseModelDetail = () => {
+    setModelDetailModalVisible(false);
+    setSelectedModelForDetail(null);
+  };
+
   // 调用后端 API 生成视频
   const handleGenerate = async (values: any) => {
     // 防止自动提交：如果不是用户主动点击按钮提交，直接返回
@@ -600,6 +665,16 @@ const TextToVideo: React.FC = () => {
       // 添加输出格式（可选）
       if (values.videoFormat) {
         requestData.outputFormat = values.videoFormat;
+      }
+
+      // 添加视频风格（可选，当模型支持时）
+      if (values.videoSupportStyle) {
+        requestData.videoSupportStyle = values.videoSupportStyle;
+      }
+
+      // 添加视频质量（可选，当模型支持时）
+      if (values.videoQuality) {
+        requestData.videoQuality = values.videoQuality;
       }
 
       console.log('Generating video with params:', requestData);
@@ -806,6 +881,8 @@ const TextToVideo: React.FC = () => {
                   cameraMotion: 'none',
                   duration: 8,
                   videoFormat: undefined,
+                  videoSupportStyle: undefined,
+                  videoQuality: undefined,
                   modelId: null,
                 }}
               >
@@ -890,26 +967,38 @@ const TextToVideo: React.FC = () => {
                                   {model.description}
                                 </div>
                               )}
-                              {/* 显示支持的比例和分辨率 */}
-                              {(model.videoAspectRatios || model.videoAspectResolution) && (
-                                <div style={{ marginTop: 8, paddingLeft: 26, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                  {model.videoAspectRatios && model.videoAspectRatios.split(',').map((ratio, index) => {
-                                    const ratioStr = ratio.trim();
-                                    const ratioOption = getAspectRatioOption(ratioStr, intl);
-                                    return (
-                                      <AspectRatioTag key={index}>
-                                        {ratioOption.icon}
-                                        <span>{ratioStr}</span>
-                                      </AspectRatioTag>
-                                    );
-                                  })}
-                                  {model.videoAspectResolution && model.videoAspectResolution.split(',').map((resolution, index) => (
-                                    <ResolutionTag key={index}>
-                                      {resolution.trim()}
-                                    </ResolutionTag>
-                                  ))}
-                                </div>
-                              )}
+                              {/* 显示支持的比例和详情按钮 */}
+                              <div className="model-bottom-row">
+                                {(getModelAspectRatios(model).length > 0 || model.videoAspectResolution) && (
+                                  <div className="model-aspect-ratios">
+                                    {getModelAspectRatios(model).map((ratio, index) => {
+                                      const ratioOption = getAspectRatioOption(ratio, intl);
+                                      return (
+                                        <AspectRatioTag key={index}>
+                                          {ratioOption.icon}
+                                          <span>{ratio}</span>
+                                        </AspectRatioTag>
+                                      );
+                                    })}
+                                    {model.videoAspectResolution && model.videoAspectResolution.split(',').map((resolution, index) => (
+                                      <ResolutionTag key={index}>
+                                        {resolution.trim()}
+                                      </ResolutionTag>
+                                    ))}
+                                  </div>
+                                )}
+                                <DetailButton
+                                  className="model-detail-button"
+                                  size="small"
+                                  icon={<EyeOutlined />}
+                                  onClick={(e: React.MouseEvent) => handleShowModelDetail(e, model)}
+                                >
+                                  <FormattedMessage
+                                    id="create.model.detail"
+                                    defaultMessage="详情"
+                                  />
+                                </DetailButton>
+                              </div>
                             </ModelOptionWrapper>
                           );
                         })()}
@@ -1092,60 +1181,183 @@ const TextToVideo: React.FC = () => {
                   </Col>
                 </Row>
 
+                {/* 视频风格选择（当模型支持时显示） */}
+                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
+                  {() => {
+                    const availableStyles = getAvailableVideoStyles();
+                    if (availableStyles.length === 0) {
+                      return null;
+                    }
+                    
+                    return (
+                      <Form.Item
+                        name="videoSupportStyle"
+                        label={
+                          <Space>
+                            <InfoCircleOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                            <FormattedMessage id="create.video.style" defaultMessage="视频风格" />
+                            <Tooltip title={intl.formatMessage({ 
+                              id: 'create.video.style.tooltip', 
+                              defaultMessage: '选择视频生成风格（主要用于 Grok 模型）' 
+                            })}>
+                              <InfoCircleOutlined style={{ color: '#999', fontSize: 12 }} />
+                            </Tooltip>
+                          </Space>
+                        }
+                        style={{ marginBottom: 20 }}
+                      >
+                        <Select
+                          disabled={!selectedModel || availableStyles.length === 0}
+                          placeholder={intl.formatMessage({ 
+                            id: 'create.video.style.placeholder', 
+                            defaultMessage: '请选择视频风格' 
+                          })}
+                        >
+                          {availableStyles.map(style => (
+                            <Select.Option key={style} value={style}>
+                              {style.charAt(0).toUpperCase() + style.slice(1)}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    );
+                  }}
+                </Form.Item>
+
+                {/* 视频质量选择（当模型支持时显示） */}
+                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
+                  {() => {
+                    const availableQualities = getAvailableVideoQualities();
+                    if (availableQualities.length === 0) {
+                      return null;
+                    }
+                    
+                    return (
+                      <Form.Item
+                        name="videoQuality"
+                        label={
+                          <Space>
+                            <InfoCircleOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                            <FormattedMessage id="create.video.quality" defaultMessage="视频质量" />
+                            <Tooltip title={intl.formatMessage({ 
+                              id: 'create.video.quality.tooltip', 
+                              defaultMessage: '选择视频生成质量' 
+                            })}>
+                              <InfoCircleOutlined style={{ color: '#999', fontSize: 12 }} />
+                            </Tooltip>
+                          </Space>
+                        }
+                        style={{ marginBottom: 20 }}
+                      >
+                        <Select
+                          disabled={!selectedModel || availableQualities.length === 0}
+                          placeholder={intl.formatMessage({ 
+                            id: 'create.video.quality.placeholder', 
+                            defaultMessage: '请选择视频质量' 
+                          })}
+                        >
+                          {availableQualities.map(quality => (
+                            <Select.Option key={quality} value={quality}>
+                              {quality.charAt(0).toUpperCase() + quality.slice(1)}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    );
+                  }}
+                </Form.Item>
+
                 {/* 时长控制 */}
-                <Form.Item
-                  name="duration"
-                  label={
-                    <Space>
-                      <ClockCircleOutlined style={{ color: '#1890ff' }} />
-                      <FormattedMessage id="create.video.duration" defaultMessage="视频时长 (秒)" />
-                    </Space>
-                  }
-                  style={{ marginBottom: 20 }}
-                >
-                  <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.duration !== currentValues.duration} noStyle>
-                    {({ getFieldValue }) => {
-                      const duration = getFieldValue('duration') || 8;
-                      return (
-                        <Slider 
-                          min={4} 
-                          max={getMaxDuration()} 
-                          value={duration}
-                          marks={{ 
-                            4: intl.formatMessage({ id: 'create.duration.4s', defaultMessage: '4s' }), 
-                            8: intl.formatMessage({ id: 'create.duration.8s', defaultMessage: '8s' }), 
-                            [getMaxDuration()]: intl.formatMessage({ 
-                              id: 'create.duration.format', 
-                              defaultMessage: '{duration}s' 
-                            }, { duration: getMaxDuration() })
-                          }} 
-                          tooltip={{ 
-                            formatter: (val) => {
-                              const duration = val as number;
-                              const price = calculateEstimatedPrice(duration);
-                              if (price) {
-                                return `${intl.formatMessage({ 
+                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
+                  {() => {
+                    const durationOptions = getDurationOptions();
+                    
+                    // 如果两个字段都没有，不显示时长控制
+                    if (durationOptions !== null && durationOptions.length === 0) {
+                      return null;
+                    }
+                    
+                    return (
+                      <Form.Item
+                        name="duration"
+                        label={
+                          <Space>
+                            <ClockCircleOutlined style={{ color: '#1890ff' }} />
+                            <FormattedMessage id="create.video.duration" defaultMessage="视频时长 (秒)" />
+                          </Space>
+                        }
+                        style={{ marginBottom: 20 }}
+                      >
+                        {durationOptions === null ? (
+                          // 使用 Slider（videoDuration 有值）
+                          <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.duration !== currentValues.duration} noStyle>
+                            {({ getFieldValue }) => {
+                              const duration = getFieldValue('duration') || 8;
+                              return (
+                                <Slider 
+                                  min={4} 
+                                  max={getMaxDuration()} 
+                                  value={duration}
+                                  marks={{ 
+                                    4: intl.formatMessage({ id: 'create.duration.4s', defaultMessage: '4s' }), 
+                                    8: intl.formatMessage({ id: 'create.duration.8s', defaultMessage: '8s' }), 
+                                    [getMaxDuration()]: intl.formatMessage({ 
+                                      id: 'create.duration.format', 
+                                      defaultMessage: '{duration}s' 
+                                    }, { duration: getMaxDuration() })
+                                  }} 
+                                  tooltip={{ 
+                                    formatter: (val) => {
+                                      const duration = val as number;
+                                      const price = calculateEstimatedPrice(duration);
+                                      if (price) {
+                                        return `${intl.formatMessage({ 
+                                          id: 'create.duration.format', 
+                                          defaultMessage: '{duration}s' 
+                                        }, { duration })} | ${intl.formatMessage({ 
+                                          id: 'create.estimated.price', 
+                                          defaultMessage: '预估: {price}' 
+                                        }, { price })}`;
+                                      }
+                                      return intl.formatMessage({ 
+                                        id: 'create.duration.format', 
+                                        defaultMessage: '{duration}s' 
+                                      }, { duration });
+                                    }
+                                  }} 
+                                  disabled={!selectedModel}
+                                  onChange={(val) => {
+                                    form.setFieldsValue({ duration: val });
+                                  }}
+                                />
+                              );
+                            }}
+                          </Form.Item>
+                        ) : (
+                          // 使用 Select（videoDurationEnum 有值）
+                          <Select
+                            disabled={!selectedModel || durationOptions.length === 0}
+                            placeholder={!selectedModel ? intl.formatMessage({ 
+                              id: 'create.model.select.placeholder', 
+                              defaultMessage: '请先选择模型' 
+                            }) : intl.formatMessage({ 
+                              id: 'create.duration.select.placeholder', 
+                              defaultMessage: '请选择视频时长' 
+                            })}
+                          >
+                            {durationOptions.map(duration => (
+                              <Select.Option key={duration} value={duration}>
+                                {intl.formatMessage({ 
                                   id: 'create.duration.format', 
                                   defaultMessage: '{duration}s' 
-                                }, { duration })} | ${intl.formatMessage({ 
-                                  id: 'create.estimated.price', 
-                                  defaultMessage: '预估: {price}' 
-                                }, { price })}`;
-                              }
-                              return intl.formatMessage({ 
-                                id: 'create.duration.format', 
-                                defaultMessage: '{duration}s' 
-                              }, { duration });
-                            }
-                          }} 
-                          disabled={!selectedModel}
-                          onChange={(val) => {
-                            form.setFieldsValue({ duration: val });
-                          }}
-                        />
-                      );
-                    }}
-                  </Form.Item>
+                                }, { duration })}
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        )}
+                      </Form.Item>
+                    );
+                  }}
                 </Form.Item>
 
                 {/* 提交按钮 */}
@@ -1318,6 +1530,13 @@ const TextToVideo: React.FC = () => {
         onClose={() => setQueueDrawerOpen(false)}
         tasks={waitingTasks}
         onCancelTask={handleCancelTask}
+      />
+
+      {/* 模型详情模态框 */}
+      <ModelDetailModal
+        open={modelDetailModalVisible}
+        onClose={handleCloseModelDetail}
+        model={selectedModelForDetail}
       />
     </>
   );

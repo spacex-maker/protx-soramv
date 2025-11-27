@@ -41,9 +41,20 @@ export const getAspectRatioOption = (ratio: string, intl: any) => {
       defaultLabel: '3:4 (Portrait Classic)',
       icon: <MobileOutlined />
     },
+    // 支持枚举值
+    'portrait': {
+      labelKey: 'create.aspectRatio.portrait',
+      defaultLabel: 'Portrait (竖屏)',
+      icon: <MobileOutlined />
+    },
+    'landscape': {
+      labelKey: 'create.aspectRatio.landscape',
+      defaultLabel: 'Landscape (横屏)',
+      icon: <DesktopOutlined />
+    },
   };
 
-  const option = ratioMap[ratio];
+  const option = ratioMap[ratio.toLowerCase()];
   if (option) {
     return {
       label: intl.formatMessage({ id: option.labelKey, defaultMessage: option.defaultLabel }),
@@ -82,5 +93,48 @@ export const normalizeUrl = (url: string | null | undefined): string => {
   if (!url) return '';
   if (url.startsWith('http') || url.startsWith('data:')) return url;
   return `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+// 获取模型支持的视频比例列表
+// 优先使用 videoAspectRatios，如果为空则使用 videoAspectRatiosEnum（直接使用，不转换）
+// videoAspectRatiosEnum 是以逗号分隔的枚举值，如 "portrait,landscape"
+export const getModelAspectRatios = (model: { videoAspectRatios?: string | null; videoAspectRatiosEnum?: string | null } | null): string[] => {
+  if (!model) return [];
+  
+  // 优先使用 videoAspectRatios
+  if (model.videoAspectRatios) {
+    return model.videoAspectRatios.split(',').map(r => r.trim()).filter(r => r);
+  }
+  
+  // 如果 videoAspectRatios 为空，使用 videoAspectRatiosEnum（以逗号分隔的枚举值）
+  if (model.videoAspectRatiosEnum) {
+    return model.videoAspectRatiosEnum.split(',').map(r => r.trim()).filter(r => r);
+  }
+  
+  return [];
+};
+
+// 获取模型支持的视频时长选项
+// 如果 videoDuration 有值，返回 null（表示使用 Slider）
+// 如果 videoDuration 为空但 videoDurationEnum 有值，返回枚举值数组（表示使用 Select）
+// 如果两者都为空，返回空数组（表示不支持时长指定）
+export const getModelDurationOptions = (model: { videoDuration?: number | null; videoDurationEnum?: string | null } | null): number[] | null => {
+  if (!model) return null;
+  
+  // 如果 videoDuration 有值，返回 null（使用 Slider）
+  if (model.videoDuration !== null && model.videoDuration !== undefined) {
+    return null;
+  }
+  
+  // 如果 videoDuration 为空，使用 videoDurationEnum（以逗号分隔的枚举值，如 "10,15,25"）
+  if (model.videoDurationEnum) {
+    return model.videoDurationEnum.split(',').map(d => {
+      const num = parseInt(d.trim(), 10);
+      return isNaN(num) ? null : num;
+    }).filter((d): d is number => d !== null);
+  }
+  
+  // 两者都为空，返回空数组（不支持时长指定）
+  return [];
 };
 

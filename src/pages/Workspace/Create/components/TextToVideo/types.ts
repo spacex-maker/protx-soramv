@@ -14,10 +14,12 @@ export interface Model {
   description: string;
   videoDefaultResolution: string | null;
   videoMaxResolution: string | null;
-  videoDuration: number | null;
+  videoDuration: number | null; // 视频最大时长（秒）
+  videoDurationEnum: string | null; // 视频时长枚举（以逗号分隔，如 "10,15,25"）- 当 videoDuration 为空时使用
   videoFps: number | null;
   videoMaxFrames: number | null;
   videoAspectRatios: string | null; // 视频比例（文生视频使用此字段）
+  videoAspectRatiosEnum: string | null; // 支持的视频比例枚举（portrait，landscape）- 当 videoAspectRatios 为空时使用
   videoAspectResolution: string | null;
   videoFormats: string | null;
   imageAspectRatios: string | null; // 图片比例（文生视频不使用此字段）
@@ -28,6 +30,8 @@ export interface Model {
   supportReference: boolean;
   currency: string | null;
   outputPrice: number | null;
+  videoSupportStyle: string | null; // 视频支持风格枚举（以逗号分隔，如 "fun,normal,spicy"）
+  videoQuality: string | null; // 视频质量枚举（以逗号分隔，如 "standard,high"）
 }
 
 // 生成任务记录类型
