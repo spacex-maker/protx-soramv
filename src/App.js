@@ -12,6 +12,8 @@ import JoinUs from "pages/JoinUs";
 import Navigation from "pages/Navigation";
 import ProfilePage from "pages/Profile";
 import BillingPage from "pages/Billing";
+import RechargePage from "pages/Recharge";
+import OrdersPage from "pages/Orders";
 import NotificationsPage from "pages/Notifications";
 import InvitePage from "pages/Invite";
 import FeedbackPage from "pages/Feedback";
@@ -261,6 +263,16 @@ export default function App() {
               <Route path="/billing" element={
                 <PrivateRoute>
                   <BillingPage />
+                </PrivateRoute>
+              } />
+              <Route path="/recharge" element={
+                <PrivateRoute>
+                  <RechargePage />
+                </PrivateRoute>
+              } />
+              <Route path="/orders" element={
+                <PrivateRoute>
+                  <OrdersPage />
                 </PrivateRoute>
               } />
               <Route path="/notifications" element={

@@ -3,6 +3,7 @@ import styled, { keyframes, css } from "styled-components";
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, theme, Tag, Divider } from "antd";
+import { useIntl } from 'react-intl';
 import { 
   UserOutlined, 
   SettingOutlined, 
@@ -18,7 +19,8 @@ import {
   LogoutOutlined,
   CreditCardOutlined,
   FileTextOutlined,
-  RightOutlined
+  RightOutlined,
+  ThunderboltOutlined
 } from "@ant-design/icons";
 
 // ==========================================
@@ -327,12 +329,113 @@ const MenuItem = styled.div`
 `;
 
 // ==========================================
+// 炫彩充值按钮样式
+// ==========================================
+
+const gradientShift = keyframes`
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+`;
+
+const shimmer = keyframes`
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+`;
+
+const glowPulse = keyframes`
+  0%, 100% { box-shadow: 0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(139, 92, 246, 0.3); }
+  50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.8), 0 0 60px rgba(139, 92, 246, 0.5); }
+`;
+
+const RechargeButton = styled.button`
+  position: relative;
+  width: 100%;
+  height: 32px;
+  margin-top: 8px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  overflow: hidden;
+  font-weight: 600;
+  font-size: 12px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.3s ease;
+  z-index: 1;
+  padding: 0 12px;
+  
+  /* 渐变背景 */
+  background: linear-gradient(
+    135deg,
+    #3b82f6 0%,
+    #8b5cf6 25%,
+    #ec4899 50%,
+    #f59e0b 75%,
+    #3b82f6 100%
+  );
+  background-size: 300% 300%;
+  animation: ${gradientShift} 3s ease infinite;
+  
+  /* 发光效果 */
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4), 0 0 24px rgba(139, 92, 246, 0.2);
+  animation: ${gradientShift} 3s ease infinite, ${glowPulse} 2s ease-in-out infinite;
+  
+  /* 光泽效果 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.25),
+      transparent
+    );
+    animation: ${shimmer} 2s infinite;
+  }
+  
+  /* 悬停效果 */
+  &:hover {
+    transform: translateY(-1px) scale(1.01);
+    box-shadow: 0 0 18px rgba(59, 130, 246, 0.6), 0 0 36px rgba(139, 92, 246, 0.4), 0 4px 8px rgba(0, 0, 0, 0.15);
+  }
+  
+  &:active {
+    transform: translateY(0) scale(0.99);
+  }
+  
+  /* 图标动画 */
+  .icon {
+    font-size: 14px;
+    animation: ${pulseEffect} 1.5s ease-in-out infinite;
+  }
+  
+  /* 文字渐变效果 */
+  .text {
+    background: linear-gradient(90deg, #fff, #f0f9ff, #fff);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: ${gradientShift} 2s ease infinite;
+  }
+`;
+
+// ==========================================
 // 3. 逻辑组件
 // ==========================================
 
 const UserMenu = ({ userInfo, onLogout }) => {
   const navigate = useNavigate();
   const { token } = theme.useToken();
+  const intl = useIntl();
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
 
@@ -364,36 +467,36 @@ const UserMenu = ({ userInfo, onLogout }) => {
 
   const menuGroups = [
     {
-      title: '账户设置',
+      title: intl.formatMessage({ id: 'userMenu.group.account', defaultMessage: '账户设置' }),
       items: [
-        { label: '个人中心', icon: <UserOutlined />, path: '/profile' },
-        { label: '系统设置', icon: <SettingOutlined />, path: '/settings' },
-        { label: '安全设置', icon: <SafetyCertificateOutlined />, path: '/security' },
-        { label: '隐私偏好', icon: <LockOutlined />, path: '/privacy' },
+        { label: intl.formatMessage({ id: 'userMenu.item.profile', defaultMessage: '个人中心' }), icon: <UserOutlined />, path: '/profile' },
+        { label: intl.formatMessage({ id: 'userMenu.item.settings', defaultMessage: '系统设置' }), icon: <SettingOutlined />, path: '/settings' },
+        { label: intl.formatMessage({ id: 'userMenu.item.security', defaultMessage: '安全设置' }), icon: <SafetyCertificateOutlined />, path: '/security' },
+        { label: intl.formatMessage({ id: 'userMenu.item.privacy', defaultMessage: '隐私偏好' }), icon: <LockOutlined />, path: '/privacy' },
       ]
     },
     {
-      title: '资产与订单',
+      title: intl.formatMessage({ id: 'userMenu.group.assets', defaultMessage: '资产与订单' }),
       items: [
-        { label: '我的钱包', icon: <WalletOutlined />, path: '/billing' },
-        { label: '订阅管理', icon: <CreditCardOutlined />, path: '/subscription' },
-        { label: '订单记录', icon: <FileTextOutlined />, path: '/orders' },
+        { label: intl.formatMessage({ id: 'userMenu.item.wallet', defaultMessage: '我的钱包' }), icon: <WalletOutlined />, path: '/billing' },
+        { label: intl.formatMessage({ id: 'userMenu.item.subscription', defaultMessage: '订阅管理' }), icon: <CreditCardOutlined />, path: '/subscription' },
+        { label: intl.formatMessage({ id: 'userMenu.item.orders', defaultMessage: '订单记录' }), icon: <FileTextOutlined />, path: '/orders' },
       ]
     },
     {
-      title: '工作台',
+      title: intl.formatMessage({ id: 'userMenu.group.workspace', defaultMessage: '工作台' }),
       items: [
-        { label: '我的作品', icon: <ContainerOutlined />, path: '/works' },
-        { label: '消息通知', icon: <BellOutlined />, path: '/notifications' },
+        { label: intl.formatMessage({ id: 'userMenu.item.works', defaultMessage: '我的作品' }), icon: <ContainerOutlined />, path: '/works' },
+        { label: intl.formatMessage({ id: 'userMenu.item.notifications', defaultMessage: '消息通知' }), icon: <BellOutlined />, path: '/notifications' },
       ]
     },
     {
-      title: '支持',
+      title: intl.formatMessage({ id: 'userMenu.group.support', defaultMessage: '支持' }),
       items: [
-        { label: '帮助中心', icon: <QuestionCircleOutlined />, path: '/help' },
-        { label: '邀请好友', icon: <UserAddOutlined />, path: '/invite' },
-        { label: '反馈建议', icon: <MessageOutlined />, path: '/feedback' },
-        { label: '关于我们', icon: <InfoCircleOutlined />, path: '/about' },
+        { label: intl.formatMessage({ id: 'userMenu.item.help', defaultMessage: '帮助中心' }), icon: <QuestionCircleOutlined />, path: '/help' },
+        { label: intl.formatMessage({ id: 'userMenu.item.invite', defaultMessage: '邀请好友' }), icon: <UserAddOutlined />, path: '/invite' },
+        { label: intl.formatMessage({ id: 'userMenu.item.feedback', defaultMessage: '反馈建议' }), icon: <MessageOutlined />, path: '/feedback' },
+        { label: intl.formatMessage({ id: 'userMenu.item.about', defaultMessage: '关于我们' }), icon: <InfoCircleOutlined />, path: '/about' },
       ]
     }
   ];
@@ -445,12 +548,23 @@ const UserMenu = ({ userInfo, onLogout }) => {
               />
               <div className="user-info">
                 <h4>{userInfo?.nickname || userInfo?.username}</h4>
-                <p>{userInfo?.email || '未绑定邮箱'}</p>
-                <div style={{ marginTop: 6 }}>
+                <p>{userInfo?.email || intl.formatMessage({ id: 'userMenu.email.notBound', defaultMessage: '未绑定邮箱' })}</p>
+                <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                    <Tag color={userInfo?.isActive ? "success" : "default"} style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
-                     {userInfo?.isActive ? "已认证" : "游客"}
+                     {userInfo?.isActive 
+                       ? intl.formatMessage({ id: 'userMenu.status.verified', defaultMessage: '已认证' })
+                       : intl.formatMessage({ id: 'userMenu.status.guest', defaultMessage: '游客' })}
                    </Tag>
                 </div>
+                <RechargeButton 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNavigate('/recharge');
+                  }}
+                >
+                  <ThunderboltOutlined className="icon" />
+                  <span className="text">{intl.formatMessage({ id: 'userMenu.recharge', defaultMessage: '立即充值' })}</span>
+                </RechargeButton>
               </div>
             </MenuHeader>
 
@@ -484,7 +598,7 @@ const UserMenu = ({ userInfo, onLogout }) => {
                 onClick={handleLogout}
               >
                 <div className="icon-wrapper"><LogoutOutlined /></div>
-                <span className="label">退出登录</span>
+                <span className="label">{intl.formatMessage({ id: 'userMenu.logout', defaultMessage: '退出登录' })}</span>
               </MenuItem>
             </ScrollArea>
           </DropdownPanel>

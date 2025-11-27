@@ -16,18 +16,21 @@ import {
   Statistic,
   Drawer,
   Input,
-  message
+  message,
+  Space,
+  Popconfirm
 } from "antd";
 import { 
-  WalletOutlined,
-  ArrowUpOutlined,
-  ArrowDownOutlined,
+  FileTextOutlined,
   ReloadOutlined,
-  BankOutlined,
-  CreditCardOutlined,
   FilterOutlined,
   CheckOutlined,
-  DollarOutlined
+  ClockCircleOutlined,
+  CloseCircleOutlined,
+  CheckCircleOutlined,
+  EyeOutlined,
+  ArrowLeftOutlined,
+  SearchOutlined
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 
@@ -52,7 +55,7 @@ const PageLayout = styled.div`
     left: 20%;
     width: 600px;
     height: 600px;
-    background: radial-gradient(circle, ${props => props.$token.colorSuccess}08 0%, transparent 70%);
+    background: radial-gradient(circle, ${props => props.$token.colorPrimary}08 0%, transparent 70%);
     filter: blur(80px);
     z-index: 0;
     pointer-events: none;
@@ -170,7 +173,6 @@ const StatCard = styled(GlassCard)`
   }
 `;
 
-// --- 修复后的 Toolbar：解决双重边框问题 ---
 const Toolbar = styled.div`
   display: flex;
   justify-content: space-between;
@@ -178,9 +180,10 @@ const Toolbar = styled.div`
   margin-bottom: 16px;
   gap: 12px;
   flex-wrap: wrap;
+  padding: 0 24px;
+  padding-top: 24px;
 
   && {
-    /* 1. Select 样式 */
     .ant-select {
       height: 40px !important;
       .ant-select-selector {
@@ -198,7 +201,6 @@ const Toolbar = styled.div`
       }
     }
 
-    /* 2. DatePicker 样式 */
     .ant-picker {
       border-radius: 999px !important;
       height: 40px !important;
@@ -210,9 +212,6 @@ const Toolbar = styled.div`
       }
     }
 
-    /* 3. Input 样式修复 (关键部分) */
-    
-    /* 情况 A: 带 allowClear 或图标的 Input (ant-input-affix-wrapper) */
     .ant-input-affix-wrapper {
       border-radius: 999px !important;
       height: 40px !important;
@@ -222,7 +221,6 @@ const Toolbar = styled.div`
       border: 1px solid ${props => props.$token?.colorBorder || '#d9d9d9'} !important;
       background: ${props => props.$token?.colorBgContainer} !important;
 
-      /* 内部的 input 移除边框，填满容器 */
       input.ant-input {
         border: none !important;
         border-radius: 0 !important;
@@ -233,7 +231,6 @@ const Toolbar = styled.div`
         box-shadow: none !important;
       }
 
-      /* 聚焦状态 */
       &:focus, &.ant-input-affix-wrapper-focused {
         box-shadow: 0 0 0 2px ${props => props.$token?.colorPrimaryBg || 'rgba(5, 145, 255, 0.1)'} !important;
         border-color: ${props => props.$token?.colorPrimary || '#1677ff'} !important;
@@ -244,7 +241,6 @@ const Toolbar = styled.div`
       }
     }
 
-    /* 情况 B: 普通无包装 Input */
     .ant-input:not(.ant-input-affix-wrapper > input) {
       border-radius: 999px !important;
       height: 40px !important;
@@ -309,56 +305,6 @@ const TableContainer = styled(GlassCard)`
   .ant-table-tbody > tr > td { padding: 16px 24px; font-size: 14px; }
 `;
 
-const Amount = styled.div`
-  font-family: 'SF Mono', 'Roboto Mono', monospace;
-  font-weight: 600;
-  color: ${props => props.$income ? props.$token.colorSuccess : props.$token.colorText};
-  
-  .amount-sign {
-    font-size: 0.75em;
-    vertical-align: baseline;
-  }
-`;
-
-const HoverAmount = styled.div`
-  position: relative;
-  cursor: pointer;
-  display: inline-block;
-  
-  .display-value {
-    transition: opacity 0.2s;
-    position: relative;
-    z-index: 1;
-  }
-  
-  .full-value {
-    position: absolute;
-    top: 0;
-    left: 0;
-    opacity: 0;
-    transition: opacity 0.2s;
-    pointer-events: none;
-    white-space: nowrap;
-    background: ${props => props.$token.colorBgElevated};
-    padding: 4px 8px;
-    border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-    z-index: 2;
-    border: 1px solid ${props => props.$token.colorBorder};
-    min-width: 100%;
-  }
-  
-  &:hover {
-    .display-value {
-      opacity: 0;
-    }
-    .full-value {
-      opacity: 1;
-      pointer-events: auto;
-    }
-  }
-`;
-
 const DrawerSection = styled.div`
   margin-bottom: 24px;
   
@@ -407,52 +353,63 @@ const FilterChip = styled.div`
 `;
 
 // ==========================================
-// 2. 逻辑组件
+// 2. 常量定义
 // ==========================================
 
-const CHANGE_TYPE_MAP = {
-  'FROZEN': { label: '资金冻结', color: 'orange', icon: <BankOutlined /> },
-  'AI_MODEL_FEE': { label: '模型调用', color: 'blue', icon: <CreditCardOutlined /> },
-  'RECHARGE': { label: '充值', color: 'green', icon: <ArrowUpOutlined /> },
-  'REFUND': { label: '退款', color: 'cyan', icon: <ReloadOutlined /> },
-  'REWARD': { label: '奖励', color: 'gold', icon: <WalletOutlined /> },
+const ORDER_STATUS_MAP = {
+  'PENDING': { label: '待支付', color: 'orange', icon: <ClockCircleOutlined /> },
+  'PAID': { label: '已支付', color: 'green', icon: <CheckCircleOutlined /> },
+  'CANCELLED': { label: '已取消', color: 'default', icon: <CloseCircleOutlined /> },
+  'FAILED': { label: '支付失败', color: 'red', icon: <CloseCircleOutlined /> },
+  'REFUNDED': { label: '已退款', color: 'cyan', icon: <ReloadOutlined /> },
+};
+
+const PAYMENT_METHOD_MAP = {
+  'alipay': { label: '支付宝', color: 'blue' },
+  'wechat': { label: '微信支付', color: 'green' },
+  'bank': { label: '银行卡', color: 'purple' },
+  'usdt': { label: 'USDT', color: 'orange' },
 };
 
 const COIN_TYPE_MAP = {
-  'USDT_ERC20': 'USDT',
   'CNY': 'CNY',
+  'USDT_ERC20': 'USDT',
   'USD': 'USD',
 };
 
-const BillingContent = () => {
+// ==========================================
+// 3. 主组件
+// ==========================================
+
+const OrdersContent = () => {
   const { token } = theme.useToken();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [billingRecords, setBillingRecords] = useState([]);
+  const [orders, setOrders] = useState([]);
   
   // 筛选状态
   const [dateRange, setDateRange] = useState([dayjs().subtract(30, 'day'), dayjs()]);
-  const [changeTypeFilter, setChangeTypeFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
   const [coinTypeFilter, setCoinTypeFilter] = useState('all');
-  const [remarkFilter, setRemarkFilter] = useState('');
+  const [orderNoFilter, setOrderNoFilter] = useState('');
   
   // UI 状态
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [filterDrawerVisible, setFilterDrawerVisible] = useState(false);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [stats, setStats] = useState({ 
-    totalIncome: 0, 
-    totalExpense: 0, 
-    balance: 0, 
-    usdtAmount: 0, 
-    usdtFrozenAmount: 0, 
-    usdBalance: 0 
+    total: 0,
+    pending: 0,
+    paid: 0,
+    totalAmount: 0
   });
 
   const [tempDateRange, setTempDateRange] = useState(dateRange);
-  const [tempChangeTypeFilter, setTempChangeTypeFilter] = useState(changeTypeFilter);
+  const [tempStatusFilter, setTempStatusFilter] = useState(statusFilter);
+  const [tempPaymentMethodFilter, setTempPaymentMethodFilter] = useState(paymentMethodFilter);
   const [tempCoinTypeFilter, setTempCoinTypeFilter] = useState(coinTypeFilter);
-  const [tempRemarkFilter, setTempRemarkFilter] = useState(remarkFilter);
+  const [tempOrderNoFilter, setTempOrderNoFilter] = useState(orderNoFilter);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
@@ -461,33 +418,14 @@ const BillingContent = () => {
   }, []);
 
   useEffect(() => {
-    fetchBalance();
-    fetchBillingRecords();
+    fetchOrders();
   }, []);
 
   useEffect(() => {
-    fetchBillingRecords();
-  }, [pagination.current, pagination.pageSize, changeTypeFilter, coinTypeFilter, remarkFilter, dateRange]);
+    fetchOrders();
+  }, [pagination.current, pagination.pageSize, statusFilter, paymentMethodFilter, coinTypeFilter, orderNoFilter, dateRange]);
 
-  const fetchBalance = async () => {
-    try {
-      const response = await instance.get('/productx/user/balance');
-      if (response.data.success && response.data.data) {
-        const { balance, usdtAmount, usdtFrozenAmount, usdBalance } = response.data.data;
-        setStats(prev => ({
-          ...prev,
-          balance: balance || 0,
-          usdtAmount: usdtAmount || 0,
-          usdtFrozenAmount: usdtFrozenAmount || 0,
-          usdBalance: usdBalance || 0
-        }));
-      }
-    } catch (error) {
-      console.error('获取余额失败:', error);
-    }
-  };
-
-  const fetchBillingRecords = async () => {
+  const fetchOrders = async () => {
     setLoading(true);
     try {
       const params = {
@@ -497,34 +435,38 @@ const BillingContent = () => {
         isDesc: true,
       };
 
-      if (changeTypeFilter !== 'all') params.changeType = changeTypeFilter;
+      if (statusFilter !== 'all') params.status = statusFilter;
+      if (paymentMethodFilter !== 'all') params.paymentMethod = paymentMethodFilter;
       if (coinTypeFilter !== 'all') params.coinType = coinTypeFilter;
-      if (remarkFilter) params.remark = remarkFilter;
+      if (orderNoFilter) params.orderNo = orderNoFilter;
       if (dateRange && dateRange[0] && dateRange[1]) {
         params.createTimeStart = dateRange[0].format('YYYY-MM-DD HH:mm:ss');
         params.createTimeEnd = dateRange[1].format('YYYY-MM-DD HH:mm:ss');
       }
 
-      const response = await instance.get('/productx/user-account-change-log/list', { params });
+      // TODO: 替换为实际的订单列表API
+      const response = await instance.get('/productx/recharge/list', { params });
       
       if (response.data.success) {
-        const { data, totalNum } = response.data.data;
-        setBillingRecords(data || []);
+        const { data, totalNum } = response.data.data || {};
+        setOrders(data || []);
         setPagination(prev => ({ ...prev, total: totalNum || 0 }));
         
-        const income = (data || []).reduce((sum, record) => {
-          return sum + (record.amount > 0 ? parseFloat(record.amount) : 0);
-        }, 0);
-        const expense = (data || []).reduce((sum, record) => {
-          return sum + (record.amount < 0 ? Math.abs(parseFloat(record.amount)) : 0);
+        // 计算统计数据
+        const total = data?.length || 0;
+        const pending = (data || []).filter(o => o.status === 'PENDING').length;
+        const paid = (data || []).filter(o => o.status === 'PAID').length;
+        const totalAmount = (data || []).reduce((sum, o) => {
+          return sum + (o.status === 'PAID' ? parseFloat(o.amount || 0) : 0);
         }, 0);
         
-        setStats(prev => ({ ...prev, totalIncome: income, totalExpense: expense }));
+        setStats({ total, pending, paid, totalAmount });
       } else {
-        message.error(response.data.message || '获取账单记录失败');
+        message.error(response.data.message || '获取订单记录失败');
       }
     } catch (error) {
-      message.error('获取账单记录失败，请稍后重试');
+      console.error('获取订单失败:', error);
+      message.error('获取订单记录失败，请稍后重试');
     } finally {
       setLoading(false);
     }
@@ -538,70 +480,60 @@ const BillingContent = () => {
 
   const handleApplyFilter = () => {
     setDateRange(tempDateRange);
-    setChangeTypeFilter(tempChangeTypeFilter);
+    setStatusFilter(tempStatusFilter);
+    setPaymentMethodFilter(tempPaymentMethodFilter);
     setCoinTypeFilter(tempCoinTypeFilter);
-    setRemarkFilter(tempRemarkFilter);
+    setOrderNoFilter(tempOrderNoFilter);
     setFilterDrawerVisible(false);
     setPagination({ ...pagination, current: 1 });
   };
 
   const openDrawer = () => {
     setTempDateRange(dateRange);
-    setTempChangeTypeFilter(changeTypeFilter);
+    setTempStatusFilter(statusFilter);
+    setTempPaymentMethodFilter(paymentMethodFilter);
     setTempCoinTypeFilter(coinTypeFilter);
-    setTempRemarkFilter(remarkFilter);
+    setTempOrderNoFilter(orderNoFilter);
     setFilterDrawerVisible(true);
+  };
+
+  const handleViewDetail = (order) => {
+    // TODO: 跳转到订单详情页或显示详情弹窗
+    message.info(`订单号: ${order.orderNo}`);
+  };
+
+  const handleCancelOrder = async (order) => {
+    try {
+      const response = await instance.post(`/productx/recharge/cancel/${order.id}`);
+      if (response.data.success) {
+        message.success('订单已取消');
+        fetchOrders();
+      } else {
+        message.error(response.data.message || '取消订单失败');
+      }
+    } catch (error) {
+      message.error('取消订单失败，请稍后重试');
+    }
   };
 
   const columns = [
     {
-      title: '类型',
-      key: 'changeType',
-      width: isMobile ? 140 : 180,
-      render: (_, record) => {
-        const config = CHANGE_TYPE_MAP[record.changeType] || { 
-          label: record.changeType, 
-          color: 'default', 
-          icon: <DollarOutlined /> 
-        };
-        
-        return (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ 
-              width: 36, height: 36, borderRadius: 10, 
-              background: token.colorFillQuaternary, 
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: token[config.color === 'default' ? 'colorText' : `color${config.color.charAt(0).toUpperCase() + config.color.slice(1)}`]
-            }}>
-              {config.icon}
-            </div>
-            <div>
-              <div style={{ fontWeight: 500 }}>{config.label}</div>
-              {isMobile && (
-                <div style={{ fontSize: 12, color: token.colorTextSecondary }}>
-                  {dayjs(record.createTime).format('MM-DD HH:mm')}
-                </div>
-              )}
-              {!isMobile && record.remark && (
-                <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 2 }}>
-                  {record.remark}
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      }
-    },
-    !isMobile && {
-      title: '币种',
-      key: 'coinType',
-      width: 100,
+      title: '订单号',
+      key: 'orderNo',
+      width: isMobile ? 120 : 200,
       render: (_, record) => (
-        <Tag color="blue">{COIN_TYPE_MAP[record.coinType] || record.coinType}</Tag>
+        <div>
+          <div style={{ fontWeight: 500, fontFamily: 'monospace' }}>{record.orderNo}</div>
+          {isMobile && (
+            <div style={{ fontSize: 12, color: token.colorTextSecondary, marginTop: 4 }}>
+              {dayjs(record.createTime).format('MM-DD HH:mm')}
+            </div>
+          )}
+        </div>
       )
     },
     !isMobile && {
-      title: '时间',
+      title: '创建时间',
       dataIndex: 'createTime',
       key: 'createTime',
       width: 180,
@@ -611,32 +543,72 @@ const BillingContent = () => {
       title: '金额',
       key: 'amount',
       align: 'right',
-      width: isMobile ? 120 : 180,
+      width: isMobile ? 100 : 150,
       render: (_, record) => {
-        const amount = parseFloat(record.amount);
-        const isIncome = amount > 0;
         const coinType = COIN_TYPE_MAP[record.coinType] || record.coinType;
-        
+        const symbol = record.coinType === 'CNY' ? '¥' : record.coinType === 'USD' ? '$' : '';
         return (
           <div style={{ textAlign: 'right' }}>
-            <Amount $token={token} $income={isIncome}>
-              {isIncome ? <span className="amount-sign">+</span> : <span className="amount-sign">-</span>}
-              {Math.abs(amount).toFixed(6)} {coinType}
-            </Amount>
-            <div style={{ fontSize: 12, color: token.colorTextQuaternary, marginTop: 2 }}>
-              结余 {parseFloat(record.balanceAfterChange).toLocaleString()} {coinType}
+            <div style={{ fontWeight: 600, fontSize: 15 }}>
+              {symbol}{parseFloat(record.amount || 0).toFixed(2)} {coinType}
             </div>
           </div>
         );
       }
     },
-    isMobile && {
-      title: '备注',
-      key: 'remark',
+    {
+      title: '支付方式',
+      key: 'paymentMethod',
+      width: isMobile ? 100 : 120,
+      render: (_, record) => {
+        const method = PAYMENT_METHOD_MAP[record.paymentMethod] || { label: record.paymentMethod, color: 'default' };
+        return <Tag color={method.color}>{method.label}</Tag>;
+      }
+    },
+    {
+      title: '状态',
+      key: 'status',
+      width: isMobile ? 100 : 120,
+      render: (_, record) => {
+        const status = ORDER_STATUS_MAP[record.status] || { 
+          label: record.status, 
+          color: 'default', 
+          icon: <ClockCircleOutlined /> 
+        };
+        return (
+          <Tag color={status.color} icon={status.icon}>
+            {status.label}
+          </Tag>
+        );
+      }
+    },
+    !isMobile && {
+      title: '操作',
+      key: 'action',
+      width: 150,
       render: (_, record) => (
-        <div style={{ fontSize: 12, color: token.colorTextSecondary }}>
-          {record.remark || '-'}
-        </div>
+        <Space size="small">
+          <Button 
+            type="link" 
+            size="small" 
+            icon={<EyeOutlined />}
+            onClick={() => handleViewDetail(record)}
+          >
+            查看
+          </Button>
+          {record.status === 'PENDING' && (
+            <Popconfirm
+              title="确定要取消这个订单吗？"
+              onConfirm={() => handleCancelOrder(record)}
+              okText="确定"
+              cancelText="取消"
+            >
+              <Button type="link" size="small" danger>
+                取消
+              </Button>
+            </Popconfirm>
+          )}
+        </Space>
       )
     }
   ].filter(Boolean);
@@ -652,77 +624,65 @@ const BillingContent = () => {
       >
         <PageHeader $token={token}>
           <div className="title-group">
-            <h1><WalletOutlined /> 财务中心</h1>
-            <p>管理您的资金往来与账单明细</p>
+            <h1><FileTextOutlined /> 订单记录</h1>
+            <p>查看您的所有充值订单记录和状态</p>
           </div>
           <div className="action-group">
-            <Button icon={<ReloadOutlined />} onClick={() => {
-              fetchBalance();
-              fetchBillingRecords();
-            }} loading={loading}>刷新</Button>
-            <Button type="primary" onClick={() => navigate('/recharge')}>充值</Button>
+            <Button icon={<ReloadOutlined />} onClick={fetchOrders} loading={loading}>
+              刷新
+            </Button>
+            <Button type="primary" onClick={() => navigate('/recharge')}>
+              去充值
+            </Button>
           </div>
         </PageHeader>
 
         <StatsGrid>
           <StatCard $token={token} $variant="primary">
             <div className="header">
-              <span className="stat-label" style={{ opacity: 0.9 }}>CNY余额</span>
-              <div className="icon-box"><WalletOutlined /></div>
+              <span className="stat-label" style={{ opacity: 0.9 }}>总订单数</span>
+              <div className="icon-box"><FileTextOutlined /></div>
             </div>
             <Statistic 
-              value={stats.balance} 
-              precision={2} 
-              suffix="CNY"
-              valueStyle={{ fontSize: 30, fontWeight: 700 }} 
+              value={stats.total} 
+              valueStyle={{ fontSize: 30, fontWeight: 700, color: '#fff' }} 
             />
           </StatCard>
           <StatCard $token={token}>
             <div className="header">
-              <span className="stat-label" style={{ color: token.colorTextSecondary }}>USDT余额</span>
-              <div className="icon-box" style={{ color: token.colorSuccess, background: token.colorSuccessBg }}>
-                <DollarOutlined />
-              </div>
-            </div>
-            <div>
-              <HoverAmount $token={token}>
-                <div className="display-value">
-                  <Statistic 
-                    value={stats.usdtAmount} 
-                    precision={2} 
-                    suffix="USDT"
-                    valueStyle={{ color: token.colorSuccess, fontWeight: 600 }} 
-                  />
-                </div>
-                <div className="full-value">
-                  {stats.usdtAmount.toFixed(6)} USDT
-                </div>
-              </HoverAmount>
-              {stats.usdtFrozenAmount > 0 && (
-                <HoverAmount $token={token} style={{ marginTop: 8 }}>
-                  <div className="display-value" style={{ fontSize: 12, color: token.colorTextSecondary, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <BankOutlined style={{ fontSize: 12 }} />
-                    <span>冻结: {stats.usdtFrozenAmount.toFixed(2)} USDT</span>
-                  </div>
-                  <div className="full-value" style={{ fontSize: 12 }}>
-                    <BankOutlined style={{ fontSize: 12, marginRight: 4 }} />
-                    冻结: {stats.usdtFrozenAmount.toFixed(6)} USDT
-                  </div>
-                </HoverAmount>
-              )}
-            </div>
-          </StatCard>
-          <StatCard $token={token}>
-            <div className="header">
-              <span className="stat-label" style={{ color: token.colorTextSecondary }}>USD余额</span>
-              <div className="icon-box" style={{ color: token.colorInfo, background: token.colorInfoBg }}>
-                <DollarOutlined />
+              <span className="stat-label" style={{ color: token.colorTextSecondary }}>待支付</span>
+              <div className="icon-box" style={{ color: token.colorWarning, background: token.colorWarningBg }}>
+                <ClockCircleOutlined />
               </div>
             </div>
             <Statistic 
-              value={stats.usdBalance} 
-              precision={2} 
-              suffix="USD"
+              value={stats.pending} 
+              valueStyle={{ color: token.colorWarning, fontWeight: 600 }} 
+            />
+          </StatCard>
+          <StatCard $token={token}>
+            <div className="header">
+              <span className="stat-label" style={{ color: token.colorTextSecondary }}>已支付</span>
+              <div className="icon-box" style={{ color: token.colorSuccess, background: token.colorSuccessBg }}>
+                <CheckCircleOutlined />
+              </div>
+            </div>
+            <Statistic 
+              value={stats.paid} 
+              valueStyle={{ color: token.colorSuccess, fontWeight: 600 }} 
+            />
+          </StatCard>
+          <StatCard $token={token}>
+            <div className="header">
+              <span className="stat-label" style={{ color: token.colorTextSecondary }}>总充值金额</span>
+              <div className="icon-box" style={{ color: token.colorInfo, background: token.colorInfoBg }}>
+                <FileTextOutlined />
+              </div>
+            </div>
+            <Statistic 
+              value={stats.totalAmount} 
+              precision={2}
+              prefix="¥"
               valueStyle={{ color: token.colorInfo, fontWeight: 600 }} 
             />
           </StatCard>
@@ -731,72 +691,89 @@ const BillingContent = () => {
         <MobileToolbar>
           <MobileFilterButton 
             $token={token} 
-            $active={changeTypeFilter !== 'all' || coinTypeFilter !== 'all' || remarkFilter || dateRange[0].diff(dayjs(), 'day') < -30}
+            $active={statusFilter !== 'all' || paymentMethodFilter !== 'all' || coinTypeFilter !== 'all' || orderNoFilter || dateRange[0].diff(dayjs(), 'day') < -30}
             onClick={openDrawer}
           >
-            <FilterOutlined /> 筛选交易 & 日期
+            <FilterOutlined /> 筛选订单
           </MobileFilterButton>
         </MobileToolbar>
 
-        <Toolbar $token={token}>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Select 
-              value={changeTypeFilter} 
-              onChange={setChangeTypeFilter} 
-              style={{ width: 140 }} 
-              placeholder="变更类型"
-              options={[
-                { value: 'all', label: '全部类型' },
-                { value: 'FROZEN', label: '资金冻结' },
-                { value: 'AI_MODEL_FEE', label: '模型调用' },
-                { value: 'RECHARGE', label: '充值' },
-                { value: 'REFUND', label: '退款' },
-                { value: 'REWARD', label: '奖励' },
-              ]}
-            />
-            <Select 
-              value={coinTypeFilter} 
-              onChange={setCoinTypeFilter} 
-              style={{ width: 120 }} 
-              placeholder="币种"
-              options={[
-                { value: 'all', label: '全部币种' },
-                { value: 'USDT_ERC20', label: 'USDT' },
-                { value: 'CNY', label: 'CNY' },
-              ]}
-            />
-            <Input
-              placeholder="备注搜索"
-              value={remarkFilter}
-              onChange={(e) => setRemarkFilter(e.target.value)}
-              style={{ width: 150 }}
-              allowClear
-            />
-            <DatePicker.RangePicker 
-              value={dateRange} 
-              onChange={setDateRange} 
-              style={{ width: 260 }}
-              allowClear={false}
-            />
-          </div>
-        </Toolbar>
+        <GlassCard $token={token}>
+          <Toolbar $token={token}>
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Input
+                placeholder="搜索订单号"
+                value={orderNoFilter}
+                onChange={(e) => setOrderNoFilter(e.target.value)}
+                style={{ width: 200 }}
+                allowClear
+                prefix={<SearchOutlined />}
+              />
+              <Select 
+                value={statusFilter} 
+                onChange={setStatusFilter} 
+                style={{ width: 140 }} 
+                placeholder="订单状态"
+                options={[
+                  { value: 'all', label: '全部状态' },
+                  { value: 'PENDING', label: '待支付' },
+                  { value: 'PAID', label: '已支付' },
+                  { value: 'CANCELLED', label: '已取消' },
+                  { value: 'FAILED', label: '支付失败' },
+                  { value: 'REFUNDED', label: '已退款' },
+                ]}
+              />
+              <Select 
+                value={paymentMethodFilter} 
+                onChange={setPaymentMethodFilter} 
+                style={{ width: 140 }} 
+                placeholder="支付方式"
+                options={[
+                  { value: 'all', label: '全部方式' },
+                  { value: 'alipay', label: '支付宝' },
+                  { value: 'wechat', label: '微信支付' },
+                  { value: 'bank', label: '银行卡' },
+                  { value: 'usdt', label: 'USDT' },
+                ]}
+              />
+              <Select 
+                value={coinTypeFilter} 
+                onChange={setCoinTypeFilter} 
+                style={{ width: 120 }} 
+                placeholder="币种"
+                options={[
+                  { value: 'all', label: '全部币种' },
+                  { value: 'CNY', label: 'CNY' },
+                  { value: 'USDT_ERC20', label: 'USDT' },
+                  { value: 'USD', label: 'USD' },
+                ]}
+              />
+              <DatePicker.RangePicker 
+                value={dateRange} 
+                onChange={setDateRange} 
+                style={{ width: 260 }}
+                allowClear={false}
+              />
+            </div>
+          </Toolbar>
 
-        <TableContainer $token={token}>
-          <Table
-            columns={columns}
-            dataSource={billingRecords}
-            rowKey="id"
-            loading={loading}
-            pagination={{
-              ...pagination,
-              onChange: (p, s) => setPagination({ ...pagination, current: p, pageSize: s }),
-              simple: isMobile,
-              showSizeChanger: !isMobile
-            }}
-            scroll={{ x: true }}
-            locale={{ emptyText: <Empty description="暂无账单" /> }}
-          />
-        </TableContainer>
+          <TableContainer $token={token}>
+            <Table
+              columns={columns}
+              dataSource={orders}
+              rowKey="id"
+              loading={loading}
+              pagination={{
+                ...pagination,
+                onChange: (p, s) => setPagination({ ...pagination, current: p, pageSize: s }),
+                simple: isMobile,
+                showSizeChanger: !isMobile
+              }}
+              scroll={{ x: true }}
+              locale={{ emptyText: <Empty description="暂无订单记录" /> }}
+            />
+          </TableContainer>
+        </GlassCard>
 
         <Drawer
           title="筛选条件"
@@ -814,9 +791,10 @@ const BillingContent = () => {
                 size="large" 
                 block 
                 onClick={() => {
-                  setTempChangeTypeFilter('all');
+                  setTempStatusFilter('all');
+                  setTempPaymentMethodFilter('all');
                   setTempCoinTypeFilter('all');
-                  setTempRemarkFilter('');
+                  setTempOrderNoFilter('');
                   setTempDateRange([dayjs().subtract(30, 'day'), dayjs()]);
                 }}
                 style={{ borderRadius: '999px', height: '48px', fontWeight: 500 }}
@@ -836,19 +814,46 @@ const BillingContent = () => {
           }
         >
           <DrawerSection $token={token}>
-            <h3>变更类型</h3>
+            <h3>订单状态</h3>
             <ChipGrid>
-              {['all', 'FROZEN', 'AI_MODEL_FEE', 'RECHARGE', 'REFUND', 'REWARD'].map(type => {
-                const labels = { all: '全部', FROZEN: '资金冻结', AI_MODEL_FEE: '模型调用', RECHARGE: '充值', REFUND: '退款', REWARD: '奖励' };
+              {['all', 'PENDING', 'PAID', 'CANCELLED', 'FAILED', 'REFUNDED'].map(status => {
+                const labels = { 
+                  all: '全部', 
+                  PENDING: '待支付', 
+                  PAID: '已支付', 
+                  CANCELLED: '已取消', 
+                  FAILED: '支付失败', 
+                  REFUNDED: '已退款' 
+                };
                 return (
                   <FilterChip 
-                    key={type}
+                    key={status}
                     $token={token} 
-                    $active={tempChangeTypeFilter === type}
-                    onClick={() => setTempChangeTypeFilter(type)}
+                    $active={tempStatusFilter === status}
+                    onClick={() => setTempStatusFilter(status)}
                   >
-                    {labels[type]}
-                    {tempChangeTypeFilter === type && <CheckOutlined style={{ marginLeft: 4, fontSize: 10 }} />}
+                    {labels[status]}
+                    {tempStatusFilter === status && <CheckOutlined style={{ marginLeft: 4, fontSize: 10 }} />}
+                  </FilterChip>
+                )
+              })}
+            </ChipGrid>
+          </DrawerSection>
+
+          <DrawerSection $token={token}>
+            <h3>支付方式</h3>
+            <ChipGrid>
+              {['all', 'alipay', 'wechat', 'bank', 'usdt'].map(method => {
+                const labels = { all: '全部', alipay: '支付宝', wechat: '微信支付', bank: '银行卡', usdt: 'USDT' };
+                return (
+                  <FilterChip 
+                    key={method}
+                    $token={token} 
+                    $active={tempPaymentMethodFilter === method}
+                    onClick={() => setTempPaymentMethodFilter(method)}
+                  >
+                    {labels[method]}
+                    {tempPaymentMethodFilter === method && <CheckOutlined style={{ marginLeft: 4, fontSize: 10 }} />}
                   </FilterChip>
                 )
               })}
@@ -858,8 +863,8 @@ const BillingContent = () => {
           <DrawerSection $token={token}>
             <h3>币种类型</h3>
             <ChipGrid>
-              {['all', 'USDT_ERC20', 'CNY'].map(coin => {
-                const labels = { all: '全部币种', USDT_ERC20: 'USDT', CNY: 'CNY' };
+              {['all', 'CNY', 'USDT_ERC20', 'USD'].map(coin => {
+                const labels = { all: '全部币种', CNY: 'CNY', USDT_ERC20: 'USDT', USD: 'USD' };
                 return (
                   <FilterChip 
                     key={coin}
@@ -876,12 +881,13 @@ const BillingContent = () => {
           </DrawerSection>
 
           <DrawerSection $token={token}>
-            <h3>备注搜索</h3>
+            <h3>订单号搜索</h3>
             <Input
-              placeholder="输入备注关键词"
-              value={tempRemarkFilter}
-              onChange={(e) => setTempRemarkFilter(e.target.value)}
+              placeholder="输入订单号"
+              value={tempOrderNoFilter}
+              onChange={(e) => setTempOrderNoFilter(e.target.value)}
               allowClear
+              prefix={<SearchOutlined />}
             />
           </DrawerSection>
 
@@ -919,7 +925,7 @@ const BillingContent = () => {
   );
 };
 
-const BillingPage = () => {
+const OrdersPage = () => {
   const customTheme = {
     token: {
       colorPrimary: '#0070f3',
@@ -935,9 +941,10 @@ const BillingPage = () => {
 
   return (
     <ConfigProvider theme={customTheme}>
-      <BillingContent />
+      <OrdersContent />
     </ConfigProvider>
   );
 };
 
-export default BillingPage;
+export default OrdersPage;
+

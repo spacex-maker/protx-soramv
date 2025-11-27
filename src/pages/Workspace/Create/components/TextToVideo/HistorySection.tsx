@@ -2,18 +2,16 @@ import React from 'react';
 import { Button, Spin, Empty, Pagination, Tooltip } from 'antd';
 import { 
   ReloadOutlined, 
-  // PlayCircleFilled, // 已删除
-  CheckCircleFilled, 
-  CloseCircleFilled, 
-  SyncOutlined,
-  // EyeOutlined, // 已删除
+  SyncOutlined, 
   FileTextOutlined,
   CopyOutlined,
   DownloadOutlined,
   DeleteOutlined,
-  ThunderboltFilled,
   ClockCircleOutlined,
-  ColumnHeightOutlined
+  ThunderboltFilled,
+  ColumnHeightOutlined,
+  CheckCircleFilled, 
+  CloseCircleFilled
 } from '@ant-design/icons';
 import { useIntl } from 'react-intl';
 import styled, { css } from 'styled-components';
@@ -74,6 +72,7 @@ const Card = styled(motion.div as any)`
   box-shadow: 0 4px 20px rgba(0,0,0,0.05);
   border: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : '#eee'};
   cursor: pointer;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   aspect-ratio: 16 / 9;
   display: flex; 
   flex-direction: column;
@@ -85,14 +84,20 @@ const Card = styled(motion.div as any)`
     z-index: 10;
 
     .media-content { transform: scale(1.05); }
-    /* .play-btn 和 .overlay 的相关样式已移除 */
+    
+    /* InfoBar 背景加深，并展开隐藏内容 */
     .info-bar { 
-      transform: translateY(0); 
-      background: linear-gradient(to top, rgba(0,0,0,0.98) 0%, rgba(0,0,0,0.85) 50%, rgba(0,0,0,0.6) 80%, transparent 100%);
+      background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 60%, transparent 100%);
     }
+    
     .top-actions { opacity: 1; transform: translateY(0); }
-    .prompt-preview { height: auto; opacity: 1; margin-top: 8px; }
-    .meta-tags { height: auto; opacity: 1; margin-top: 8px; }
+    
+    /* 展开隐藏信息 */
+    .expandable-content {
+      max-height: 100px; /* 足够展示内容的高度 */
+      opacity: 1;
+      margin-top: 12px;
+    }
   }
 `;
 
@@ -111,8 +116,6 @@ const MediaWrapper = styled.div`
     transition: transform 0.7s cubic-bezier(0.25, 0.8, 0.25, 1);
   }
 `;
-
-// 已删除 HoverOverlay 和 PlayBtn 样式定义
 
 const TopActions = styled.div`
   position: absolute;
@@ -153,29 +156,36 @@ const ActionBtn = styled.div`
   }
 `;
 
+// 底部详细信息栏 (修复版)
 const InfoBar = styled.div`
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 24px 20px 20px;
-  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 50%, transparent 100%);
-  transform: translateY(40%);
-  transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), background 0.3s;
+  /* 关键修改：增加底部 Padding，确保文字不贴底 */
+  padding: 40px 20px 24px; 
+  
+  /* 默认渐变：保证未 hover 时文字也能看清 */
+  background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.4) 50%, transparent 100%);
+  
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   z-index: 3;
-  pointer-events: none; 
+  pointer-events: none;
   
   border-bottom-left-radius: 16px;
   border-bottom-right-radius: 16px;
+  
+  /* 背景色过渡 */
+  transition: background 0.3s ease;
 `;
 
 const ModelInfo = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  /* 确保基本信息始终可见且位置固定 */
   
   .name {
     color: #fff;
@@ -196,27 +206,31 @@ const ModelInfo = styled.div`
   }
 `;
 
-const PromptPreview = styled.div`
-  height: 0;
+// 可展开的内容容器 (包含 Prompt 和 Tags)
+const ExpandableContent = styled.div`
+  max-height: 0;
   opacity: 0;
   overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  /* 使用 margin-top 在 hover 时推开距离 */
+  margin-top: 0; 
+`;
+
+const PromptPreview = styled.div`
   color: rgba(255,255,255,0.85);
   font-size: 13px;
   line-height: 1.5;
-  transition: all 0.3s;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  overflow: hidden;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  margin-bottom: 8px;
 `;
 
 const MetaTags = styled.div`
-  height: 0;
-  opacity: 0;
-  overflow: hidden;
   display: flex;
   gap: 8px;
-  transition: all 0.3s;
   
   .tag {
     display: flex;
@@ -264,7 +278,6 @@ const LoadingPlaceholder = styled.div`
   background: ${props => props.theme.mode === 'dark' ? '#222' : '#f5f5f5'};
   color: ${props => props.theme.mode === 'dark' ? '#666' : '#999'};
   gap: 12px;
-  
   .anticon { font-size: 24px; }
   span { font-size: 12px; }
 `;
@@ -358,8 +371,6 @@ const HistorySection: React.FC<HistorySectionProps> = ({
         ) : (
           <img src={mediaUrl} alt={task.modelName} loading="lazy" />
         )}
-        
-        {/* 已删除 HoverOverlay 和 PlayBtn */}
       </MediaWrapper>
     );
   };
@@ -437,27 +448,30 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                       </div>
                     </ModelInfo>
                     
-                    <PromptPreview className="prompt-preview">
-                      {task.prompt || intl.formatMessage({ id: 'create.history.noPrompt', defaultMessage: '暂无提示词' })}
-                    </PromptPreview>
-                    
-                    <MetaTags className="meta-tags">
-                      {task.creditsCost !== null && task.creditsCost !== undefined && (
-                        <div className="tag">
-                          <ThunderboltFilled style={{color:'#fbbf24'}}/> {task.creditsCost}
-                        </div>
-                      )}
-                      {task.durationMs && (
-                        <div className="tag">
-                          <ClockCircleOutlined /> {(task.durationMs/1000).toFixed(1)}s
-                        </div>
-                      )}
-                      {(task.model?.videoAspectRatios || task.model?.imageAspectRatios) && (
-                        <div className="tag">
-                          <ColumnHeightOutlined /> {task.model?.videoAspectRatios || task.model?.imageAspectRatios}
-                        </div>
-                      )}
-                    </MetaTags>
+                    {/* 使用 ExpandableContent 包裹详细信息，实现向上生长 */}
+                    <ExpandableContent className="expandable-content">
+                      <PromptPreview>
+                        {task.prompt || intl.formatMessage({ id: 'create.history.noPrompt', defaultMessage: '暂无提示词' })}
+                      </PromptPreview>
+                      
+                      <MetaTags>
+                        {task.creditsCost !== null && task.creditsCost !== undefined && (
+                          <div className="tag">
+                            <ThunderboltFilled style={{color:'#fbbf24'}}/> {task.creditsCost}
+                          </div>
+                        )}
+                        {task.durationMs && (
+                          <div className="tag">
+                            <ClockCircleOutlined /> {(task.durationMs/1000).toFixed(1)}s
+                          </div>
+                        )}
+                        {(task.model?.videoAspectRatios || task.model?.imageAspectRatios) && (
+                          <div className="tag">
+                            <ColumnHeightOutlined /> {task.model?.videoAspectRatios || task.model?.imageAspectRatios}
+                          </div>
+                        )}
+                      </MetaTags>
+                    </ExpandableContent>
                   </InfoBar>
                 </Card>
               ))}
