@@ -254,10 +254,16 @@ export const RightSection = ({
           </SocialLogin>
 
           <Footer>
-            <FormattedMessage id="login.signup" />{' '}
-            <Link to="/signup">
-              <FormattedMessage id="login.signup.link" />
-            </Link>
+            <div>
+              <FormattedMessage id="login.signup" />{' '}
+              <Link to="/signup">
+                <FormattedMessage id="login.signup.link" />
+              </Link>
+            </div>
+            <div style={{ marginTop: '0.75rem', fontSize: '0.75rem' }}>
+              <Link to="/terms-of-service" style={{ marginRight: '1rem' }}>服务条款</Link>
+              <Link to="/privacy-policy">隐私政策</Link>
+            </div>
           </Footer>
         </Form>
       </LoginBox>

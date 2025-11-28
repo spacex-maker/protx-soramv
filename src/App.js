@@ -36,6 +36,8 @@ import TestCrypto from './pages/TestCrypto';
 import HomePage from './pages/Home';
 import StorageNodes from './pages/Workspace/StorageNodes';
 import UnderDevelopmentPage from './pages/UnderDevelopment';
+import TermsOfServicePage from './pages/TermsOfService';
+import PrivacyPolicyPage from './pages/PrivacyPolicy';
 
 // 语言配置映射
 const localeMap = {
@@ -281,6 +283,8 @@ export default function App() {
                 </PrivateRoute>
               } />
               <Route path="/recharge-agreement" element={<RechargeAgreementPage />} />
+              <Route path="/terms-of-service" element={<TermsOfServicePage />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
               <Route path="/privacy-preferences" element={
                 <PrivateRoute>
                   <PrivacyPreferencesPage />

@@ -1,17 +1,17 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import AnimationRevealPage from "helpers/AnimationRevealPage.js";
 import { Container, ContentWithPaddingXl } from "components/misc/Layouts";
 import tw from "twin.macro";
 import styled from "styled-components";
 import { css } from "styled-components/macro"; //eslint-disable-line
-import Header from "components/headers/light.js";
-import Footer from "components/footers/FiveColumnWithInputForm.js";
+import SimpleHeader from "components/headers/simple";
 import { SectionHeading } from "components/misc/Headings";
+import { base } from "api/base";
 
 const HeadingRow = tw.div`flex`;
-const Heading = tw(SectionHeading)`text-gray-900 mb-10`;
+const Heading = tw(SectionHeading)`text-gray-900 dark:text-gray-100 mb-10`;
 const Text = styled.div`
-  ${tw`text-lg  text-gray-800`}
+  ${tw`text-lg text-gray-800 dark:text-gray-200`}
   p {
     ${tw`mt-2 leading-loose`}
   }
@@ -35,241 +35,196 @@ const Text = styled.div`
   }
 `;
 
-export default ({ headingText = "Terms And Condition" }) => {
+export default ({ headingText = "服务条款" }) => {
+  const currentDate = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+  const [officialEmail, setOfficialEmail] = useState('support@soramv.com');
+
+  useEffect(() => {
+    const fetchOfficialEmail = async () => {
+      const result = await base.getOfficialEmail();
+      if (result.success && result.data) {
+        setOfficialEmail(result.data);
+      }
+    };
+    fetchOfficialEmail();
+  }, []);
+  
   return (
     <AnimationRevealPage>
-      <Header />
-      <Container>
+      <SimpleHeader />
+      <Container style={{ paddingTop: '100px' }}>
         <ContentWithPaddingXl>
           <HeadingRow>
             <Heading>{headingText}</Heading>
           </HeadingRow>
           <Text>
+            <p>最后更新日期：{currentDate}</p>
 
-            <p>Last updated: April 21, 2048</p>
+            <p>在使用我们的服务之前，请仔细阅读本服务条款。通过访问或使用 Sora MV 平台（以下简称"本平台"或"服务"），您同意受本服务条款的约束。如果您不同意本服务条款的任何部分，请不要使用我们的服务。</p>
 
-            <p>Please read these terms and conditions carefully before using Our Service.</p>
-
-            <h1>Interpretation and Definitions</h1>
-            <h2>Interpretation</h2>
-            <p>
-              The words of which the initial letter is capitalized have meanings defined under the following conditions.
-            </p>
-            <p>
-              The following definitions shall have the same meaning regardless of whether they appear in singular or in
-              plural.
-            </p>
-
-            <h2>Definitions</h2>
-            <p>For the purposes of these Terms and Conditions:</p>
+            <h1>一、定义与解释</h1>
+            <h2>1.1 定义</h2>
+            <p>在本服务条款中，除非上下文另有说明，下列术语具有以下含义：</p>
             <ul>
               <li>
-                <strong>Affiliate</strong> means an entity that controls, is controlled by or is under common control
-                with a party, where "control" means ownership of 50% or more of the shares, equity interest or other
-                securities entitled to vote for election of directors or other managing authority.
+                <strong>"平台"或"本平台"</strong>：指 Sora MV 视频生成服务平台，包括但不限于网站、移动应用及相关服务。
               </li>
               <li>
-                <strong>Company</strong> (referred to as either "the Company", "We", "Us" or "Our" in this Agreement)
-                refers to Treact Inc., Navi Mumbai.
+                <strong>"我们"、"我方"、"公司"</strong>：指 Sora MV 平台的运营方，即 ProTX Team。
               </li>
               <li>
-                <strong>Country</strong> refers to: Maharashtra, India
+                <strong>"您"、"用户"</strong>：指访问或使用本服务的个人、公司或其他法律实体。
               </li>
               <li>
-                <strong>Service</strong> refers to the Website.
+                <strong>"服务"</strong>：指本平台提供的所有功能和服务，包括但不限于 AI 视频生成、模型选择、作品管理、用户账户管理等。
               </li>
               <li>
-                <strong>Terms and Conditions</strong> (also referred as "Terms") mean these Terms and Conditions that
-                form the entire agreement between You and the Company regarding the use of the Service.
+                <strong>"内容"</strong>：指用户通过本平台上传、生成、创建或分享的任何文本、图片、视频、音频等材料。
               </li>
               <li>
-                <strong>Third-party Social Media Service</strong> means any services or content (including data,
-                information, products or services) provided by a third-party that may be displayed, included or made
-                available by the Service.
+                <strong>"生成内容"</strong>：指用户使用本平台的 AI 模型生成的视频作品。
               </li>
               <li>
-                <strong>Website</strong> refers to Treact, accessible from https://treact.com
-              </li>
-              <li>
-                <strong>You</strong> means the individual accessing or using the Service, or the company, or other legal
-                entity on behalf of which such individual is accessing or using the Service, as applicable.
+                <strong>"账户"</strong>：指用户在本平台注册的用户账户。
               </li>
             </ul>
 
-            <h1>Acknowledgement</h1>
-            <p>
-              These are the Terms and Conditions governing the use of this Service and the agreement that operates
-              between You and the Company. These Terms and Conditions set out the rights and obligations of all users
-              regarding the use of the Service.
-            </p>
-            <p>
-              Your access to and use of the Service is conditioned on Your acceptance of and compliance with these Terms
-              and Conditions. These Terms and Conditions apply to all visitors, users and others who access or use the
-              Service.
-            </p>
-            <p>
-              By accessing or using the Service You agree to be bound by these Terms and Conditions. If You disagree
-              with any part of these Terms and Conditions then You may not access the Service.
-            </p>
-            <p>
-              You represent that you are over the age of 18. The Company does not permit those under 18 to use the
-              Service.
-            </p>
-            <p>
-              Your access to and use of the Service is also conditioned on Your acceptance of and compliance with the
-              Privacy Policy of the Company. Our Privacy Policy describes Our policies and procedures on the collection,
-              use and disclosure of Your personal information when You use the Application or the Website and tells You
-              about Your privacy rights and how the law protects You. Please read Our Privacy Policy carefully before
-              using Our Service.
-            </p>
-
-            <h1>Links to Other Websites</h1>
-            <p>
-              Our Service may contain links to third-party web sites or services that are not owned or controlled by the
-              Company.
-            </p>
-            <p>
-              The Company has no control over, and assumes no responsibility for, the content, privacy policies, or
-              practices of any third party web sites or services. You further acknowledge and agree that the Company
-              shall not be responsible or liable, directly or indirectly, for any damage or loss caused or alleged to be
-              caused by or in connection with the use of or reliance on any such content, goods or services available on
-              or through any such web sites or services.
-            </p>
-            <p>
-              We strongly advise You to read the terms and conditions and privacy policies of any third-party web sites
-              or services that You visit.
-            </p>
-
-            <h1>Termination</h1>
-            <p>
-              We may terminate or suspend Your access immediately, without prior notice or liability, for any reason
-              whatsoever, including without limitation if You breach these Terms and Conditions.
-            </p>
-            <p>Upon termination, Your right to use the Service will cease immediately.</p>
-
-            <h1>Limitation of Liability</h1>
-            <p>
-              Notwithstanding any damages that You might incur, the entire liability of the Company and any of its
-              suppliers under any provision of this Terms and Your exclusive remedy for all of the foregoing shall be
-              limited to the amount actually paid by You through the Service or 100 USD if You haven't purchased
-              anything through the Service.
-            </p>
-            <p>
-              To the maximum extent permitted by applicable law, in no event shall the Company or its suppliers be
-              liable for any special, incidental, indirect, or consequential damages whatsoever (including, but not
-              limited to, damages for loss of profits, loss of data or other information, for business interruption, for
-              personal injury, loss of privacy arising out of or in any way related to the use of or inability to use
-              the Service, third-party software and/or third-party hardware used with the Service, or otherwise in
-              connection with any provision of this Terms), even if the Company or any supplier has been advised of the
-              possibility of such damages and even if the remedy fails of its essential purpose.
-            </p>
-            <p>
-              Some states do not allow the exclusion of implied warranties or limitation of liability for incidental or
-              consequential damages, which means that some of the above limitations may not apply. In these states, each
-              party's liability will be limited to the greatest extent permitted by law.
-            </p>
-
-            <h1>"AS IS" and "AS AVAILABLE" Disclaimer</h1>
-            <p>
-              The Service is provided to You "AS IS" and "AS AVAILABLE" and with all faults and defects without warranty
-              of any kind. To the maximum extent permitted under applicable law, the Company, on its own behalf and on
-              behalf of its Affiliates and its and their respective licensors and service providers, expressly disclaims
-              all warranties, whether express, implied, statutory or otherwise, with respect to the Service, including
-              all implied warranties of merchantability, fitness for a particular purpose, title and non-infringement,
-              and warranties that may arise out of course of dealing, course of performance, usage or trade practice.
-              Without limitation to the foregoing, the Company provides no warranty or undertaking, and makes no
-              representation of any kind that the Service will meet Your requirements, achieve any intended results, be
-              compatible or work with any other software, applications, systems or services, operate without
-              interruption, meet any performance or reliability standards or be error free or that any errors or defects
-              can or will be corrected.
-            </p>
-            <p>
-              Without limiting the foregoing, neither the Company nor any of the company's provider makes any
-              representation or warranty of any kind, express or implied: (i) as to the operation or availability of the
-              Service, or the information, content, and materials or products included thereon; (ii) that the Service
-              will be uninterrupted or error-free; (iii) as to the accuracy, reliability, or currency of any information
-              or content provided through the Service; or (iv) that the Service, its servers, the content, or e-mails
-              sent from or on behalf of the Company are free of viruses, scripts, trojan horses, worms, malware,
-              timebombs or other harmful components.
-            </p>
-            <p>
-              Some jurisdictions do not allow the exclusion of certain types of warranties or limitations on applicable
-              statutory rights of a consumer, so some or all of the above exclusions and limitations may not apply to
-              You. But in such a case the exclusions and limitations set forth in this section shall be applied to the
-              greatest extent enforceable under applicable law.
-            </p>
-
-            <h1>Governing Law</h1>
-            <p>
-              The laws of the Country, excluding its conflicts of law rules, shall govern this Terms and Your use of the
-              Service. Your use of the Application may also be subject to other local, state, national, or international
-              laws.
-            </p>
-
-            <h1>Disputes Resolution</h1>
-            <p>
-              If You have any concern or dispute about the Service, You agree to first try to resolve the dispute
-              informally by contacting the Company.
-            </p>
-
-            <h1>For European Union (EU) Users</h1>
-            <p>
-              If You are a European Union consumer, you will benefit from any mandatory provisions of the law of the
-              country in which you are resident in.
-            </p>
-
-            <h1>United States Legal Compliance</h1>
-            <p>
-              You represent and warrant that (i) You are not located in a country that is subject to the United States
-              government embargo, or that has been designated by the United States government as a “terrorist
-              supporting” country, and (ii) You are not listed on any United States government list of prohibited or
-              restricted parties.
-            </p>
-
-            <h1>Severability and Waiver</h1>
-            <h2>Severability</h2>
-            <p>
-              If any provision of these Terms is held to be unenforceable or invalid, such provision will be changed and
-              interpreted to accomplish the objectives of such provision to the greatest extent possible under
-              applicable law and the remaining provisions will continue in full force and effect.
-            </p>
-
-            <h2>Waiver</h2>
-            <p>
-              Except as provided herein, the failure to exercise a right or to require performance of an obligation
-              under this Terms shall not effect a party's ability to exercise such right or require such performance at
-              any time thereafter nor shall be the waiver of a breach constitute a waiver of any subsequent breach.
-            </p>
-
-            <h1>Translation Interpretation</h1>
-            <p>
-              These Terms and Conditions may have been translated if We have made them available to You on our Service.
-            </p>
-            <p>You agree that the original English text shall prevail in the case of a dispute.</p>
-
-            <h1>Changes to These Terms and Conditions</h1>
-            <p>
-              We reserve the right, at Our sole discretion, to modify or replace these Terms at any time. If a revision
-              is material We will make reasonable efforts to provide at least 30 days' notice prior to any new terms
-              taking effect. What constitutes a material change will be determined at Our sole discretion.
-            </p>
-            <p>
-              By continuing to access or use Our Service after those revisions become effective, You agree to be bound
-              by the revised terms. If You do not agree to the new terms, in whole or in part, please stop using the
-              website and the Service.
-            </p>
-
-            <h1>Contact Us</h1>
-            <p>If you have any questions about these Terms and Conditions, You can contact us:</p>
-
+            <h1>二、服务说明</h1>
+            <h2>2.1 服务内容</h2>
+            <p>本平台提供基于 Sora 技术的 AI 视频生成服务，包括但不限于：</p>
             <ul>
-              <li>By email: support@example.com</li>
-              <li>By phone number: 408.996.1010</li>
+              <li>文本生成视频（Text-to-Video）</li>
+              <li>图片生成视频（Image-to-Video）</li>
+              <li>视频作品管理和展示</li>
+              <li>模型选择和管理</li>
+              <li>用户账户和个人中心</li>
+              <li>订阅和支付服务</li>
+            </ul>
+
+            <h2>2.2 服务变更</h2>
+            <p>我们保留随时修改、暂停或终止部分或全部服务的权利，无需事先通知。我们不对因服务变更而导致的任何损失承担责任。</p>
+
+            <h1>三、用户账户</h1>
+            <h2>3.1 账户注册</h2>
+            <p>使用本服务需要注册账户。注册时，您同意：</p>
+            <ul>
+              <li>提供真实、准确、完整的注册信息</li>
+              <li>及时更新注册信息，保持其真实、准确、完整</li>
+              <li>对账户下的所有活动负责</li>
+              <li>妥善保管账户密码，不得将账户转让、出售或出借给他人</li>
+            </ul>
+
+            <h2>3.2 年龄限制</h2>
+            <p>您必须年满 18 周岁才能使用本服务。如果您未满 18 周岁，请在监护人同意和指导下使用本服务。</p>
+
+            <h2>3.3 账户安全</h2>
+            <p>您有责任维护账户的安全。如发现账户被盗用或存在安全漏洞，请立即通知我们。我们不对因您未妥善保管账户信息而导致的损失承担责任。</p>
+
+            <h1>四、使用规范</h1>
+            <h2>4.1 禁止行为</h2>
+            <p>使用本服务时，您不得：</p>
+            <ul>
+              <li>生成、上传、分享任何违法、有害、威胁、辱骂、骚扰、诽谤、粗俗、淫秽、侵犯他人隐私或知识产权的内容</li>
+              <li>生成、传播任何虚假信息、误导性内容或恶意内容</li>
+              <li>使用本服务进行任何商业欺诈、洗钱或其他非法活动</li>
+              <li>干扰或破坏本平台的正常运行，包括但不限于使用自动化工具、爬虫、病毒等</li>
+              <li>未经授权访问本平台的任何系统、数据或账户</li>
+              <li>复制、修改、分发、出售或租赁本平台的任何部分</li>
+              <li>反向工程、反编译或反汇编本平台的任何软件</li>
+            </ul>
+
+            <h2>4.2 内容责任</h2>
+            <p>您对通过本平台生成、上传、分享的所有内容承担全部责任。我们不对用户生成的内容进行预先审查，但保留随时删除违规内容的权利。</p>
+
+            <h1>五、知识产权</h1>
+            <h2>5.1 平台知识产权</h2>
+            <p>本平台的所有知识产权，包括但不限于商标、专利、版权、商业秘密等，均归我们或相关权利人所有。未经授权，您不得使用。</p>
+
+            <h2>5.2 用户生成内容</h2>
+            <p>您通过本平台生成的内容，其知识产权归您所有。但您授予我们非独占、全球性、免费、可再许可的权利，以使用、展示、分发您的内容，用于提供和改进服务。</p>
+
+            <h2>5.3 AI 模型</h2>
+            <p>本平台使用的 AI 模型（包括 Sora 模型）的知识产权归其开发者所有。您不得复制、修改或分发这些模型。</p>
+
+            <h1>六、付费服务</h1>
+            <h2>6.1 付费模式</h2>
+            <p>本平台提供订阅和按次付费两种模式。具体价格和计费方式以平台公示为准。</p>
+
+            <h2>6.2 支付</h2>
+            <p>您同意按照平台公示的价格支付服务费用。所有费用均以人民币或其他平台支持的货币计价。支付成功后，费用不予退还，除非法律另有规定或我们另有承诺。</p>
+
+            <h2>6.3 退款政策</h2>
+            <p>除非法律另有规定或我们另有承诺，已支付的费用不予退还。如因平台原因导致服务无法正常使用，我们将根据实际情况提供退款或补偿。</p>
+
+            <h1>七、服务可用性</h1>
+            <h2>7.1 服务中断</h2>
+            <p>我们不对因以下原因导致的服务中断承担责任：</p>
+            <ul>
+              <li>系统维护、升级或故障</li>
+              <li>不可抗力因素（如自然灾害、战争、罢工等）</li>
+              <li>第三方服务提供商的问题</li>
+              <li>网络故障或用户设备问题</li>
+            </ul>
+
+            <h2>7.2 服务保证</h2>
+            <p>我们尽力保证服务的稳定性和可用性，但不保证服务不会中断、无错误或完全安全。服务按"现状"和"可用"的基础提供，不提供任何明示或暗示的保证。</p>
+
+            <h1>八、隐私保护</h1>
+            <p>我们重视您的隐私保护。关于我们如何收集、使用和保护您的个人信息，请参阅我们的《隐私政策》。使用本服务即表示您同意我们的隐私政策。</p>
+
+            <h1>九、责任限制</h1>
+            <h2>9.1 责任范围</h2>
+            <p>在法律允许的最大范围内，我们对因使用或无法使用本服务而产生的任何直接、间接、偶然、特殊或后果性损害不承担责任，包括但不限于：</p>
+            <ul>
+              <li>利润损失、数据丢失或其他经济损失</li>
+              <li>业务中断</li>
+              <li>人身伤害或财产损失</li>
+              <li>隐私泄露</li>
+            </ul>
+
+            <h2>9.2 责任上限</h2>
+            <p>我们的总责任不超过您在过去 12 个月内通过本服务实际支付的费用总额，或 100 美元（以较高者为准）。</p>
+
+            <h1>十、服务终止</h1>
+            <h2>10.1 用户终止</h2>
+            <p>您可以随时停止使用本服务并注销账户。</p>
+
+            <h2>10.2 平台终止</h2>
+            <p>我们有权在以下情况下立即终止或暂停您的账户和服务：</p>
+            <ul>
+              <li>您违反本服务条款</li>
+              <li>您从事任何非法活动</li>
+              <li>您的账户长期未使用</li>
+              <li>法律或监管要求</li>
+            </ul>
+            <p>服务终止后，您将无法访问账户和生成的内容，除非法律另有规定。</p>
+
+            <h1>十一、争议解决</h1>
+            <h2>11.1 协商解决</h2>
+            <p>如发生争议，双方应首先通过友好协商解决。</p>
+
+            <h2>11.2 法律适用</h2>
+            <p>本服务条款受中华人民共和国法律管辖。如双方无法协商解决争议，应提交至我们所在地有管辖权的人民法院解决。</p>
+
+            <h1>十二、其他条款</h1>
+            <h2>12.1 条款修改</h2>
+            <p>我们保留随时修改本服务条款的权利。重大修改将在生效前至少 30 天通知您。继续使用服务即表示您接受修改后的条款。</p>
+
+            <h2>12.2 可分割性</h2>
+            <p>如本服务条款的任何条款被认定为无效或不可执行，不影响其他条款的效力。</p>
+
+            <h2>12.3 完整协议</h2>
+            <p>本服务条款构成您与我们之间关于使用本服务的完整协议，取代所有先前的口头或书面协议。</p>
+
+            <h1>十三、联系我们</h1>
+            <p>如您对本服务条款有任何疑问，请通过以下方式联系我们：</p>
+            <ul>
+              <li>邮箱：{officialEmail}</li>
+              <li>客服时间：工作日 9:00-18:00</li>
             </ul>
           </Text>
         </ContentWithPaddingXl>
       </Container>
-      <Footer />
     </AnimationRevealPage>
   );
 };

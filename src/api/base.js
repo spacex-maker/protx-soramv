@@ -51,5 +51,27 @@ export const base = {
         message: error.response?.data?.message || '获取模型列表失败' 
       };
     }
+  },
+
+  // 获取官方邮箱
+  getOfficialEmail: async () => {
+    try {
+      const { data } = await axios.get('/productx/sys-config/official-email');
+      if (data.code === 200) {
+        return {
+          success: true,
+          data: data.data
+        };
+      }
+      return {
+        success: false,
+        message: data.message || '获取官方邮箱失败'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取官方邮箱失败'
+      };
+    }
   }
 }; 

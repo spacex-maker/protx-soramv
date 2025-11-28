@@ -3,7 +3,6 @@ import SimpleHeader from 'components/headers/simple';
 import { PageContainer } from './styles';
 import HeroSection from './components/HeroSection';
 import FeaturesSection from './components/FeaturesSection';
-import StatsSection from './components/StatsSection';
 import PricingSection from './components/PricingSection';
 import TechnologySection from './components/TechnologySection';
 import CallToActionSection from './components/CallToActionSection'; // 复用
@@ -14,7 +13,6 @@ const HomePage = () => {
       <SimpleHeader />
       <HeroSection />
       <FeaturesSection />
-      <StatsSection />
       <TechnologySection />
       <PricingSection />
       <CallToActionSection />
