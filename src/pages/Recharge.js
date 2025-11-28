@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
-import styled, { css } from "styled-components";
+import styled, { css, keyframes } from "styled-components";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import SimpleHeader from "components/headers/simple";
 import instance from "api/axios";
+import { auth } from "api/auth";
 import { 
   Button, 
   ConfigProvider,
@@ -10,7 +12,8 @@ import {
   Statistic,
   Input,
   message,
-  Tooltip
+  Tooltip,
+  Spin
 } from "antd";
 import { 
   WalletOutlined,
@@ -22,8 +25,16 @@ import {
   DollarCircleFilled,
   SafetyCertificateFilled,
   RightOutlined,
-  GiftFilled
+  GiftFilled,
+  ReloadOutlined
 } from "@ant-design/icons";
+import { 
+  FaYenSign, 
+  FaDollarSign
+} from "react-icons/fa";
+import { 
+  SiTether 
+} from "react-icons/si";
 import dayjs from "dayjs";
 
 // ==========================================
@@ -106,6 +117,126 @@ const HeaderArea = styled.div`
 `;
 
 // ==========================================
+// 现代化余额卡片组件
+// ==========================================
+
+const BalanceCard = styled(motion.div)`
+  background: ${props => props.$token?.colorBgContainer};
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  border: 1px solid ${props => props.$token?.colorBorderSecondary};
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 24px;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, 
+      ${props => props.$token?.colorPrimary} 0%, 
+      ${props => props.$token?.colorSuccess} 100%);
+  }
+
+  .balance-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    
+    .title {
+      font-size: 14px;
+      font-weight: 600;
+      color: ${props => props.$token?.colorTextSecondary};
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .refresh-btn {
+      cursor: pointer;
+      color: ${props => props.$token?.colorTextTertiary};
+      transition: all 0.2s;
+      &:hover {
+        color: ${props => props.$token?.colorPrimary};
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  .balance-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+
+    @media (max-width: 768px) {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+  }
+
+  .balance-item {
+    padding: 16px;
+    border-radius: 12px;
+    background: ${props => props.$token?.colorFillQuaternary};
+    border: 1px solid ${props => props.$token?.colorBorder};
+    transition: all 0.2s;
+    
+    &:hover {
+      background: ${props => props.$token?.colorFillTertiary};
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .coin-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      color: ${props => props.$token?.colorTextSecondary};
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      
+      svg {
+        transition: all 0.2s;
+        flex-shrink: 0;
+      }
+    }
+
+    .coin-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: ${props => props.$token?.colorText};
+      font-family: 'SF Mono', monospace;
+      line-height: 1.2;
+    }
+
+    &.active {
+      background: ${props => props.$token?.colorPrimaryBg};
+      border-color: ${props => props.$token?.colorPrimary};
+      
+      .coin-label {
+        color: ${props => props.$token?.colorPrimary};
+        
+        svg {
+          color: ${props => props.$token?.colorPrimary} !important;
+          transform: scale(1.1);
+        }
+      }
+      
+      .coin-value {
+        color: ${props => props.$token?.colorPrimary};
+      }
+    }
+  }
+`;
+
+// ==========================================
 // 3. 双栏布局系统
 // ==========================================
 
@@ -174,13 +305,34 @@ const CoinOption = styled.div`
   justify-content: center;
   gap: 8px;
 
+  svg {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+  }
+
   ${props => props.$active ? css`
     background: ${props.$token?.colorBgContainer};
     color: ${props.$token?.colorPrimary};
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    
+    svg {
+      color: ${props.$token?.colorPrimary};
+      transform: scale(1.1);
+    }
   ` : css`
     color: ${props.$token?.colorTextSecondary};
-    &:hover { color: ${props.$token?.colorText}; }
+    
+    svg {
+      color: ${props.$token?.colorTextSecondary};
+    }
+    
+    &:hover { 
+      color: ${props.$token?.colorText}; 
+      svg {
+        color: ${props.$token?.colorText};
+        transform: scale(1.05);
+      }
+    }
   `}
 `;
 
@@ -386,17 +538,134 @@ const SecureBadge = styled.div`
   border-radius: 8px;
 `;
 
+// 脉冲动画
+const pulseAnimation = keyframes`
+  0%, 100% {
+    box-shadow: 
+      0 8px 24px rgba(0, 112, 243, 0.4),
+      0 0 0 0 rgba(0, 112, 243, 0.2),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow: 
+      0 8px 32px rgba(0, 112, 243, 0.6),
+      0 0 0 8px rgba(0, 112, 243, 0.1),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  }
+`;
+
+// 光效扫过动画
+const shineAnimation = keyframes`
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+`;
+
 const PayButton = styled(Button)`
   height: 56px;
-  border-radius: 16px;
+  border-radius: 50px !important; /* 全圆弧 */
   font-size: 18px;
   font-weight: 600;
-  box-shadow: 0 8px 20px ${props => props.$token?.colorPrimary}40;
   margin-top: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 24px ${props => props.$token?.colorPrimary}60;
+  /* 渐变背景 */
+  background: linear-gradient(135deg, 
+    ${props => props.$token?.colorPrimary} 0%, 
+    ${props => {
+      // 计算一个稍微亮一点的颜色作为渐变终点
+      const primary = props.$token?.colorPrimary || '#0070f3';
+      return primary;
+    }} 100%
+  ) !important;
+  border: none !important;
+  
+  /* 基础阴影和光晕 */
+  box-shadow: 
+    0 8px 24px ${props => props.$token?.colorPrimary}40,
+    0 0 0 0 ${props => props.$token?.colorPrimary}20,
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  
+  /* 光效层 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.3),
+      transparent
+    );
+    z-index: 1;
+    pointer-events: none;
+  }
+  
+  /* 内容层级 */
+  > span {
+    position: relative;
+    z-index: 2;
+  }
+  
+  /* 悬停效果 */
+  &:hover:not(:disabled) {
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 
+      0 12px 32px ${props => props.$token?.colorPrimary}60,
+      0 0 0 4px ${props => props.$token?.colorPrimary}20,
+      inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    animation: ${pulseAnimation} 2s ease-in-out infinite;
+    
+    &::before {
+      animation: ${shineAnimation} 0.6s ease-in-out;
+    }
+  }
+  
+  /* 激活/点击效果 */
+  &:active:not(:disabled) {
+    transform: translateY(-1px) scale(0.98);
+    box-shadow: 
+      0 4px 16px ${props => props.$token?.colorPrimary}50,
+      0 0 0 2px ${props => props.$token?.colorPrimary}30,
+      inset 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* 加载状态 */
+  &.ant-btn-loading {
+    animation: ${pulseAnimation} 2s ease-in-out infinite;
+  }
+  
+  /* 禁用状态 */
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    animation: none !important;
+  }
+  
+  /* 图标动画 */
+  .anticon {
+    transition: transform 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+  }
+  
+  &:hover:not(:disabled) .anticon {
+    transform: translateX(4px);
+  }
+  
+  /* 加载图标特殊处理 */
+  .ant-btn-loading-icon {
+    z-index: 3;
   }
 `;
 
@@ -420,6 +689,14 @@ const PRESETS = {
     { val: 500, bonus: '+8%', tag: 'BEST' },
     { val: 1000, bonus: '+10%', tag: '' },
     { val: 5000, bonus: '+15%', tag: 'PRO' }
+  ],
+  USD: [
+    { val: 10, bonus: '', tag: '' },
+    { val: 50, bonus: '', tag: '' },
+    { val: 100, bonus: '+5%', tag: 'HOT' },
+    { val: 500, bonus: '+8%', tag: 'BEST' },
+    { val: 1000, bonus: '+10%', tag: '' },
+    { val: 5000, bonus: '+15%', tag: 'PRO' }
   ]
 };
 
@@ -436,6 +713,7 @@ const PAY_METHODS = [
 
 const RechargeContent = () => {
   const { token } = theme.useToken();
+  const navigate = useNavigate();
   
   // State
   const [coinType, setCoinType] = useState('CNY');
@@ -443,23 +721,49 @@ const RechargeContent = () => {
   const [customAmount, setCustomAmount] = useState('');
   const [payMethod, setPayMethod] = useState('alipay');
   const [loading, setLoading] = useState(false);
-  const [balance, setBalance] = useState({ cny: 0.00, usdt: 0.00 });
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balance, setBalance] = useState({ cny: 0.00, usdt: 0.00, usd: 0.00 });
+  const [username, setUsername] = useState('');
 
   useEffect(() => {
     fetchBalance();
+    fetchUserInfo();
   }, []);
 
   const fetchBalance = async () => {
+    setBalanceLoading(true);
     try {
-      // 模拟请求，实际请取消注释
-      // const response = await instance.get('/productx/user/balance');
-      // if (response.data.success && response.data.data) {
-      //   const { balance, usdtAmount } = response.data.data;
-      //   setBalance({ cny: balance || 0, usdt: usdtAmount || 0 });
-      // }
-      setTimeout(() => setBalance({ cny: 120.50, usdt: 45.20 }), 600);
+      const response = await instance.get('/productx/user/balance');
+      if (response.data.success && response.data.data) {
+        const { balance: cnyBalance, usdtAmount, usdBalance } = response.data.data;
+        setBalance({ 
+          cny: cnyBalance || 0, 
+          usdt: usdtAmount || 0,
+          usd: usdBalance || 0
+        });
+      }
     } catch (error) {
       console.error('获取余额失败:', error);
+      message.error('获取余额失败，请稍后重试');
+    } finally {
+      setBalanceLoading(false);
+    }
+  };
+
+  const fetchUserInfo = async () => {
+    try {
+      const storedUserInfo = localStorage.getItem('userInfo');
+      if (storedUserInfo) {
+        const userInfo = JSON.parse(storedUserInfo);
+        setUsername(userInfo.username || '');
+      } else {
+        const result = await auth.getUserInfo();
+        if (result.success && result.data) {
+          setUsername(result.data.username || '');
+        }
+      }
+    } catch (error) {
+      console.error('获取用户信息失败:', error);
     }
   };
 
@@ -477,7 +781,19 @@ const RechargeContent = () => {
   };
 
   const getCurrentAmount = () => amount || parseFloat(customAmount) || 0;
-  const symbol = coinType === 'CNY' ? '¥' : '$';
+  const getSymbol = () => {
+    if (coinType === 'CNY') return '¥';
+    if (coinType === 'USD') return '$';
+    return '$'; // USDT also uses $
+  };
+  const symbol = getSymbol();
+  
+  const getBalanceByCoinType = () => {
+    if (coinType === 'CNY') return balance.cny;
+    if (coinType === 'USDT') return balance.usdt;
+    if (coinType === 'USD') return balance.usd;
+    return 0;
+  };
 
   const handleSubmit = async () => {
     const finalAmount = getCurrentAmount();
@@ -532,11 +848,59 @@ const RechargeContent = () => {
               账户充值
             </h1>
           </div>
-          <div className="balance-preview">
-            <div className="label">Current Balance</div>
-            <div className="val">{symbol} {coinType === 'CNY' ? balance.cny : balance.usdt}</div>
-          </div>
         </HeaderArea>
+
+        {/* 现代化余额卡片 */}
+        <BalanceCard 
+          $token={token}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+        >
+          <div className="balance-header">
+            <div className="title">
+              <WalletOutlined style={{ marginRight: 8 }} />
+              账户余额
+            </div>
+            <ReloadOutlined 
+              className="refresh-btn" 
+              onClick={fetchBalance}
+              spin={balanceLoading}
+              style={{ fontSize: 16 }}
+            />
+          </div>
+          <Spin spinning={balanceLoading}>
+            <div className="balance-grid">
+              <div className={`balance-item ${coinType === 'CNY' ? 'active' : ''}`}>
+                <div className="coin-label">
+                  <FaYenSign style={{ fontSize: 16, color: coinType === 'CNY' ? token.colorPrimary : token.colorTextSecondary }} />
+                  <span>CNY</span>
+                </div>
+                <div className="coin-value">
+                  ¥{balance.cny.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+              <div className={`balance-item ${coinType === 'USDT' ? 'active' : ''}`}>
+                <div className="coin-label">
+                  <SiTether style={{ fontSize: 16, color: coinType === 'USDT' ? token.colorPrimary : token.colorTextSecondary }} />
+                  <span>USDT</span>
+                </div>
+                <div className="coin-value">
+                  ${balance.usdt.toLocaleString('zh-CN', { minimumFractionDigits: 6, maximumFractionDigits: 6 })}
+                </div>
+              </div>
+              <div className={`balance-item ${coinType === 'USD' ? 'active' : ''}`}>
+                <div className="coin-label">
+                  <FaDollarSign style={{ fontSize: 16, color: coinType === 'USD' ? token.colorPrimary : token.colorTextSecondary }} />
+                  <span>USD</span>
+                </div>
+                <div className="coin-value">
+                  ${balance.usd.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
+          </Spin>
+        </BalanceCard>
 
         <SplitLayout>
           {/* 左侧：配置区 */}
@@ -551,14 +915,21 @@ const RechargeContent = () => {
                   $active={coinType === 'CNY'} 
                   onClick={() => { setCoinType('CNY'); setAmount(100); }}
                 >
-                  <span style={{fontSize:18}}>🇨🇳</span> 人民币 (CNY)
+                  <FaYenSign style={{ fontSize: 18 }} /> 人民币 (CNY)
                 </CoinOption>
                 <CoinOption 
                   $token={token} 
                   $active={coinType === 'USDT'}
                   onClick={() => { setCoinType('USDT'); setAmount(50); }}
                 >
-                  <span style={{fontSize:18}}>🇺🇸</span> USDT (Crypto)
+                  <SiTether style={{ fontSize: 18 }} /> USDT (Crypto)
+                </CoinOption>
+                <CoinOption 
+                  $token={token} 
+                  $active={coinType === 'USD'}
+                  onClick={() => { setCoinType('USD'); setAmount(50); }}
+                >
+                  <FaDollarSign style={{ fontSize: 18 }} /> 美元 (USD)
                 </CoinOption>
               </CoinToggle>
             </section>
@@ -637,7 +1008,7 @@ const RechargeContent = () => {
               </ReceiptRow>
               <ReceiptRow $token={token}>
                 <span>充值账号</span>
-                <span>User_Current</span>
+                <span>{username || '加载中...'}</span>
               </ReceiptRow>
               <ReceiptRow $token={token}>
                 <span>支付方式</span>
@@ -672,7 +1043,23 @@ const RechargeContent = () => {
 
               <div style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: token.colorTextTertiary, lineHeight: 1.6 }}>
                 点击支付即代表您同意<br/>
-                <a style={{ color: token.colorTextSecondary, textDecoration: 'underline' }}>《充值服务协议》</a>
+                <a 
+                  href="/recharge-agreement"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate('/recharge-agreement');
+                  }}
+                  style={{ 
+                    color: token.colorPrimary, 
+                    textDecoration: 'underline',
+                    cursor: 'pointer',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.target.style.color = token.colorPrimaryHover}
+                  onMouseLeave={(e) => e.target.style.color = token.colorPrimary}
+                >
+                  《充值服务协议》
+                </a>
               </div>
             </ReceiptCard>
           </SideSection>

@@ -13,7 +13,10 @@ import Navigation from "pages/Navigation";
 import ProfilePage from "pages/Profile";
 import BillingPage from "pages/Billing";
 import RechargePage from "pages/Recharge";
+import RechargeAgreementPage from "pages/RechargeAgreement";
+import PrivacyPreferencesPage from "pages/PrivacyPreferences";
 import OrdersPage from "pages/Orders";
+import WorksPage from "pages/Works";
 import NotificationsPage from "pages/Notifications";
 import InvitePage from "pages/Invite";
 import FeedbackPage from "pages/Feedback";
@@ -31,6 +34,7 @@ import FileDecryptPage from './pages/FileDecrypt';
 import TestCrypto from './pages/TestCrypto';
 import HomePage from './pages/Home';
 import StorageNodes from './pages/Workspace/StorageNodes';
+import UnderDevelopmentPage from './pages/UnderDevelopment';
 
 // 语言配置映射
 const localeMap = {
@@ -270,6 +274,12 @@ export default function App() {
                   <RechargePage />
                 </PrivateRoute>
               } />
+              <Route path="/recharge-agreement" element={<RechargeAgreementPage />} />
+              <Route path="/privacy-preferences" element={
+                <PrivateRoute>
+                  <PrivacyPreferencesPage />
+                </PrivateRoute>
+              } />
               <Route path="/orders" element={
                 <PrivateRoute>
                   <OrdersPage />
@@ -300,6 +310,11 @@ export default function App() {
                   <AboutPage />
                 </PrivateRoute>
               } />
+              <Route path="/works" element={
+                <PrivateRoute>
+                  <WorksPage />
+                </PrivateRoute>
+              } />
               <Route path="/decrypt" element={<FileDecryptPage />} />
               <Route path="/test-crypto" element={<TestCrypto />} />
               <Route
@@ -312,6 +327,8 @@ export default function App() {
                   </PrivateRoute>
                 }
               />
+              {/* 404 路由 - 捕获所有未匹配的路由 */}
+              <Route path="*" element={<UnderDevelopmentPage />} />
             </Routes>
           </Router>
         </ConfigProvider>

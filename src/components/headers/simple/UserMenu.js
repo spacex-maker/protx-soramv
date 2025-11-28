@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
 import { Avatar, theme, Tag, Divider } from "antd";
 import { useIntl } from 'react-intl';
+import AchievementModal from 'components/modals/AchievementModal';
+import MemberLevelModal from 'components/modals/MemberLevelModal';
 import { 
   UserOutlined, 
   SettingOutlined, 
@@ -20,7 +22,11 @@ import {
   CreditCardOutlined,
   FileTextOutlined,
   RightOutlined,
-  ThunderboltOutlined
+  ThunderboltOutlined,
+  TeamOutlined,
+  CrownOutlined,
+  TrophyOutlined,
+  StarFilled
 } from "@ant-design/icons";
 
 // ==========================================
@@ -36,6 +42,12 @@ const pulseEffect = keyframes`
   0% { transform: scale(0.97); opacity: 0.8; }
   50% { transform: scale(1); opacity: 1; }
   100% { transform: scale(0.97); opacity: 0.8; }
+`;
+
+const gradientShift = keyframes`
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 `;
 
 const UserMenuContainer = styled.div`
@@ -233,37 +245,88 @@ const DropdownPanel = styled(motion.div)`
   cursor: default;
 `;
 
+const AvatarWrapper = styled.div`
+  position: relative;
+  flex-shrink: 0;
+  
+  .verified-badge {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    transform: translate(25%, 25%);
+    z-index: 10;
+  }
+`;
+
+const RainbowText = styled.span`
+  background: linear-gradient(
+    90deg,
+    #ff6b6b 0%,
+    #4ecdc4 25%,
+    #45b7d1 50%,
+    #96ceb4 75%,
+    #ffeaa7 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: ${gradientShift} 3s ease infinite;
+  font-weight: 700;
+  display: inline-block;
+`;
+
 const MenuHeader = styled.div`
-  padding: 20px;
+  padding: 16px;
   background: ${props => props.$token.colorFillQuaternary};
   border-bottom: 1px solid ${props => props.$token.colorBorderSecondary};
-  display: flex;
-  align-items: center;
-  gap: 16px;
   
-  .user-info {
-    flex: 1;
-    min-width: 0;
-    text-align: left;
+  .user-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
     
-    h4 {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 600;
-      color: ${props => props.$token.colorText};
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .user-info {
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+      
+      h4 {
+        margin: 0;
+        font-size: 15px;
+        font-weight: 600;
+        color: ${props => props.$token.colorText};
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      
+      p {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: ${props => props.$token.colorTextSecondary};
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      .level-section {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+      }
     }
-    
-    p {
-      margin: 2px 0 0;
-      font-size: 12px;
-      color: ${props => props.$token.colorTextSecondary};
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
+  }
+  
+  .buttons-section {
+    display: flex;
+    gap: 8px;
   }
 `;
 
@@ -332,12 +395,6 @@ const MenuItem = styled.div`
 // 炫彩充值按钮样式
 // ==========================================
 
-const gradientShift = keyframes`
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-`;
-
 const shimmer = keyframes`
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
@@ -348,41 +405,38 @@ const glowPulse = keyframes`
   50% { box-shadow: 0 0 30px rgba(59, 130, 246, 0.8), 0 0 60px rgba(139, 92, 246, 0.5); }
 `;
 
-const RechargeButton = styled.button`
+const ActionButton = styled.button`
   position: relative;
-  width: 100%;
-  height: 32px;
-  margin-top: 8px;
+  flex: 1;
+  height: 28px;
   border: none;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
   overflow: hidden;
   font-weight: 600;
-  font-size: 12px;
+  font-size: 11px;
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
   transition: all 0.3s ease;
   z-index: 1;
-  padding: 0 12px;
+  padding: 0 10px;
   
   /* 渐变背景 */
-  background: linear-gradient(
-    135deg,
-    #3b82f6 0%,
-    #8b5cf6 25%,
-    #ec4899 50%,
-    #f59e0b 75%,
-    #3b82f6 100%
-  );
-  background-size: 300% 300%;
-  animation: ${gradientShift} 3s ease infinite;
+  background: ${props => props.$variant === 'community' 
+    ? 'linear-gradient(135deg, #10b981 0%, #059669 50%, #10b981 100%)'
+    : 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 25%, #ec4899 50%, #f59e0b 75%, #3b82f6 100%)'
+  };
+  background-size: ${props => props.$variant === 'community' ? '200% 200%' : '300% 300%'};
+  animation: ${gradientShift} ${props => props.$variant === 'community' ? '2s' : '3s'} ease infinite;
   
   /* 发光效果 */
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4), 0 0 24px rgba(139, 92, 246, 0.2);
-  animation: ${gradientShift} 3s ease infinite, ${glowPulse} 2s ease-in-out infinite;
+  box-shadow: ${props => props.$variant === 'community'
+    ? '0 0 8px rgba(16, 185, 129, 0.4), 0 0 16px rgba(5, 150, 105, 0.2)'
+    : '0 0 8px rgba(59, 130, 246, 0.4), 0 0 16px rgba(139, 92, 246, 0.2)'
+  };
   
   /* 光泽效果 */
   &::before {
@@ -395,7 +449,7 @@ const RechargeButton = styled.button`
     background: linear-gradient(
       90deg,
       transparent,
-      rgba(255, 255, 255, 0.25),
+      rgba(255, 255, 255, 0.2),
       transparent
     );
     animation: ${shimmer} 2s infinite;
@@ -404,7 +458,10 @@ const RechargeButton = styled.button`
   /* 悬停效果 */
   &:hover {
     transform: translateY(-1px) scale(1.01);
-    box-shadow: 0 0 18px rgba(59, 130, 246, 0.6), 0 0 36px rgba(139, 92, 246, 0.4), 0 4px 8px rgba(0, 0, 0, 0.15);
+    box-shadow: ${props => props.$variant === 'community'
+      ? '0 0 12px rgba(16, 185, 129, 0.6), 0 0 24px rgba(5, 150, 105, 0.4), 0 2px 4px rgba(0, 0, 0, 0.1)'
+      : '0 0 12px rgba(59, 130, 246, 0.6), 0 0 24px rgba(139, 92, 246, 0.4), 0 2px 4px rgba(0, 0, 0, 0.1)'
+    };
   }
   
   &:active {
@@ -413,7 +470,7 @@ const RechargeButton = styled.button`
   
   /* 图标动画 */
   .icon {
-    font-size: 14px;
+    font-size: 12px;
     animation: ${pulseEffect} 1.5s ease-in-out infinite;
   }
   
@@ -429,6 +486,124 @@ const RechargeButton = styled.button`
 `;
 
 // ==========================================
+// VIP 徽标和等级显示样式
+// ==========================================
+
+const vipShine = keyframes`
+  0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+  100% { transform: translateX(200%) translateY(200%) rotate(45deg); }
+`;
+
+const vipPulse = keyframes`
+  0%, 100% { 
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.6), 0 0 16px rgba(255, 215, 0, 0.4);
+  }
+  50% { 
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 0 24px rgba(255, 215, 0, 0.6);
+  }
+`;
+
+const VipBadge = styled.div`
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  background: ${props => {
+    const level = props.$memberLevel || 1;
+    // 后端会员等级：1=普通会员, 2=白银, 3=黄金, 4=钻石, 5=至尊
+    if (level >= 5) {
+      // 至尊会员 - 红色/粉色渐变
+      return 'linear-gradient(135deg, #f43f5e 0%, #ec4899 50%, #f43f5e 100%)';
+    } else if (level >= 4) {
+      // 钻石会员 - 蓝色渐变
+      return 'linear-gradient(135deg, #38bdf8 0%, #0ea5e9 50%, #38bdf8 100%)';
+    } else if (level >= 3) {
+      // 黄金会员 - 金色渐变
+      return 'linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%)';
+    } else if (level >= 2) {
+      // 白银会员 - 银色渐变
+      return 'linear-gradient(135deg, #94a3b8 0%, #cbd5e1 50%, #94a3b8 100%)';
+    } else {
+      // 普通会员 - 灰色渐变
+      return 'linear-gradient(135deg, #a1a1aa 0%, #d4d4d8 50%, #a1a1aa 100%)';
+    }
+  }};
+  background-size: 200% 200%;
+  animation: ${gradientShift} 3s ease infinite;
+  color: ${props => {
+    const level = props.$memberLevel || 1;
+    // 金色和蓝色背景用深色文字，其他用白色文字
+    return (level >= 3 && level < 5) ? '#1a1a1a' : '#fff';
+  }};
+  overflow: hidden;
+  box-shadow: ${props => {
+    const level = props.$memberLevel || 1;
+    if (level >= 3) {
+      // 黄金及以上等级有光晕效果
+      return '0 0 8px rgba(255, 215, 0, 0.4), 0 0 16px rgba(255, 215, 0, 0.2)';
+    }
+    return '0 2px 4px rgba(0, 0, 0, 0.1)';
+  }};
+  animation: ${props => (props.$memberLevel || 1) >= 3 ? vipPulse : 'none'} 2s ease-in-out infinite;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      45deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.3) 50%,
+      transparent 70%
+    );
+    animation: ${props => (props.$memberLevel || 1) >= 3 ? vipShine : 'none'} 3s infinite;
+  }
+  
+  .vip-icon {
+    font-size: 12px;
+    filter: ${props => {
+      const level = props.$memberLevel || 1;
+      // 黄金及以上等级有阴影效果
+      return level >= 3 ? 'drop-shadow(0 0 2px rgba(0,0,0,0.3))' : 'none';
+    }};
+  }
+  
+  .vip-text {
+    position: relative;
+    z-index: 1;
+    text-shadow: ${props => {
+      const level = props.$memberLevel || 1;
+      // 黄金及以上等级有文字阴影
+      return level >= 3 ? '0 1px 2px rgba(0,0,0,0.2)' : 'none';
+    }};
+  }
+`;
+
+const LevelBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  background: ${props => props.$token.colorPrimary}15;
+  color: ${props => props.$token.colorPrimary};
+  border: 1px solid ${props => props.$token.colorPrimary}40;
+  
+  .level-icon {
+    font-size: 11px;
+  }
+`;
+
+// ==========================================
 // 3. 逻辑组件
 // ==========================================
 
@@ -437,6 +612,8 @@ const UserMenu = ({ userInfo, onLogout }) => {
   const { token } = theme.useToken();
   const intl = useIntl();
   const [isOpen, setIsOpen] = useState(false);
+  const [achievementModalOpen, setAchievementModalOpen] = useState(false);
+  const [memberLevelModalOpen, setMemberLevelModalOpen] = useState(false);
   const menuRef = useRef(null);
 
   // 点击外部关闭
@@ -472,7 +649,7 @@ const UserMenu = ({ userInfo, onLogout }) => {
         { label: intl.formatMessage({ id: 'userMenu.item.profile', defaultMessage: '个人中心' }), icon: <UserOutlined />, path: '/profile' },
         { label: intl.formatMessage({ id: 'userMenu.item.settings', defaultMessage: '系统设置' }), icon: <SettingOutlined />, path: '/settings' },
         { label: intl.formatMessage({ id: 'userMenu.item.security', defaultMessage: '安全设置' }), icon: <SafetyCertificateOutlined />, path: '/security' },
-        { label: intl.formatMessage({ id: 'userMenu.item.privacy', defaultMessage: '隐私偏好' }), icon: <LockOutlined />, path: '/privacy' },
+        { label: intl.formatMessage({ id: 'userMenu.item.privacy', defaultMessage: '隐私偏好' }), icon: <LockOutlined />, path: '/privacy-preferences' },
       ]
     },
     {
@@ -540,23 +717,78 @@ const UserMenu = ({ userInfo, onLogout }) => {
           >
             {/* 1. 详细头部 */}
             <MenuHeader $token={token}>
-              <Avatar 
-                size={48} 
-                src={userInfo?.avatar} 
-                icon={<UserOutlined />}
-                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
-              />
-              <div className="user-info">
-                <h4>{userInfo?.nickname || userInfo?.username}</h4>
-                <p>{userInfo?.email || intl.formatMessage({ id: 'userMenu.email.notBound', defaultMessage: '未绑定邮箱' })}</p>
-                <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                   <Tag color={userInfo?.isActive ? "success" : "default"} style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>
-                     {userInfo?.isActive 
-                       ? intl.formatMessage({ id: 'userMenu.status.verified', defaultMessage: '已认证' })
-                       : intl.formatMessage({ id: 'userMenu.status.guest', defaultMessage: '游客' })}
-                   </Tag>
+              <div className="user-section">
+                <AvatarWrapper>
+                  <Avatar 
+                    size={64} 
+                    src={userInfo?.avatar} 
+                    icon={<UserOutlined />}
+                    style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
+                  />
+                  {userInfo?.isActive && (
+                    <Tag 
+                      color="success" 
+                      className="verified-badge"
+                      style={{ 
+                        margin: 0, 
+                        fontSize: 9, 
+                        lineHeight: '14px',
+                        padding: '0 4px',
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                      }}
+                    >
+                      {intl.formatMessage({ id: 'userMenu.status.verified', defaultMessage: '已认证' })}
+                    </Tag>
+                  )}
+                </AvatarWrapper>
+                <div className="user-info">
+                  <h4>
+                    <RainbowText>
+                      {userInfo?.nickname || userInfo?.username}
+                    </RainbowText>
+                  </h4>
+                  <p>{userInfo?.email || intl.formatMessage({ id: 'userMenu.email.notBound', defaultMessage: '未绑定邮箱' })}</p>
+                  <div className="level-section">
+                    {userInfo?.level && (
+                      <LevelBadge 
+                        $token={token}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAchievementModalOpen(true);
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <TrophyOutlined className="level-icon" />
+                        <span>{intl.formatMessage({ id: 'userMenu.level', defaultMessage: '等级' })} {userInfo.level}</span>
+                      </LevelBadge>
+                    )}
+                    {userInfo?.memberLevel >= 1 && (
+                      <VipBadge 
+                        $memberLevel={userInfo.memberLevel}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setMemberLevelModalOpen(true);
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <CrownOutlined className="vip-icon" />
+                        <span className="vip-text">
+                          {userInfo.memberLevel >= 5 ? intl.formatMessage({ id: 'userMenu.member.vip5', defaultMessage: '至尊会员' }) :
+                           userInfo.memberLevel >= 4 ? intl.formatMessage({ id: 'userMenu.member.vip4', defaultMessage: '钻石会员' }) :
+                           userInfo.memberLevel >= 3 ? intl.formatMessage({ id: 'userMenu.member.vip3', defaultMessage: '黄金会员' }) :
+                           userInfo.memberLevel >= 2 ? intl.formatMessage({ id: 'userMenu.member.vip2', defaultMessage: '白银会员' }) :
+                           intl.formatMessage({ id: 'userMenu.member.vip1', defaultMessage: '普通会员' })}
+                        </span>
+                      </VipBadge>
+                    )}
+                  </div>
                 </div>
-                <RechargeButton 
+              </div>
+              
+              <div className="buttons-section">
+                <ActionButton 
+                  $variant="recharge"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleNavigate('/recharge');
@@ -564,7 +796,17 @@ const UserMenu = ({ userInfo, onLogout }) => {
                 >
                   <ThunderboltOutlined className="icon" />
                   <span className="text">{intl.formatMessage({ id: 'userMenu.recharge', defaultMessage: '立即充值' })}</span>
-                </RechargeButton>
+                </ActionButton>
+                <ActionButton 
+                  $variant="community"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNavigate('/community');
+                  }}
+                >
+                  <TeamOutlined className="icon" />
+                  <span className="text">{intl.formatMessage({ id: 'userMenu.community', defaultMessage: '社区' })}</span>
+                </ActionButton>
               </div>
             </MenuHeader>
 
@@ -604,6 +846,20 @@ const UserMenu = ({ userInfo, onLogout }) => {
           </DropdownPanel>
         )}
       </AnimatePresence>
+      
+      {/* 成就系统模态框 */}
+      <AchievementModal
+        open={achievementModalOpen}
+        onClose={() => setAchievementModalOpen(false)}
+        userInfo={userInfo}
+      />
+      
+      {/* 会员等级模态框 */}
+      <MemberLevelModal
+        open={memberLevelModalOpen}
+        onClose={() => setMemberLevelModalOpen(false)}
+        userInfo={userInfo}
+      />
     </UserMenuContainer>
   );
 };

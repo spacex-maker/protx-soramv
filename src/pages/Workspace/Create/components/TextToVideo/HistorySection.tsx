@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { Button, Spin, Empty, Pagination, Tooltip } from 'antd';
 import { 
   ReloadOutlined, 
@@ -300,6 +300,117 @@ interface HistorySectionProps {
   getStatusText?: (status: number) => string;
 }
 
+// 单个历史卡片组件，用于管理视频 ref
+interface HistoryCardProps {
+  task: any;
+  index: number;
+  onTaskClick: (taskId: number) => void;
+  onDownload: (e: React.MouseEvent, url: string, id: string) => void;
+  onCopyPrompt: (e: React.MouseEvent, prompt: string) => void;
+  onVideoError: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
+  onVideoAbort: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
+  renderCardContent: (task: any, videoRef?: React.RefObject<HTMLVideoElement | null>) => React.ReactNode;
+  intl: any;
+}
+
+const HistoryCard: React.FC<HistoryCardProps> = ({
+  task,
+  index,
+  onTaskClick,
+  onDownload,
+  onCopyPrompt,
+  onVideoError,
+  onVideoAbort,
+  renderCardContent,
+  intl,
+}) => {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  const handleCardClick = () => {
+    // 在点击时暂停视频，避免加载中止错误
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.src = ''; // 清空 src，停止加载
+    }
+    onTaskClick(task.id);
+  };
+
+  return (
+    <Card
+      key={task.id}
+      onClick={handleCardClick}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: index * 0.05 }}
+      layout
+    >
+      <StatusTag $status={task.status}>
+        {task.status === 1 ? <SyncOutlined spin /> : <CloseCircleFilled />}
+        {task.status === 1 ? 'Processing' : 'Failed'}
+      </StatusTag>
+
+      <TopActions className="top-actions">
+        {task.prompt && (
+          <Tooltip title="复制提示词">
+            <ActionBtn onClick={(e) => onCopyPrompt(e, task.prompt)}>
+              <CopyOutlined />
+            </ActionBtn>
+          </Tooltip>
+        )}
+        {task.resultUrls?.[0] && (
+          <Tooltip title="下载">
+            <ActionBtn onClick={(e) => onDownload(e, task.resultUrls[0], task.id)}>
+              <DownloadOutlined />
+            </ActionBtn>
+          </Tooltip>
+        )}
+        <Tooltip title="删除">
+          <ActionBtn className="delete" onClick={(e) => { e.stopPropagation(); }}>
+            <DeleteOutlined />
+          </ActionBtn>
+        </Tooltip>
+      </TopActions>
+
+      {renderCardContent(task, videoRef)}
+
+      <InfoBar className="info-bar">
+        <ModelInfo>
+          <div className="name">{task.modelName || 'Untitled Task'}</div>
+          <div className="time">
+            <ClockCircleOutlined style={{fontSize: 10, marginRight: 4}} />
+            {dayjs(task.createTime).fromNow()}
+          </div>
+        </ModelInfo>
+        
+        {/* 使用 ExpandableContent 包裹详细信息，实现向上生长 */}
+        <ExpandableContent className="expandable-content">
+          <PromptPreview>
+            {task.prompt || intl.formatMessage({ id: 'create.history.noPrompt', defaultMessage: '暂无提示词' })}
+          </PromptPreview>
+          
+          <MetaTags>
+            {task.creditsCost !== null && task.creditsCost !== undefined && (
+              <div className="tag">
+                <ThunderboltFilled style={{color:'#fbbf24'}}/> {task.creditsCost}
+              </div>
+            )}
+            {task.durationMs && (
+              <div className="tag">
+                <ClockCircleOutlined /> {(task.durationMs/1000).toFixed(1)}s
+              </div>
+            )}
+            {(task.model?.videoAspectRatios || task.model?.imageAspectRatios) && (
+              <div className="tag">
+                <ColumnHeightOutlined /> {task.model?.videoAspectRatios || task.model?.imageAspectRatios}
+              </div>
+            )}
+          </MetaTags>
+        </ExpandableContent>
+      </InfoBar>
+    </Card>
+  );
+};
+
 const HistorySection: React.FC<HistorySectionProps> = ({
   historyTasks,
   historyLoading,
@@ -326,7 +437,27 @@ const HistorySection: React.FC<HistorySectionProps> = ({
     navigator.clipboard.writeText(prompt);
   };
 
-  const renderCardContent = (task: any) => {
+  // 处理视频错误，静默处理加载中止的错误
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    const error = video.error;
+    
+    // 忽略加载中止的错误（这些是正常的，当组件卸载或用户导航时会发生）
+    if (error && error.code === MediaError.MEDIA_ERR_ABORTED) {
+      return; // 静默处理，不显示错误
+    }
+    
+    // 其他错误可以在这里处理，比如显示占位符
+    console.warn('Video load error:', error?.message || 'Unknown error');
+  };
+
+  // 处理视频加载中止（当用户点击卡片导致组件卸载时）
+  const handleVideoAbort = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    // 静默处理加载中止，这是正常行为
+    e.preventDefault();
+  };
+
+  const renderCardContent = (task: any, videoRef?: React.RefObject<HTMLVideoElement | null>) => {
     const mediaUrl = task.thumbnailUrl || (task.resultUrls && task.resultUrls[0]);
     const isVideo = task.outputType === 'video' || (mediaUrl && mediaUrl.endsWith('.mp4'));
 
@@ -361,15 +492,35 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       <MediaWrapper className="media-content">
         {isVideo ? (
           <video 
+            ref={videoRef}
             src={mediaUrl} 
             muted 
             loop 
             playsInline 
-            onMouseOver={e => e.currentTarget.play()} 
-            onMouseOut={e => e.currentTarget.pause()} 
+            preload="metadata"
+            onMouseOver={e => {
+              const video = e.currentTarget;
+              if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+                video.play().catch(() => {}); // 忽略播放错误
+              }
+            }} 
+            onMouseOut={e => {
+              const video = e.currentTarget;
+              video.pause();
+            }}
+            onError={handleVideoError}
+            onAbort={handleVideoAbort}
           />
         ) : (
-          <img src={mediaUrl} alt={task.modelName} loading="lazy" />
+          <img 
+            src={mediaUrl} 
+            alt={task.modelName} 
+            loading="lazy"
+            onError={(e) => {
+              // 静默处理图片加载错误
+              e.currentTarget.style.display = 'none';
+            }}
+          />
         )}
       </MediaWrapper>
     );
@@ -402,78 +553,18 @@ const HistorySection: React.FC<HistorySectionProps> = ({
           <Grid>
             <AnimatePresence>
               {historyTasks.map((task, index) => (
-                <Card
+                <HistoryCard
                   key={task.id}
-                  onClick={() => onTaskClick(task.id)}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  layout
-                >
-                  <StatusTag $status={task.status}>
-                    {task.status === 1 ? <SyncOutlined spin /> : <CloseCircleFilled />}
-                    {task.status === 1 ? 'Processing' : 'Failed'}
-                  </StatusTag>
-
-                  <TopActions className="top-actions">
-                    {task.prompt && (
-                      <Tooltip title="复制提示词">
-                        <ActionBtn onClick={(e) => handleCopyPrompt(e, task.prompt)}>
-                          <CopyOutlined />
-                        </ActionBtn>
-                      </Tooltip>
-                    )}
-                    {task.resultUrls?.[0] && (
-                      <Tooltip title="下载">
-                        <ActionBtn onClick={(e) => handleDownload(e, task.resultUrls[0], task.id)}>
-                          <DownloadOutlined />
-                        </ActionBtn>
-                      </Tooltip>
-                    )}
-                    <Tooltip title="删除">
-                      <ActionBtn className="delete" onClick={(e) => { e.stopPropagation(); }}>
-                        <DeleteOutlined />
-                      </ActionBtn>
-                    </Tooltip>
-                  </TopActions>
-
-                  {renderCardContent(task)}
-
-                  <InfoBar className="info-bar">
-                    <ModelInfo>
-                      <div className="name">{task.modelName || 'Untitled Task'}</div>
-                      <div className="time">
-                        <ClockCircleOutlined style={{fontSize: 10, marginRight: 4}} />
-                        {dayjs(task.createTime).fromNow()}
-                      </div>
-                    </ModelInfo>
-                    
-                    {/* 使用 ExpandableContent 包裹详细信息，实现向上生长 */}
-                    <ExpandableContent className="expandable-content">
-                      <PromptPreview>
-                        {task.prompt || intl.formatMessage({ id: 'create.history.noPrompt', defaultMessage: '暂无提示词' })}
-                      </PromptPreview>
-                      
-                      <MetaTags>
-                        {task.creditsCost !== null && task.creditsCost !== undefined && (
-                          <div className="tag">
-                            <ThunderboltFilled style={{color:'#fbbf24'}}/> {task.creditsCost}
-                          </div>
-                        )}
-                        {task.durationMs && (
-                          <div className="tag">
-                            <ClockCircleOutlined /> {(task.durationMs/1000).toFixed(1)}s
-                          </div>
-                        )}
-                        {(task.model?.videoAspectRatios || task.model?.imageAspectRatios) && (
-                          <div className="tag">
-                            <ColumnHeightOutlined /> {task.model?.videoAspectRatios || task.model?.imageAspectRatios}
-                          </div>
-                        )}
-                      </MetaTags>
-                    </ExpandableContent>
-                  </InfoBar>
-                </Card>
+                  task={task}
+                  index={index}
+                  onTaskClick={onTaskClick}
+                  onDownload={handleDownload}
+                  onCopyPrompt={handleCopyPrompt}
+                  onVideoError={handleVideoError}
+                  onVideoAbort={handleVideoAbort}
+                  renderCardContent={renderCardContent}
+                  intl={intl}
+                />
               ))}
             </AnimatePresence>
           </Grid>

@@ -45,19 +45,33 @@ const SimpleHeader = () => {
   }, []);
 
   useEffect(() => {
-    // 从本地存储获取用户信息
-    const storedUserInfo = localStorage.getItem('userInfo');
-    if (storedUserInfo) {
-      setUserInfo(JSON.parse(storedUserInfo));
-    } else {
-      // 如果本地没有用户信息但有token，尝试重新获取
-      const token = localStorage.getItem('token');
-      if (token) {
-        auth.getUserInfo().then(result => {
-          if (result.success) {
-            setUserInfo(result.data);
+    // 页面刷新时，如果有 token，重新获取用户详情
+    const token = localStorage.getItem('token');
+    if (token) {
+      auth.getUserInfo().then(result => {
+        if (result.success) {
+          setUserInfo(result.data);
+        } else {
+          // 如果获取失败，尝试使用本地存储的用户信息
+          const storedUserInfo = localStorage.getItem('userInfo');
+          if (storedUserInfo) {
+            try {
+              setUserInfo(JSON.parse(storedUserInfo));
+            } catch (e) {
+              console.error("Failed to parse user info", e);
+            }
           }
-        });
+        }
+      });
+    } else {
+      // 如果没有 token，尝试从本地存储获取用户信息（用于展示）
+      const storedUserInfo = localStorage.getItem('userInfo');
+      if (storedUserInfo) {
+        try {
+          setUserInfo(JSON.parse(storedUserInfo));
+        } catch (e) {
+          console.error("Failed to parse user info", e);
+        }
       }
     }
   }, []);
