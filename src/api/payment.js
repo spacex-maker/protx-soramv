@@ -164,6 +164,51 @@ export const payment = {
       };
     }
   },
+
+  /**
+   * 分页查询用户订单列表
+   * @param {Object} params - 查询参数
+   * @param {number} params.currentPage - 当前页
+   * @param {number} params.pageSize - 每页大小
+   * @param {string} params.orderNo - 订单号（可选）
+   * @param {string} params.coinType - 币种（可选）
+   * @param {string} params.paymentMethod - 支付方式（可选）
+   * @param {string} params.status - 订单状态（可选）
+   * @param {number} params.minAmount - 最小金额（可选）
+   * @param {number} params.maxAmount - 最大金额（可选）
+   * @param {string} params.createTimeStart - 创建时间开始（可选）
+   * @param {string} params.createTimeEnd - 创建时间结束（可选）
+   * @returns {Promise} 订单列表
+   */
+  listUserOrders: async (params) => {
+    try {
+      const { data } = await instance.post('/productx/recharge/orders', params);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取订单列表失败',
+        error: error,
+      };
+    }
+  },
+
+  /**
+   * 获取用户订单统计信息
+   * @returns {Promise} 统计信息
+   */
+  getUserOrderStatistics: async () => {
+    try {
+      const { data } = await instance.get('/productx/recharge/statistics');
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取订单统计失败',
+        error: error,
+      };
+    }
+  },
 };
 
 export default payment;

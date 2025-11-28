@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import SimpleHeader from "components/headers/simple";
 import instance from "api/axios";
+import { payment } from "api/payment";
 import { 
   Button, 
   Table, 
@@ -359,9 +360,10 @@ const FilterChip = styled.div`
 const ORDER_STATUS_MAP = {
   'PENDING': { label: '待支付', color: 'orange', icon: <ClockCircleOutlined /> },
   'PAID': { label: '已支付', color: 'green', icon: <CheckCircleOutlined /> },
+  'SUCCESS': { label: '已完成', color: 'green', icon: <CheckCircleOutlined /> },
   'CANCELLED': { label: '已取消', color: 'default', icon: <CloseCircleOutlined /> },
   'FAILED': { label: '支付失败', color: 'red', icon: <CloseCircleOutlined /> },
-  'REFUNDED': { label: '已退款', color: 'cyan', icon: <ReloadOutlined /> },
+  'EXPIRED': { label: '已过期', color: 'default', icon: <CloseCircleOutlined /> },
 };
 
 const PAYMENT_METHOD_MAP = {
@@ -369,12 +371,13 @@ const PAYMENT_METHOD_MAP = {
   'wechat': { label: '微信支付', color: 'green' },
   'bank': { label: '银行卡', color: 'purple' },
   'usdt': { label: 'USDT', color: 'orange' },
+  'creem': { label: 'Creem', color: 'purple' },
 };
 
 const COIN_TYPE_MAP = {
   'CNY': 'CNY',
-  'USDT_ERC20': 'USDT',
   'USD': 'USD',
+  'USDT': 'USDT',
 };
 
 // ==========================================
@@ -419,6 +422,7 @@ const OrdersContent = () => {
 
   useEffect(() => {
     fetchOrders();
+    fetchStatistics();
   }, []);
 
   useEffect(() => {
@@ -429,10 +433,8 @@ const OrdersContent = () => {
     setLoading(true);
     try {
       const params = {
-        pageNum: pagination.current,
+        currentPage: pagination.current,
         pageSize: pagination.pageSize,
-        orderBy: 'createTime',
-        isDesc: true,
       };
 
       if (statusFilter !== 'all') params.status = statusFilter;
@@ -444,31 +446,37 @@ const OrdersContent = () => {
         params.createTimeEnd = dateRange[1].format('YYYY-MM-DD HH:mm:ss');
       }
 
-      // TODO: 替换为实际的订单列表API
-      const response = await instance.get('/productx/recharge/list', { params });
+      const response = await payment.listUserOrders(params);
       
-      if (response.data.success) {
-        const { data, totalNum } = response.data.data || {};
+      if (response.success) {
+        const { data, totalNum } = response.data || {};
         setOrders(data || []);
         setPagination(prev => ({ ...prev, total: totalNum || 0 }));
-        
-        // 计算统计数据
-        const total = data?.length || 0;
-        const pending = (data || []).filter(o => o.status === 'PENDING').length;
-        const paid = (data || []).filter(o => o.status === 'PAID').length;
-        const totalAmount = (data || []).reduce((sum, o) => {
-          return sum + (o.status === 'PAID' ? parseFloat(o.amount || 0) : 0);
-        }, 0);
-        
-        setStats({ total, pending, paid, totalAmount });
       } else {
-        message.error(response.data.message || '获取订单记录失败');
+        message.error(response.message || '获取订单记录失败');
       }
     } catch (error) {
       console.error('获取订单失败:', error);
       message.error('获取订单记录失败，请稍后重试');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchStatistics = async () => {
+    try {
+      const response = await payment.getUserOrderStatistics();
+      if (response.success) {
+        const statsData = response.data || {};
+        setStats({
+          total: statsData.total || 0,
+          pending: statsData.pending || 0,
+          paid: statsData.paid || 0,
+          totalAmount: parseFloat(statsData.totalAmount || 0),
+        });
+      }
+    } catch (error) {
+      console.error('获取统计数据失败:', error);
     }
   };
 
@@ -504,12 +512,13 @@ const OrdersContent = () => {
 
   const handleCancelOrder = async (order) => {
     try {
-      const response = await instance.post(`/productx/recharge/cancel/${order.id}`);
-      if (response.data.success) {
+      const response = await payment.cancelOrder(order.orderNo);
+      if (response.success) {
         message.success('订单已取消');
         fetchOrders();
+        fetchStatistics();
       } else {
-        message.error(response.data.message || '取消订单失败');
+        message.error(response.message || '取消订单失败');
       }
     } catch (error) {
       message.error('取消订单失败，请稍后重试');
@@ -537,7 +546,11 @@ const OrdersContent = () => {
       dataIndex: 'createTime',
       key: 'createTime',
       width: 180,
-      render: text => <span style={{ color: token.colorTextSecondary }}>{text}</span>
+      render: text => {
+        if (!text) return '-';
+        const date = dayjs(text);
+        return <span style={{ color: token.colorTextSecondary }}>{date.isValid() ? date.format('YYYY-MM-DD HH:mm:ss') : text}</span>;
+      }
     },
     {
       title: '金额',
@@ -628,7 +641,7 @@ const OrdersContent = () => {
             <p>查看您的所有充值订单记录和状态</p>
           </div>
           <div className="action-group">
-            <Button icon={<ReloadOutlined />} onClick={fetchOrders} loading={loading}>
+            <Button icon={<ReloadOutlined />} onClick={() => { fetchOrders(); fetchStatistics(); }} loading={loading}>
               刷新
             </Button>
             <Button type="primary" onClick={() => navigate('/recharge')}>
@@ -718,9 +731,10 @@ const OrdersContent = () => {
                   { value: 'all', label: '全部状态' },
                   { value: 'PENDING', label: '待支付' },
                   { value: 'PAID', label: '已支付' },
+                  { value: 'SUCCESS', label: '已完成' },
                   { value: 'CANCELLED', label: '已取消' },
                   { value: 'FAILED', label: '支付失败' },
-                  { value: 'REFUNDED', label: '已退款' },
+                  { value: 'EXPIRED', label: '已过期' },
                 ]}
               />
               <Select 
@@ -734,6 +748,7 @@ const OrdersContent = () => {
                   { value: 'wechat', label: '微信支付' },
                   { value: 'bank', label: '银行卡' },
                   { value: 'usdt', label: 'USDT' },
+                  { value: 'creem', label: 'Creem' },
                 ]}
               />
               <Select 
@@ -744,8 +759,8 @@ const OrdersContent = () => {
                 options={[
                   { value: 'all', label: '全部币种' },
                   { value: 'CNY', label: 'CNY' },
-                  { value: 'USDT_ERC20', label: 'USDT' },
                   { value: 'USD', label: 'USD' },
+                  { value: 'USDT', label: 'USDT' },
                 ]}
               />
               <DatePicker.RangePicker 
@@ -761,7 +776,7 @@ const OrdersContent = () => {
             <Table
               columns={columns}
               dataSource={orders}
-              rowKey="id"
+              rowKey="orderNo"
               loading={loading}
               pagination={{
                 ...pagination,
@@ -816,14 +831,15 @@ const OrdersContent = () => {
           <DrawerSection $token={token}>
             <h3>订单状态</h3>
             <ChipGrid>
-              {['all', 'PENDING', 'PAID', 'CANCELLED', 'FAILED', 'REFUNDED'].map(status => {
+              {['all', 'PENDING', 'PAID', 'SUCCESS', 'CANCELLED', 'FAILED', 'EXPIRED'].map(status => {
                 const labels = { 
                   all: '全部', 
                   PENDING: '待支付', 
                   PAID: '已支付', 
+                  SUCCESS: '已完成',
                   CANCELLED: '已取消', 
                   FAILED: '支付失败', 
-                  REFUNDED: '已退款' 
+                  EXPIRED: '已过期' 
                 };
                 return (
                   <FilterChip 
@@ -843,8 +859,8 @@ const OrdersContent = () => {
           <DrawerSection $token={token}>
             <h3>支付方式</h3>
             <ChipGrid>
-              {['all', 'alipay', 'wechat', 'bank', 'usdt'].map(method => {
-                const labels = { all: '全部', alipay: '支付宝', wechat: '微信支付', bank: '银行卡', usdt: 'USDT' };
+              {['all', 'alipay', 'wechat', 'bank', 'usdt', 'creem'].map(method => {
+                const labels = { all: '全部', alipay: '支付宝', wechat: '微信支付', bank: '银行卡', usdt: 'USDT', creem: 'Creem' };
                 return (
                   <FilterChip 
                     key={method}
@@ -863,8 +879,8 @@ const OrdersContent = () => {
           <DrawerSection $token={token}>
             <h3>币种类型</h3>
             <ChipGrid>
-              {['all', 'CNY', 'USDT_ERC20', 'USD'].map(coin => {
-                const labels = { all: '全部币种', CNY: 'CNY', USDT_ERC20: 'USDT', USD: 'USD' };
+              {['all', 'CNY', 'USD', 'USDT'].map(coin => {
+                const labels = { all: '全部币种', CNY: 'CNY', USD: 'USD', USDT: 'USDT' };
                 return (
                   <FilterChip 
                     key={coin}
