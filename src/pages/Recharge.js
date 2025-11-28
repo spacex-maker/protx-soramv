@@ -1241,11 +1241,13 @@ const RechargeContent = () => {
                           $token={token} 
                           $active={isActive} 
                           onClick={() => { 
-                            setCoinType(currency.currencyCode); 
-                            // 根据币种设置默认金额
-                            const defaultAmount = currency.currencyCode === 'CNY' ? 100 : 50;
-                            setAmount(defaultAmount);
-                            setCustomAmount('');
+                            setCoinType(currency.currencyCode);
+                            // 切换币种时，如果用户输入了自定义金额，清空自定义金额
+                            // 但保持预设金额的选择不变（如果用户选择了预设金额）
+                            if (customAmount) {
+                              setCustomAmount('');
+                            }
+                            // 不设置任何默认金额，保持用户已选择的金额
                           }}
                         >
                           {getCurrencyIcon(currency.currencyCode)}
