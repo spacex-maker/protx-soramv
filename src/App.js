@@ -13,6 +13,7 @@ import Navigation from "pages/Navigation";
 import ProfilePage from "pages/Profile";
 import BillingPage from "pages/Billing";
 import RechargePage from "pages/Recharge";
+import RechargeSuccessPage from "pages/RechargeSuccess";
 import RechargeAgreementPage from "pages/RechargeAgreement";
 import PrivacyPreferencesPage from "pages/PrivacyPreferences";
 import OrdersPage from "pages/Orders";
@@ -272,6 +273,11 @@ export default function App() {
               <Route path="/recharge" element={
                 <PrivateRoute>
                   <RechargePage />
+                </PrivateRoute>
+              } />
+              <Route path="/recharge/success" element={
+                <PrivateRoute>
+                  <RechargeSuccessPage />
                 </PrivateRoute>
               } />
               <Route path="/recharge-agreement" element={<RechargeAgreementPage />} />

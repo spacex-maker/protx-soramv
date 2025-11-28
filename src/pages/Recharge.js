@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import SimpleHeader from "components/headers/simple";
 import instance from "api/axios";
 import { auth } from "api/auth";
+import { payment } from "api/payment";
 import { 
   Button, 
   ConfigProvider,
@@ -26,7 +27,8 @@ import {
   SafetyCertificateFilled,
   RightOutlined,
   GiftFilled,
-  ReloadOutlined
+  ReloadOutlined,
+  CreditCardOutlined
 } from "@ant-design/icons";
 import { 
   FaYenSign, 
@@ -703,6 +705,7 @@ const PRESETS = {
 const PAY_METHODS = [
   { id: 'alipay', name: '支付宝', icon: <AlipayCircleFilled style={{color:'#1677ff'}} />, desc: '数亿用户的选择' },
   { id: 'wechat', name: '微信支付', icon: <WechatFilled style={{color:'#52c41a'}} />, desc: '国民级社交支付' },
+  { id: 'creem', name: 'Creem 支付', icon: <CreditCardOutlined style={{color:'#1890ff'}} />, desc: '国际信用卡支付' },
   { id: 'usdt', name: '加密货币', icon: <DollarCircleFilled style={{color:'#26a17b'}} />, desc: 'USDT (TRC20/ERC20)' },
   { id: 'bank', name: '银行转账', icon: <BankOutlined style={{color:'#722ed1'}} />, desc: '大额支付首选' },
 ];
@@ -716,18 +719,36 @@ const RechargeContent = () => {
   const navigate = useNavigate();
   
   // State
-  const [coinType, setCoinType] = useState('CNY');
+  const [coinType, setCoinType] = useState('');
   const [amount, setAmount] = useState(200);
   const [customAmount, setCustomAmount] = useState('');
-  const [payMethod, setPayMethod] = useState('alipay');
+  const [payMethod, setPayMethod] = useState('');
   const [loading, setLoading] = useState(false);
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balance, setBalance] = useState({ cny: 0.00, usdt: 0.00, usd: 0.00 });
   const [username, setUsername] = useState('');
+  const [currentOrderNo, setCurrentOrderNo] = useState(null);
+  const [paymentMethods, setPaymentMethods] = useState([]);
+  const [paymentMethodsLoading, setPaymentMethodsLoading] = useState(false);
+  const [creemProducts, setCreemProducts] = useState([]);
+  const [creemProductsLoading, setCreemProductsLoading] = useState(false);
+  const [selectedCreemProduct, setSelectedCreemProduct] = useState(null);
+  const [supportedCurrencies, setSupportedCurrencies] = useState([]);
+  const [currenciesLoading, setCurrenciesLoading] = useState(false);
+  const orderPollingIntervalRef = useRef(null);
 
   useEffect(() => {
     fetchBalance();
     fetchUserInfo();
+    fetchSupportedCurrencies();
+    
+    // 清理轮询
+    return () => {
+      if (orderPollingIntervalRef.current) {
+        clearInterval(orderPollingIntervalRef.current);
+        orderPollingIntervalRef.current = null;
+      }
+    };
   }, []);
 
   const fetchBalance = async () => {
@@ -767,9 +788,159 @@ const RechargeContent = () => {
     }
   };
 
-  const handlePresetClick = (val) => {
+  // 获取系统支持的货币列表
+  const fetchSupportedCurrencies = async () => {
+    setCurrenciesLoading(true);
+    try {
+      const result = await payment.getSupportedCurrencies();
+      if (result.success && result.data) {
+        setSupportedCurrencies(result.data);
+        // 设置默认选中第一个货币
+        if (result.data.length > 0 && !coinType) {
+          const firstCurrency = result.data[0];
+          setCoinType(firstCurrency.currencyCode);
+          // 选择货币后，获取该货币支持的支付方式
+          fetchPaymentMethods(firstCurrency.currencyCode);
+        }
+      }
+    } catch (error) {
+      console.error('获取货币列表失败:', error);
+      message.error('获取货币列表失败，请稍后重试');
+    } finally {
+      setCurrenciesLoading(false);
+    }
+  };
+
+  const fetchPaymentMethods = async (currencyCode) => {
+    setPaymentMethodsLoading(true);
+    try {
+      const result = await payment.getActivePaymentMethods(currencyCode);
+      if (result.success && result.data) {
+        const methods = result.data.map(method => ({
+          id: method.paymentMethodCode,
+          name: method.paymentMethodName,
+          desc: method.descriptionZh || method.descriptionEn || '',
+          iconUrl: method.iconUrl,
+          method: method,
+          // 根据 payment_method_code 选择对应的图标组件
+          icon: getPaymentIcon(method.paymentMethodCode, method.iconUrl),
+        }));
+        setPaymentMethods(methods);
+        // 设置默认选中第一个支付方式
+        if (methods.length > 0) {
+          setPayMethod(methods[0].id);
+        } else {
+          // 如果没有支付方式，清空所有选择
+          setPayMethod('');
+          setAmount(0);
+          setCustomAmount('');
+          setCreemProducts([]);
+          setSelectedCreemProduct(null);
+        }
+      } else {
+        // 如果请求失败或没有数据，清空所有选择
+        setPaymentMethods([]);
+        setPayMethod('');
+        setAmount(0);
+        setCustomAmount('');
+        setCreemProducts([]);
+        setSelectedCreemProduct(null);
+      }
+    } catch (error) {
+      console.error('获取支付方式失败:', error);
+      message.error('获取支付方式失败，请稍后重试');
+      // 出错时也清空选择
+      setPaymentMethods([]);
+      setPayMethod('');
+      setAmount(0);
+      setCustomAmount('');
+      setCreemProducts([]);
+      setSelectedCreemProduct(null);
+    } finally {
+      setPaymentMethodsLoading(false);
+    }
+  };
+
+  // 根据支付方式代码获取对应的图标组件
+  const getPaymentIcon = (code, iconUrl) => {
+    // 如果有图标URL，优先使用图片
+    if (iconUrl) {
+      return <img src={iconUrl} alt={code} style={{ width: 24, height: 24 }} />;
+    }
+    
+    // 否则根据代码返回对应的图标组件
+    const iconMap = {
+      'alipay': <AlipayCircleFilled style={{color:'#1677ff'}} />,
+      'wechat': <WechatFilled style={{color:'#52c41a'}} />,
+      'creem': <CreditCardOutlined style={{color:'#1890ff'}} />,
+      'usdt': <DollarCircleFilled style={{color:'#26a17b'}} />,
+      'crypto_usdt': <DollarCircleFilled style={{color:'#26a17b'}} />,
+      'bank': <BankOutlined style={{color:'#722ed1'}} />,
+    };
+    return iconMap[code] || <CreditCardOutlined style={{color:'#1890ff'}} />;
+  };
+
+  // 获取 Creem 产品列表
+  const fetchCreemProducts = async (coinType) => {
+    setCreemProductsLoading(true);
+    try {
+      const result = await payment.getCreemProducts(coinType);
+      if (result.success && result.data) {
+        const products = result.data.map(product => ({
+          amount: parseFloat(product.amount),
+          productId: product.creemProductId,
+          product: product,
+        }));
+        setCreemProducts(products);
+        // 如果有产品，默认选中第一个
+        if (products.length > 0) {
+          setSelectedCreemProduct(products[0]);
+          setAmount(products[0].amount);
+          setCustomAmount('');
+        }
+      } else {
+        setCreemProducts([]);
+        message.warning(result.message || '获取 Creem 产品列表失败');
+      }
+    } catch (error) {
+      console.error('获取 Creem 产品列表失败:', error);
+      setCreemProducts([]);
+      message.error('获取 Creem 产品列表失败，请稍后重试');
+    } finally {
+      setCreemProductsLoading(false);
+    }
+  };
+
+  // 监听币种变化，重新获取支付方式
+  useEffect(() => {
+    if (coinType) {
+      fetchPaymentMethods(coinType);
+      // 清空之前的选择
+      setPayMethod('');
+      setCreemProducts([]);
+      setSelectedCreemProduct(null);
+    }
+  }, [coinType]);
+
+  // 监听支付方式变化
+  useEffect(() => {
+    if (payMethod === 'creem' && coinType) {
+      // 选择 Creem 支付时，获取产品列表
+      fetchCreemProducts(coinType);
+    } else {
+      // 切换到其他支付方式时，清空 Creem 产品列表
+      setCreemProducts([]);
+      setSelectedCreemProduct(null);
+    }
+  }, [payMethod, coinType]);
+
+  const handlePresetClick = (val, creemProduct = null) => {
     setAmount(val);
     setCustomAmount('');
+    // 如果是 Creem 支付，保存选中的产品
+    if (creemProduct) {
+      setSelectedCreemProduct(creemProduct);
+    }
   };
 
   const handleCustomChange = (e) => {
@@ -781,48 +952,177 @@ const RechargeContent = () => {
   };
 
   const getCurrentAmount = () => amount || parseFloat(customAmount) || 0;
-  const getSymbol = () => {
-    if (coinType === 'CNY') return '¥';
-    if (coinType === 'USD') return '$';
-    return '$'; // USDT also uses $
-  };
-  const symbol = getSymbol();
   
-  const getBalanceByCoinType = () => {
-    if (coinType === 'CNY') return balance.cny;
-    if (coinType === 'USDT') return balance.usdt;
-    if (coinType === 'USD') return balance.usd;
+  // 根据货币代码获取符号
+  const getSymbol = (currencyCode) => {
+    if (!currencyCode) return '';
+    const currency = supportedCurrencies.find(c => c.currencyCode === currencyCode);
+    return currency ? currency.symbol : '';
+  };
+  const symbol = getSymbol(coinType);
+  
+  // 根据货币代码获取图标
+  const getCurrencyIcon = (code, size = 18) => {
+    if (code === 'CNY') return <FaYenSign style={{ fontSize: size }} />;
+    if (code === 'USDT') return <SiTether style={{ fontSize: size }} />;
+    if (code === 'USD') return <FaDollarSign style={{ fontSize: size }} />;
+    return <DollarCircleFilled style={{ fontSize: size }} />;
+  };
+  
+  // 根据货币代码获取余额
+  const getBalanceByCoinType = (currencyCode) => {
+    if (!currencyCode) return 0;
+    if (currencyCode === 'CNY') return balance.cny;
+    if (currencyCode === 'USDT' || currencyCode === 'USDT_TRC20') return balance.usdt;
+    if (currencyCode === 'USD') return balance.usd;
     return 0;
+  };
+
+  /**
+   * 轮询订单状态
+   */
+  const pollOrderStatus = (orderNo) => {
+    // 清除之前的轮询
+    if (orderPollingIntervalRef.current) {
+      clearInterval(orderPollingIntervalRef.current);
+      orderPollingIntervalRef.current = null;
+    }
+
+    const interval = setInterval(async () => {
+      try {
+        const result = await payment.getOrderStatus(orderNo);
+        if (result.success && result.data) {
+          const status = result.data.status;
+          
+          if (status === 'PAID' || status === 'SUCCESS') {
+            // 支付成功
+            clearInterval(interval);
+            orderPollingIntervalRef.current = null;
+            setCurrentOrderNo(null);
+            message.success('支付成功！余额已到账');
+            // 刷新余额
+            fetchBalance();
+            // 可选：跳转到订单页面
+            // navigate('/orders');
+          } else if (status === 'CANCELLED' || status === 'FAILED' || status === 'EXPIRED') {
+            // 支付失败或取消
+            clearInterval(interval);
+            orderPollingIntervalRef.current = null;
+            setCurrentOrderNo(null);
+            message.warning(`订单${status === 'CANCELLED' ? '已取消' : status === 'FAILED' ? '支付失败' : '已过期'}`);
+          }
+          // 其他状态（PENDING等）继续轮询
+        }
+      } catch (error) {
+        console.error('查询订单状态失败:', error);
+        // 不中断轮询，继续尝试
+      }
+    }, 3000); // 每3秒轮询一次
+
+    orderPollingIntervalRef.current = interval;
+    
+    // 5分钟后停止轮询（避免无限轮询）
+    setTimeout(() => {
+      if (orderPollingIntervalRef.current === interval) {
+        clearInterval(interval);
+        orderPollingIntervalRef.current = null;
+      }
+    }, 300000); // 5分钟后停止
+  };
+
+  /**
+   * 处理 Creem 支付
+   */
+  const handleCreemPayment = async (orderNo) => {
+    try {
+      // 创建 Creem checkout session
+      const checkoutResult = await payment.createCreemCheckout({ orderNo });
+      
+      if (checkoutResult.success && checkoutResult.data) {
+        const { checkoutUrl, sessionId } = checkoutResult.data;
+        
+        if (checkoutUrl) {
+          // 打开支付页面
+          const paymentWindow = window.open(checkoutUrl, '_blank', 'width=800,height=600');
+          
+          if (paymentWindow) {
+            message.info('正在打开支付页面，请完成支付...');
+            // 开始轮询订单状态
+            pollOrderStatus(orderNo);
+          } else {
+            message.warning('无法打开支付窗口，请检查浏览器弹窗设置');
+          }
+        } else {
+          message.error('获取支付链接失败');
+        }
+      } else {
+        message.error(checkoutResult.message || '创建支付会话失败');
+      }
+    } catch (error) {
+      console.error('Creem 支付处理失败:', error);
+      message.error('支付处理失败，请稍后重试');
+    }
+  };
+
+  /**
+   * 处理其他支付方式（支付宝、微信等）
+   */
+  const handleOtherPayment = (payUrl) => {
+    if (payUrl) {
+      window.open(payUrl, '_blank');
+      message.info('正在跳转支付页面，请完成支付...');
+    } else {
+      message.error('支付链接获取失败');
+    }
   };
 
   const handleSubmit = async () => {
     const finalAmount = getCurrentAmount();
     if (finalAmount <= 0) return message.warning('请输入有效金额');
+    if (!payMethod) return message.warning('请选择支付方式');
+    
+    // Creem 支付需要选择产品
+    if (payMethod === 'creem' && !selectedCreemProduct) {
+      return message.warning('请选择充值金额');
+    }
     
     setLoading(true);
     try {
-      // 模拟 API 调用
-      await new Promise(r => setTimeout(r, 1500));
-      
-      // 真实 API 调用
-      /*
-      const response = await instance.post('/productx/recharge/create', {
+      // 创建订单
+      const orderResult = await payment.createRechargeOrder({
         coinType,
         amount: finalAmount,
         paymentMethod: payMethod,
+        // 如果是 creem 支付，使用选中的产品ID
+        ...(payMethod === 'creem' && selectedCreemProduct && {
+          creemProductId: selectedCreemProduct.productId,
+        }),
       });
 
-      if (response.data.success) {
-        message.success('订单创建成功，即将跳转支付...');
-        if (response.data.data?.payUrl) {
-          window.open(response.data.data.payUrl, '_blank');
+      if (orderResult.success && orderResult.data) {
+        const { orderNo, payUrl, status } = orderResult.data;
+        setCurrentOrderNo(orderNo);
+        
+        message.success('订单创建成功');
+        
+        // 根据支付方式处理
+        if (payMethod === 'creem') {
+          // Creem 支付需要创建 checkout session
+          await handleCreemPayment(orderNo);
+        } else {
+          // 其他支付方式直接跳转
+          handleOtherPayment(payUrl);
+          
+          // 如果是待支付状态，开始轮询
+          if (status === 'PENDING') {
+            pollOrderStatus(orderNo);
+          }
         }
       } else {
-        message.error(response.data.message || '创建充值订单失败');
+        message.error(orderResult.message || '创建充值订单失败');
       }
-      */
-      message.success('订单创建成功，即将跳转收银台...');
     } catch (error) {
+      console.error('充值请求失败:', error);
       message.error('充值请求失败，请稍后重试');
     } finally {
       setLoading(false);
@@ -871,33 +1171,54 @@ const RechargeContent = () => {
           </div>
           <Spin spinning={balanceLoading}>
             <div className="balance-grid">
-              <div className={`balance-item ${coinType === 'CNY' ? 'active' : ''}`}>
-                <div className="coin-label">
-                  <FaYenSign style={{ fontSize: 16, color: coinType === 'CNY' ? token.colorPrimary : token.colorTextSecondary }} />
-                  <span>CNY</span>
-                </div>
-                <div className="coin-value">
-                  ¥{balance.cny.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-              </div>
-              <div className={`balance-item ${coinType === 'USDT' ? 'active' : ''}`}>
-                <div className="coin-label">
-                  <SiTether style={{ fontSize: 16, color: coinType === 'USDT' ? token.colorPrimary : token.colorTextSecondary }} />
-                  <span>USDT</span>
-                </div>
-                <div className="coin-value">
-                  ${balance.usdt.toLocaleString('zh-CN', { minimumFractionDigits: 6, maximumFractionDigits: 6 })}
-                </div>
-              </div>
-              <div className={`balance-item ${coinType === 'USD' ? 'active' : ''}`}>
-                <div className="coin-label">
-                  <FaDollarSign style={{ fontSize: 16, color: coinType === 'USD' ? token.colorPrimary : token.colorTextSecondary }} />
-                  <span>USD</span>
-                </div>
-                <div className="coin-value">
-                  ${balance.usd.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-              </div>
+              {supportedCurrencies.map((currency) => {
+                const isActive = coinType === currency.currencyCode;
+                const balanceValue = getBalanceByCoinType(currency.currencyCode);
+                // 根据货币代码获取图标
+                const getCurrencyIcon = (code) => {
+                  if (code === 'CNY') return <FaYenSign style={{ fontSize: 16 }} />;
+                  if (code === 'USDT' || code === 'USDT_TRC20') return <SiTether style={{ fontSize: 16 }} />;
+                  if (code === 'USD') return <FaDollarSign style={{ fontSize: 16 }} />;
+                  return <DollarCircleFilled style={{ fontSize: 16 }} />;
+                };
+                
+                // 根据货币代码确定小数位数
+                const getDecimalPlaces = (code) => {
+                  if (code === 'USDT' || code === 'USDT_TRC20') return { min: 6, max: 6 };
+                  return { min: 2, max: 2 };
+                };
+                
+                const decimals = getDecimalPlaces(currency.currencyCode);
+                const isUSDT = currency.currencyCode === 'USDT' || currency.currencyCode === 'USDT_TRC20';
+                
+                return (
+                  <div key={currency.id} className={`balance-item ${isActive ? 'active' : ''}`}>
+                    <div className="coin-label">
+                      {getCurrencyIcon(currency.currencyCode)}
+                      <span>{currency.currencyCode}</span>
+                      {isUSDT && (
+                        <span style={{ 
+                          marginLeft: 6, 
+                          fontSize: 10, 
+                          padding: '2px 6px', 
+                          background: token.colorInfo || '#1890ff', 
+                          color: '#fff', 
+                          borderRadius: 4,
+                          fontWeight: 500
+                        }}>
+                          TRC20
+                        </span>
+                      )}
+                    </div>
+                    <div className="coin-value">
+                      {currency.symbol}{balanceValue.toLocaleString('zh-CN', { 
+                        minimumFractionDigits: decimals.min, 
+                        maximumFractionDigits: decimals.max 
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </Spin>
         </BalanceCard>
@@ -909,90 +1230,182 @@ const RechargeContent = () => {
             {/* 1. 币种选择 */}
             <section>
               <SectionTitle $token={token}>充值币种</SectionTitle>
-              <CoinToggle $token={token}>
-                <CoinOption 
-                  $token={token} 
-                  $active={coinType === 'CNY'} 
-                  onClick={() => { setCoinType('CNY'); setAmount(100); }}
-                >
-                  <FaYenSign style={{ fontSize: 18 }} /> 人民币 (CNY)
-                </CoinOption>
-                <CoinOption 
-                  $token={token} 
-                  $active={coinType === 'USDT'}
-                  onClick={() => { setCoinType('USDT'); setAmount(50); }}
-                >
-                  <SiTether style={{ fontSize: 18 }} /> USDT (Crypto)
-                </CoinOption>
-                <CoinOption 
-                  $token={token} 
-                  $active={coinType === 'USD'}
-                  onClick={() => { setCoinType('USD'); setAmount(50); }}
-                >
-                  <FaDollarSign style={{ fontSize: 18 }} /> 美元 (USD)
-                </CoinOption>
-              </CoinToggle>
-            </section>
-
-            {/* 2. 金额选择 */}
-            <section>
-              <SectionTitle $token={token}>充值金额</SectionTitle>
-              <AmountGrid>
-                {PRESETS[coinType].map((item, i) => (
-                  <AmountCard 
-                    key={i} 
-                    $token={token} 
-                    $active={amount === item.val} 
-                    $tag={item.tag}
-                    onClick={() => handlePresetClick(item.val)}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <div className="val-group">
-                      <span className="symbol">{symbol}</span>
-                      <span className="num">{item.val}</span>
+              <Spin spinning={currenciesLoading}>
+                <CoinToggle $token={token}>
+                  {supportedCurrencies.length > 0 ? (
+                    supportedCurrencies.map((currency) => {
+                      const isActive = coinType === currency.currencyCode;
+                      return (
+                        <CoinOption 
+                          key={currency.id}
+                          $token={token} 
+                          $active={isActive} 
+                          onClick={() => { 
+                            setCoinType(currency.currencyCode); 
+                            // 根据币种设置默认金额
+                            const defaultAmount = currency.currencyCode === 'CNY' ? 100 : 50;
+                            setAmount(defaultAmount);
+                            setCustomAmount('');
+                          }}
+                        >
+                          {getCurrencyIcon(currency.currencyCode)}
+                          {currency.descriptionZh || currency.currencyName} ({currency.currencyCode})
+                        </CoinOption>
+                      );
+                    })
+                  ) : (
+                    <div style={{ padding: 20, textAlign: 'center', color: token.colorTextSecondary }}>
+                      暂无支持的货币
                     </div>
-                    {item.bonus && (
-                      <span className="bonus-badge">
-                        <GiftFilled style={{ marginRight: 4 }} />
-                        {item.bonus}
-                      </span>
-                    )}
-                  </AmountCard>
-                ))}
-              </AmountGrid>
-              
-              <CustomInputWrapper $token={token}>
-                <Input 
-                  placeholder="输入自定义金额" 
-                  prefix={<span style={{color: token.colorTextTertiary}}>自定义金额</span>} 
-                  suffix={<span style={{fontWeight:600}}>{symbol}</span>}
-                  value={customAmount}
-                  onChange={handleCustomChange}
-                />
-              </CustomInputWrapper>
+                  )}
+                </CoinToggle>
+              </Spin>
             </section>
 
-            {/* 3. 支付方式 */}
+            {/* 2. 支付方式 */}
             <section>
               <SectionTitle $token={token}>支付方式</SectionTitle>
-              <PaymentList>
-                {PAY_METHODS.map(method => (
-                  <PayItem 
-                    key={method.id} 
-                    $token={token}
-                    $active={payMethod === method.id}
-                    onClick={() => setPayMethod(method.id)}
-                  >
-                    <div className="icon-box">{method.icon}</div>
-                    <div className="info">
-                      <div className="title">{method.name}</div>
-                      <div className="sub">{method.desc}</div>
-                    </div>
-                    <div className="radio-circle" />
-                  </PayItem>
-                ))}
-              </PaymentList>
+              <Spin spinning={paymentMethodsLoading}>
+                {paymentMethods.length > 0 ? (
+                  <PaymentList>
+                    {paymentMethods.map(method => (
+                      <PayItem 
+                        key={method.id} 
+                        $token={token}
+                        $active={payMethod === method.id}
+                        onClick={() => setPayMethod(method.id)}
+                      >
+                        <div className="icon-box">{method.icon}</div>
+                        <div className="info">
+                          <div className="title">
+                            {method.name}
+                            {method.method?.badgeText && (
+                              <span style={{ 
+                                marginLeft: 8, 
+                                fontSize: 10, 
+                                padding: '2px 6px', 
+                                background: token.colorError, 
+                                color: '#fff', 
+                                borderRadius: 4 
+                              }}>
+                                {method.method.badgeText}
+                              </span>
+                            )}
+                            {method.method?.isRecommend && (
+                              <span style={{ 
+                                marginLeft: 4, 
+                                fontSize: 10, 
+                                color: token.colorWarning 
+                              }}>⭐</span>
+                            )}
+                          </div>
+                          <div className="sub">{method.desc}</div>
+                          {method.method?.feeRate && (
+                            <div className="sub" style={{ fontSize: 11, marginTop: 2 }}>
+                              费率: {(method.method.feeRate * 100).toFixed(2)}%
+                              {method.method.feeFixed > 0 && ` + $${method.method.feeFixed}`}
+                            </div>
+                          )}
+                        </div>
+                        <div className="radio-circle" />
+                      </PayItem>
+                    ))}
+                  </PaymentList>
+                ) : (
+                  <div style={{ padding: 20, textAlign: 'center', color: token.colorTextSecondary }}>
+                    {coinType ? `暂不支持 ${coinType} 币种的支付方式` : '请先选择充值币种'}
+                  </div>
+                )}
+              </Spin>
+            </section>
+
+            {/* 3. 金额选择 */}
+            <section>
+              <SectionTitle $token={token}>充值金额</SectionTitle>
+              {!payMethod ? (
+                <div style={{ padding: 20, textAlign: 'center', color: token.colorTextSecondary }}>
+                  请先选择支付方式
+                </div>
+              ) : (
+                <Spin spinning={payMethod === 'creem' && creemProductsLoading}>
+                  <AmountGrid>
+                    {payMethod === 'creem' ? (
+                      // Creem 支付：使用产品列表
+                      creemProducts.length > 0 ? (
+                        creemProducts.map((product, i) => (
+                          <AmountCard 
+                            key={i} 
+                            $token={token} 
+                            $active={selectedCreemProduct?.productId === product.productId} 
+                            $tag={product.product?.badgeText || ''}
+                            onClick={() => handlePresetClick(product.amount, product)}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <div className="val-group">
+                              <span className="symbol">{symbol}</span>
+                              <span className="num">{product.amount}</span>
+                            </div>
+                            {product.product?.badgeText && (
+                              <span className="bonus-badge">
+                                <GiftFilled style={{ marginRight: 4 }} />
+                                {product.product.badgeText}
+                              </span>
+                            )}
+                          </AmountCard>
+                        ))
+                      ) : (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 20, color: token.colorTextSecondary }}>
+                          暂无可用产品
+                        </div>
+                      )
+                    ) : (
+                      // 其他支付方式：使用预设金额
+                      (PRESETS[coinType] && PRESETS[coinType].length > 0) ? (
+                        PRESETS[coinType].map((item, i) => (
+                          <AmountCard 
+                            key={i} 
+                            $token={token} 
+                            $active={amount === item.val} 
+                            $tag={item.tag}
+                            onClick={() => handlePresetClick(item.val)}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <div className="val-group">
+                              <span className="symbol">{symbol}</span>
+                              <span className="num">{item.val}</span>
+                            </div>
+                            {item.bonus && (
+                              <span className="bonus-badge">
+                                <GiftFilled style={{ marginRight: 4 }} />
+                                {item.bonus}
+                              </span>
+                            )}
+                          </AmountCard>
+                        ))
+                      ) : (
+                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 20, color: token.colorTextSecondary }}>
+                          {coinType ? `暂不支持 ${coinType} 币种的预设金额` : '请先选择充值币种'}
+                        </div>
+                      )
+                    )}
+                  </AmountGrid>
+                </Spin>
+              )}
+              
+              {/* Creem 支付时不显示自定义金额输入框 */}
+              {payMethod && payMethod !== 'creem' && (
+                <CustomInputWrapper $token={token}>
+                  <Input 
+                    placeholder="输入自定义金额" 
+                    prefix={<span style={{color: token.colorTextTertiary}}>自定义金额</span>} 
+                    suffix={<span style={{fontWeight:600}}>{symbol}</span>}
+                    value={customAmount}
+                    onChange={handleCustomChange}
+                  />
+                </CustomInputWrapper>
+              )}
             </section>
 
           </MainSection>
@@ -1012,7 +1425,7 @@ const RechargeContent = () => {
               </ReceiptRow>
               <ReceiptRow $token={token}>
                 <span>支付方式</span>
-                <span>{PAY_METHODS.find(p => p.id === payMethod)?.name}</span>
+                <span>{paymentMethods.find(p => p.id === payMethod)?.name || '请选择'}</span>
               </ReceiptRow>
               
               <ReceiptRow $token={token} className="total">
