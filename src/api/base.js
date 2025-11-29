@@ -80,5 +80,18 @@ export const base = {
         message: error.response?.data?.message || '获取官方邮箱失败'
       };
     }
+  },
+
+  // 获取启用的 KYC 国家配置列表
+  getKycCountryConfigs: async () => {
+    try {
+      const { data } = await axios.get('/productx/kyc-country-config/enabled');
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取实名认证配置失败'
+      };
+    }
   }
 }; 

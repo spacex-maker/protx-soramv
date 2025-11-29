@@ -199,13 +199,13 @@ export const RightSection = ({
                     <>
                       <CountryFlag 
                         src={countries.find(c => c.code === countryCode)?.flagImageUrl} 
-                        alt={countries.find(c => c.code === countryCode)?.name}
+                        alt={countries.find(c => c.code === countryCode)?.localName}
                         onError={(e) => {
                           e.target.src = '/default-flag.png';
                         }}
                         className={isChangingCountry ? 'changing' : ''}
                       />
-                      <span>{countries.find(c => c.code === countryCode)?.name}</span>
+                      <span>{countries.find(c => c.code === countryCode)?.localName}</span>
                     </>
                   ) : (
                     <span>选择国家/地区</span>
@@ -234,12 +234,12 @@ export const RightSection = ({
                     <CountryOptionContent>
                       <CountryFlag 
                         src={country.flagImageUrl} 
-                        alt={country.name}
+                        alt={country.localName}
                         onError={(e) => {
                           e.target.src = '/default-flag.png';
                         }}
                       />
-                      <span>{country.name}</span>
+                      <span>{country.localName}</span>
                     </CountryOptionContent>
                   </CountryOption>
                 ))}
@@ -433,8 +433,12 @@ export const RightSection = ({
             </Link>
           </div>
           <div style={{ marginTop: '0.75rem', fontSize: '0.75rem' }}>
-            <Link to="/terms-of-service" style={{ marginRight: '1rem' }}>服务条款</Link>
-            <Link to="/privacy-policy">隐私政策</Link>
+            <Link to="/terms-of-service" style={{ marginRight: '1rem' }}>
+              <FormattedMessage id="footer.legal.terms" />
+            </Link>
+            <Link to="/privacy-policy">
+              <FormattedMessage id="footer.legal.privacy" />
+            </Link>
           </div>
         </Footer>
       </LoginBox>

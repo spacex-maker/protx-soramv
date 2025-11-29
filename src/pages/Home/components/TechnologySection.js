@@ -423,6 +423,44 @@ const Model3DCard = styled(motion.div)`
 const TechnologySection = () => {
   const { token } = theme.useToken();
   const intl = useIntl();
+  const [detailedEyeBg, setDetailedEyeBg] = useState('https://files.catbox.moe/q41csa.png');
+  const [dreamShaperBg, setDreamShaperBg] = useState('https://files.catbox.moe/azjt7u.png');
+  
+  // 预加载 Detailed Eye 背景图片，失败时使用备用链接
+  useEffect(() => {
+    const img = new Image();
+    const primaryUrl = 'https://files.catbox.moe/q41csa.png';
+    const fallbackUrl = 'https://public-1258150206.cos.ap-nanjing.myqcloud.com/home/8ea584d2-9dbb-4cbb-8f3f-c4b1f031ec2f.png';
+    
+    img.onload = () => {
+      setDetailedEyeBg(primaryUrl);
+    };
+    
+    img.onerror = () => {
+      console.log('Detailed Eye background image failed to load, using fallback');
+      setDetailedEyeBg(fallbackUrl);
+    };
+    
+    img.src = primaryUrl;
+  }, []);
+
+  // 预加载 DreamShaper 背景图片，失败时使用备用链接
+  useEffect(() => {
+    const img = new Image();
+    const primaryUrl = 'https://files.catbox.moe/azjt7u.png';
+    const fallbackUrl = 'https://public-1258150206.cos.ap-nanjing.myqcloud.com/home/909fb8b7-4be4-4b98-9a7d-dd0059e150f1.png';
+    
+    img.onload = () => {
+      setDreamShaperBg(primaryUrl);
+    };
+    
+    img.onerror = () => {
+      console.log('DreamShaper background image failed to load, using fallback');
+      setDreamShaperBg(fallbackUrl);
+    };
+    
+    img.src = primaryUrl;
+  }, []);
   
   // --- 引擎节点数据 ---
   const getNodeTitle = (key) => intl.formatMessage({ id: key });
@@ -711,8 +749,8 @@ const TechnologySection = () => {
         >
           {/* 第一排：Checkpoint */}
           {[
-            { name: 'CyberRealistic', type: 'CHECKPOINT', bg: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600&q=80' },
-            { name: 'DreamShaper', type: 'CHECKPOINT', bg: 'https://files.catbox.moe/azjt7u.png' },
+            { name: 'CyberRealistic', type: 'CHECKPOINT', bg: 'https://models-online-persist.shakker.cloud/img/a862947dc75d4a70b42c7dc08331b1b0/665a89a9d43f90a8013ad4fdccf2600853a865b4497b2d2512e8ff4f95f39efc.png?x-oss-process=image/resize,w_640,m_lfit/format,webp' },
+            { name: 'DreamShaper', type: 'CHECKPOINT', bg: dreamShaperBg },
             { name: 'Realistic Vision', type: 'CHECKPOINT', bg: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&q=80' },
             { name: 'Deliberate', type: 'CHECKPOINT', bg: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&q=80' }
           ].map((item, i) => (
@@ -726,10 +764,10 @@ const TechnologySection = () => {
 
           {/* 第二排：LoRA */}
           {[
-            { name: 'Ghibli Style', type: 'LORA', bg: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80' },
-            { name: 'Mecha Suit', type: 'LORA', bg: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=600&q=80' },
-            { name: 'Detailed Eye', type: 'LORA', bg: 'https://files.catbox.moe/q41csa.png' },
-            { name: 'Add Detail', type: 'LORA', bg: 'https://images.unsplash.com/photo-1618172193763-c511deb635ca?w=600&q=80' }
+            { name: 'Ghibli Style', type: 'LORA', bg: 'https://models-online-persist.shakker.cloud/community-img/c605cfb7fab6255fc54bb72a0f9ec1304905b414acf9f0b0bf16515bbbe9c609.png?x-oss-process=image/resize,w_640,m_lfit/format,webp' },
+            { name: 'Mecha Suit', type: 'LORA', bg: 'https://models-online-persist.shakker.cloud/img/56b1ac35f152453f80448e104cac53a8/c267cdd767d976cfb4224ab18a1ef0f41a004a0e4d4c01e10c06043ccc9bbf91.png?x-oss-process=image/resize,w_640,m_lfit/format,webp' },
+            { name: 'Detailed Eye', type: 'LORA', bg: detailedEyeBg },
+            { name: 'Add Detail', type: 'LORA', bg: 'https://models-online-persist.shakker.cloud/img/036c4f69b4b94e0b87160f469655f4be/ae6c3263af7207baa2ad1afc0fde7532889a3642f5bb040c1a17a6d1fc4f8475.jpg?x-oss-process=image/resize,w_764,m_lfit/format,webp' }
           ].map((item, i) => (
             <Model3DCard key={i+4} $bg={item.bg} style={{marginTop: (i+1) % 2 * 40}}>
               <div className="meta">

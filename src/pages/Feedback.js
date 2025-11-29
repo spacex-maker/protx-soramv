@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import styled, { css } from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIntl } from "react-intl";
+import { useNavigate } from "react-router-dom";
 import SimpleHeader from "components/headers/simple";
 import FooterSection from "./Home/components/FooterSection";
 import { base } from "api/base";
@@ -284,6 +285,7 @@ const FeedbackContent = () => {
   const { token } = theme.useToken();
   const [form] = Form.useForm();
   const intl = useIntl();
+  const navigate = useNavigate();
   
   // State
   const [loading, setLoading] = useState(false);
@@ -399,7 +401,7 @@ const FeedbackContent = () => {
             </div>
 
             <ContactLinks>
-              <LinkItem href="#" target="_blank">
+              <LinkItem href="#" onClick={(e) => { e.preventDefault(); navigate('/help'); }}>
                 <div className="icon"><ReadFilled /></div>
                 <div className="text">
                   <h4>{intl.formatMessage({ id: 'feedback.contact.helpDoc.title', defaultMessage: '帮助文档' })}</h4>

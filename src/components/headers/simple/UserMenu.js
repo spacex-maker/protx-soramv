@@ -725,7 +725,8 @@ const UserMenu = ({ userInfo, onLogout }) => {
                     icon={<UserOutlined />}
                     style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}
                   />
-                  {userInfo?.isActive && (
+                  {/* KYC 状态徽章：0=未认证 1=审核中 2=已通过 3=审核失败 */}
+                  {userInfo?.kycStatus === 2 && (
                     <Tag 
                       color="success" 
                       className="verified-badge"
@@ -739,6 +740,38 @@ const UserMenu = ({ userInfo, onLogout }) => {
                       }}
                     >
                       {intl.formatMessage({ id: 'userMenu.status.verified', defaultMessage: '已认证' })}
+                    </Tag>
+                  )}
+                  {userInfo?.kycStatus === 1 && (
+                    <Tag 
+                      color="processing" 
+                      className="verified-badge"
+                      style={{ 
+                        margin: 0, 
+                        fontSize: 9, 
+                        lineHeight: '14px',
+                        padding: '0 4px',
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                      }}
+                    >
+                      {intl.formatMessage({ id: 'userMenu.status.reviewing', defaultMessage: '审核中' })}
+                    </Tag>
+                  )}
+                  {userInfo?.kycStatus === 3 && (
+                    <Tag 
+                      color="error" 
+                      className="verified-badge"
+                      style={{ 
+                        margin: 0, 
+                        fontSize: 9, 
+                        lineHeight: '14px',
+                        padding: '0 4px',
+                        borderRadius: '8px',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                      }}
+                    >
+                      {intl.formatMessage({ id: 'userMenu.status.rejected', defaultMessage: '未通过' })}
                     </Tag>
                   )}
                 </AvatarWrapper>

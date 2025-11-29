@@ -71,6 +71,16 @@ export const auth = {
     }
   },
 
+  // 获取用户实名认证信息
+  getUserRealnameInfo: async () => {
+    try {
+      const { data } = await axios.get('/productx/user/realname-info');
+      return data;
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || '获取实名认证信息失败' };
+    }
+  },
+
   // 刷新 token
   refreshToken: () => {
     return axios.post('/auth/refresh-token');

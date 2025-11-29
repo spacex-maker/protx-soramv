@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
+import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
 import instance from "api/axios";
 import { auth } from "api/auth";
@@ -14,7 +16,8 @@ import {
   ConfigProvider,
   Spin,
   Upload,
-  theme // 引入 theme
+  theme, // 引入 theme
+  Tooltip
 } from "antd";
 import { 
   UserOutlined, 
@@ -25,7 +28,9 @@ import {
   SafetyCertificateOutlined,
   ToolOutlined,
   CloudUploadOutlined,
-  SettingOutlined
+  SettingOutlined,
+  CheckCircleFilled,
+  ExclamationCircleOutlined
 } from "@ant-design/icons";
 
 // ==========================================
@@ -225,6 +230,9 @@ const UserMeta = styled.div`
     font-weight: 700;
     color: ${props => props.$token.colorText};
     margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
   p {
     color: ${props => props.$token.colorTextSecondary};
@@ -237,6 +245,25 @@ const UserMeta = styled.div`
   @media (min-width: 768px) {
     padding-top: 30px;
     h1 { font-size: 28px; }
+  }
+`;
+
+const VerificationIcon = styled.div`
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  
+  &:hover {
+    transform: scale(1.1);
+  }
+  
+  .verified {
+    color: ${props => props.$token.colorSuccess};
+  }
+  
+  .unverified {
+    color: ${props => props.$token.colorWarning};
   }
 `;
 
@@ -384,12 +411,18 @@ const FormLabel = styled.div`
 const ProfileContent = () => {
   // 1. 获取 Ant Design 真实的 Token (Hex 颜色值)
   const { token } = theme.useToken();
+  const navigate = useNavigate();
+  const intl = useIntl();
   
   const [userInfo, setUserInfo] = useState(null);
+  const [realnameInfo, setRealnameInfo] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [editedInfo, setEditedInfo] = useState({});
   const [avatarFile, setAvatarFile] = useState(null); // 保存选中的头像文件对象
+
+  // 是否已实名认证：后端定义 2 为已通过
+  const isVerified = realnameInfo?.realnameStatus === 2;
 
   useEffect(() => {
     const storedUserInfo = localStorage.getItem('userInfo');
@@ -403,9 +436,9 @@ const ProfileContent = () => {
       setUserInfo({
         username: "GuestUser",
         nickname: "Guest",
-        description: "尚未设置简介",
+        description: intl.formatMessage({ id: 'profile.value.noDescription', defaultMessage: '这个人很懒，什么都没写' }),
         email: "guest@example.com",
-        phoneNumber: "未绑定",
+        phoneNumber: intl.formatMessage({ id: 'profile.value.notBound', defaultMessage: '未绑定' }),
         avatar: "",
         creditScore: 0,
         level: 1,
@@ -418,6 +451,21 @@ const ProfileContent = () => {
         fullName: ""
       });
     }
+  }, []);
+
+  // 获取实名认证信息
+  useEffect(() => {
+    const fetchRealnameInfo = async () => {
+      try {
+        const result = await auth.getUserRealnameInfo();
+        if (result.success && result.data) {
+          setRealnameInfo(result.data);
+        }
+      } catch (e) {
+        console.error('获取实名认证信息失败', e);
+      }
+    };
+    fetchRealnameInfo();
   }, []);
 
 
@@ -452,7 +500,7 @@ const ProfileContent = () => {
           });
           
           if (uploadResponse.data.success) {
-            message.success('头像上传成功');
+            message.success(intl.formatMessage({ id: 'profile.message.avatarUploadSuccess', defaultMessage: '头像上传成功' }));
             // 上传成功后，重新获取用户信息以获取最新的头像 URL
             const userInfoResult = await auth.getUserInfo();
             if (userInfoResult.success) {
@@ -461,12 +509,12 @@ const ProfileContent = () => {
               setEditedInfo(prev => ({ ...prev, avatar: finalAvatarUrl }));
             }
           } else {
-            message.error(uploadResponse.data.message || '头像上传失败');
+            message.error(uploadResponse.data.message || intl.formatMessage({ id: 'profile.message.uploadAvatarFailed', defaultMessage: '头像上传失败' }));
             setLoading(false);
             return;
           }
         } catch (uploadError) {
-          message.error(uploadError.response?.data?.message || '头像上传失败');
+          message.error(uploadError.response?.data?.message || intl.formatMessage({ id: 'profile.message.uploadAvatarFailed', defaultMessage: '头像上传失败' }));
           setLoading(false);
           return;
         }
@@ -494,17 +542,17 @@ const ProfileContent = () => {
             setUserInfo(userInfoResult.data);
             localStorage.setItem('userInfo', JSON.stringify(userInfoResult.data));
           }
-          message.success('保存成功');
+          message.success(intl.formatMessage({ id: 'profile.message.saveSuccess', defaultMessage: '保存成功' }));
           setIsModalOpen(false);
           setAvatarFile(null); // 清空文件对象
         } else {
-          message.error(updateResponse.data.message || '保存失败');
+          message.error(updateResponse.data.message || intl.formatMessage({ id: 'profile.message.saveFailed', defaultMessage: '保存失败' }));
         }
       } catch (updateError) {
-        message.error(updateError.response?.data?.message || '保存失败');
+        message.error(updateError.response?.data?.message || intl.formatMessage({ id: 'profile.message.saveFailed', defaultMessage: '保存失败' }));
       }
     } catch (error) {
-      message.error(error.response?.data?.message || '操作失败');
+      message.error(error.response?.data?.message || intl.formatMessage({ id: 'profile.message.operationFailed', defaultMessage: '操作失败' }));
     } finally {
       setLoading(false);
     }
@@ -522,7 +570,7 @@ const ProfileContent = () => {
       <SimpleHeader />
       
       <ConstructionBanner $token={token}>
-        <ToolOutlined /> 本页面正在建设中...
+        <ToolOutlined /> {intl.formatMessage({ id: 'profile.banner.construction', defaultMessage: '本页面正在建设中...' })}
       </ConstructionBanner>
 
       <ContentWrapper $token={token}>
@@ -557,10 +605,23 @@ const ProfileContent = () => {
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5 }}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}
                   >
-                    {userInfo.nickname || userInfo.username}
+                    <span>{userInfo.nickname || userInfo.username}</span>
+                    <VerificationIcon 
+                      $token={token}
+                      onClick={() => navigate('/verification')}
+                    >
+                      <Tooltip title={isVerified ? intl.formatMessage({ id: 'profile.tooltip.verified', defaultMessage: '已实名认证' }) : intl.formatMessage({ id: 'profile.tooltip.unverified', defaultMessage: '去实名认证' })}>
+                        {isVerified ? (
+                          <CheckCircleFilled className="verified" style={{ fontSize: 20 }} />
+                        ) : (
+                          <ExclamationCircleOutlined className="unverified" style={{ fontSize: 20 }} />
+                        )}
+                      </Tooltip>
+                    </VerificationIcon>
                   </RainbowText>
-                  <p>{userInfo.description || '这个人很懒，什么都没写'}</p>
+                  <p>{userInfo.description || intl.formatMessage({ id: 'profile.value.noDescription', defaultMessage: '这个人很懒，什么都没写' })}</p>
                 </UserMeta>
               </UserInfoSection>
 
@@ -570,22 +631,22 @@ const ProfileContent = () => {
                 onClick={handleEditClick}
                 size="large"
               >
-                编辑资料
+                {intl.formatMessage({ id: 'profile.editProfile', defaultMessage: '编辑资料' })}
               </Button>
             </HeaderRow>
 
             <StatsGrid $token={token}>
               <StatItem $token={token}>
                 <span className="value">{userInfo.creditScore || 0}</span>
-                <span className="label">信用分</span>
+                <span className="label">{intl.formatMessage({ id: 'profile.creditScore', defaultMessage: '信用分' })}</span>
               </StatItem>
               <StatItem $token={token}>
                 <span className="value">{userInfo.level || 1}</span>
-                <span className="label">等级</span>
+                <span className="label">{intl.formatMessage({ id: 'profile.level', defaultMessage: '等级' })}</span>
               </StatItem>
               <StatItem $token={token}>
                 <span className="value">¥ {(userInfo.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
-                <span className="label">余额</span>
+                <span className="label">{intl.formatMessage({ id: 'profile.balance', defaultMessage: '余额' })}</span>
               </StatItem>
             </StatsGrid>
 
@@ -594,39 +655,41 @@ const ProfileContent = () => {
               items={[
                 {
                   key: 'basic',
-                  label: <span><UserOutlined /> 基本信息</span>,
+                  label: <span><UserOutlined /> {intl.formatMessage({ id: 'profile.tab.basic', defaultMessage: '基本信息' })}</span>,
                   children: (
                     <ContentGrid>
                       <InfoCard $token={token}>
-                        <div className="header"><IdcardOutlined /> 个人资料</div>
+                        <div className="header"><IdcardOutlined /> {intl.formatMessage({ id: 'profile.section.personal', defaultMessage: '个人资料' })}</div>
                         <DetailItem $token={token}>
-                          <span className="label">用户名</span>
+                          <span className="label">{intl.formatMessage({ id: 'profile.label.username', defaultMessage: '用户名' })}</span>
                           <span className="value">{userInfo.username}</span>
                         </DetailItem>
                         <DetailItem $token={token}>
-                          <span className="label">真实姓名</span>
-                          <span className="value">{userInfo.fullName || '未认证'}</span>
+                          <span className="label">{intl.formatMessage({ id: 'profile.label.realName', defaultMessage: '真实姓名' })}</span>
+                          <span className="value">
+                            {realnameInfo?.realName || userInfo.fullName || intl.formatMessage({ id: 'profile.value.notVerified', defaultMessage: '未认证' })}
+                          </span>
                         </DetailItem>
                         <DetailItem $token={token}>
-                          <span className="label">账户状态</span>
+                          <span className="label">{intl.formatMessage({ id: 'profile.label.accountStatus', defaultMessage: '账户状态' })}</span>
                           <span className="value" style={{ color: userInfo.isActive ? token.colorSuccess : token.colorError }}>
-                            {userInfo.isActive ? '正常' : '已禁用'}
+                            {userInfo.isActive ? intl.formatMessage({ id: 'profile.status.normal', defaultMessage: '正常' }) : intl.formatMessage({ id: 'profile.status.disabled', defaultMessage: '已禁用' })}
                           </span>
                         </DetailItem>
                       </InfoCard>
 
                       <InfoCard $token={token}>
-                        <div className="header"><PhoneOutlined /> 联系方式</div>
+                        <div className="header"><PhoneOutlined /> {intl.formatMessage({ id: 'profile.section.contact', defaultMessage: '联系方式' })}</div>
                         <DetailItem $token={token}>
-                          <span className="label">手机号码</span>
-                          <span className="value">{userInfo.phoneNumber || '未绑定'}</span>
+                          <span className="label">{intl.formatMessage({ id: 'profile.label.phone', defaultMessage: '手机号码' })}</span>
+                          <span className="value">{userInfo.phoneNumber || intl.formatMessage({ id: 'profile.value.notBound', defaultMessage: '未绑定' })}</span>
                         </DetailItem>
                         <DetailItem $token={token}>
-                          <span className="label">电子邮箱</span>
-                          <span className="value">{userInfo.email || '未绑定'}</span>
+                          <span className="label">{intl.formatMessage({ id: 'profile.label.email', defaultMessage: '电子邮箱' })}</span>
+                          <span className="value">{userInfo.email || intl.formatMessage({ id: 'profile.value.notBound', defaultMessage: '未绑定' })}</span>
                         </DetailItem>
                         <DetailItem $token={token}>
-                          <span className="label">注册时间</span>
+                          <span className="label">{intl.formatMessage({ id: 'profile.label.registerTime', defaultMessage: '注册时间' })}</span>
                           <span className="value">{userInfo.createTime}</span>
                         </DetailItem>
                       </InfoCard>
@@ -635,22 +698,22 @@ const ProfileContent = () => {
                 },
                 {
                   key: 'account',
-                  label: <span><WalletOutlined /> 账户资产</span>,
+                  label: <span><WalletOutlined /> {intl.formatMessage({ id: 'profile.tab.account', defaultMessage: '账户资产' })}</span>,
                   children: (
                     <ContentGrid>
                       <InfoCard $token={token}>
-                        <div className="header"><SafetyCertificateOutlined /> USDT 钱包</div>
+                        <div className="header"><SafetyCertificateOutlined /> {intl.formatMessage({ id: 'profile.section.wallet', defaultMessage: 'USDT 钱包' })}</div>
                         <USDTBox $token={token}>
-                          {userInfo.usdtAddress || '暂无 TRC20 地址'}
+                          {userInfo.usdtAddress || intl.formatMessage({ id: 'profile.value.noAddress', defaultMessage: '暂无 TRC20 地址' })}
                         </USDTBox>
                         <DetailItem $token={token}>
-                          <span className="label">可用余额</span>
+                          <span className="label">{intl.formatMessage({ id: 'profile.label.availableBalance', defaultMessage: '可用余额' })}</span>
                           <span className="value" style={{ color: token.colorSuccess, fontWeight: 'bold' }}>
                             {(userInfo.usdtAmount || 0).toFixed(6)} USDT
                           </span>
                         </DetailItem>
                         <DetailItem $token={token}>
-                          <span className="label">冻结金额</span>
+                          <span className="label">{intl.formatMessage({ id: 'profile.label.frozenAmount', defaultMessage: '冻结金额' })}</span>
                           <span className="value">
                             {(userInfo.usdtFrozenAmount || 0).toFixed(6)} USDT
                           </span>
@@ -667,18 +730,18 @@ const ProfileContent = () => {
 
       {/* 编辑弹窗 */}
       <Modal
-        title="编辑个人资料"
+        title={intl.formatMessage({ id: 'profile.modal.title', defaultMessage: '编辑个人资料' })}
         open={isModalOpen}
         onCancel={() => setIsModalOpen(false)}
         footer={[
-          <Button key="cancel" onClick={() => setIsModalOpen(false)}>取消</Button>,
-          <Button key="save" type="primary" onClick={handleSave} loading={loading}>保存更改</Button>
+          <Button key="cancel" onClick={() => setIsModalOpen(false)}>{intl.formatMessage({ id: 'profile.modal.cancel', defaultMessage: '取消' })}</Button>,
+          <Button key="save" type="primary" onClick={handleSave} loading={loading}>{intl.formatMessage({ id: 'profile.modal.save', defaultMessage: '保存更改' })}</Button>
         ]}
         width={500}
         centered
       >
         <FormSection $token={token}>
-          <h3>头像设置</h3>
+          <h3>{intl.formatMessage({ id: 'profile.modal.avatarSection', defaultMessage: '头像设置' })}</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
             <AntAvatar src={editedInfo.avatar} size={72} icon={<UserOutlined />} />
             <div style={{ flex: 1 }}>
@@ -687,7 +750,7 @@ const ProfileContent = () => {
                 beforeUpload={(file) => {
                   // 阻止自动上传，我们会在保存时手动上传
                   if (file.size > 2 * 1024 * 1024) {
-                    message.error('图片大小不能超过 2MB');
+                    message.error(intl.formatMessage({ id: 'profile.message.avatarSizeLimit', defaultMessage: '图片大小不能超过 2MB' }));
                     return false;
                   }
                   // 保存文件对象用于上传
@@ -703,33 +766,33 @@ const ProfileContent = () => {
                 accept="image/*"
               >
                 <Button icon={<CloudUploadOutlined />}>
-                  更换头像
+                  {intl.formatMessage({ id: 'profile.modal.changeAvatar', defaultMessage: '更换头像' })}
                 </Button>
               </Upload>
               <div style={{ marginTop: 8, fontSize: 12, color: token.colorTextSecondary }}>
-                支持 JPG, PNG 格式，大小不超过 2MB
+                {intl.formatMessage({ id: 'profile.modal.avatarHint', defaultMessage: '支持 JPG, PNG 格式，大小不超过 2MB' })}
               </div>
             </div>
           </div>
         </FormSection>
 
         <FormSection $token={token}>
-          <h3>基本信息</h3>
+          <h3>{intl.formatMessage({ id: 'profile.modal.basicSection', defaultMessage: '基本信息' })}</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <FormLabel $token={token}>昵称</FormLabel>
+              <FormLabel $token={token}>{intl.formatMessage({ id: 'profile.modal.nickname', defaultMessage: '昵称' })}</FormLabel>
               <Input
                 value={editedInfo.nickname}
                 onChange={(e) => setEditedInfo({ ...editedInfo, nickname: e.target.value })}
-                placeholder="请输入您的昵称"
+                placeholder={intl.formatMessage({ id: 'profile.modal.nicknamePlaceholder', defaultMessage: '请输入您的昵称' })}
               />
             </div>
             <div>
-              <FormLabel $token={token}>个人简介</FormLabel>
+              <FormLabel $token={token}>{intl.formatMessage({ id: 'profile.modal.description', defaultMessage: '个人简介' })}</FormLabel>
               <Input.TextArea
                 value={editedInfo.description}
                 onChange={(e) => setEditedInfo({ ...editedInfo, description: e.target.value })}
-                placeholder="一句话介绍自己..."
+                placeholder={intl.formatMessage({ id: 'profile.modal.descriptionPlaceholder', defaultMessage: '一句话介绍自己...' })}
                 rows={3}
                 showCount
                 maxLength={100}
@@ -739,17 +802,17 @@ const ProfileContent = () => {
         </FormSection>
 
         <FormSection $token={token}>
-          <h3>联系方式</h3>
+          <h3>{intl.formatMessage({ id: 'profile.modal.contactSection', defaultMessage: '联系方式' })}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
-              <FormLabel $token={token}>手机号</FormLabel>
+              <FormLabel $token={token}>{intl.formatMessage({ id: 'profile.modal.phone', defaultMessage: '手机号' })}</FormLabel>
               <Input
                 value={editedInfo.phoneNumber}
                 onChange={(e) => setEditedInfo({ ...editedInfo, phoneNumber: e.target.value })}
               />
             </div>
             <div>
-              <FormLabel $token={token}>邮箱</FormLabel>
+              <FormLabel $token={token}>{intl.formatMessage({ id: 'profile.modal.email', defaultMessage: '邮箱' })}</FormLabel>
               <Input
                 value={editedInfo.email}
                 onChange={(e) => setEditedInfo({ ...editedInfo, email: e.target.value })}

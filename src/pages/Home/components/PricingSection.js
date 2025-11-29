@@ -542,7 +542,7 @@ const Indicators = styled.div`
 const CARD_WIDTH = 420;
 const GAP = 60;
 
-const PricingCardItem = React.memo(({ plan, index, activeIndex, onDragEnd, setActiveIndex, theme, navigate, isChinese, intl }) => {
+const PricingCardItem = React.memo(({ plan, index, activeIndex, onDragEnd, setActiveIndex, theme, navigate, isChinese, intl, basicBgImage, proBgImage, teamBgImage }) => {
   const isActive = index === activeIndex;
 
   const offset = index - activeIndex;
@@ -611,11 +611,11 @@ const PricingCardItem = React.memo(({ plan, index, activeIndex, onDragEnd, setAc
   // 根据套餐等级设置背景图片
   const getBackgroundImage = () => {
     if (plan.level === 0) {
-      return 'https://files.catbox.moe/ulw0qz.png'; // BASIC版
+      return basicBgImage; // BASIC版 - 使用状态管理的图片
     } else if (plan.level === 1) {
-      return 'https://files.catbox.moe/9gf9og.png'; // PRO版
+      return proBgImage; // PRO版 - 使用状态管理的图片
     } else if (plan.level === 2) {
-      return 'https://files.catbox.moe/im5il2.png'; // TEAM版
+      return teamBgImage; // TEAM版 - 使用状态管理的图片
     }
     return null;
   };
@@ -714,9 +714,66 @@ const PricingSection = () => {
   const intl = useIntl();
   const { locale } = useLocale();
   const [activeIndex, setActiveIndex] = useState(1); // 默认选中专业版
+  const [basicBgImage, setBasicBgImage] = useState('https://files.catbox.moe/ulw0qz.png');
+  const [proBgImage, setProBgImage] = useState('https://files.catbox.moe/9gf9og.png');
+  const [teamBgImage, setTeamBgImage] = useState('https://files.catbox.moe/im5il2.png');
   
   // 判断是否为中文
   const isChinese = locale === 'zh';
+
+  // 预加载BASIC版背景图片，失败时使用备用链接
+  useEffect(() => {
+    const img = new Image();
+    const primaryUrl = 'https://files.catbox.moe/ulw0qz.png';
+    const fallbackUrl = 'https://public-1258150206.cos.ap-nanjing.myqcloud.com/home/f1c9bce0-28da-473c-be4a-822caf0f9484.png';
+    
+    img.onload = () => {
+      setBasicBgImage(primaryUrl);
+    };
+    
+    img.onerror = () => {
+      console.log('BASIC plan background image failed to load, using fallback');
+      setBasicBgImage(fallbackUrl);
+    };
+    
+    img.src = primaryUrl;
+  }, []);
+
+  // 预加载PRO版背景图片，失败时使用备用链接
+  useEffect(() => {
+    const img = new Image();
+    const primaryUrl = 'https://files.catbox.moe/9gf9og.png';
+    const fallbackUrl = 'https://public-1258150206.cos.ap-nanjing.myqcloud.com/home/e096709f-a8ef-4f19-a580-03db1aa0654e.png';
+    
+    img.onload = () => {
+      setProBgImage(primaryUrl);
+    };
+    
+    img.onerror = () => {
+      console.log('PRO plan background image failed to load, using fallback');
+      setProBgImage(fallbackUrl);
+    };
+    
+    img.src = primaryUrl;
+  }, []);
+
+  // 预加载TEAM版背景图片，失败时使用备用链接
+  useEffect(() => {
+    const img = new Image();
+    const primaryUrl = 'https://files.catbox.moe/im5il2.png';
+    const fallbackUrl = 'https://public-1258150206.cos.ap-nanjing.myqcloud.com/home/5258249b-df9d-4a81-9770-8d7b0fcd6b8d.png';
+    
+    img.onload = () => {
+      setTeamBgImage(primaryUrl);
+    };
+    
+    img.onerror = () => {
+      console.log('TEAM plan background image failed to load, using fallback');
+      setTeamBgImage(fallbackUrl);
+    };
+    
+    img.src = primaryUrl;
+  }, []);
 
   // 使用国际化生成套餐数据
   const plans = [
@@ -852,6 +909,9 @@ const PricingSection = () => {
                 navigate={navigate}
                 isChinese={isChinese}
                 intl={intl}
+                basicBgImage={basicBgImage}
+                proBgImage={proBgImage}
+                teamBgImage={teamBgImage}
               />
             ))}
           </div>

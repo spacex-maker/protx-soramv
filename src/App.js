@@ -11,6 +11,7 @@ import ResetPasswordPage from "./pages/ResetPassword";
 import JoinUs from "pages/JoinUs";
 import Navigation from "pages/Navigation";
 import ProfilePage from "pages/Profile";
+import VerificationPage from "pages/Verification";
 import BillingPage from "pages/Billing";
 import RechargePage from "pages/Recharge";
 import RechargeSuccessPage from "pages/RechargeSuccess";
@@ -265,6 +266,11 @@ export default function App() {
               <Route path="/profile" element={
                 <PrivateRoute>
                   <ProfilePage />
+                </PrivateRoute>
+              } />
+              <Route path="/verification" element={
+                <PrivateRoute>
+                  <VerificationPage />
                 </PrivateRoute>
               } />
               <Route path="/billing" element={
