@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { Typography, Tag, Button, theme } from 'antd';
 import { motion } from 'framer-motion';
+import { useIntl } from 'react-intl';
 import {
   ThunderboltFilled,
   DeploymentUnitOutlined,
@@ -421,15 +422,17 @@ const Model3DCard = styled(motion.div)`
 
 const TechnologySection = () => {
   const { token } = theme.useToken();
+  const intl = useIntl();
   
   // --- 引擎节点数据 ---
+  const getNodeTitle = (key) => intl.formatMessage({ id: key });
   const [nodes, setNodes] = useState([
-    { id: 'n1', x: 50, y: 200, title: 'Checkpoint Loader', color: '#7c3aed', inputs: [], outputs: ['MODEL', 'CLIP', 'VAE'] },
-    { id: 'n2', x: 400, y: 80, title: 'CLIP Text (Positive)', color: '#10b981', inputs: ['CLIP'], outputs: ['COND'], value: 'cyberpunk city, neon' },
-    { id: 'n3', x: 400, y: 320, title: 'CLIP Text (Negative)', color: '#ef4444', inputs: ['CLIP'], outputs: ['COND'], value: 'blur, low quality' },
-    { id: 'n4', x: 750, y: 200, title: 'KSampler Advanced', color: '#2997ff', inputs: ['MODEL', 'POS', 'NEG', 'LATENT'], outputs: ['LATENT'] },
-    { id: 'n5', x: 1100, y: 200, title: 'VAE Decode', color: '#f59e0b', inputs: ['VAE', 'LATENT'], outputs: ['IMAGE'] },
-    { id: 'n6', x: 1400, y: 150, title: 'Preview Image', color: '#333', inputs: ['IMAGE'], outputs: [], isPreview: true }
+    { id: 'n1', x: 50, y: 200, titleKey: 'technology.node.checkpointLoader', color: '#7c3aed', inputs: [], outputs: ['MODEL', 'CLIP', 'VAE'] },
+    { id: 'n2', x: 400, y: 80, titleKey: 'technology.node.clipTextPositive', color: '#10b981', inputs: ['CLIP'], outputs: ['COND'], value: 'cyberpunk city, neon' },
+    { id: 'n3', x: 400, y: 320, titleKey: 'technology.node.clipTextNegative', color: '#ef4444', inputs: ['CLIP'], outputs: ['COND'], value: 'blur, low quality' },
+    { id: 'n4', x: 750, y: 200, titleKey: 'technology.node.ksamplerAdvanced', color: '#2997ff', inputs: ['MODEL', 'POS', 'NEG', 'LATENT'], outputs: ['LATENT'] },
+    { id: 'n5', x: 1100, y: 200, titleKey: 'technology.node.vaeDecode', color: '#f59e0b', inputs: ['VAE', 'LATENT'], outputs: ['IMAGE'] },
+    { id: 'n6', x: 1400, y: 150, titleKey: 'technology.node.previewImage', color: '#333', inputs: ['IMAGE'], outputs: [], isPreview: true }
   ]);
 
   // 连线关系 (纯数据，用于计算)
@@ -447,7 +450,15 @@ const TechnologySection = () => {
   // 运行状态
   const [activeNode, setActiveNode] = useState(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [logs, setLogs] = useState(['> System initialized.', '> Waiting for user input...']);
+  const [logs, setLogs] = useState([]);
+  
+  // 初始化日志
+  useEffect(() => {
+    setLogs([
+      { msg: intl.formatMessage({ id: 'technology.log.systemInitialized' }), type: 'info', time: new Date().toLocaleTimeString() },
+      { msg: intl.formatMessage({ id: 'technology.log.waitingForInput' }), type: 'info', time: new Date().toLocaleTimeString() }
+    ]);
+  }, [intl]);
   const [gpuLoad, setGpuLoad] = useState(12);
   const terminalRef = useRef(null);
   const workspaceRef = useRef(null);
@@ -518,9 +529,9 @@ const TechnologySection = () => {
       else setGpuLoad(35);
 
       // 模拟日志
-      if (nodeId === 'n1') addLog('Loading SDXL Checkpoint (fp16)...', 'warn');
-      if (nodeId === 'n2') addLog('Tokenizing positive prompt...', 'info');
-      if (nodeId === 'n4') addLog('KSampler: 30/30 steps (Euler A)', 'success');
+      if (nodeId === 'n1') addLog(intl.formatMessage({ id: 'technology.log.loadingCheckpoint' }), 'warn');
+      if (nodeId === 'n2') addLog(intl.formatMessage({ id: 'technology.log.tokenizingPrompt' }), 'info');
+      if (nodeId === 'n4') addLog(intl.formatMessage({ id: 'technology.log.ksamplerSteps' }), 'success');
 
       await new Promise(r => setTimeout(r, nodeId === 'n4' ? 1500 : 600));
     }
@@ -528,16 +539,16 @@ const TechnologySection = () => {
     setActiveNode(null);
     setIsRunning(false);
     setGpuLoad(12);
-    addLog('Generation complete.', 'success');
+    addLog(intl.formatMessage({ id: 'technology.log.generationComplete' }), 'success');
   };
 
   return (
     <TechContainer>
       {/* 1. 节点引擎部分 */}
       <SectionHeader>
-        <div style={{ color: '#2997ff', marginBottom: 16, fontSize: 12, letterSpacing: 2 }}>CORE ARCHITECTURE</div>
-        <h2>可视化工作流引擎</h2>
-        <p>ComfyUI 原生集成。每一个节点，都是一次对创意的精准操控。</p>
+        <div style={{ color: '#2997ff', marginBottom: 16, fontSize: 12, letterSpacing: 2 }}>{intl.formatMessage({ id: 'technology.coreArchitecture' })}</div>
+        <h2>{intl.formatMessage({ id: 'technology.workflowEngine.title' })}</h2>
+        <p>{intl.formatMessage({ id: 'technology.workflowEngine.description' })}</p>
       </SectionHeader>
 
       <EngineWorkspace ref={workspaceRef}>
@@ -569,7 +580,7 @@ const TechnologySection = () => {
             $active={activeNode === node.id}
           >
             <div className="node-header">
-              <span>{node.title}</span>
+              <span>{intl.formatMessage({ id: node.titleKey })}</span>
               <SettingFilled />
             </div>
             <div className="node-body">
@@ -610,9 +621,9 @@ const TechnologySection = () => {
 
         {/* HUD */}
         <HUDPanel>
-          <div className="hud-header">System Resource Monitor</div>
+          <div className="hud-header">{intl.formatMessage({ id: 'technology.hud.systemResourceMonitor' })}</div>
           <div className="stat-row">
-            <span>GPU VRAM</span>
+            <span>{intl.formatMessage({ id: 'technology.hud.gpuVram' })}</span>
             <span className="val">{gpuLoad}%</span>
           </div>
           <div className="progress-bar">
@@ -624,7 +635,7 @@ const TechnologySection = () => {
         <TerminalWindow>
           <div className="term-header">
             <div className="dots"><span></span><span></span><span></span></div>
-            <span>console — zsh</span>
+            <span>{intl.formatMessage({ id: 'technology.terminal.console' })}</span>
           </div>
           <div className="term-body" ref={terminalRef}>
             {logs.map((log, i) => (
@@ -637,15 +648,15 @@ const TechnologySection = () => {
         </TerminalWindow>
 
         <FloatingRunBtn onClick={runWorkflow} disabled={isRunning} className={isRunning ? 'running' : ''}>
-          {isRunning ? 'Running...' : 'Run Workflow'}
+          {isRunning ? intl.formatMessage({ id: 'technology.button.running' }) : intl.formatMessage({ id: 'technology.button.runWorkflow' })}
         </FloatingRunBtn>
       </EngineWorkspace>
 
       {/* 2. 性能压测 */}
       <BenchmarkSection>
         <SectionHeader>
-          <h2>极致性能压测</h2>
-          <p>为了这 0.5 秒的提升，我们重写了 30% 的底层算子。</p>
+          <h2>{intl.formatMessage({ id: 'technology.benchmark.title' })}</h2>
+          <p>{intl.formatMessage({ id: 'technology.benchmark.description' })}</p>
         </SectionHeader>
         <ChartGrid>
           <ChartCard
@@ -653,14 +664,14 @@ const TechnologySection = () => {
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h3><ThunderboltFilled style={{color: '#eab308'}} /> 生成速度 (FPS)</h3>
-            <div className="sub">Comparison @ 1080p</div>
+            <h3><ThunderboltFilled style={{color: '#eab308'}} /> {intl.formatMessage({ id: 'technology.benchmark.fps.title' })}</h3>
+            <div className="sub">{intl.formatMessage({ id: 'technology.benchmark.fps.subtitle' })}</div>
             <BarRow $color="#2997ff">
-              <div className="label"><span>ProductX</span> <span>24 fps</span></div>
+              <div className="label"><span>{intl.formatMessage({ id: 'technology.benchmark.productX' })}</span> <span>24 fps</span></div>
               <div className="bar-bg"><motion.div className="bar-fill" initial={{width: 0}} whileInView={{width: '90%'}} transition={{duration: 1.5}} /></div>
             </BarRow>
             <BarRow $color="#444">
-              <div className="label"><span>Others</span> <span>8 fps</span></div>
+              <div className="label"><span>{intl.formatMessage({ id: 'technology.benchmark.others' })}</span> <span>8 fps</span></div>
               <div className="bar-bg"><motion.div className="bar-fill" initial={{width: 0}} whileInView={{width: '30%'}} transition={{duration: 1.5}} /></div>
             </BarRow>
           </ChartCard>
@@ -669,14 +680,14 @@ const TechnologySection = () => {
             whileInView={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h3><DatabaseFilled style={{color: '#10b981'}} /> 显存优化 (VRAM)</h3>
-            <div className="sub">Lower is better</div>
+            <h3><DatabaseFilled style={{color: '#10b981'}} /> {intl.formatMessage({ id: 'technology.benchmark.vram.title' })}</h3>
+            <div className="sub">{intl.formatMessage({ id: 'technology.benchmark.vram.subtitle' })}</div>
             <BarRow $color="#10b981">
-              <div className="label"><span>ProductX</span> <span>8 GB</span></div>
+              <div className="label"><span>{intl.formatMessage({ id: 'technology.benchmark.productX' })}</span> <span>8 GB</span></div>
               <div className="bar-bg"><motion.div className="bar-fill" initial={{width: 0}} whileInView={{width: '30%'}} transition={{duration: 1.5}} /></div>
             </BarRow>
             <BarRow $color="#444">
-              <div className="label"><span>Standard</span> <span>24 GB</span></div>
+              <div className="label"><span>{intl.formatMessage({ id: 'technology.benchmark.standard' })}</span> <span>24 GB</span></div>
               <div className="bar-bg"><motion.div className="bar-fill" initial={{width: 0}} whileInView={{width: '90%'}} transition={{duration: 1.5}} /></div>
             </BarRow>
           </ChartCard>
@@ -685,9 +696,9 @@ const TechnologySection = () => {
 
       {/* 3. 无限模型宇宙 (重构：3D 视差墙) */}
       <SectionHeader style={{marginBottom: 60}}>
-        <Tag color="purple" style={{background:'transparent', border:'1px solid #a855f7', marginBottom:16}}>OPEN ECOLOGY</Tag>
-        <h2>无限模型宇宙</h2>
-        <p>支持 Civitai 直连，万千模型，一键加载。</p>
+        <Tag color="purple" style={{background:'transparent', border:'1px solid #a855f7', marginBottom:16}}>{intl.formatMessage({ id: 'technology.galaxy.openEcology' })}</Tag>
+        <h2>{intl.formatMessage({ id: 'technology.galaxy.title' })}</h2>
+        <p>{intl.formatMessage({ id: 'technology.galaxy.description' })}</p>
       </SectionHeader>
 
       <GalaxyContainer>
@@ -701,7 +712,7 @@ const TechnologySection = () => {
           {/* 第一排：Checkpoint */}
           {[
             { name: 'CyberRealistic', type: 'CHECKPOINT', bg: 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?w=600&q=80' },
-            { name: 'DreamShaper', type: 'CHECKPOINT', bg: 'https://images.unsplash.com/photo-1534269222346-5a896620630c?w=600&q=80' },
+            { name: 'DreamShaper', type: 'CHECKPOINT', bg: 'https://files.catbox.moe/azjt7u.png' },
             { name: 'Realistic Vision', type: 'CHECKPOINT', bg: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&q=80' },
             { name: 'Deliberate', type: 'CHECKPOINT', bg: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&q=80' }
           ].map((item, i) => (
@@ -717,14 +728,14 @@ const TechnologySection = () => {
           {[
             { name: 'Ghibli Style', type: 'LORA', bg: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=600&q=80' },
             { name: 'Mecha Suit', type: 'LORA', bg: 'https://images.unsplash.com/photo-1563089145-599997674d42?w=600&q=80' },
-            { name: 'Detailed Eye', type: 'LORA', bg: 'https://images.unsplash.com/photo-1614726365723-49cfae9c0fc6?w=600&q=80' },
+            { name: 'Detailed Eye', type: 'LORA', bg: 'https://files.catbox.moe/q41csa.png' },
             { name: 'Add Detail', type: 'LORA', bg: 'https://images.unsplash.com/photo-1618172193763-c511deb635ca?w=600&q=80' }
           ].map((item, i) => (
             <Model3DCard key={i+4} $bg={item.bg} style={{marginTop: (i+1) % 2 * 40}}>
               <div className="meta">
                 <div style={{display:'flex', gap:6, marginBottom:4}}>
                   <CloudSyncOutlined style={{color:'#2997ff'}}/>
-                  <span style={{border:'none', padding:0, background:'transparent', color:'#fff'}}>Auto-Sync</span>
+                  <span style={{border:'none', padding:0, background:'transparent', color:'#fff'}}>{intl.formatMessage({ id: 'technology.galaxy.autoSync' })}</span>
                 </div>
                 <h4>{item.name}</h4>
                 <span style={{borderColor:'#a855f7', color:'#a855f7', background:'rgba(168,85,247,0.1)'}}>{item.type}</span>

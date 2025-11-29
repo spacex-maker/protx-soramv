@@ -305,21 +305,9 @@ export default function App() {
                   <InvitePage />
                 </PrivateRoute>
               } />
-              <Route path="/feedback" element={
-                <PrivateRoute>
-                  <FeedbackPage />
-                </PrivateRoute>
-              } />
-              <Route path="/help" element={
-                <PrivateRoute>
-                  <HelpPage />
-                </PrivateRoute>
-              } />
-              <Route path="/about" element={
-                <PrivateRoute>
-                  <AboutPage />
-                </PrivateRoute>
-              } />
+              <Route path="/feedback" element={<FeedbackPage />} />
+              <Route path="/help" element={<HelpPage />} />
+              <Route path="/about" element={<AboutPage />} />
               <Route path="/works" element={
                 <PrivateRoute>
                   <WorksPage />

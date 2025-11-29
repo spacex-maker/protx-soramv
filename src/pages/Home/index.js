@@ -5,7 +5,8 @@ import HeroSection from './components/HeroSection';
 import FeaturesSection from './components/FeaturesSection';
 import PricingSection from './components/PricingSection';
 import TechnologySection from './components/TechnologySection';
-import CallToActionSection from './components/CallToActionSection'; // 复用
+import CallToActionSection from './components/CallToActionSection';
+import FooterSection from './components/FooterSection';
 
 const HomePage = () => {
   return (
@@ -16,6 +17,7 @@ const HomePage = () => {
       <TechnologySection />
       <PricingSection />
       <CallToActionSection />
+      <FooterSection />
     </PageContainer>
   );
 };

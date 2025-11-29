@@ -2,6 +2,7 @@ import React, { useRef } from "react";
 import styled, { createGlobalStyle, css } from "styled-components";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
 import SimpleHeader from "components/headers/simple";
+import FooterSection from "./Home/components/FooterSection";
 import { Button, ConfigProvider, theme, Space, Tag } from "antd";
 import { RightOutlined, ApiOutlined, CodeFilled, BranchesOutlined } from "@ant-design/icons";
 
@@ -641,6 +642,7 @@ const AboutContent = () => {
         </motion.div>
       </CTASection>
 
+      <FooterSection />
     </PageWrapper>
   );
 };

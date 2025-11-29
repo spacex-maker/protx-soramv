@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import SimpleHeader from "components/headers/simple";
+import FooterSection from "./Home/components/FooterSection";
 import { 
   Button, 
   Input, 
@@ -679,6 +680,7 @@ const HelpContent = () => {
           </ContentArea>
         </MainLayout>
       </ContentContainer>
+      <FooterSection />
     </PageLayout>
   );
 };

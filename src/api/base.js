@@ -57,7 +57,14 @@ export const base = {
   getOfficialEmail: async () => {
     try {
       const { data } = await axios.get('/productx/sys-config/official-email');
-      if (data.code === 200) {
+      // 兼容两种响应格式：{success, data} 或 {code, data}
+      if (data.success === true && data.data) {
+        return {
+          success: true,
+          data: data.data
+        };
+      }
+      if (data.code === 200 && data.data) {
         return {
           success: true,
           data: data.data

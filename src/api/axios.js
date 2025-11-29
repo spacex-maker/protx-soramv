@@ -17,7 +17,7 @@ const getBaseURL = () => {
 // 创建 axios 实例
 const instance = axios.create({
   baseURL: getBaseURL(),
-  timeout: 10000,
+  timeout: 30000,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

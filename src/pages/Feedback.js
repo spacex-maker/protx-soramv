@@ -1,7 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled, { css } from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
+import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
+import FooterSection from "./Home/components/FooterSection";
+import { base } from "api/base";
+import axios from "api/axios";
 import { 
   Button, 
   message, 
@@ -279,41 +283,76 @@ const SuccessOverlay = styled(motion.div)`
 const FeedbackContent = () => {
   const { token } = theme.useToken();
   const [form] = Form.useForm();
+  const intl = useIntl();
   
   // State
   const [loading, setLoading] = useState(false);
   const [feedbackType, setFeedbackType] = useState('suggestion'); // 'bug', 'suggestion', 'question', 'other'
   const [submitted, setSubmitted] = useState(false);
   const [fileList, setFileList] = useState([]);
+  const [officialEmail, setOfficialEmail] = useState('support@soramv.com');
 
   // 配置项
   const typeOptions = [
-    { key: 'suggestion', icon: <BulbFilled />, title: '功能建议', desc: '我有新想法或改进建议' },
-    { key: 'bug', icon: <BugFilled />, title: '缺陷反馈', desc: '我遇到了错误或异常' },
-    { key: 'question', icon: <QuestionCircleFilled />, title: '使用咨询', desc: '我不懂某个功能怎么用' },
-    { key: 'other', icon: <MessageFilled />, title: '其他', desc: '其他类别的反馈' },
+    { 
+      key: 'suggestion', 
+      icon: <BulbFilled />, 
+      title: intl.formatMessage({ id: 'feedback.type.suggestion.title', defaultMessage: '功能建议' }), 
+      desc: intl.formatMessage({ id: 'feedback.type.suggestion.desc', defaultMessage: '我有新想法或改进建议' }) 
+    },
+    { 
+      key: 'bug', 
+      icon: <BugFilled />, 
+      title: intl.formatMessage({ id: 'feedback.type.bug.title', defaultMessage: '缺陷反馈' }), 
+      desc: intl.formatMessage({ id: 'feedback.type.bug.desc', defaultMessage: '我遇到了错误或异常' }) 
+    },
+    { 
+      key: 'question', 
+      icon: <QuestionCircleFilled />, 
+      title: intl.formatMessage({ id: 'feedback.type.question.title', defaultMessage: '使用咨询' }), 
+      desc: intl.formatMessage({ id: 'feedback.type.question.desc', defaultMessage: '我不懂某个功能怎么用' }) 
+    },
+    { 
+      key: 'other', 
+      icon: <MessageFilled />, 
+      title: intl.formatMessage({ id: 'feedback.type.other.title', defaultMessage: '其他' }), 
+      desc: intl.formatMessage({ id: 'feedback.type.other.desc', defaultMessage: '其他类别的反馈' }) 
+    },
   ];
 
   const handleSubmit = async (values) => {
     setLoading(true);
     try {
-      // 模拟 API 延迟
-      await new Promise(r => setTimeout(r, 1000));
-      console.log('Submit:', { ...values, type: feedbackType, files: fileList });
-      
-      // API 集成位置 (取消注释使用)
-      /*
+      // 创建 FormData 对象
       const formData = new FormData();
-      formData.append('type', feedbackType);
-      // ... append other fields
-      await instance.post('/feedback', formData);
-      */
+      formData.append('feedbackType', feedbackType);
+      formData.append('title', values.title);
+      formData.append('content', values.content);
+      formData.append('priority', values.priority || 'MEDIUM');
+      if (values.contact) {
+        formData.append('contact', values.contact);
+      }
+      
+      // 添加文件（如果有）
+      if (fileList && fileList.length > 0) {
+        fileList.forEach((file) => {
+          formData.append('files', file);
+        });
+      }
+
+      // 调用后端 API
+      await axios.post('/base/productx/user-feedback/create', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
 
       setSubmitted(true);
       form.resetFields();
       setFileList([]);
     } catch (error) {
-      message.error('提交失败，请稍后重试');
+      console.error('提交反馈失败:', error);
+      message.error(intl.formatMessage({ id: 'feedback.submit.error', defaultMessage: '提交失败，请稍后重试' }));
     } finally {
       setLoading(false);
     }
@@ -323,6 +362,17 @@ const FeedbackContent = () => {
     setSubmitted(false);
     setFeedbackType('suggestion');
   };
+
+  // 获取官方邮箱
+  useEffect(() => {
+    const fetchOfficialEmail = async () => {
+      const result = await base.getOfficialEmail();
+      if (result.success && result.data) {
+        setOfficialEmail(result.data);
+      }
+    };
+    fetchOfficialEmail();
+  }, []);
 
   return (
     <PageLayout $token={token}>
@@ -338,9 +388,13 @@ const FeedbackContent = () => {
           {/* === 左侧面板：品牌与帮助 === */}
           <LeftPanel $token={token}>
             <div>
-              <h1>我们倾听<br/>您的声音</h1>
+              <h1>
+                {intl.formatMessage({ id: 'feedback.leftPanel.title.line1', defaultMessage: '我们倾听' })}
+                <br/>
+                {intl.formatMessage({ id: 'feedback.leftPanel.title.line2', defaultMessage: '您的声音' })}
+              </h1>
               <p style={{ marginTop: 24 }}>
-                您的反馈是我们产品进步的动力。无论是发现 Bug，还是有绝妙的新功能点子，都请告诉我们。
+                {intl.formatMessage({ id: 'feedback.leftPanel.description', defaultMessage: '您的反馈是我们产品进步的动力。无论是发现 Bug，还是有绝妙的新功能点子，都请告诉我们。' })}
               </p>
             </div>
 
@@ -348,22 +402,22 @@ const FeedbackContent = () => {
               <LinkItem href="#" target="_blank">
                 <div className="icon"><ReadFilled /></div>
                 <div className="text">
-                  <h4>帮助文档</h4>
-                  <span>查阅常见问题与使用指南</span>
+                  <h4>{intl.formatMessage({ id: 'feedback.contact.helpDoc.title', defaultMessage: '帮助文档' })}</h4>
+                  <span>{intl.formatMessage({ id: 'feedback.contact.helpDoc.desc', defaultMessage: '查阅常见问题与使用指南' })}</span>
                 </div>
               </LinkItem>
-              <LinkItem href="mailto:support@productx.com">
+              <LinkItem href={`mailto:${officialEmail}`}>
                 <div className="icon"><MailFilled /></div>
                 <div className="text">
-                  <h4>邮件支持</h4>
-                  <span>support@productx.com</span>
+                  <h4>{intl.formatMessage({ id: 'feedback.contact.email.title', defaultMessage: '邮件支持' })}</h4>
+                  <span>{officialEmail}</span>
                 </div>
               </LinkItem>
               <LinkItem href="#" target="_blank">
                 <div className="icon"><CustomerServiceFilled /></div>
                 <div className="text">
-                  <h4>在线客服</h4>
-                  <span>工作日 9:00 - 18:00</span>
+                  <h4>{intl.formatMessage({ id: 'feedback.contact.service.title', defaultMessage: '在线客服' })}</h4>
+                  <span>{intl.formatMessage({ id: 'feedback.contact.service.hours', defaultMessage: '工作日 9:00 - 18:00' })}</span>
                 </div>
               </LinkItem>
             </ContactLinks>
@@ -388,7 +442,7 @@ const FeedbackContent = () => {
                   >
                     {/* 1. 类型选择 */}
                     <div style={{ marginBottom: 24 }}>
-                      <FormLabel $token={token}>反馈类型</FormLabel>
+                      <FormLabel $token={token}>{intl.formatMessage({ id: 'feedback.form.type.label', defaultMessage: '反馈类型' })}</FormLabel>
                       <TypeGrid>
                         {typeOptions.map(opt => (
                           <TypeCard 
@@ -410,11 +464,11 @@ const FeedbackContent = () => {
                     {/* 2. 标题 */}
                     <Form.Item
                       name="title"
-                      label={<FormLabel $token={token}>简要概述</FormLabel>}
-                      rules={[{ required: true, message: '请输入标题' }]}
+                      label={<FormLabel $token={token}>{intl.formatMessage({ id: 'feedback.form.title.label', defaultMessage: '简要概述' })}</FormLabel>}
+                      rules={[{ required: true, message: intl.formatMessage({ id: 'feedback.form.title.required', defaultMessage: '请输入标题' }) }]}
                     >
                       <Input 
-                        placeholder="一句话描述您的问题或建议" 
+                        placeholder={intl.formatMessage({ id: 'feedback.form.title.placeholder', defaultMessage: '一句话描述您的问题或建议' })} 
                         size="large" 
                         style={{ borderRadius: 12 }} 
                       />
@@ -423,12 +477,12 @@ const FeedbackContent = () => {
                     {/* 3. 详情 */}
                     <Form.Item
                       name="content"
-                      label={<FormLabel $token={token}>详细描述</FormLabel>}
-                      rules={[{ required: true, message: '请输入详细内容' }]}
+                      label={<FormLabel $token={token}>{intl.formatMessage({ id: 'feedback.form.content.label', defaultMessage: '详细描述' })}</FormLabel>}
+                      rules={[{ required: true, message: intl.formatMessage({ id: 'feedback.form.content.required', defaultMessage: '请输入详细内容' }) }]}
                     >
                       <TextArea 
                         rows={5} 
-                        placeholder="请详细描述背景、重现步骤或具体建议..." 
+                        placeholder={intl.formatMessage({ id: 'feedback.form.content.placeholder', defaultMessage: '请详细描述背景、重现步骤或具体建议...' })} 
                         showCount 
                         maxLength={2000}
                         style={{ borderRadius: 12 }}
@@ -436,13 +490,13 @@ const FeedbackContent = () => {
                     </Form.Item>
 
                     {/* 4. 附件 (拖拽上传) */}
-                    <Form.Item label={<FormLabel $token={token}>附件 (可选)</FormLabel>}>
+                    <Form.Item label={<FormLabel $token={token}>{intl.formatMessage({ id: 'feedback.form.attachment.label', defaultMessage: '附件 (可选)' })}</FormLabel>}>
                       <UploadBox $token={token}>
                         <Upload.Dragger
                           fileList={fileList}
                           beforeUpload={(file) => {
                             if (file.size > 5 * 1024 * 1024) {
-                              message.error('文件大小不能超过 5MB');
+                              message.error(intl.formatMessage({ id: 'feedback.upload.sizeLimit', defaultMessage: '文件大小不能超过 5MB' }));
                               return Upload.LIST_IGNORE;
                             }
                             setFileList(prev => [...prev, file]);
@@ -458,9 +512,11 @@ const FeedbackContent = () => {
                           <p className="ant-upload-drag-icon">
                             <CloudUploadOutlined style={{ color: token.colorPrimary }} />
                           </p>
-                          <p className="ant-upload-text" style={{ fontSize: 14 }}>点击或拖拽文件到此处上传</p>
+                          <p className="ant-upload-text" style={{ fontSize: 14 }}>
+                            {intl.formatMessage({ id: 'feedback.upload.dragText', defaultMessage: '点击或拖拽文件到此处上传' })}
+                          </p>
                           <p className="ant-upload-hint" style={{ fontSize: 12, color: token.colorTextSecondary }}>
-                            支持 JPG, PNG, PDF 等格式，单个文件不超过 5MB
+                            {intl.formatMessage({ id: 'feedback.upload.hint', defaultMessage: '支持 JPG, PNG, PDF 等格式，单个文件不超过 5MB' })}
                           </p>
                         </Upload.Dragger>
                       </UploadBox>
@@ -470,20 +526,26 @@ const FeedbackContent = () => {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
                       <Form.Item 
                         name="priority" 
-                        label={<FormLabel $token={token}>优先级</FormLabel>}
+                        label={<FormLabel $token={token}>{intl.formatMessage({ id: 'feedback.form.priority.label', defaultMessage: '优先级' })}</FormLabel>}
                       >
                         <Select size="large" style={{ borderRadius: 12 }}>
-                          <Option value="LOW"><Tag color="blue">低</Tag> 不影响使用</Option>
-                          <Option value="MEDIUM"><Tag color="orange">中</Tag> 体验受影响</Option>
-                          <Option value="HIGH"><Tag color="red">高</Tag> 严重阻碍使用</Option>
+                          <Option value="LOW">
+                            <Tag color="blue">{intl.formatMessage({ id: 'feedback.priority.low.label', defaultMessage: '低' })}</Tag> {intl.formatMessage({ id: 'feedback.priority.low.desc', defaultMessage: '不影响使用' })}
+                          </Option>
+                          <Option value="MEDIUM">
+                            <Tag color="orange">{intl.formatMessage({ id: 'feedback.priority.medium.label', defaultMessage: '中' })}</Tag> {intl.formatMessage({ id: 'feedback.priority.medium.desc', defaultMessage: '体验受影响' })}
+                          </Option>
+                          <Option value="HIGH">
+                            <Tag color="red">{intl.formatMessage({ id: 'feedback.priority.high.label', defaultMessage: '高' })}</Tag> {intl.formatMessage({ id: 'feedback.priority.high.desc', defaultMessage: '严重阻碍使用' })}
+                          </Option>
                         </Select>
                       </Form.Item>
 
                       <Form.Item 
                         name="contact" 
-                        label={<FormLabel $token={token}>联系方式 (可选)</FormLabel>}
+                        label={<FormLabel $token={token}>{intl.formatMessage({ id: 'feedback.form.contact.label', defaultMessage: '联系方式 (可选)' })}</FormLabel>}
                       >
-                        <Input placeholder="Email 或 手机号" size="large" style={{ borderRadius: 12 }} />
+                        <Input placeholder={intl.formatMessage({ id: 'feedback.form.contact.placeholder', defaultMessage: 'Email 或 手机号' })} size="large" style={{ borderRadius: 12 }} />
                       </Form.Item>
                     </div>
 
@@ -499,7 +561,7 @@ const FeedbackContent = () => {
                         icon={<SendOutlined />}
                         style={{ height: 48, borderRadius: 12, fontSize: 16, fontWeight: 600 }}
                       >
-                        提交反馈
+                        {intl.formatMessage({ id: 'feedback.form.submit', defaultMessage: '提交反馈' })}
                       </Button>
                     </Form.Item>
                   </Form>
@@ -515,17 +577,16 @@ const FeedbackContent = () => {
                   <div className="icon-wrapper">
                     <CheckCircleFilled />
                   </div>
-                  <h2>反馈已送达！</h2>
+                  <h2>{intl.formatMessage({ id: 'feedback.success.title', defaultMessage: '反馈已送达！' })}</h2>
                   <p>
-                    感谢您的宝贵意见。我们的产品团队会仔细阅读每一条反馈。<br/>
-                    如果是 Bug 反馈，我们可能会通过预留的联系方式与您沟通。
+                    {intl.formatMessage({ id: 'feedback.success.description', defaultMessage: '感谢您的宝贵意见。我们的产品团队会仔细阅读每一条反馈。如果是 Bug 反馈，我们可能会通过预留的联系方式与您沟通。' })}
                   </p>
                   <div style={{ display: 'flex', gap: 16 }}>
                     <Button size="large" onClick={() => window.history.back()} style={{ borderRadius: 12 }}>
-                      返回上一页
+                      {intl.formatMessage({ id: 'feedback.success.back', defaultMessage: '返回上一页' })}
                     </Button>
                     <Button type="primary" size="large" onClick={handleReset} style={{ borderRadius: 12 }}>
-                      再提一条
+                      {intl.formatMessage({ id: 'feedback.success.another', defaultMessage: '再提一条' })}
                     </Button>
                   </div>
                 </SuccessOverlay>
@@ -534,6 +595,7 @@ const FeedbackContent = () => {
           </RightPanel>
         </SplitCard>
       </ContentContainer>
+      <FooterSection />
     </PageLayout>
   );
 };
