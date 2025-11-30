@@ -1293,4 +1293,214 @@ export default {
   'home.features.imageToVideo.description': '上传一张静态图片，AI 将理解画面中的光影与物理关系，自动推演后续动态，让照片活过来。',
   'home.features.multimodal.title': '多模态生态',
   'home.features.multimodal.description': '不仅支持 Stable Diffusion 文生图，更集成了 Midjourney 风格迁移与 ElevenLabs 音频合成。在一个工作流中完成所有创作。',
+  
+  // Billing 页面
+  'billing.page.title': '财务中心',
+  'billing.page.description': '管理您的资金往来与账单明细',
+  'billing.button.refresh': '刷新',
+  'billing.button.recharge': '充值',
+  'billing.button.reset': '重置',
+  'billing.button.apply': '确认筛选',
+  
+  // 余额卡片
+  'billing.balance.cny': 'CNY余额',
+  'billing.balance.usdt': 'USDT余额',
+  'billing.balance.usd': 'USD余额',
+  'billing.balance.token': 'Token余额',
+  'billing.balance.frozen': '冻结',
+  
+  // 交易类型
+  'billing.type.frozen': '资金冻结',
+  'billing.type.aiModelFee': '模型调用',
+  'billing.type.recharge': '充值',
+  'billing.type.refund': '退款',
+  'billing.type.reward': '奖励',
+  'billing.type.all': '全部类型',
+  
+  // 币种
+  'billing.coin.all': '全部币种',
+  'billing.coin.usdt': 'USDT',
+  'billing.coin.cny': 'CNY',
+  'billing.coin.usd': 'USD',
+  
+  // 表格
+  'billing.table.type': '类型',
+  'billing.table.coinType': '币种',
+  'billing.table.time': '时间',
+  'billing.table.amount': '金额',
+  'billing.table.remark': '备注',
+  'billing.table.balance': '结余',
+  'billing.table.empty': '暂无账单',
+  
+  // 筛选
+  'billing.filter.title': '筛选条件',
+  'billing.filter.button': '筛选交易 & 日期',
+  'billing.filter.changeType': '变更类型',
+  'billing.filter.coinType': '币种类型',
+  'billing.filter.remark': '备注搜索',
+  'billing.filter.remarkPlaceholder': '输入备注关键词',
+  'billing.filter.remarkSearch': '备注搜索',
+  'billing.filter.dateQuick': '快捷时间',
+  'billing.filter.dateCustom': '自定义日期',
+  'billing.filter.dateTo': '至',
+  'billing.filter.days7': '近7天',
+  'billing.filter.days30': '近30天',
+  'billing.filter.days90': '近3个月',
+  
+  // 占位符
+  'billing.placeholder.changeType': '变更类型',
+  'billing.placeholder.coinType': '币种',
+  'billing.placeholder.remark': '备注搜索',
+  
+  // 消息
+  'billing.message.fetchBalanceError': '获取余额失败',
+  'billing.message.fetchRecordsError': '获取账单记录失败',
+  'billing.message.tryAgain': '获取账单记录失败，请稍后重试',
+  
+  // Recharge 充值页面
+  'recharge.page.title': '账户充值',
+  'recharge.page.backLink': '返回财务中心',
+  'recharge.balance.title': '账户余额',
+  'recharge.balance.refresh': '刷新',
+  
+  // 充值区块
+  'recharge.section.coinType': '充值币种',
+  'recharge.section.paymentMethod': '支付方式',
+  'recharge.section.amount': '充值金额',
+  
+  // 订单详情
+  'recharge.order.title': '订单详情',
+  'recharge.order.type': '充值类型',
+  'recharge.order.typeValue': '账户余额充值',
+  'recharge.order.account': '充值账号',
+  'recharge.order.accountLoading': '加载中...',
+  'recharge.order.paymentMethod': '支付方式',
+  'recharge.order.paymentMethodPlease': '请选择',
+  'recharge.order.total': '应付总额',
+  
+  // 按钮
+  'recharge.button.pay': '立即支付',
+  'recharge.button.customize': '自定义金额',
+  
+  // 输入框占位符
+  'recharge.placeholder.customAmount': '输入自定义金额',
+  
+  // 安全认证
+  'recharge.security.ssl': 'SSL 安全加密传输，保障资金安全',
+  'recharge.security.agreement': '点击支付即代表您同意',
+  'recharge.security.agreementLink': '《充值服务协议》',
+  
+  // 空状态提示
+  'recharge.empty.noCurrency': '暂无支持的货币',
+  'recharge.empty.noPaymentMethod': '暂不支持 {currency} 币种的支付方式',
+  'recharge.empty.pleaseSelectCurrency': '请先选择充值币种',
+  'recharge.empty.pleaseSelectPayment': '请先选择支付方式',
+  'recharge.empty.noProducts': '暂无可用产品',
+  'recharge.empty.noPresets': '暂不支持 {currency} 币种的预设金额',
+  
+  // 消息提示
+  'recharge.message.invalidAmount': '请输入有效金额',
+  'recharge.message.selectPaymentMethod': '请选择支付方式',
+  'recharge.message.selectAmount': '请选择充值金额',
+  'recharge.message.fetchBalanceError': '获取余额失败，请稍后重试',
+  'recharge.message.fetchUserInfoError': '获取用户信息失败',
+  'recharge.message.fetchCurrenciesError': '获取货币列表失败，请稍后重试',
+  'recharge.message.fetchPaymentMethodsError': '获取支付方式失败，请稍后重试',
+  'recharge.message.fetchCreemProductsError': '获取 Creem 产品列表失败，请稍后重试',
+  'recharge.message.fetchCreemProductsWarning': '获取 Creem 产品列表失败',
+  'recharge.message.orderCreated': '订单创建成功',
+  'recharge.message.orderCreateFailed': '创建充值订单失败',
+  'recharge.message.paymentProcessing': '正在打开支付页面，请完成支付...',
+  'recharge.message.popupBlocked': '无法打开支付窗口，请检查浏览器弹窗设置',
+  'recharge.message.paymentUrlError': '获取支付链接失败',
+  'recharge.message.checkoutSessionError': '创建支付会话失败',
+  'recharge.message.paymentError': '支付处理失败，请稍后重试',
+  'recharge.message.redirecting': '正在跳转支付页面，请完成支付...',
+  'recharge.message.paymentUrlFailed': '支付链接获取失败',
+  'recharge.message.paymentSuccess': '支付成功！余额已到账',
+  'recharge.message.orderCancelled': '订单已取消',
+  'recharge.message.paymentFailed': '支付失败',
+  'recharge.message.orderExpired': '已过期',
+  'recharge.message.queryOrderError': '查询订单状态失败',
+  'recharge.message.rechargeError': '充值请求失败，请稍后重试',
+
+  // Orders 页面
+  'orders.title': '订单记录',
+  'orders.subtitle': '查看您的所有充值订单记录和状态',
+  'orders.refresh': '刷新',
+  'orders.goToRecharge': '去充值',
+
+  // 统计卡片
+  'orders.stats.totalOrders': '总订单数',
+  'orders.stats.pending': '待支付',
+  'orders.stats.paid': '已支付',
+  'orders.stats.totalAmount': '总充值金额',
+
+  // 表格列
+  'orders.table.orderNo': '订单号',
+  'orders.table.createTime': '创建时间',
+  'orders.table.amount': '金额',
+  'orders.table.paymentMethod': '支付方式',
+  'orders.table.status': '状态',
+  'orders.table.action': '操作',
+  'orders.table.view': '查看',
+  'orders.table.cancel': '取消',
+  'orders.table.empty': '暂无订单记录',
+
+  // 订单状态
+  'orders.status.pending': '待支付',
+  'orders.status.paid': '已支付',
+  'orders.status.success': '已完成',
+  'orders.status.cancelled': '已取消',
+  'orders.status.failed': '支付失败',
+  'orders.status.expired': '已过期',
+  'orders.status.all': '全部状态',
+
+  // 支付方式
+  'orders.payment.alipay': '支付宝',
+  'orders.payment.wechat': '微信支付',
+  'orders.payment.bank': '银行卡',
+  'orders.payment.usdt': 'USDT',
+  'orders.payment.creem': 'Creem',
+  'orders.payment.all': '全部方式',
+
+  // 币种
+  'orders.coin.all': '全部币种',
+
+  // 筛选
+  'orders.filter.title': '筛选条件',
+  'orders.filter.button': '筛选订单',
+  'orders.filter.reset': '重置',
+  'orders.filter.apply': '确认筛选',
+  'orders.filter.orderStatus': '订单状态',
+  'orders.filter.paymentMethod': '支付方式',
+  'orders.filter.coinType': '币种类型',
+  'orders.filter.orderNoSearch': '订单号搜索',
+  'orders.filter.quickDate': '快捷时间',
+  'orders.filter.customDate': '自定义日期',
+  'orders.filter.dateTo': '至',
+  'orders.filter.last7Days': '近7天',
+  'orders.filter.last30Days': '近30天',
+  'orders.filter.last3Months': '近3个月',
+
+  // 搜索和输入
+  'orders.search.placeholder': '搜索订单号',
+  'orders.input.orderNo': '输入订单号',
+  'orders.select.orderStatus': '订单状态',
+  'orders.select.paymentMethod': '支付方式',
+  'orders.select.coinType': '币种',
+
+  // 消息提示
+  'orders.message.fetchError': '获取订单记录失败',
+  'orders.message.fetchErrorRetry': '获取订单记录失败，请稍后重试',
+  'orders.message.statsError': '获取统计数据失败',
+  'orders.message.cancelSuccess': '订单已取消',
+  'orders.message.cancelError': '取消订单失败',
+  'orders.message.cancelErrorRetry': '取消订单失败，请稍后重试',
+  'orders.message.viewOrder': '订单号: {orderNo}',
+
+  // 确认对话框
+  'orders.confirm.cancel': '确定要取消这个订单吗？',
+  'orders.confirm.ok': '确定',
+  'orders.confirm.cancelButton': '取消',
 }; 

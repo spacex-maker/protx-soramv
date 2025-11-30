@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import styled, { css } from "styled-components";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
 import instance from "api/axios";
 import { 
@@ -410,13 +411,13 @@ const FilterChip = styled.div`
 // 2. 逻辑组件
 // ==========================================
 
-const CHANGE_TYPE_MAP = {
-  'FROZEN': { label: '资金冻结', color: 'orange', icon: <BankOutlined /> },
-  'AI_MODEL_FEE': { label: '模型调用', color: 'blue', icon: <CreditCardOutlined /> },
-  'RECHARGE': { label: '充值', color: 'green', icon: <ArrowUpOutlined /> },
-  'REFUND': { label: '退款', color: 'cyan', icon: <ReloadOutlined /> },
-  'REWARD': { label: '奖励', color: 'gold', icon: <WalletOutlined /> },
-};
+const getChangeTypeMap = (intl) => ({
+  'FROZEN': { label: intl.formatMessage({ id: 'billing.type.frozen' }), color: 'orange', icon: <BankOutlined /> },
+  'AI_MODEL_FEE': { label: intl.formatMessage({ id: 'billing.type.aiModelFee' }), color: 'blue', icon: <CreditCardOutlined /> },
+  'RECHARGE': { label: intl.formatMessage({ id: 'billing.type.recharge' }), color: 'green', icon: <ArrowUpOutlined /> },
+  'REFUND': { label: intl.formatMessage({ id: 'billing.type.refund' }), color: 'cyan', icon: <ReloadOutlined /> },
+  'REWARD': { label: intl.formatMessage({ id: 'billing.type.reward' }), color: 'gold', icon: <WalletOutlined /> },
+});
 
 const COIN_TYPE_MAP = {
   'USDT_ERC20': 'USDT',
@@ -427,6 +428,7 @@ const COIN_TYPE_MAP = {
 const BillingContent = () => {
   const { token } = theme.useToken();
   const navigate = useNavigate();
+  const intl = useIntl();
   const [loading, setLoading] = useState(false);
   const [billingRecords, setBillingRecords] = useState([]);
   
@@ -446,7 +448,8 @@ const BillingContent = () => {
     balance: 0, 
     usdtAmount: 0, 
     usdtFrozenAmount: 0, 
-    usdBalance: 0 
+    usdBalance: 0,
+    tokenBalance: 0
   });
 
   const [tempDateRange, setTempDateRange] = useState(dateRange);
@@ -473,17 +476,18 @@ const BillingContent = () => {
     try {
       const response = await instance.get('/productx/user/balance');
       if (response.data.success && response.data.data) {
-        const { balance, usdtAmount, usdtFrozenAmount, usdBalance } = response.data.data;
+        const { balance, usdtAmount, usdtFrozenAmount, usdBalance, tokenBalance } = response.data.data;
         setStats(prev => ({
           ...prev,
           balance: balance || 0,
           usdtAmount: usdtAmount || 0,
           usdtFrozenAmount: usdtFrozenAmount || 0,
-          usdBalance: usdBalance || 0
+          usdBalance: usdBalance || 0,
+          tokenBalance: tokenBalance || 0
         }));
       }
     } catch (error) {
-      console.error('获取余额失败:', error);
+      console.error(intl.formatMessage({ id: 'billing.message.fetchBalanceError' }), error);
     }
   };
 
@@ -521,10 +525,10 @@ const BillingContent = () => {
         
         setStats(prev => ({ ...prev, totalIncome: income, totalExpense: expense }));
       } else {
-        message.error(response.data.message || '获取账单记录失败');
+        message.error(response.data.message || intl.formatMessage({ id: 'billing.message.fetchRecordsError' }));
       }
     } catch (error) {
-      message.error('获取账单记录失败，请稍后重试');
+      message.error(intl.formatMessage({ id: 'billing.message.tryAgain' }));
     } finally {
       setLoading(false);
     }
@@ -553,9 +557,11 @@ const BillingContent = () => {
     setFilterDrawerVisible(true);
   };
 
+  const CHANGE_TYPE_MAP = getChangeTypeMap(intl);
+
   const columns = [
     {
-      title: '类型',
+      title: intl.formatMessage({ id: 'billing.table.type' }),
       key: 'changeType',
       width: isMobile ? 140 : 180,
       render: (_, record) => {
@@ -593,7 +599,7 @@ const BillingContent = () => {
       }
     },
     !isMobile && {
-      title: '币种',
+      title: intl.formatMessage({ id: 'billing.table.coinType' }),
       key: 'coinType',
       width: 100,
       render: (_, record) => (
@@ -601,14 +607,14 @@ const BillingContent = () => {
       )
     },
     !isMobile && {
-      title: '时间',
+      title: intl.formatMessage({ id: 'billing.table.time' }),
       dataIndex: 'createTime',
       key: 'createTime',
       width: 180,
       render: text => <span style={{ color: token.colorTextSecondary }}>{text}</span>
     },
     {
-      title: '金额',
+      title: intl.formatMessage({ id: 'billing.table.amount' }),
       key: 'amount',
       align: 'right',
       width: isMobile ? 120 : 180,
@@ -624,14 +630,14 @@ const BillingContent = () => {
               {Math.abs(amount).toFixed(6)} {coinType}
             </Amount>
             <div style={{ fontSize: 12, color: token.colorTextQuaternary, marginTop: 2 }}>
-              结余 {parseFloat(record.balanceAfterChange).toLocaleString()} {coinType}
+              {intl.formatMessage({ id: 'billing.table.balance' })} {parseFloat(record.balanceAfterChange).toLocaleString()} {coinType}
             </div>
           </div>
         );
       }
     },
     isMobile && {
-      title: '备注',
+      title: intl.formatMessage({ id: 'billing.table.remark' }),
       key: 'remark',
       render: (_, record) => (
         <div style={{ fontSize: 12, color: token.colorTextSecondary }}>
@@ -652,22 +658,22 @@ const BillingContent = () => {
       >
         <PageHeader $token={token}>
           <div className="title-group">
-            <h1><WalletOutlined /> 财务中心</h1>
-            <p>管理您的资金往来与账单明细</p>
+            <h1><WalletOutlined /> {intl.formatMessage({ id: 'billing.page.title' })}</h1>
+            <p>{intl.formatMessage({ id: 'billing.page.description' })}</p>
           </div>
           <div className="action-group">
             <Button icon={<ReloadOutlined />} onClick={() => {
               fetchBalance();
               fetchBillingRecords();
-            }} loading={loading}>刷新</Button>
-            <Button type="primary" onClick={() => navigate('/recharge')}>充值</Button>
+            }} loading={loading}>{intl.formatMessage({ id: 'billing.button.refresh' })}</Button>
+            <Button type="primary" onClick={() => navigate('/recharge')}>{intl.formatMessage({ id: 'billing.button.recharge' })}</Button>
           </div>
         </PageHeader>
 
         <StatsGrid>
           <StatCard $token={token} $variant="primary">
             <div className="header">
-              <span className="stat-label" style={{ opacity: 0.9 }}>CNY余额</span>
+              <span className="stat-label" style={{ opacity: 0.9 }}>{intl.formatMessage({ id: 'billing.balance.cny' })}</span>
               <div className="icon-box"><WalletOutlined /></div>
             </div>
             <Statistic 
@@ -679,7 +685,7 @@ const BillingContent = () => {
           </StatCard>
           <StatCard $token={token}>
             <div className="header">
-              <span className="stat-label" style={{ color: token.colorTextSecondary }}>USDT余额</span>
+              <span className="stat-label" style={{ color: token.colorTextSecondary }}>{intl.formatMessage({ id: 'billing.balance.usdt' })}</span>
               <div className="icon-box" style={{ color: token.colorSuccess, background: token.colorSuccessBg }}>
                 <DollarOutlined />
               </div>
@@ -702,11 +708,11 @@ const BillingContent = () => {
                 <HoverAmount $token={token} style={{ marginTop: 8 }}>
                   <div className="display-value" style={{ fontSize: 12, color: token.colorTextSecondary, display: 'flex', alignItems: 'center', gap: 4 }}>
                     <BankOutlined style={{ fontSize: 12 }} />
-                    <span>冻结: {stats.usdtFrozenAmount.toFixed(2)} USDT</span>
+                    <span>{intl.formatMessage({ id: 'billing.balance.frozen' })}: {stats.usdtFrozenAmount.toFixed(2)} USDT</span>
                   </div>
                   <div className="full-value" style={{ fontSize: 12 }}>
                     <BankOutlined style={{ fontSize: 12, marginRight: 4 }} />
-                    冻结: {stats.usdtFrozenAmount.toFixed(6)} USDT
+                    {intl.formatMessage({ id: 'billing.balance.frozen' })}: {stats.usdtFrozenAmount.toFixed(6)} USDT
                   </div>
                 </HoverAmount>
               )}
@@ -714,7 +720,7 @@ const BillingContent = () => {
           </StatCard>
           <StatCard $token={token}>
             <div className="header">
-              <span className="stat-label" style={{ color: token.colorTextSecondary }}>USD余额</span>
+              <span className="stat-label" style={{ color: token.colorTextSecondary }}>{intl.formatMessage({ id: 'billing.balance.usd' })}</span>
               <div className="icon-box" style={{ color: token.colorInfo, background: token.colorInfoBg }}>
                 <DollarOutlined />
               </div>
@@ -726,6 +732,20 @@ const BillingContent = () => {
               valueStyle={{ color: token.colorInfo, fontWeight: 600 }} 
             />
           </StatCard>
+          <StatCard $token={token}>
+            <div className="header">
+              <span className="stat-label" style={{ color: token.colorTextSecondary }}>{intl.formatMessage({ id: 'billing.balance.token' })}</span>
+              <div className="icon-box" style={{ color: token.colorWarning, background: token.colorWarningBg }}>
+                <CreditCardOutlined />
+              </div>
+            </div>
+            <Statistic 
+              value={stats.tokenBalance} 
+              precision={2} 
+              suffix="Token"
+              valueStyle={{ color: token.colorWarning, fontWeight: 600 }} 
+            />
+          </StatCard>
         </StatsGrid>
 
         <MobileToolbar>
@@ -734,7 +754,7 @@ const BillingContent = () => {
             $active={changeTypeFilter !== 'all' || coinTypeFilter !== 'all' || remarkFilter || dateRange[0].diff(dayjs(), 'day') < -30}
             onClick={openDrawer}
           >
-            <FilterOutlined /> 筛选交易 & 日期
+            <FilterOutlined /> {intl.formatMessage({ id: 'billing.filter.button' })}
           </MobileFilterButton>
         </MobileToolbar>
 
@@ -744,29 +764,29 @@ const BillingContent = () => {
               value={changeTypeFilter} 
               onChange={setChangeTypeFilter} 
               style={{ width: 140 }} 
-              placeholder="变更类型"
+              placeholder={intl.formatMessage({ id: 'billing.placeholder.changeType' })}
               options={[
-                { value: 'all', label: '全部类型' },
-                { value: 'FROZEN', label: '资金冻结' },
-                { value: 'AI_MODEL_FEE', label: '模型调用' },
-                { value: 'RECHARGE', label: '充值' },
-                { value: 'REFUND', label: '退款' },
-                { value: 'REWARD', label: '奖励' },
+                { value: 'all', label: intl.formatMessage({ id: 'billing.type.all' }) },
+                { value: 'FROZEN', label: intl.formatMessage({ id: 'billing.type.frozen' }) },
+                { value: 'AI_MODEL_FEE', label: intl.formatMessage({ id: 'billing.type.aiModelFee' }) },
+                { value: 'RECHARGE', label: intl.formatMessage({ id: 'billing.type.recharge' }) },
+                { value: 'REFUND', label: intl.formatMessage({ id: 'billing.type.refund' }) },
+                { value: 'REWARD', label: intl.formatMessage({ id: 'billing.type.reward' }) },
               ]}
             />
             <Select 
               value={coinTypeFilter} 
               onChange={setCoinTypeFilter} 
               style={{ width: 120 }} 
-              placeholder="币种"
+              placeholder={intl.formatMessage({ id: 'billing.placeholder.coinType' })}
               options={[
-                { value: 'all', label: '全部币种' },
-                { value: 'USDT_ERC20', label: 'USDT' },
-                { value: 'CNY', label: 'CNY' },
+                { value: 'all', label: intl.formatMessage({ id: 'billing.coin.all' }) },
+                { value: 'USDT_ERC20', label: intl.formatMessage({ id: 'billing.coin.usdt' }) },
+                { value: 'CNY', label: intl.formatMessage({ id: 'billing.coin.cny' }) },
               ]}
             />
             <Input
-              placeholder="备注搜索"
+              placeholder={intl.formatMessage({ id: 'billing.placeholder.remark' })}
               value={remarkFilter}
               onChange={(e) => setRemarkFilter(e.target.value)}
               style={{ width: 150 }}
@@ -794,12 +814,12 @@ const BillingContent = () => {
               showSizeChanger: !isMobile
             }}
             scroll={{ x: true }}
-            locale={{ emptyText: <Empty description="暂无账单" /> }}
+            locale={{ emptyText: <Empty description={intl.formatMessage({ id: 'billing.table.empty' })} /> }}
           />
         </TableContainer>
 
         <Drawer
-          title="筛选条件"
+          title={intl.formatMessage({ id: 'billing.filter.title' })}
           placement="bottom"
           open={filterDrawerVisible}
           onClose={() => setFilterDrawerVisible(false)}
@@ -821,7 +841,7 @@ const BillingContent = () => {
                 }}
                 style={{ borderRadius: '999px', height: '48px', fontWeight: 500 }}
               >
-                重置
+                {intl.formatMessage({ id: 'billing.button.reset' })}
               </Button>
               <Button 
                 type="primary" 
@@ -830,16 +850,26 @@ const BillingContent = () => {
                 onClick={handleApplyFilter}
                 style={{ borderRadius: '999px', height: '48px', fontWeight: 500 }}
               >
-                确认筛选
+                {intl.formatMessage({ id: 'billing.button.apply' })}
               </Button>
             </div>
           }
         >
           <DrawerSection $token={token}>
-            <h3>变更类型</h3>
+            <h3>{intl.formatMessage({ id: 'billing.filter.changeType' })}</h3>
             <ChipGrid>
               {['all', 'FROZEN', 'AI_MODEL_FEE', 'RECHARGE', 'REFUND', 'REWARD'].map(type => {
-                const labels = { all: '全部', FROZEN: '资金冻结', AI_MODEL_FEE: '模型调用', RECHARGE: '充值', REFUND: '退款', REWARD: '奖励' };
+                const getLabel = (t) => {
+                  const labelMap = {
+                    all: intl.formatMessage({ id: 'billing.type.all' }),
+                    FROZEN: intl.formatMessage({ id: 'billing.type.frozen' }),
+                    AI_MODEL_FEE: intl.formatMessage({ id: 'billing.type.aiModelFee' }),
+                    RECHARGE: intl.formatMessage({ id: 'billing.type.recharge' }),
+                    REFUND: intl.formatMessage({ id: 'billing.type.refund' }),
+                    REWARD: intl.formatMessage({ id: 'billing.type.reward' })
+                  };
+                  return labelMap[t];
+                };
                 return (
                   <FilterChip 
                     key={type}
@@ -847,7 +877,7 @@ const BillingContent = () => {
                     $active={tempChangeTypeFilter === type}
                     onClick={() => setTempChangeTypeFilter(type)}
                   >
-                    {labels[type]}
+                    {getLabel(type)}
                     {tempChangeTypeFilter === type && <CheckOutlined style={{ marginLeft: 4, fontSize: 10 }} />}
                   </FilterChip>
                 )
@@ -856,10 +886,17 @@ const BillingContent = () => {
           </DrawerSection>
 
           <DrawerSection $token={token}>
-            <h3>币种类型</h3>
+            <h3>{intl.formatMessage({ id: 'billing.filter.coinType' })}</h3>
             <ChipGrid>
               {['all', 'USDT_ERC20', 'CNY'].map(coin => {
-                const labels = { all: '全部币种', USDT_ERC20: 'USDT', CNY: 'CNY' };
+                const getLabel = (c) => {
+                  const labelMap = {
+                    all: intl.formatMessage({ id: 'billing.coin.all' }),
+                    USDT_ERC20: intl.formatMessage({ id: 'billing.coin.usdt' }),
+                    CNY: intl.formatMessage({ id: 'billing.coin.cny' })
+                  };
+                  return labelMap[c];
+                };
                 return (
                   <FilterChip 
                     key={coin}
@@ -867,7 +904,7 @@ const BillingContent = () => {
                     $active={tempCoinTypeFilter === coin}
                     onClick={() => setTempCoinTypeFilter(coin)}
                   >
-                    {labels[coin]}
+                    {getLabel(coin)}
                     {tempCoinTypeFilter === coin && <CheckOutlined style={{ marginLeft: 4, fontSize: 10 }} />}
                   </FilterChip>
                 )
@@ -876,9 +913,9 @@ const BillingContent = () => {
           </DrawerSection>
 
           <DrawerSection $token={token}>
-            <h3>备注搜索</h3>
+            <h3>{intl.formatMessage({ id: 'billing.filter.remarkSearch' })}</h3>
             <Input
-              placeholder="输入备注关键词"
+              placeholder={intl.formatMessage({ id: 'billing.filter.remarkPlaceholder' })}
               value={tempRemarkFilter}
               onChange={(e) => setTempRemarkFilter(e.target.value)}
               allowClear
@@ -886,16 +923,16 @@ const BillingContent = () => {
           </DrawerSection>
 
           <DrawerSection $token={token}>
-            <h3>快捷时间</h3>
+            <h3>{intl.formatMessage({ id: 'billing.filter.dateQuick' })}</h3>
             <ChipGrid>
-              <FilterChip $token={token} onClick={() => handleQuickDate(7)}>近7天</FilterChip>
-              <FilterChip $token={token} onClick={() => handleQuickDate(30)}>近30天</FilterChip>
-              <FilterChip $token={token} onClick={() => handleQuickDate(90)}>近3个月</FilterChip>
+              <FilterChip $token={token} onClick={() => handleQuickDate(7)}>{intl.formatMessage({ id: 'billing.filter.days7' })}</FilterChip>
+              <FilterChip $token={token} onClick={() => handleQuickDate(30)}>{intl.formatMessage({ id: 'billing.filter.days30' })}</FilterChip>
+              <FilterChip $token={token} onClick={() => handleQuickDate(90)}>{intl.formatMessage({ id: 'billing.filter.days90' })}</FilterChip>
             </ChipGrid>
           </DrawerSection>
 
           <DrawerSection $token={token}>
-            <h3>自定义日期</h3>
+            <h3>{intl.formatMessage({ id: 'billing.filter.dateCustom' })}</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                <DatePicker 
                  value={tempDateRange[0]} 
@@ -903,7 +940,7 @@ const BillingContent = () => {
                  style={{ flex: 1 }} 
                  inputReadOnly 
                />
-               <span style={{ color: token.colorTextSecondary }}>至</span>
+               <span style={{ color: token.colorTextSecondary }}>{intl.formatMessage({ id: 'billing.filter.dateTo' })}</span>
                <DatePicker 
                  value={tempDateRange[1]} 
                  onChange={d => setTempDateRange([tempDateRange[0], d])} 

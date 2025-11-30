@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import styled, { css, keyframes } from "styled-components";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
 import instance from "api/axios";
 import { auth } from "api/auth";
@@ -717,6 +718,7 @@ const PAY_METHODS = [
 const RechargeContent = () => {
   const { token } = theme.useToken();
   const navigate = useNavigate();
+  const intl = useIntl();
   
   // State
   const [coinType, setCoinType] = useState('');
@@ -764,8 +766,8 @@ const RechargeContent = () => {
         });
       }
     } catch (error) {
-      console.error('获取余额失败:', error);
-      message.error('获取余额失败，请稍后重试');
+      console.error(intl.formatMessage({ id: 'recharge.message.fetchBalanceError' }), error);
+      message.error(intl.formatMessage({ id: 'recharge.message.fetchBalanceError' }));
     } finally {
       setBalanceLoading(false);
     }
@@ -784,7 +786,7 @@ const RechargeContent = () => {
         }
       }
     } catch (error) {
-      console.error('获取用户信息失败:', error);
+      console.error(intl.formatMessage({ id: 'recharge.message.fetchUserInfoError' }), error);
     }
   };
 
@@ -804,8 +806,8 @@ const RechargeContent = () => {
         }
       }
     } catch (error) {
-      console.error('获取货币列表失败:', error);
-      message.error('获取货币列表失败，请稍后重试');
+      console.error(intl.formatMessage({ id: 'recharge.message.fetchCurrenciesError' }), error);
+      message.error(intl.formatMessage({ id: 'recharge.message.fetchCurrenciesError' }));
     } finally {
       setCurrenciesLoading(false);
     }
@@ -847,8 +849,8 @@ const RechargeContent = () => {
         setSelectedCreemProduct(null);
       }
     } catch (error) {
-      console.error('获取支付方式失败:', error);
-      message.error('获取支付方式失败，请稍后重试');
+      console.error(intl.formatMessage({ id: 'recharge.message.fetchPaymentMethodsError' }), error);
+      message.error(intl.formatMessage({ id: 'recharge.message.fetchPaymentMethodsError' }));
       // 出错时也清空选择
       setPaymentMethods([]);
       setPayMethod('');
@@ -900,12 +902,12 @@ const RechargeContent = () => {
         }
       } else {
         setCreemProducts([]);
-        message.warning(result.message || '获取 Creem 产品列表失败');
+        message.warning(result.message || intl.formatMessage({ id: 'recharge.message.fetchCreemProductsWarning' }));
       }
     } catch (error) {
-      console.error('获取 Creem 产品列表失败:', error);
+      console.error(intl.formatMessage({ id: 'recharge.message.fetchCreemProductsError' }), error);
       setCreemProducts([]);
-      message.error('获取 Creem 产品列表失败，请稍后重试');
+      message.error(intl.formatMessage({ id: 'recharge.message.fetchCreemProductsError' }));
     } finally {
       setCreemProductsLoading(false);
     }
@@ -999,7 +1001,7 @@ const RechargeContent = () => {
             clearInterval(interval);
             orderPollingIntervalRef.current = null;
             setCurrentOrderNo(null);
-            message.success('支付成功！余额已到账');
+            message.success(intl.formatMessage({ id: 'recharge.message.paymentSuccess' }));
             // 刷新余额
             fetchBalance();
             // 可选：跳转到订单页面
@@ -1009,12 +1011,17 @@ const RechargeContent = () => {
             clearInterval(interval);
             orderPollingIntervalRef.current = null;
             setCurrentOrderNo(null);
-            message.warning(`订单${status === 'CANCELLED' ? '已取消' : status === 'FAILED' ? '支付失败' : '已过期'}`);
+            const statusMsg = status === 'CANCELLED' ? 
+              intl.formatMessage({ id: 'recharge.message.orderCancelled' }) : 
+              status === 'FAILED' ? 
+              intl.formatMessage({ id: 'recharge.message.paymentFailed' }) : 
+              intl.formatMessage({ id: 'recharge.message.orderExpired' });
+            message.warning(statusMsg);
           }
           // 其他状态（PENDING等）继续轮询
         }
       } catch (error) {
-        console.error('查询订单状态失败:', error);
+        console.error(intl.formatMessage({ id: 'recharge.message.queryOrderError' }), error);
         // 不中断轮询，继续尝试
       }
     }, 3000); // 每3秒轮询一次
@@ -1046,21 +1053,21 @@ const RechargeContent = () => {
           const paymentWindow = window.open(checkoutUrl, '_blank', 'width=800,height=600');
           
           if (paymentWindow) {
-            message.info('正在打开支付页面，请完成支付...');
+            message.info(intl.formatMessage({ id: 'recharge.message.paymentProcessing' }));
             // 开始轮询订单状态
             pollOrderStatus(orderNo);
           } else {
-            message.warning('无法打开支付窗口，请检查浏览器弹窗设置');
+            message.warning(intl.formatMessage({ id: 'recharge.message.popupBlocked' }));
           }
         } else {
-          message.error('获取支付链接失败');
+          message.error(intl.formatMessage({ id: 'recharge.message.paymentUrlError' }));
         }
       } else {
-        message.error(checkoutResult.message || '创建支付会话失败');
+        message.error(checkoutResult.message || intl.formatMessage({ id: 'recharge.message.checkoutSessionError' }));
       }
     } catch (error) {
-      console.error('Creem 支付处理失败:', error);
-      message.error('支付处理失败，请稍后重试');
+      console.error(intl.formatMessage({ id: 'recharge.message.paymentError' }), error);
+      message.error(intl.formatMessage({ id: 'recharge.message.paymentError' }));
     }
   };
 
@@ -1070,20 +1077,20 @@ const RechargeContent = () => {
   const handleOtherPayment = (payUrl) => {
     if (payUrl) {
       window.open(payUrl, '_blank');
-      message.info('正在跳转支付页面，请完成支付...');
+      message.info(intl.formatMessage({ id: 'recharge.message.redirecting' }));
     } else {
-      message.error('支付链接获取失败');
+      message.error(intl.formatMessage({ id: 'recharge.message.paymentUrlFailed' }));
     }
   };
 
   const handleSubmit = async () => {
     const finalAmount = getCurrentAmount();
-    if (finalAmount <= 0) return message.warning('请输入有效金额');
-    if (!payMethod) return message.warning('请选择支付方式');
+    if (finalAmount <= 0) return message.warning(intl.formatMessage({ id: 'recharge.message.invalidAmount' }));
+    if (!payMethod) return message.warning(intl.formatMessage({ id: 'recharge.message.selectPaymentMethod' }));
     
     // Creem 支付需要选择产品
     if (payMethod === 'creem' && !selectedCreemProduct) {
-      return message.warning('请选择充值金额');
+      return message.warning(intl.formatMessage({ id: 'recharge.message.selectAmount' }));
     }
     
     setLoading(true);
@@ -1103,7 +1110,7 @@ const RechargeContent = () => {
         const { orderNo, payUrl, status } = orderResult.data;
         setCurrentOrderNo(orderNo);
         
-        message.success('订单创建成功');
+        message.success(intl.formatMessage({ id: 'recharge.message.orderCreated' }));
         
         // 根据支付方式处理
         if (payMethod === 'creem') {
@@ -1119,11 +1126,11 @@ const RechargeContent = () => {
           }
         }
       } else {
-        message.error(orderResult.message || '创建充值订单失败');
+        message.error(orderResult.message || intl.formatMessage({ id: 'recharge.message.orderCreateFailed' }));
       }
     } catch (error) {
-      console.error('充值请求失败:', error);
-      message.error('充值请求失败，请稍后重试');
+      console.error(intl.formatMessage({ id: 'recharge.message.rechargeError' }), error);
+      message.error(intl.formatMessage({ id: 'recharge.message.rechargeError' }));
     } finally {
       setLoading(false);
     }
@@ -1141,11 +1148,11 @@ const RechargeContent = () => {
         <HeaderArea $token={token}>
           <div className="left">
             <div className="back-link" onClick={() => window.history.back()}>
-              <ArrowLeftOutlined /> 返回财务中心
+              <ArrowLeftOutlined /> {intl.formatMessage({ id: 'recharge.page.backLink' })}
             </div>
             <h1>
               <span style={{ marginRight: 12 }}>⚡</span>
-              账户充值
+              {intl.formatMessage({ id: 'recharge.page.title' })}
             </h1>
           </div>
         </HeaderArea>
@@ -1160,7 +1167,7 @@ const RechargeContent = () => {
           <div className="balance-header">
             <div className="title">
               <WalletOutlined style={{ marginRight: 8 }} />
-              账户余额
+              {intl.formatMessage({ id: 'recharge.balance.title' })}
             </div>
             <ReloadOutlined 
               className="refresh-btn" 
@@ -1229,7 +1236,7 @@ const RechargeContent = () => {
             
             {/* 1. 币种选择 */}
             <section>
-              <SectionTitle $token={token}>充值币种</SectionTitle>
+              <SectionTitle $token={token}>{intl.formatMessage({ id: 'recharge.section.coinType' })}</SectionTitle>
               <Spin spinning={currenciesLoading}>
                 <CoinToggle $token={token}>
                   {supportedCurrencies.length > 0 ? (
@@ -1257,7 +1264,7 @@ const RechargeContent = () => {
                     })
                   ) : (
                     <div style={{ padding: 20, textAlign: 'center', color: token.colorTextSecondary }}>
-                      暂无支持的货币
+                      {intl.formatMessage({ id: 'recharge.empty.noCurrency' })}
                     </div>
                   )}
                 </CoinToggle>
@@ -1266,7 +1273,7 @@ const RechargeContent = () => {
 
             {/* 2. 支付方式 */}
             <section>
-              <SectionTitle $token={token}>支付方式</SectionTitle>
+              <SectionTitle $token={token}>{intl.formatMessage({ id: 'recharge.section.paymentMethod' })}</SectionTitle>
               <Spin spinning={paymentMethodsLoading}>
                 {paymentMethods.length > 0 ? (
                   <PaymentList>
@@ -1315,7 +1322,7 @@ const RechargeContent = () => {
                   </PaymentList>
                 ) : (
                   <div style={{ padding: 20, textAlign: 'center', color: token.colorTextSecondary }}>
-                    {coinType ? `暂不支持 ${coinType} 币种的支付方式` : '请先选择充值币种'}
+                    {coinType ? intl.formatMessage({ id: 'recharge.empty.noPaymentMethod' }, { currency: coinType }) : intl.formatMessage({ id: 'recharge.empty.pleaseSelectCurrency' })}
                   </div>
                 )}
               </Spin>
@@ -1323,10 +1330,10 @@ const RechargeContent = () => {
 
             {/* 3. 金额选择 */}
             <section>
-              <SectionTitle $token={token}>充值金额</SectionTitle>
+              <SectionTitle $token={token}>{intl.formatMessage({ id: 'recharge.section.amount' })}</SectionTitle>
               {!payMethod ? (
                 <div style={{ padding: 20, textAlign: 'center', color: token.colorTextSecondary }}>
-                  请先选择支付方式
+                  {intl.formatMessage({ id: 'recharge.empty.pleaseSelectPayment' })}
                 </div>
               ) : (
                 <Spin spinning={payMethod === 'creem' && creemProductsLoading}>
@@ -1358,7 +1365,7 @@ const RechargeContent = () => {
                         ))
                       ) : (
                         <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 20, color: token.colorTextSecondary }}>
-                          暂无可用产品
+                          {intl.formatMessage({ id: 'recharge.empty.noProducts' })}
                         </div>
                       )
                     ) : (
@@ -1388,7 +1395,7 @@ const RechargeContent = () => {
                         ))
                       ) : (
                         <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 20, color: token.colorTextSecondary }}>
-                          {coinType ? `暂不支持 ${coinType} 币种的预设金额` : '请先选择充值币种'}
+                          {coinType ? intl.formatMessage({ id: 'recharge.empty.noPresets' }, { currency: coinType }) : intl.formatMessage({ id: 'recharge.empty.pleaseSelectCurrency' })}
                         </div>
                       )
                     )}
@@ -1400,8 +1407,8 @@ const RechargeContent = () => {
               {payMethod && payMethod !== 'creem' && (
                 <CustomInputWrapper $token={token}>
                   <Input 
-                    placeholder="输入自定义金额" 
-                    prefix={<span style={{color: token.colorTextTertiary}}>自定义金额</span>} 
+                    placeholder={intl.formatMessage({ id: 'recharge.placeholder.customAmount' })} 
+                    prefix={<span style={{color: token.colorTextTertiary}}>{intl.formatMessage({ id: 'recharge.button.customize' })}</span>} 
                     suffix={<span style={{fontWeight:600}}>{symbol}</span>}
                     value={customAmount}
                     onChange={handleCustomChange}
@@ -1415,23 +1422,23 @@ const RechargeContent = () => {
           {/* 右侧：收银台 (Sticky) */}
           <SideSection>
             <ReceiptCard $token={token}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, color: token.colorText }}>订单详情</h2>
+              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, color: token.colorText }}>{intl.formatMessage({ id: 'recharge.order.title' })}</h2>
               
               <ReceiptRow $token={token}>
-                <span>充值类型</span>
-                <span>账户余额充值</span>
+                <span>{intl.formatMessage({ id: 'recharge.order.type' })}</span>
+                <span>{intl.formatMessage({ id: 'recharge.order.typeValue' })}</span>
               </ReceiptRow>
               <ReceiptRow $token={token}>
-                <span>充值账号</span>
-                <span>{username || '加载中...'}</span>
+                <span>{intl.formatMessage({ id: 'recharge.order.account' })}</span>
+                <span>{username || intl.formatMessage({ id: 'recharge.order.accountLoading' })}</span>
               </ReceiptRow>
               <ReceiptRow $token={token}>
-                <span>支付方式</span>
-                <span>{paymentMethods.find(p => p.id === payMethod)?.name || '请选择'}</span>
+                <span>{intl.formatMessage({ id: 'recharge.order.paymentMethod' })}</span>
+                <span>{paymentMethods.find(p => p.id === payMethod)?.name || intl.formatMessage({ id: 'recharge.order.paymentMethodPlease' })}</span>
               </ReceiptRow>
               
               <ReceiptRow $token={token} className="total">
-                <span>应付总额</span>
+                <span>{intl.formatMessage({ id: 'recharge.order.total' })}</span>
                 <span className="total-price">
                   <span style={{fontSize: 20, verticalAlign: 'top'}}>{symbol}</span>
                   {getCurrentAmount().toFixed(2)}
@@ -1448,16 +1455,16 @@ const RechargeContent = () => {
                 disabled={getCurrentAmount() <= 0}
                 $token={token}
               >
-                立即支付 <RightOutlined style={{fontSize:14}}/>
+                {intl.formatMessage({ id: 'recharge.button.pay' })} <RightOutlined style={{fontSize:14}}/>
               </PayButton>
 
               <SecureBadge $token={token}>
                 <SafetyCertificateFilled style={{ color: token.colorSuccess }} />
-                SSL 安全加密传输，保障资金安全
+                {intl.formatMessage({ id: 'recharge.security.ssl' })}
               </SecureBadge>
 
               <div style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: token.colorTextTertiary, lineHeight: 1.6 }}>
-                点击支付即代表您同意<br/>
+                {intl.formatMessage({ id: 'recharge.security.agreement' })}<br/>
                 <a 
                   href="/recharge-agreement"
                   onClick={(e) => {
@@ -1473,7 +1480,7 @@ const RechargeContent = () => {
                   onMouseEnter={(e) => e.target.style.color = token.colorPrimaryHover}
                   onMouseLeave={(e) => e.target.style.color = token.colorPrimary}
                 >
-                  《充值服务协议》
+                  {intl.formatMessage({ id: 'recharge.security.agreementLink' })}
                 </a>
               </div>
             </ReceiptCard>

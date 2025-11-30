@@ -30,9 +30,10 @@ import {
   SwapOutlined,
   RobotOutlined,
   CloseOutlined,
-  StopOutlined,
   SyncOutlined,
   UnorderedListOutlined,
+  InboxOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import instance from 'api/axios';
@@ -49,8 +50,22 @@ import {
   AspectRatioTag,
   ResolutionTag,
   DetailButton,
+  InputImageContainer,
+  OverlayActions,
+  CustomUploadArea,
+  UploadIcon,
+  UploadText,
+  UploadHint,
 } from './styles';
-import { getAspectRatioOption, getCameraMotions, isVideoUrl, normalizeUrl, getModelAspectRatios, getModelDurationOptions } from './utils';
+import { 
+  getAspectRatioOption, 
+  getCameraMotions, 
+  isVideoUrl, 
+  normalizeUrl, 
+  getModelAspectRatios, 
+  getModelDurationOptions,
+  getBase64,
+} from './utils';
 import HistorySection from './HistorySection';
 import TaskDetailModal from './TaskDetailModal';
 import WaitingTaskQueue, { WaitingTask } from './WaitingTaskQueue';
@@ -59,7 +74,7 @@ import ModelDetailModal from './ModelDetailModal';
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-const TextToVideo: React.FC = () => {
+const ImageToVideo: React.FC = () => {
   const intl = useIntl();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -73,7 +88,18 @@ const TextToVideo: React.FC = () => {
   const pollingTasksRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const [waitingTasks, setWaitingTasks] = useState<WaitingTask[]>([]);
   const [queueDrawerOpen, setQueueDrawerOpen] = useState(false);
-  const isUserSubmitRef = useRef<boolean>(false); // 标记是否是用户主动提交
+  const isUserSubmitRef = useRef<boolean>(false);
+  
+  // 图片上传状态
+  const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
+  const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
+  
+  // AI提示词丰富相关状态
+  const [enhancingPrompt, setEnhancingPrompt] = useState(false);
+  const [promptValue, setPromptValue] = useState(''); // 监听提示词输入框的值
+  const [originalPrompt, setOriginalPrompt] = useState<string | null>(null); // 保存AI丰富之前的原始提示词
   
   // 生成记录相关状态
   const [historyTasks, setHistoryTasks] = useState<GenerationTask[]>([]);
@@ -97,13 +123,25 @@ const TextToVideo: React.FC = () => {
     isUserSubmitRef.current = false;
   }, []);
 
+  // 监听主题变化
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+    return () => observer.disconnect();
+  }, []);
+
   // 获取模型列表
   useEffect(() => {
     const fetchModels = async () => {
       setModelsLoading(true);
       try {
         const response = await instance.get('/productx/sa-ai-models/enabled/by-type', {
-          params: { modelType: 't2v' }
+          params: { modelType: 'i2v' }
         });
         if (response.data.success && response.data.data && response.data.data.length > 0) {
           setModels(response.data.data);
@@ -155,12 +193,102 @@ const TextToVideo: React.FC = () => {
   // 生成成功后刷新记录
   useEffect(() => {
     if (generatedVideo && !loading) {
-      // 延迟一下再刷新，确保后端数据已更新
       setTimeout(() => {
         fetchHistoryTasks(historyPagination.current, historyPagination.pageSize);
       }, 1000);
     }
   }, [generatedVideo, loading]);
+
+  // AI丰富提示词
+  const handleEnhancePrompt = async () => {
+    setEnhancingPrompt(true);
+    try {
+      // 获取当前输入框中的提示词（作为基础提示词）
+      const currentPrompt = form.getFieldValue('prompt') || '';
+      
+      // 验证提示词不能为空
+      if (!currentPrompt.trim()) {
+        message.warning(intl.formatMessage({
+          id: 'create.prompt.enhance.empty',
+          defaultMessage: '请先输入基础提示词',
+        }));
+        return;
+      }
+      
+      // 保存当前提示词作为原始值
+      if (!originalPrompt || originalPrompt !== currentPrompt.trim()) {
+        setOriginalPrompt(currentPrompt.trim());
+      }
+      
+      const requestData: any = {
+        basePrompt: currentPrompt.trim(),
+        language: intl.locale || 'zh',
+        scene: 'video', // 图生视频场景
+      };
+      
+      const response = await instance.post('/productx/sa-ai-models/prompt/enhance', requestData);
+
+      if (response.data.success && response.data.data) {
+        // 处理响应数据
+        const enhancedPrompt = 
+          typeof response.data.data === 'string' 
+            ? response.data.data 
+            : response.data.data.prompt || response.data.data;
+        
+        if (enhancedPrompt) {
+          // 将丰富后的提示词填充到输入框
+          form.setFieldsValue({ prompt: enhancedPrompt });
+          setPromptValue(enhancedPrompt);
+          message.success(
+            intl.formatMessage({
+              id: 'create.prompt.enhance.success',
+              defaultMessage: '提示词丰富成功！',
+            })
+          );
+        } else {
+          message.warning(
+            intl.formatMessage({
+              id: 'create.prompt.enhance.empty.result',
+              defaultMessage: '未生成丰富后的提示词，请重试',
+            })
+          );
+        }
+      } else {
+        message.error(
+          response.data.message ||
+          intl.formatMessage({
+            id: 'create.prompt.enhance.error',
+            defaultMessage: '提示词丰富失败，请重试',
+          })
+        );
+      }
+    } catch (error: any) {
+      console.error('丰富提示词失败:', error);
+      message.error(
+        error.response?.data?.message ||
+        intl.formatMessage({
+          id: 'create.prompt.enhance.error',
+          defaultMessage: '提示词丰富失败，请重试',
+        })
+      );
+    } finally {
+      setEnhancingPrompt(false);
+    }
+  };
+
+  // 恢复原始提示词
+  const handleRestorePrompt = () => {
+    if (originalPrompt !== null) {
+      form.setFieldsValue({ prompt: originalPrompt });
+      setPromptValue(originalPrompt);
+      message.success(
+        intl.formatMessage({
+          id: 'create.prompt.restore.success',
+          defaultMessage: '已恢复到原始提示词',
+        })
+      );
+    }
+  };
 
   // 根据模型更新表单参数
   const updateFormByModel = (model: Model) => {
@@ -168,10 +296,9 @@ const TextToVideo: React.FC = () => {
 
     const updates: any = {};
 
-    // 设置视频比例（如果有支持的比例）
+    // 设置视频比例
     const supportedRatios = getModelAspectRatios(model);
     if (supportedRatios.length > 0) {
-      // 检查当前选择的比例是否在支持列表中，如果不在则使用第一个
       const currentRatio = form.getFieldValue('aspectRatio');
       if (!supportedRatios.includes(currentRatio)) {
         updates.aspectRatio = supportedRatios[0];
@@ -181,36 +308,30 @@ const TextToVideo: React.FC = () => {
     // 设置视频时长
     const durationOptions = getModelDurationOptions(model);
     if (durationOptions === null) {
-      // 使用 Slider（videoDuration 有值）
       if (model.videoDuration) {
         const currentDuration = form.getFieldValue('duration') || 8;
         if (currentDuration > model.videoDuration) {
           updates.duration = model.videoDuration;
         } else if (currentDuration < 4) {
-          // 确保最小值为4秒
           updates.duration = 4;
         }
       }
     } else if (durationOptions.length > 0) {
-      // 使用 Select（videoDurationEnum 有值）
       const currentDuration = form.getFieldValue('duration');
       if (!currentDuration || !durationOptions.includes(currentDuration)) {
-        // 如果当前值不在选项中，使用第一个选项
         updates.duration = durationOptions[0];
       }
     }
-    // 如果 durationOptions 为空数组，表示不支持时长指定，不做任何处理
 
     // 如果不支持镜头运动，设置为 none
     if (!model.supportCameraMotion) {
       updates.cameraMotion = 'none';
     }
 
-    // 设置视频格式（如果有支持的格式）
+    // 设置视频格式
     if (model.videoFormats) {
       const formats = model.videoFormats.split(',').map(f => f.trim());
       if (formats.length > 0) {
-        // 检查当前选择的格式是否在支持列表中，如果不在则使用第一个
         const currentFormat = form.getFieldValue('videoFormat');
         if (!currentFormat || !formats.includes(currentFormat)) {
           updates.videoFormat = formats[0];
@@ -234,6 +355,76 @@ const TextToVideo: React.FC = () => {
     }
   };
 
+  // 处理文件选择
+  const handleFileSelect = async (file: File | null) => {
+    if (!file) {
+      setOriginalImageUrl(null);
+      setOriginalImageFile(null);
+      form.setFieldsValue({ inputFile: undefined });
+      return;
+    }
+
+    // 验证文件类型
+    if (!file.type.startsWith('image/')) {
+      message.error('请选择图片文件');
+      return;
+    }
+
+    // 验证文件大小（例如限制为10MB）
+    if (file.size > 10 * 1024 * 1024) {
+      message.error('图片文件大小不能超过10MB');
+      return;
+    }
+
+    try {
+      const url = await getBase64(file);
+      setOriginalImageUrl(url);
+      setOriginalImageFile(file);
+      form.setFieldsValue({ inputFile: file.name });
+    } catch (error) {
+      message.error('图片读取失败');
+    }
+  };
+
+  // 处理文件输入变化
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    handleFileSelect(file);
+  };
+
+  // 处理拖拽
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const file = e.dataTransfer.files?.[0] || null;
+    handleFileSelect(file);
+  };
+
+  const handleRemoveImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOriginalImageUrl(null);
+    setOriginalImageFile(null);
+    form.setFieldsValue({ inputFile: undefined });
+    const fileInput = document.getElementById('i2v-upload-input') as HTMLInputElement;
+    if (fileInput) {
+      fileInput.value = '';
+    }
+  };
+
   // 自定义模型选择框显示内容
   const renderModelSelectDisplay = (model: Model | null) => {
     if (!model) return null;
@@ -243,7 +434,6 @@ const TextToVideo: React.FC = () => {
     
     return (
       <ModelSelectDisplay coverImage={coverImage} isVideo={isVideo}>
-        {/* 如果是视频，显示视频标签 */}
         {isVideo && coverImage && (
           <video 
             className="cover-video"
@@ -284,31 +474,27 @@ const TextToVideo: React.FC = () => {
     );
   };
 
-  // 获取支持的视频比例选项（根据选中的模型）
-  // 注意：文生视频只使用 videoAspectRatios 或 videoAspectRatiosEnum，不使用 imageAspectRatios
+  // 获取支持的视频比例选项
   const getAvailableAspectRatios = () => {
     if (!selectedModel) {
       return [];
     }
 
-    // 使用辅助函数获取支持的比例列表（优先 videoAspectRatios，如果为空则使用 videoAspectRatiosEnum）
     const supportedRatios = getModelAspectRatios(selectedModel);
     
     if (supportedRatios.length === 0) {
       return [];
     }
     
-    // 根据后端返回的比例动态生成选项
     return supportedRatios.map(ratio => getAspectRatioOption(ratio, intl));
   };
 
-  // 获取最大视频时长（根据选中的模型）
-  // 只有在使用 Slider 时才需要此函数
+  // 获取最大视频时长
   const getMaxDuration = () => {
     return selectedModel?.videoDuration || 15;
   };
 
-  // 获取视频时长选项（用于判断是使用 Slider 还是 Select）
+  // 获取视频时长选项
   const getDurationOptions = () => {
     return getModelDurationOptions(selectedModel);
   };
@@ -324,7 +510,7 @@ const TextToVideo: React.FC = () => {
     return `${totalTokens} Token`;
   };
 
-  // 获取支持的视频格式选项（根据选中的模型）
+  // 获取支持的视频格式选项
   const getAvailableVideoFormats = () => {
     if (!selectedModel || !selectedModel.videoFormats) {
       return [];
@@ -334,7 +520,7 @@ const TextToVideo: React.FC = () => {
     return formats;
   };
 
-  // 获取支持的视频风格选项（根据选中的模型）
+  // 获取支持的视频风格选项
   const getAvailableVideoStyles = () => {
     if (!selectedModel || !selectedModel.videoSupportStyle) {
       return [];
@@ -344,7 +530,7 @@ const TextToVideo: React.FC = () => {
     return styles;
   };
 
-  // 获取支持的视频质量选项（根据选中的模型）
+  // 获取支持的视频质量选项
   const getAvailableVideoQualities = () => {
     if (!selectedModel || !selectedModel.videoQuality) {
       return [];
@@ -360,7 +546,6 @@ const TextToVideo: React.FC = () => {
       return null;
     }
 
-    // 使用辅助函数获取支持的比例列表
     const ratios = getModelAspectRatios(selectedModel);
     if (ratios.length === 0) {
       return null;
@@ -455,14 +640,6 @@ const TextToVideo: React.FC = () => {
           });
           message.error(errorMsg);
         }
-        // 如果任务仍在队列中或处理中，继续轮询
-        else if (status === 'queued' || status === 'processing' || status === 'pending') {
-          // 继续轮询，不做任何操作
-        }
-        // 其他未知状态
-        else {
-          console.warn('未知的任务状态:', status);
-        }
       } else {
         throw new Error(response.data?.message || intl.formatMessage({ 
           id: 'create.video.status.checkFailed', 
@@ -470,7 +647,6 @@ const TextToVideo: React.FC = () => {
         }));
       }
     } catch (error: any) {
-      // 如果是用户取消的请求，不显示错误
       if (error.name === 'AbortError' || 
           error.message === 'canceled' || 
           error.code === 'ERR_CANCELED') {
@@ -478,20 +654,16 @@ const TextToVideo: React.FC = () => {
       }
       
       console.error('查询任务状态失败:', error);
-      // 轮询失败时，可以选择继续轮询或停止
-      // 这里选择继续轮询，但可以记录错误
     }
   };
 
   // 开始轮询任务状态
   const startPolling = (taskId: string, aspectRatio: string, duration: number, prompt?: string) => {
-    // 检查任务是否已存在
     const existingTask = waitingTasks.find(task => task.taskId === taskId);
     if (existingTask) {
-      return; // 任务已存在，不重复添加
+      return;
     }
     
-    // 添加等待任务到队列
     const newTask: WaitingTask = {
       taskId,
       modelName: selectedModel?.modelName || '未知模型',
@@ -503,10 +675,8 @@ const TextToVideo: React.FC = () => {
     
     setWaitingTasks(prev => [...prev, newTask]);
     
-    // 立即查询一次
     pollTaskStatus(taskId, aspectRatio, duration);
     
-    // 然后每3秒轮询一次
     const timer = setInterval(() => {
       pollTaskStatus(taskId, aspectRatio, duration);
     }, 3000);
@@ -517,18 +687,16 @@ const TextToVideo: React.FC = () => {
   // 取消单个任务
   const handleCancelTask = (taskId: string) => {
     stopTaskPolling(taskId);
-          message.info(intl.formatMessage({ 
-            id: 'create.video.generate.cancelled.polling', 
-            defaultMessage: '已取消任务轮询' 
-          }));
+    message.info(intl.formatMessage({ 
+      id: 'create.video.generate.cancelled.polling', 
+      defaultMessage: '已取消任务轮询' 
+    }));
   };
 
   // 取消当前正在进行的生成
   const handleCancelGenerate = () => {
-    // 停止所有轮询
     stopAllPolling();
     
-    // 取消 HTTP 请求
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
       abortControllerRef.current = null;
@@ -548,7 +716,7 @@ const TextToVideo: React.FC = () => {
         success: boolean;
         data: GenerationTask[];
       }>('/productx/sa-ai-gen-task/my-tasks/pending', {
-        params: { taskType: 't2v' },
+        params: { taskType: 'i2v' },
       });
 
       if (response.data.success && response.data.data && response.data.data.length > 0) {
@@ -564,7 +732,7 @@ const TextToVideo: React.FC = () => {
               modelName: task.modelName || '未知模型',
               prompt: task.prompt || '',
               submitTime: task.createTime ? new Date(task.createTime).toLocaleString('zh-CN') : new Date().toLocaleString('zh-CN'),
-              aspectRatio: '16:9', // 默认值，可从任务详情获取
+              aspectRatio: '16:9', // 默认值
               duration: 8, // 默认值
             };
             
@@ -611,7 +779,7 @@ const TextToVideo: React.FC = () => {
         params: {
           currentPage: page,
           pageSize: pageSize,
-          taskType: 't2v', // 通过 taskType 参数查询文本生成视频类型的任务
+          taskType: 'i2v',
         },
       });
 
@@ -625,7 +793,6 @@ const TextToVideo: React.FC = () => {
       }
     } catch (error: any) {
       console.error('获取生成记录失败:', error);
-      // 不显示错误提示，避免干扰用户体验
     } finally {
       setHistoryLoading(false);
     }
@@ -665,7 +832,7 @@ const TextToVideo: React.FC = () => {
 
   // 显示模型详情
   const handleShowModelDetail = (e: React.MouseEvent, model: Model) => {
-    e.stopPropagation(); // 阻止触发选择
+    e.stopPropagation();
     setSelectedModelForDetail(model);
     setModelDetailModalVisible(true);
   };
@@ -676,18 +843,72 @@ const TextToVideo: React.FC = () => {
     setSelectedModelForDetail(null);
   };
 
+  // 上传图片到COS（返回URL）
+  const uploadImageToServer = async (file: File): Promise<string> => {
+    try {
+      // 动态导入 cosService 和 getUserStorageNodes
+      const { cosService } = await import('services/cos');
+      const { getUserStorageNodes } = await import('services/storageService');
+      
+      // 获取用户信息
+      const storedUserInfo = localStorage.getItem('userInfo');
+      if (!storedUserInfo) {
+        throw new Error('用户未登录');
+      }
+      const userInfo = JSON.parse(storedUserInfo);
+      const fullPath = `${userInfo.username}/`;
+      
+      // 获取用户的默认存储节点
+      const nodesResponse = await getUserStorageNodes();
+      if (!nodesResponse.success || !nodesResponse.data || nodesResponse.data.length === 0) {
+        throw new Error('未找到可用的存储节点');
+      }
+      
+      // 找到默认节点或使用第一个节点
+      const defaultNode = nodesResponse.data.find(node => node.isDefault);
+      const nodeId = defaultNode ? defaultNode.id : nodesResponse.data[0].id;
+      
+      console.log('使用存储节点:', nodeId);
+      
+      // 上传进度回调（可选：显示上传进度）
+      const onProgress = (progress: number, speed: number) => {
+        console.log(`上传进度: ${progress.toFixed(1)}%`, speed > 0 ? `速度: ${(speed / 1024 / 1024).toFixed(2)} MB/s` : '');
+      };
+      
+      // 上传到COS
+      const uploadResult = await (cosService as any).uploadFile(
+        file,
+        fullPath,
+        onProgress, // 进度回调函数
+        false, // useChunkUpload
+        false, // useAccelerate
+        null, // resumeData
+        null, // bucketName (使用默认值)
+        nodeId // 传递节点ID
+      );
+      
+      if (uploadResult && uploadResult.url) {
+        console.log('图片上传成功，URL:', uploadResult.url);
+        return uploadResult.url;
+      } else {
+        throw new Error('上传成功但未返回URL');
+      }
+    } catch (error: any) {
+      console.error('上传图片到COS失败:', error);
+      throw new Error(error.message || '上传图片失败');
+    }
+  };
+
   // 调用后端 API 生成视频
   const handleGenerate = async (values: any) => {
-    // 防止自动提交：如果不是用户主动点击按钮提交，直接返回
+    // 防止自动提交
     if (!isUserSubmitRef.current) {
       console.log('阻止自动提交：不是用户主动提交');
       return;
     }
     
-    // 重置标志
     isUserSubmitRef.current = false;
     
-    // 防止重复提交：如果正在加载中，直接返回
     if (loading) {
       return;
     }
@@ -700,12 +921,18 @@ const TextToVideo: React.FC = () => {
       return;
     }
 
-    // 如果已有请求在进行，先取消
+    if (!originalImageUrl || !originalImageFile) {
+      message.warning(intl.formatMessage({ 
+        id: 'create.i2v.upload.warning', 
+        defaultMessage: '请先上传一张图片作为生成参考。' 
+      }));
+      return;
+    }
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
 
-    // 创建新的 AbortController
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
@@ -713,63 +940,74 @@ const TextToVideo: React.FC = () => {
     setGeneratedVideo(null); 
 
     try {
-      // 构建请求参数
-      const requestData: any = {
+      // 显示上传提示
+      const uploadingMessage = message.loading(
+        intl.formatMessage({ 
+          id: 'create.i2v.uploading.image', 
+          defaultMessage: '正在上传图片到云端...' 
+        }),
+        0 // 0表示不会自动关闭
+      );
+      
+      try {
+        // 上传图片到COS
+        const imageUrl = await uploadImageToServer(originalImageFile);
+        
+        // 关闭上传提示
+        uploadingMessage();
+        
+        message.success(
+          intl.formatMessage({ 
+            id: 'create.i2v.upload.success', 
+            defaultMessage: '图片上传成功' 
+          })
+        );
+      
+        // 构建请求参数
+        const requestData: any = {
         prompt: values.prompt,
         modelCode: selectedModel.modelCode,
+        imageUrls: [imageUrl], // 图生视频需要传递图片URL数组
       };
 
       // 添加视频比例
       if (values.aspectRatio) {
         requestData.aspectRatio = values.aspectRatio;
         
-        // 同时添加分辨率（根据选中的比例，如果有的话）
         const resolution = getResolutionByAspectRatio(values.aspectRatio);
         if (resolution) {
           requestData.size = resolution;
         }
       }
 
-      // 添加视频时长（确保传递数字类型）
+      // 添加视频时长
       if (values.duration !== undefined && values.duration !== null) {
         requestData.seconds = Number(values.duration);
       }
 
-      // 添加反向提示词（可选）
-      if (values.negativePrompt) {
-        requestData.negativePrompt = values.negativePrompt;
-      }
-
-      // 添加输出格式（可选）
-      if (values.videoFormat) {
-        requestData.outputFormat = values.videoFormat;
-      }
-
-      // 添加视频风格（可选，当模型支持时）
+      // 添加视频风格
       if (values.videoSupportStyle) {
         requestData.videoSupportStyle = values.videoSupportStyle;
       }
 
-      // 添加视频质量（可选，当模型支持时）
+      // 添加视频质量
       if (values.videoQuality) {
         requestData.videoQuality = values.videoQuality;
       }
 
-      console.log('Generating video with params:', requestData);
+      console.log('Generating image-to-video with params:', requestData);
       
-      // 调用后端 API，设置 timeout: 0 表示不超时，使用 signal 支持取消
-      const response = await instance.post('/productx/sa-ai-models/video/generate/text', requestData, {
-        timeout: 0, // 不设置超时
+      // 调用后端 API
+      const response = await instance.post('/productx/sa-ai-models/video/generate/image', requestData, {
+        timeout: 0,
         signal: abortController.signal
       });
       
-      // 检查是否已被取消
       if (abortController.signal.aborted) {
         return;
       }
       
       if (response.data && response.data.success) {
-        // 根据后端返回的数据结构处理结果
         const result = response.data.data;
         const status = result.status;
         
@@ -780,7 +1018,6 @@ const TextToVideo: React.FC = () => {
             defaultMessage: '视频生成任务已提交，正在排队中...' 
           }));
           
-          // 开始轮询任务状态
           startPolling(
             result.id, 
             values.aspectRatio || '16:9', 
@@ -820,7 +1057,6 @@ const TextToVideo: React.FC = () => {
             defaultMessage: '视频生成任务已提交，正在处理中...' 
           }));
           
-          // 如果有任务ID，开始轮询
           if (result.id) {
             startPolling(
               result.id, 
@@ -838,8 +1074,21 @@ const TextToVideo: React.FC = () => {
           defaultMessage: '视频生成失败' 
         }));
       }
+      } catch (uploadError: any) {
+        // 关闭上传提示
+        uploadingMessage();
+        
+        // 上传图片失败
+        console.error('上传图片失败:', uploadError);
+        message.error(
+          uploadError.message || intl.formatMessage({ 
+            id: 'create.i2v.upload.failed', 
+            defaultMessage: '图片上传失败，请重试' 
+          })
+        );
+        throw uploadError; // 继续抛出错误，让外层catch处理
+      }
     } catch (error: any) {
-      // 如果是用户取消的请求，不显示错误
       if (error.name === 'AbortError' || 
           error.message === 'canceled' || 
           error.code === 'ERR_CANCELED' ||
@@ -856,7 +1105,6 @@ const TextToVideo: React.FC = () => {
                           });
       message.error(errorMessage);
     } finally {
-      // 只有在不是取消的情况下才清除 loading
       if (!abortController.signal.aborted) {
         setLoading(false);
         abortControllerRef.current = null;
@@ -882,13 +1130,13 @@ const TextToVideo: React.FC = () => {
                 <div>
                   <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
-                    <FormattedMessage id="create.textToVideo.title" defaultMessage="AI 文生视频" />
+                    <FormattedMessage id="create.imageToVideo.title" defaultMessage="AI 图生视频" />
                   </Title>
                   <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <VideoCameraOutlined style={{ fontSize: 14 }} />
                     <FormattedMessage 
-                      id="create.textToVideo.subtitle" 
-                      defaultMessage="输入场景描述与镜头控制，生成高品质视频" 
+                      id="create.imageToVideo.subtitle" 
+                      defaultMessage="赋予静态图片生命，通过提示词控制运动" 
                     />
                   </Text>
                 </div>
@@ -933,13 +1181,10 @@ const TextToVideo: React.FC = () => {
 
               <div
                 onKeyDown={(e) => {
-                  // 阻止表单中的 Enter 键触发表单提交（除了在 TextArea 中）
                   if (e.key === 'Enter' && e.target instanceof HTMLElement) {
-                    // 如果是在 TextArea 中，允许换行
                     if (e.target.tagName === 'TEXTAREA') {
                       return;
                     }
-                    // 如果是在 Input 或其他元素中，阻止默认行为
                     if (e.target.tagName === 'INPUT') {
                       e.preventDefault();
                       e.stopPropagation();
@@ -952,7 +1197,6 @@ const TextToVideo: React.FC = () => {
                 layout="vertical"
                 onFinish={handleGenerate}
                 onFinishFailed={(errorInfo) => {
-                  // 表单验证失败时的处理
                   console.log('表单验证失败:', errorInfo);
                 }}
                 initialValues={{
@@ -1005,7 +1249,6 @@ const TextToVideo: React.FC = () => {
                           const isVideo = coverImage ? isVideoUrl(coverImage) : false;
                           return (
                             <ModelOptionWrapper coverImage={coverImage} isVideo={isVideo}>
-                              {/* 如果是视频，显示视频标签 */}
                               {isVideo && coverImage && (
                                 <video 
                                   className="cover-video"
@@ -1046,7 +1289,6 @@ const TextToVideo: React.FC = () => {
                                   {model.description}
                                 </div>
                               )}
-                              {/* 显示支持的比例和详情按钮 */}
                               <div className="model-bottom-row">
                                 {(getModelAspectRatios(model).length > 0 || model.videoAspectResolution) && (
                                   <div className="model-aspect-ratios">
@@ -1086,181 +1328,220 @@ const TextToVideo: React.FC = () => {
                   </Select>
                 </Form.Item>
 
+                {/* 上传图片区域 */}
+                <Form.Item
+                  name="inputFile"
+                  label={
+                    <Space>
+                      <FileImageOutlined style={{ color: '#1890ff' }} />
+                      <FormattedMessage id="create.i2v.upload" defaultMessage="上传参考图片 (起始帧)" />
+                    </Space>
+                  }
+                  rules={[{ required: true, message: '请上传参考图片' }]}
+                  style={{ marginBottom: 20, marginTop: 0 }}
+                >
+                  {originalImageUrl ? (
+                    <InputImageContainer>
+                      <img src={originalImageUrl} alt="Original" />
+                      <OverlayActions className="overlay-actions">
+                        <Button 
+                          type="primary" 
+                          danger 
+                          icon={<DeleteOutlined />}
+                          onClick={handleRemoveImage}
+                        >
+                          更换图片
+                        </Button>
+                      </OverlayActions>
+                    </InputImageContainer>
+                  ) : (
+                    <CustomUploadArea
+                      $isDark={isDark}
+                      $isDragging={isDragging}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={() => document.getElementById('i2v-upload-input')?.click()}
+                    >
+                      <input
+                        id="i2v-upload-input"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileInputChange}
+                        style={{ display: 'none' }}
+                      />
+                      <UploadIcon $isDark={isDark}>
+                        <InboxOutlined style={{ fontSize: 48 }} />
+                      </UploadIcon>
+                      <UploadText $isDark={isDark}>
+                        <FormattedMessage id="create.i2v.upload.click" defaultMessage="点击或拖拽上传" />
+                      </UploadText>
+                      <UploadHint $isDark={isDark}>支持 JPG, PNG, WebP</UploadHint>
+                    </CustomUploadArea>
+                  )}
+                </Form.Item>
+
                 {/* 提示词输入 */}
                 <Form.Item
                   name="prompt"
                   label={
-                    <Space>
-                      <EditOutlined style={{ color: '#1890ff' }} />
-                      <FormattedMessage id="create.prompt.video" defaultMessage="视频场景描述 (Prompt)" />
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Space>
+                        <EditOutlined style={{ color: '#1890ff' }} />
+                        <FormattedMessage id="create.prompt" defaultMessage="运动引导提示词 (Prompt)" />
+                      </Space>
+                      <Space size="small">
+                        {originalPrompt && (
+                          <Tooltip title={intl.formatMessage({ id: 'create.prompt.restore', defaultMessage: '恢复原始提示词' })}>
+                            <Button 
+                              type="text" 
+                              size="small"
+                              icon={<SyncOutlined />}
+                              onClick={handleRestorePrompt}
+                              style={{ fontSize: 12 }}
+                            >
+                              <FormattedMessage id="create.prompt.restore" defaultMessage="恢复" />
+                            </Button>
+                          </Tooltip>
+                        )}
+                        <Tooltip title={intl.formatMessage({ id: 'create.prompt.enhance.tooltip', defaultMessage: 'AI丰富提示词，让描述更加详细生动' })}>
+                          <Button 
+                            type="primary" 
+                            size="small"
+                            icon={<ThunderboltOutlined />}
+                            onClick={handleEnhancePrompt}
+                            loading={enhancingPrompt}
+                            style={{ fontSize: 12 }}
+                          >
+                            <FormattedMessage id="create.prompt.enhance" defaultMessage="AI丰富" />
+                          </Button>
+                        </Tooltip>
+                      </Space>
                     </Space>
                   }
-                  rules={[{ 
-                    required: true, 
-                    message: intl.formatMessage({ 
-                      id: 'create.prompt.video.required', 
-                      defaultMessage: '请输入视频场景描述' 
-                    }) 
-                  }]}
+                  rules={[{ required: true, message: '请输入视频运动的引导描述' }]}
                   style={{ marginBottom: 20 }}
                 >
                   <TextArea 
-                    rows={4} 
-                    placeholder={intl.formatMessage({ id: 'create.prompt.video.placeholder', defaultMessage: '例如：一只宇航员狗狗在月球表面跳舞，8K，电影光线，超现实主义。' })} 
+                    rows={3} 
+                    placeholder={intl.formatMessage({ id: 'create.prompt.i2v.placeholder', defaultMessage: '例如：让图片中的人物开始行走，背景的树叶随风摇摆...' })} 
                     maxLength={1500}
                     showCount
                     style={{ resize: 'none' }}
+                    value={promptValue}
+                    onChange={(e) => setPromptValue(e.target.value)}
                     onPressEnter={(e) => {
-                      // 阻止 Enter 键触发表单提交，允许换行
-                      if (e.shiftKey || e.ctrlKey || e.metaKey) {
-                        // Shift+Enter, Ctrl+Enter, Cmd+Enter 允许换行
-                        return;
-                      }
-                      // 普通 Enter 键也允许换行，不触发表单提交
-                      e.preventDefault();
-                    }}
-                  />
-                </Form.Item>
-
-                {/* 反向提示词 (可选) */}
-                <Form.Item
-                  name="negativePrompt"
-                  label={
-                    <Space>
-                      <EditOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                      <FormattedMessage id="create.negativePrompt" defaultMessage="反向提示词 (Negative)" />
-                      <Tooltip title={intl.formatMessage({ 
-                        id: 'create.negativePrompt.tooltip', 
-                        defaultMessage: '你不希望画面中出现的元素' 
-                      })}>
-                        <InfoCircleOutlined style={{ color: '#999' }} />
-                      </Tooltip>
-                    </Space>
-                  }
-                  style={{ marginBottom: 20 }}
-                >
-                  <Input 
-                    placeholder={intl.formatMessage({ 
-                      id: 'create.negativePrompt.video.placeholder', 
-                      defaultMessage: '例如：水渍，闪烁，低分辨率，人物模糊...' 
-                    })}
-                    onPressEnter={(e) => {
-                      // 阻止 Input 中的 Enter 键触发表单提交
-                      // 用户应该点击"立即生成视频"按钮来提交
                       e.preventDefault();
                     }}
                   />
                 </Form.Item>
 
                 {/* 视频参数设置 */}
-                <Row gutter={16} style={{ marginBottom: 20 }}>
-                  <Col span={8}>
-                    <Form.Item
-                      name="aspectRatio"
-                      label={
-                        <Space>
-                          <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                          <FormattedMessage id="create.video.ratio" defaultMessage="视频比例" />
-                        </Space>
-                      }
-                      style={{ marginBottom: 0 }}
-                      rules={[
-                        {
-                          validator: (_, value) => {
-                            if (!value) {
-                              return Promise.resolve();
-                            }
-                            const availableRatios = getAvailableAspectRatios();
-                            const validValues = availableRatios.map(r => r.value);
-                            if (validValues.includes(value)) {
-                              return Promise.resolve();
-                            }
-                            return Promise.reject(new Error(intl.formatMessage({ 
-                              id: 'create.video.ratio.invalid', 
-                              defaultMessage: '请选择模型支持的视频比例' 
-                            })));
-                          }
-                        }
-                      ]}
-                    >
-                      <Select
-                        optionLabelProp="label"
-                        disabled={!selectedModel || getAvailableAspectRatios().length === 0}
-                        placeholder={!selectedModel ? intl.formatMessage({ 
-                          id: 'create.model.select.placeholder', 
-                          defaultMessage: '请先选择模型' 
-                        }) : undefined}
-                        allowClear={false}
-                      >
-                        {getAvailableAspectRatios().map(ratio => (
-                          <Select.Option 
-                            key={ratio.value} 
-                            value={ratio.value}
-                            label={
-                              <AspectRatioOption>
-                                {ratio.icon}
-                                <span>{ratio.label}</span>
-                              </AspectRatioOption>
-                            }
-                          >
-                            <AspectRatioOption>
-                              {ratio.icon}
-                              <span>{ratio.label}</span>
-                            </AspectRatioOption>
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item
-                      name="cameraMotion"
-                      label={
-                        <Space>
-                          <CameraOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                          <FormattedMessage id="create.video.camera" defaultMessage="镜头运动" />
-                        </Space>
-                      }
-                      style={{ marginBottom: 0 }}
-                    >
-                      <Select disabled={!selectedModel || !selectedModel.supportCameraMotion}>
-                        {getCameraMotions(intl).map(motion => (
-                          <Select.Option key={motion.value} value={motion.value}>
-                            {motion.label}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                  <Col span={8}>
-                    <Form.Item
-                      name="videoFormat"
-                      label={
-                        <Space>
-                          <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                          <FormattedMessage id="create.video.format" defaultMessage="输出格式" />
-                        </Space>
-                      }
-                      style={{ marginBottom: 0 }}
-                    >
-                      <Select
-                        disabled={!selectedModel || getAvailableVideoFormats().length === 0}
-                        placeholder={!selectedModel ? intl.formatMessage({ 
-                          id: 'create.model.select.placeholder', 
-                          defaultMessage: '请先选择模型' 
-                        }) : undefined}
-                      >
-                        {getAvailableVideoFormats().map(format => (
-                          <Select.Option key={format} value={format}>
-                            {format.toUpperCase()}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Col>
-                </Row>
+                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
+                  {() => {
+                    const availableRatios = getAvailableAspectRatios();
+                    const availableFormats = getAvailableVideoFormats();
+                    const hasRatios = availableRatios.length > 0;
+                    const hasFormats = availableFormats.length > 0;
+                    
+                    // 如果两个选项都不支持，则不显示整个Row
+                    if (!hasRatios && !hasFormats) {
+                      return null;
+                    }
+                    
+                    return (
+                      <Row gutter={16} style={{ marginBottom: 20 }}>
+                        {hasRatios && (
+                          <Col span={hasFormats ? 12 : 24}>
+                            <Form.Item
+                              name="aspectRatio"
+                              label={
+                                <Space>
+                                  <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                                  <FormattedMessage id="create.video.ratio" defaultMessage="视频比例" />
+                                </Space>
+                              }
+                              style={{ marginBottom: 0 }}
+                              rules={[
+                                {
+                                  validator: (_, value) => {
+                                    if (!value) {
+                                      return Promise.resolve();
+                                    }
+                                    const validValues = availableRatios.map(r => r.value);
+                                    if (validValues.includes(value)) {
+                                      return Promise.resolve();
+                                    }
+                                    return Promise.reject(new Error(intl.formatMessage({ 
+                                      id: 'create.video.ratio.invalid', 
+                                      defaultMessage: '请选择模型支持的视频比例' 
+                                    })));
+                                  }
+                                }
+                              ]}
+                            >
+                              <Select
+                                optionLabelProp="label"
+                                placeholder={intl.formatMessage({ 
+                                  id: 'create.video.ratio.placeholder', 
+                                  defaultMessage: '请选择视频比例' 
+                                })}
+                                allowClear={false}
+                              >
+                                {availableRatios.map(ratio => (
+                                  <Select.Option 
+                                    key={ratio.value} 
+                                    value={ratio.value}
+                                    label={
+                                      <AspectRatioOption>
+                                        {ratio.icon}
+                                        <span>{ratio.label}</span>
+                                      </AspectRatioOption>
+                                    }
+                                  >
+                                    <AspectRatioOption>
+                                      {ratio.icon}
+                                      <span>{ratio.label}</span>
+                                    </AspectRatioOption>
+                                  </Select.Option>
+                                ))}
+                              </Select>
+                            </Form.Item>
+                          </Col>
+                        )}
+                        {hasFormats && (
+                          <Col span={hasRatios ? 12 : 24}>
+                            <Form.Item
+                              name="videoFormat"
+                              label={
+                                <Space>
+                                  <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                                  <FormattedMessage id="create.video.format" defaultMessage="输出格式" />
+                                </Space>
+                              }
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Select
+                                placeholder={intl.formatMessage({ 
+                                  id: 'create.video.format.placeholder', 
+                                  defaultMessage: '请选择输出格式' 
+                                })}
+                              >
+                                {availableFormats.map(format => (
+                                  <Select.Option key={format} value={format}>
+                                    {format.toUpperCase()}
+                                  </Select.Option>
+                                ))}
+                              </Select>
+                            </Form.Item>
+                          </Col>
+                        )}
+                      </Row>
+                    );
+                  }}
+                </Form.Item>
 
-                {/* 视频风格选择（当模型支持时显示） */}
+                {/* 视频风格选择 */}
                 <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
                   {() => {
                     const availableStyles = getAvailableVideoStyles();
@@ -1277,7 +1558,7 @@ const TextToVideo: React.FC = () => {
                             <FormattedMessage id="create.video.style" defaultMessage="视频风格" />
                             <Tooltip title={intl.formatMessage({ 
                               id: 'create.video.style.tooltip', 
-                              defaultMessage: '选择视频生成风格（主要用于 Grok 模型）' 
+                              defaultMessage: '选择视频生成风格' 
                             })}>
                               <InfoCircleOutlined style={{ color: '#999', fontSize: 12 }} />
                             </Tooltip>
@@ -1303,7 +1584,7 @@ const TextToVideo: React.FC = () => {
                   }}
                 </Form.Item>
 
-                {/* 视频质量选择（当模型支持时显示） */}
+                {/* 视频质量选择 */}
                 <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
                   {() => {
                     const availableQualities = getAvailableVideoQualities();
@@ -1351,7 +1632,6 @@ const TextToVideo: React.FC = () => {
                   {() => {
                     const durationOptions = getDurationOptions();
                     
-                    // 如果两个字段都没有，不显示时长控制
                     if (durationOptions !== null && durationOptions.length === 0) {
                       return null;
                     }
@@ -1368,7 +1648,6 @@ const TextToVideo: React.FC = () => {
                         style={{ marginBottom: 20 }}
                       >
                         {durationOptions === null ? (
-                          // 使用 Slider（videoDuration 有值）
                           <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.duration !== currentValues.duration} noStyle>
                             {({ getFieldValue }) => {
                               const duration = getFieldValue('duration') || 8;
@@ -1413,7 +1692,6 @@ const TextToVideo: React.FC = () => {
                             }}
                           </Form.Item>
                         ) : (
-                          // 使用 Select（videoDurationEnum 有值）
                           <Select
                             disabled={!selectedModel || durationOptions.length === 0}
                             placeholder={!selectedModel ? intl.formatMessage({ 
@@ -1464,13 +1742,11 @@ const TextToVideo: React.FC = () => {
                         disabled={loading || !selectedModel}
                         style={{ height: 48, fontSize: 16, borderRadius: 24 }}
                         onClick={() => {
-                          // 设置用户主动提交标志
                           isUserSubmitRef.current = true;
-                          // 手动触发表单提交
                           form.submit();
                         }}
                       >
-                        <FormattedMessage id="create.generate.video" defaultMessage="立即生成视频" />
+                        <FormattedMessage id="create.generate.i2v" defaultMessage="开始生成视频" />
                       </Button>
                     )}
                     <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.duration !== currentValues.duration} noStyle>
@@ -1514,31 +1790,111 @@ const TextToVideo: React.FC = () => {
                     ) : (
                       <FormattedMessage 
                         id="create.video.analyzing" 
-                        defaultMessage="正在分析提示词，构建 3D 世界..." 
+                        defaultMessage="正在分析图片和提示词，构建 3D 世界..." 
                       />
                     )}
                   </Text>
                 </Space>
               ) : generatedVideo ? (
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  <div style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ width: '100%' }}>
+                  <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
                       <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                      <FormattedMessage id="create.video.result" defaultMessage="最终视频预览" />
+                      <FormattedMessage id="create.i2v.result" defaultMessage="生成对比" />
                     </Title>
+                    <Button type="primary" icon={<DownloadOutlined />} href={generatedVideo.url} download="sora_mv_i2v_video.mp4">
+                      <FormattedMessage id="create.download" defaultMessage="下载视频" />
+                    </Button>
                   </div>
-                  
-                  <VideoPlaceholder>
-                    <video 
-                      src={generatedVideo.url}
-                      poster={generatedVideo.thumbnail}
-                      controls
-                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                    />
-                  </VideoPlaceholder>
+                  <Row gutter={[24, 16]}>
+                    {/* 原图对比 */}
+                    <Col span={12}>
+                      <div style={{ 
+                        background: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)', 
+                        borderRadius: 12, 
+                        padding: 16,
+                        height: '100%'
+                      }}>
+                        <div style={{ 
+                          marginBottom: 12, 
+                          fontWeight: 600, 
+                          fontSize: 14,
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 6,
+                          color: isDark ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.65)'
+                        }}>
+                          <FileImageOutlined style={{ color: '#1890ff' }} />
+                          <FormattedMessage id="create.i2v.original" defaultMessage="原图 (起始帧)" />
+                        </div>
+                        <div style={{ 
+                          width: '100%', 
+                          aspectRatio: '16 / 9',
+                          borderRadius: 8, 
+                          overflow: 'hidden', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          justifyContent: 'center', 
+                          background: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)'
+                        }}>
+                          <img 
+                            src={originalImageUrl || "https://placehold.co/400x225?text=Original+Image"} 
+                            alt="Original Preview" 
+                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                          />
+                        </div>
+                      </div>
+                    </Col>
+                    
+                    {/* 视频预览 */}
+                    <Col span={12}>
+                      <div style={{ 
+                        background: isDark 
+                          ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(24, 144, 255, 0.12) 100%)' 
+                          : 'linear-gradient(135deg, rgba(24, 144, 255, 0.04) 0%, rgba(24, 144, 255, 0.08) 100%)', 
+                        borderRadius: 12, 
+                        padding: 16,
+                        height: '100%'
+                      }}>
+                        <div style={{ 
+                          marginBottom: 12, 
+                          fontWeight: 600, 
+                          fontSize: 14,
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: 6,
+                          color: '#1890ff'
+                        }}>
+                          <VideoCameraOutlined />
+                          <FormattedMessage id="create.video.result" defaultMessage="生成视频" />
+                        </div>
+                        <div style={{ 
+                          width: '100%', 
+                          aspectRatio: '16 / 9',
+                          borderRadius: 8, 
+                          overflow: 'hidden',
+                          background: '#000'
+                        }}>
+                          <video 
+                            src={generatedVideo.url}
+                            poster={generatedVideo.thumbnail}
+                            controls
+                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                          />
+                        </div>
+                      </div>
+                    </Col>
+                  </Row>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 16 }}>
-                    <Text type="secondary">
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center',
+                    marginTop: 16,
+                    padding: '12px 0',
+                    borderTop: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.06)'
+                  }}>
+                    <Text type="secondary" style={{ fontSize: 13 }}>
                       <FormattedMessage 
                         id="create.video.info" 
                         defaultMessage="时长: {duration}s | 比例: {ratio}" 
@@ -1548,17 +1904,14 @@ const TextToVideo: React.FC = () => {
                         }} 
                       />
                     </Text>
-                    <Button type="primary" icon={<DownloadOutlined />} href={generatedVideo.url} download="sora_mv_video.mp4">
-                      <FormattedMessage id="create.download" defaultMessage="下载视频" />
-                    </Button>
                   </div>
-                </Space>
+                </div>
               ) : (
                 <Empty
                   image={<VideoCameraOutlined style={{ fontSize: 48, color: '#aaa' }} />}
                   description={
                     <Text type="secondary">
-                      <FormattedMessage id="create.video.empty" defaultMessage="生成结果将显示在此处" />
+                      <FormattedMessage id="create.i2v.empty" defaultMessage="生成结果与原图对比将显示在此处" />
                     </Text>
                   }
                 />
@@ -1621,5 +1974,5 @@ const TextToVideo: React.FC = () => {
   );
 };
 
-export default TextToVideo;
+export default ImageToVideo;
 

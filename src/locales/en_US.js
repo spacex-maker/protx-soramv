@@ -1215,4 +1215,214 @@ export default {
   'home.features.imageToVideo.description': 'Upload a static image, AI understands the lighting and physics in the scene, automatically generates subsequent dynamics, bringing photos to life.',
   'home.features.multimodal.title': 'Multimodal Ecosystem',
   'home.features.multimodal.description': 'Not only supports Stable Diffusion text-to-image, but also integrates Midjourney style transfer and ElevenLabs audio synthesis. Complete all creations in one workflow.',
+  
+  // Billing Page
+  'billing.page.title': 'Billing Center',
+  'billing.page.description': 'Manage your transactions and billing details',
+  'billing.button.refresh': 'Refresh',
+  'billing.button.recharge': 'Recharge',
+  'billing.button.reset': 'Reset',
+  'billing.button.apply': 'Apply Filters',
+  
+  // Balance Cards
+  'billing.balance.cny': 'CNY Balance',
+  'billing.balance.usdt': 'USDT Balance',
+  'billing.balance.usd': 'USD Balance',
+  'billing.balance.token': 'Token Balance',
+  'billing.balance.frozen': 'Frozen',
+  
+  // Transaction Types
+  'billing.type.frozen': 'Frozen',
+  'billing.type.aiModelFee': 'AI Model Fee',
+  'billing.type.recharge': 'Recharge',
+  'billing.type.refund': 'Refund',
+  'billing.type.reward': 'Reward',
+  'billing.type.all': 'All Types',
+  
+  // Currencies
+  'billing.coin.all': 'All Currencies',
+  'billing.coin.usdt': 'USDT',
+  'billing.coin.cny': 'CNY',
+  'billing.coin.usd': 'USD',
+  
+  // Table
+  'billing.table.type': 'Type',
+  'billing.table.coinType': 'Currency',
+  'billing.table.time': 'Time',
+  'billing.table.amount': 'Amount',
+  'billing.table.remark': 'Remark',
+  'billing.table.balance': 'Balance',
+  'billing.table.empty': 'No records',
+  
+  // Filters
+  'billing.filter.title': 'Filter Options',
+  'billing.filter.button': 'Filter & Date',
+  'billing.filter.changeType': 'Transaction Type',
+  'billing.filter.coinType': 'Currency Type',
+  'billing.filter.remark': 'Remark Search',
+  'billing.filter.remarkPlaceholder': 'Enter remark keywords',
+  'billing.filter.remarkSearch': 'Remark Search',
+  'billing.filter.dateQuick': 'Quick Date',
+  'billing.filter.dateCustom': 'Custom Date',
+  'billing.filter.dateTo': 'to',
+  'billing.filter.days7': 'Last 7 Days',
+  'billing.filter.days30': 'Last 30 Days',
+  'billing.filter.days90': 'Last 3 Months',
+  
+  // Placeholders
+  'billing.placeholder.changeType': 'Change Type',
+  'billing.placeholder.coinType': 'Currency',
+  'billing.placeholder.remark': 'Remark Search',
+  
+  // Messages
+  'billing.message.fetchBalanceError': 'Failed to fetch balance',
+  'billing.message.fetchRecordsError': 'Failed to fetch billing records',
+  'billing.message.tryAgain': 'Failed to fetch billing records, please try again later',
+  
+  // Recharge Page
+  'recharge.page.title': 'Account Recharge',
+  'recharge.page.backLink': 'Back to Billing',
+  'recharge.balance.title': 'Account Balance',
+  'recharge.balance.refresh': 'Refresh',
+  
+  // Recharge Sections
+  'recharge.section.coinType': 'Currency Type',
+  'recharge.section.paymentMethod': 'Payment Method',
+  'recharge.section.amount': 'Recharge Amount',
+  
+  // Order Details
+  'recharge.order.title': 'Order Details',
+  'recharge.order.type': 'Recharge Type',
+  'recharge.order.typeValue': 'Account Balance Recharge',
+  'recharge.order.account': 'Account',
+  'recharge.order.accountLoading': 'Loading...',
+  'recharge.order.paymentMethod': 'Payment Method',
+  'recharge.order.paymentMethodPlease': 'Please select',
+  'recharge.order.total': 'Total Amount',
+  
+  // Buttons
+  'recharge.button.pay': 'Pay Now',
+  'recharge.button.customize': 'Custom Amount',
+  
+  // Placeholders
+  'recharge.placeholder.customAmount': 'Enter custom amount',
+  
+  // Security
+  'recharge.security.ssl': 'SSL encrypted transmission, secure payment',
+  'recharge.security.agreement': 'By clicking Pay, you agree to',
+  'recharge.security.agreementLink': 'Recharge Service Agreement',
+  
+  // Empty States
+  'recharge.empty.noCurrency': 'No supported currencies',
+  'recharge.empty.noPaymentMethod': 'No payment method available for {currency}',
+  'recharge.empty.pleaseSelectCurrency': 'Please select currency first',
+  'recharge.empty.pleaseSelectPayment': 'Please select payment method first',
+  'recharge.empty.noProducts': 'No products available',
+  'recharge.empty.noPresets': 'No preset amounts for {currency}',
+  
+  // Messages
+  'recharge.message.invalidAmount': 'Please enter valid amount',
+  'recharge.message.selectPaymentMethod': 'Please select payment method',
+  'recharge.message.selectAmount': 'Please select recharge amount',
+  'recharge.message.fetchBalanceError': 'Failed to fetch balance, please try again later',
+  'recharge.message.fetchUserInfoError': 'Failed to fetch user info',
+  'recharge.message.fetchCurrenciesError': 'Failed to fetch currencies, please try again later',
+  'recharge.message.fetchPaymentMethodsError': 'Failed to fetch payment methods, please try again later',
+  'recharge.message.fetchCreemProductsError': 'Failed to fetch Creem products, please try again later',
+  'recharge.message.fetchCreemProductsWarning': 'Failed to fetch Creem products',
+  'recharge.message.orderCreated': 'Order created successfully',
+  'recharge.message.orderCreateFailed': 'Failed to create recharge order',
+  'recharge.message.paymentProcessing': 'Opening payment page, please complete payment...',
+  'recharge.message.popupBlocked': 'Cannot open payment window, please check browser popup settings',
+  'recharge.message.paymentUrlError': 'Failed to get payment URL',
+  'recharge.message.checkoutSessionError': 'Failed to create payment session',
+  'recharge.message.paymentError': 'Payment processing failed, please try again later',
+  'recharge.message.redirecting': 'Redirecting to payment page, please complete payment...',
+  'recharge.message.paymentUrlFailed': 'Payment URL not available',
+  'recharge.message.paymentSuccess': 'Payment successful! Balance updated',
+  'recharge.message.orderCancelled': 'Order cancelled',
+  'recharge.message.paymentFailed': 'Payment failed',
+  'recharge.message.orderExpired': 'Expired',
+  'recharge.message.queryOrderError': 'Failed to query order status',
+  'recharge.message.rechargeError': 'Recharge request failed, please try again later',
+
+  // Orders Page
+  'orders.title': 'Order History',
+  'orders.subtitle': 'View all your recharge order records and status',
+  'orders.refresh': 'Refresh',
+  'orders.goToRecharge': 'Recharge',
+
+  // Statistics Cards
+  'orders.stats.totalOrders': 'Total Orders',
+  'orders.stats.pending': 'Pending',
+  'orders.stats.paid': 'Paid',
+  'orders.stats.totalAmount': 'Total Recharged',
+
+  // Table Columns
+  'orders.table.orderNo': 'Order No.',
+  'orders.table.createTime': 'Created At',
+  'orders.table.amount': 'Amount',
+  'orders.table.paymentMethod': 'Payment Method',
+  'orders.table.status': 'Status',
+  'orders.table.action': 'Action',
+  'orders.table.view': 'View',
+  'orders.table.cancel': 'Cancel',
+  'orders.table.empty': 'No order records',
+
+  // Order Status
+  'orders.status.pending': 'Pending',
+  'orders.status.paid': 'Paid',
+  'orders.status.success': 'Completed',
+  'orders.status.cancelled': 'Cancelled',
+  'orders.status.failed': 'Failed',
+  'orders.status.expired': 'Expired',
+  'orders.status.all': 'All Status',
+
+  // Payment Methods
+  'orders.payment.alipay': 'Alipay',
+  'orders.payment.wechat': 'WeChat Pay',
+  'orders.payment.bank': 'Bank Card',
+  'orders.payment.usdt': 'USDT',
+  'orders.payment.creem': 'Creem',
+  'orders.payment.all': 'All Methods',
+
+  // Currency
+  'orders.coin.all': 'All Currencies',
+
+  // Filters
+  'orders.filter.title': 'Filter Options',
+  'orders.filter.button': 'Filter Orders',
+  'orders.filter.reset': 'Reset',
+  'orders.filter.apply': 'Apply',
+  'orders.filter.orderStatus': 'Order Status',
+  'orders.filter.paymentMethod': 'Payment Method',
+  'orders.filter.coinType': 'Currency Type',
+  'orders.filter.orderNoSearch': 'Search Order No.',
+  'orders.filter.quickDate': 'Quick Date',
+  'orders.filter.customDate': 'Custom Date',
+  'orders.filter.dateTo': 'to',
+  'orders.filter.last7Days': 'Last 7 Days',
+  'orders.filter.last30Days': 'Last 30 Days',
+  'orders.filter.last3Months': 'Last 3 Months',
+
+  // Search and Input
+  'orders.search.placeholder': 'Search order number',
+  'orders.input.orderNo': 'Enter order number',
+  'orders.select.orderStatus': 'Order Status',
+  'orders.select.paymentMethod': 'Payment Method',
+  'orders.select.coinType': 'Currency',
+
+  // Messages
+  'orders.message.fetchError': 'Failed to fetch orders',
+  'orders.message.fetchErrorRetry': 'Failed to fetch orders, please try again later',
+  'orders.message.statsError': 'Failed to fetch statistics',
+  'orders.message.cancelSuccess': 'Order cancelled',
+  'orders.message.cancelError': 'Failed to cancel order',
+  'orders.message.cancelErrorRetry': 'Failed to cancel order, please try again later',
+  'orders.message.viewOrder': 'Order No: {orderNo}',
+
+  // Confirmation Dialog
+  'orders.confirm.cancel': 'Are you sure you want to cancel this order?',
+  'orders.confirm.ok': 'OK',
+  'orders.confirm.cancelButton': 'Cancel',
 }; 

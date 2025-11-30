@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import styled, { css } from "styled-components";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
 import instance from "api/axios";
 import { payment } from "api/payment";
@@ -354,30 +355,24 @@ const FilterChip = styled.div`
 `;
 
 // ==========================================
-// 2. 常量定义
+// 2. 常量定义（国际化部分在组件内部处理）
 // ==========================================
 
-const ORDER_STATUS_MAP = {
-  'PENDING': { label: '待支付', color: 'orange', icon: <ClockCircleOutlined /> },
-  'PAID': { label: '已支付', color: 'green', icon: <CheckCircleOutlined /> },
-  'SUCCESS': { label: '已完成', color: 'green', icon: <CheckCircleOutlined /> },
-  'CANCELLED': { label: '已取消', color: 'default', icon: <CloseCircleOutlined /> },
-  'FAILED': { label: '支付失败', color: 'red', icon: <CloseCircleOutlined /> },
-  'EXPIRED': { label: '已过期', color: 'default', icon: <CloseCircleOutlined /> },
+const ORDER_STATUS_CONFIG = {
+  'PENDING': { color: 'orange', icon: <ClockCircleOutlined /> },
+  'PAID': { color: 'green', icon: <CheckCircleOutlined /> },
+  'SUCCESS': { color: 'green', icon: <CheckCircleOutlined /> },
+  'CANCELLED': { color: 'default', icon: <CloseCircleOutlined /> },
+  'FAILED': { color: 'red', icon: <CloseCircleOutlined /> },
+  'EXPIRED': { color: 'default', icon: <CloseCircleOutlined /> },
 };
 
-const PAYMENT_METHOD_MAP = {
-  'alipay': { label: '支付宝', color: 'blue' },
-  'wechat': { label: '微信支付', color: 'green' },
-  'bank': { label: '银行卡', color: 'purple' },
-  'usdt': { label: 'USDT', color: 'orange' },
-  'creem': { label: 'Creem', color: 'purple' },
-};
-
-const COIN_TYPE_MAP = {
-  'CNY': 'CNY',
-  'USD': 'USD',
-  'USDT': 'USDT',
+const PAYMENT_METHOD_CONFIG = {
+  'alipay': { color: 'blue' },
+  'wechat': { color: 'green' },
+  'bank': { color: 'purple' },
+  'usdt': { color: 'orange' },
+  'creem': { color: 'purple' },
 };
 
 // ==========================================
@@ -387,6 +382,7 @@ const COIN_TYPE_MAP = {
 const OrdersContent = () => {
   const { token } = theme.useToken();
   const navigate = useNavigate();
+  const intl = useIntl();
   const [loading, setLoading] = useState(false);
   const [orders, setOrders] = useState([]);
   
@@ -453,11 +449,11 @@ const OrdersContent = () => {
         setOrders(data || []);
         setPagination(prev => ({ ...prev, total: totalNum || 0 }));
       } else {
-        message.error(response.message || '获取订单记录失败');
+        message.error(response.message || intl.formatMessage({ id: 'orders.message.fetchError' }));
       }
     } catch (error) {
       console.error('获取订单失败:', error);
-      message.error('获取订单记录失败，请稍后重试');
+      message.error(intl.formatMessage({ id: 'orders.message.fetchErrorRetry' }));
     } finally {
       setLoading(false);
     }
@@ -476,7 +472,7 @@ const OrdersContent = () => {
         });
       }
     } catch (error) {
-      console.error('获取统计数据失败:', error);
+      console.error(intl.formatMessage({ id: 'orders.message.statsError' }), error);
     }
   };
 
@@ -507,27 +503,36 @@ const OrdersContent = () => {
 
   const handleViewDetail = (order) => {
     // TODO: 跳转到订单详情页或显示详情弹窗
-    message.info(`订单号: ${order.orderNo}`);
+    message.info(intl.formatMessage({ id: 'orders.message.viewOrder' }, { orderNo: order.orderNo }));
   };
 
   const handleCancelOrder = async (order) => {
     try {
       const response = await payment.cancelOrder(order.orderNo);
       if (response.success) {
-        message.success('订单已取消');
+        message.success(intl.formatMessage({ id: 'orders.message.cancelSuccess' }));
         fetchOrders();
         fetchStatistics();
       } else {
-        message.error(response.message || '取消订单失败');
+        message.error(response.message || intl.formatMessage({ id: 'orders.message.cancelError' }));
       }
     } catch (error) {
-      message.error('取消订单失败，请稍后重试');
+      message.error(intl.formatMessage({ id: 'orders.message.cancelErrorRetry' }));
     }
+  };
+
+  const getOrderStatusLabel = (status) => {
+    const statusKey = status.toUpperCase();
+    return intl.formatMessage({ id: `orders.status.${status.toLowerCase()}` });
+  };
+
+  const getPaymentMethodLabel = (method) => {
+    return intl.formatMessage({ id: `orders.payment.${method}` });
   };
 
   const columns = [
     {
-      title: '订单号',
+      title: intl.formatMessage({ id: 'orders.table.orderNo' }),
       key: 'orderNo',
       width: isMobile ? 120 : 200,
       render: (_, record) => (
@@ -542,7 +547,7 @@ const OrdersContent = () => {
       )
     },
     !isMobile && {
-      title: '创建时间',
+      title: intl.formatMessage({ id: 'orders.table.createTime' }),
       dataIndex: 'createTime',
       key: 'createTime',
       width: 180,
@@ -553,12 +558,12 @@ const OrdersContent = () => {
       }
     },
     {
-      title: '金额',
+      title: intl.formatMessage({ id: 'orders.table.amount' }),
       key: 'amount',
       align: 'right',
       width: isMobile ? 100 : 150,
       render: (_, record) => {
-        const coinType = COIN_TYPE_MAP[record.coinType] || record.coinType;
+        const coinType = record.coinType;
         const symbol = record.coinType === 'CNY' ? '¥' : record.coinType === 'USD' ? '$' : '';
         return (
           <div style={{ textAlign: 'right' }}>
@@ -570,33 +575,34 @@ const OrdersContent = () => {
       }
     },
     {
-      title: '支付方式',
+      title: intl.formatMessage({ id: 'orders.table.paymentMethod' }),
       key: 'paymentMethod',
       width: isMobile ? 100 : 120,
       render: (_, record) => {
-        const method = PAYMENT_METHOD_MAP[record.paymentMethod] || { label: record.paymentMethod, color: 'default' };
-        return <Tag color={method.color}>{method.label}</Tag>;
+        const config = PAYMENT_METHOD_CONFIG[record.paymentMethod] || { color: 'default' };
+        const label = getPaymentMethodLabel(record.paymentMethod);
+        return <Tag color={config.color}>{label}</Tag>;
       }
     },
     {
-      title: '状态',
+      title: intl.formatMessage({ id: 'orders.table.status' }),
       key: 'status',
       width: isMobile ? 100 : 120,
       render: (_, record) => {
-        const status = ORDER_STATUS_MAP[record.status] || { 
-          label: record.status, 
+        const config = ORDER_STATUS_CONFIG[record.status] || { 
           color: 'default', 
           icon: <ClockCircleOutlined /> 
         };
+        const label = getOrderStatusLabel(record.status);
         return (
-          <Tag color={status.color} icon={status.icon}>
-            {status.label}
+          <Tag color={config.color} icon={config.icon}>
+            {label}
           </Tag>
         );
       }
     },
     !isMobile && {
-      title: '操作',
+      title: intl.formatMessage({ id: 'orders.table.action' }),
       key: 'action',
       width: 150,
       render: (_, record) => (
@@ -607,17 +613,17 @@ const OrdersContent = () => {
             icon={<EyeOutlined />}
             onClick={() => handleViewDetail(record)}
           >
-            查看
+            {intl.formatMessage({ id: 'orders.table.view' })}
           </Button>
           {record.status === 'PENDING' && (
             <Popconfirm
-              title="确定要取消这个订单吗？"
+              title={intl.formatMessage({ id: 'orders.confirm.cancel' })}
               onConfirm={() => handleCancelOrder(record)}
-              okText="确定"
-              cancelText="取消"
+              okText={intl.formatMessage({ id: 'orders.confirm.ok' })}
+              cancelText={intl.formatMessage({ id: 'orders.confirm.cancelButton' })}
             >
               <Button type="link" size="small" danger>
-                取消
+                {intl.formatMessage({ id: 'orders.table.cancel' })}
               </Button>
             </Popconfirm>
           )}
@@ -637,15 +643,15 @@ const OrdersContent = () => {
       >
         <PageHeader $token={token}>
           <div className="title-group">
-            <h1><FileTextOutlined /> 订单记录</h1>
-            <p>查看您的所有充值订单记录和状态</p>
+            <h1><FileTextOutlined /> {intl.formatMessage({ id: 'orders.title' })}</h1>
+            <p>{intl.formatMessage({ id: 'orders.subtitle' })}</p>
           </div>
           <div className="action-group">
             <Button icon={<ReloadOutlined />} onClick={() => { fetchOrders(); fetchStatistics(); }} loading={loading}>
-              刷新
+              {intl.formatMessage({ id: 'orders.refresh' })}
             </Button>
             <Button type="primary" onClick={() => navigate('/recharge')}>
-              去充值
+              {intl.formatMessage({ id: 'orders.goToRecharge' })}
             </Button>
           </div>
         </PageHeader>
@@ -653,7 +659,7 @@ const OrdersContent = () => {
         <StatsGrid>
           <StatCard $token={token} $variant="primary">
             <div className="header">
-              <span className="stat-label" style={{ opacity: 0.9 }}>总订单数</span>
+              <span className="stat-label" style={{ opacity: 0.9 }}>{intl.formatMessage({ id: 'orders.stats.totalOrders' })}</span>
               <div className="icon-box"><FileTextOutlined /></div>
             </div>
             <Statistic 
@@ -663,7 +669,7 @@ const OrdersContent = () => {
           </StatCard>
           <StatCard $token={token}>
             <div className="header">
-              <span className="stat-label" style={{ color: token.colorTextSecondary }}>待支付</span>
+              <span className="stat-label" style={{ color: token.colorTextSecondary }}>{intl.formatMessage({ id: 'orders.stats.pending' })}</span>
               <div className="icon-box" style={{ color: token.colorWarning, background: token.colorWarningBg }}>
                 <ClockCircleOutlined />
               </div>
@@ -675,7 +681,7 @@ const OrdersContent = () => {
           </StatCard>
           <StatCard $token={token}>
             <div className="header">
-              <span className="stat-label" style={{ color: token.colorTextSecondary }}>已支付</span>
+              <span className="stat-label" style={{ color: token.colorTextSecondary }}>{intl.formatMessage({ id: 'orders.stats.paid' })}</span>
               <div className="icon-box" style={{ color: token.colorSuccess, background: token.colorSuccessBg }}>
                 <CheckCircleOutlined />
               </div>
@@ -687,7 +693,7 @@ const OrdersContent = () => {
           </StatCard>
           <StatCard $token={token}>
             <div className="header">
-              <span className="stat-label" style={{ color: token.colorTextSecondary }}>总充值金额</span>
+              <span className="stat-label" style={{ color: token.colorTextSecondary }}>{intl.formatMessage({ id: 'orders.stats.totalAmount' })}</span>
               <div className="icon-box" style={{ color: token.colorInfo, background: token.colorInfoBg }}>
                 <FileTextOutlined />
               </div>
@@ -707,7 +713,7 @@ const OrdersContent = () => {
             $active={statusFilter !== 'all' || paymentMethodFilter !== 'all' || coinTypeFilter !== 'all' || orderNoFilter || dateRange[0].diff(dayjs(), 'day') < -30}
             onClick={openDrawer}
           >
-            <FilterOutlined /> 筛选订单
+            <FilterOutlined /> {intl.formatMessage({ id: 'orders.filter.button' })}
           </MobileFilterButton>
         </MobileToolbar>
 
@@ -715,7 +721,7 @@ const OrdersContent = () => {
           <Toolbar $token={token}>
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
               <Input
-                placeholder="搜索订单号"
+                placeholder={intl.formatMessage({ id: 'orders.search.placeholder' })}
                 value={orderNoFilter}
                 onChange={(e) => setOrderNoFilter(e.target.value)}
                 style={{ width: 200 }}
@@ -726,38 +732,38 @@ const OrdersContent = () => {
                 value={statusFilter} 
                 onChange={setStatusFilter} 
                 style={{ width: 140 }} 
-                placeholder="订单状态"
+                placeholder={intl.formatMessage({ id: 'orders.select.orderStatus' })}
                 options={[
-                  { value: 'all', label: '全部状态' },
-                  { value: 'PENDING', label: '待支付' },
-                  { value: 'PAID', label: '已支付' },
-                  { value: 'SUCCESS', label: '已完成' },
-                  { value: 'CANCELLED', label: '已取消' },
-                  { value: 'FAILED', label: '支付失败' },
-                  { value: 'EXPIRED', label: '已过期' },
+                  { value: 'all', label: intl.formatMessage({ id: 'orders.status.all' }) },
+                  { value: 'PENDING', label: intl.formatMessage({ id: 'orders.status.pending' }) },
+                  { value: 'PAID', label: intl.formatMessage({ id: 'orders.status.paid' }) },
+                  { value: 'SUCCESS', label: intl.formatMessage({ id: 'orders.status.success' }) },
+                  { value: 'CANCELLED', label: intl.formatMessage({ id: 'orders.status.cancelled' }) },
+                  { value: 'FAILED', label: intl.formatMessage({ id: 'orders.status.failed' }) },
+                  { value: 'EXPIRED', label: intl.formatMessage({ id: 'orders.status.expired' }) },
                 ]}
               />
               <Select 
                 value={paymentMethodFilter} 
                 onChange={setPaymentMethodFilter} 
                 style={{ width: 140 }} 
-                placeholder="支付方式"
+                placeholder={intl.formatMessage({ id: 'orders.select.paymentMethod' })}
                 options={[
-                  { value: 'all', label: '全部方式' },
-                  { value: 'alipay', label: '支付宝' },
-                  { value: 'wechat', label: '微信支付' },
-                  { value: 'bank', label: '银行卡' },
-                  { value: 'usdt', label: 'USDT' },
-                  { value: 'creem', label: 'Creem' },
+                  { value: 'all', label: intl.formatMessage({ id: 'orders.payment.all' }) },
+                  { value: 'alipay', label: intl.formatMessage({ id: 'orders.payment.alipay' }) },
+                  { value: 'wechat', label: intl.formatMessage({ id: 'orders.payment.wechat' }) },
+                  { value: 'bank', label: intl.formatMessage({ id: 'orders.payment.bank' }) },
+                  { value: 'usdt', label: intl.formatMessage({ id: 'orders.payment.usdt' }) },
+                  { value: 'creem', label: intl.formatMessage({ id: 'orders.payment.creem' }) },
                 ]}
               />
               <Select 
                 value={coinTypeFilter} 
                 onChange={setCoinTypeFilter} 
                 style={{ width: 120 }} 
-                placeholder="币种"
+                placeholder={intl.formatMessage({ id: 'orders.select.coinType' })}
                 options={[
-                  { value: 'all', label: '全部币种' },
+                  { value: 'all', label: intl.formatMessage({ id: 'orders.coin.all' }) },
                   { value: 'CNY', label: 'CNY' },
                   { value: 'USD', label: 'USD' },
                   { value: 'USDT', label: 'USDT' },
@@ -785,13 +791,13 @@ const OrdersContent = () => {
                 showSizeChanger: !isMobile
               }}
               scroll={{ x: true }}
-              locale={{ emptyText: <Empty description="暂无订单记录" /> }}
+              locale={{ emptyText: <Empty description={intl.formatMessage({ id: 'orders.table.empty' })} /> }}
             />
           </TableContainer>
         </GlassCard>
 
         <Drawer
-          title="筛选条件"
+          title={intl.formatMessage({ id: 'orders.filter.title' })}
           placement="bottom"
           open={filterDrawerVisible}
           onClose={() => setFilterDrawerVisible(false)}
@@ -814,7 +820,7 @@ const OrdersContent = () => {
                 }}
                 style={{ borderRadius: '999px', height: '48px', fontWeight: 500 }}
               >
-                重置
+                {intl.formatMessage({ id: 'orders.filter.reset' })}
               </Button>
               <Button 
                 type="primary" 
@@ -823,24 +829,18 @@ const OrdersContent = () => {
                 onClick={handleApplyFilter}
                 style={{ borderRadius: '999px', height: '48px', fontWeight: 500 }}
               >
-                确认筛选
+                {intl.formatMessage({ id: 'orders.filter.apply' })}
               </Button>
             </div>
           }
         >
           <DrawerSection $token={token}>
-            <h3>订单状态</h3>
+            <h3>{intl.formatMessage({ id: 'orders.filter.orderStatus' })}</h3>
             <ChipGrid>
               {['all', 'PENDING', 'PAID', 'SUCCESS', 'CANCELLED', 'FAILED', 'EXPIRED'].map(status => {
-                const labels = { 
-                  all: '全部', 
-                  PENDING: '待支付', 
-                  PAID: '已支付', 
-                  SUCCESS: '已完成',
-                  CANCELLED: '已取消', 
-                  FAILED: '支付失败', 
-                  EXPIRED: '已过期' 
-                };
+                const label = status === 'all' 
+                  ? intl.formatMessage({ id: 'orders.status.all' })
+                  : intl.formatMessage({ id: `orders.status.${status.toLowerCase()}` });
                 return (
                   <FilterChip 
                     key={status}
@@ -848,7 +848,7 @@ const OrdersContent = () => {
                     $active={tempStatusFilter === status}
                     onClick={() => setTempStatusFilter(status)}
                   >
-                    {labels[status]}
+                    {label}
                     {tempStatusFilter === status && <CheckOutlined style={{ marginLeft: 4, fontSize: 10 }} />}
                   </FilterChip>
                 )
@@ -857,10 +857,12 @@ const OrdersContent = () => {
           </DrawerSection>
 
           <DrawerSection $token={token}>
-            <h3>支付方式</h3>
+            <h3>{intl.formatMessage({ id: 'orders.filter.paymentMethod' })}</h3>
             <ChipGrid>
               {['all', 'alipay', 'wechat', 'bank', 'usdt', 'creem'].map(method => {
-                const labels = { all: '全部', alipay: '支付宝', wechat: '微信支付', bank: '银行卡', usdt: 'USDT', creem: 'Creem' };
+                const label = method === 'all' 
+                  ? intl.formatMessage({ id: 'orders.payment.all' })
+                  : intl.formatMessage({ id: `orders.payment.${method}` });
                 return (
                   <FilterChip 
                     key={method}
@@ -868,7 +870,7 @@ const OrdersContent = () => {
                     $active={tempPaymentMethodFilter === method}
                     onClick={() => setTempPaymentMethodFilter(method)}
                   >
-                    {labels[method]}
+                    {label}
                     {tempPaymentMethodFilter === method && <CheckOutlined style={{ marginLeft: 4, fontSize: 10 }} />}
                   </FilterChip>
                 )
@@ -877,10 +879,12 @@ const OrdersContent = () => {
           </DrawerSection>
 
           <DrawerSection $token={token}>
-            <h3>币种类型</h3>
+            <h3>{intl.formatMessage({ id: 'orders.filter.coinType' })}</h3>
             <ChipGrid>
               {['all', 'CNY', 'USD', 'USDT'].map(coin => {
-                const labels = { all: '全部币种', CNY: 'CNY', USD: 'USD', USDT: 'USDT' };
+                const label = coin === 'all' 
+                  ? intl.formatMessage({ id: 'orders.coin.all' })
+                  : coin;
                 return (
                   <FilterChip 
                     key={coin}
@@ -888,7 +892,7 @@ const OrdersContent = () => {
                     $active={tempCoinTypeFilter === coin}
                     onClick={() => setTempCoinTypeFilter(coin)}
                   >
-                    {labels[coin]}
+                    {label}
                     {tempCoinTypeFilter === coin && <CheckOutlined style={{ marginLeft: 4, fontSize: 10 }} />}
                   </FilterChip>
                 )
@@ -897,9 +901,9 @@ const OrdersContent = () => {
           </DrawerSection>
 
           <DrawerSection $token={token}>
-            <h3>订单号搜索</h3>
+            <h3>{intl.formatMessage({ id: 'orders.filter.orderNoSearch' })}</h3>
             <Input
-              placeholder="输入订单号"
+              placeholder={intl.formatMessage({ id: 'orders.input.orderNo' })}
               value={tempOrderNoFilter}
               onChange={(e) => setTempOrderNoFilter(e.target.value)}
               allowClear
@@ -908,16 +912,16 @@ const OrdersContent = () => {
           </DrawerSection>
 
           <DrawerSection $token={token}>
-            <h3>快捷时间</h3>
+            <h3>{intl.formatMessage({ id: 'orders.filter.quickDate' })}</h3>
             <ChipGrid>
-              <FilterChip $token={token} onClick={() => handleQuickDate(7)}>近7天</FilterChip>
-              <FilterChip $token={token} onClick={() => handleQuickDate(30)}>近30天</FilterChip>
-              <FilterChip $token={token} onClick={() => handleQuickDate(90)}>近3个月</FilterChip>
+              <FilterChip $token={token} onClick={() => handleQuickDate(7)}>{intl.formatMessage({ id: 'orders.filter.last7Days' })}</FilterChip>
+              <FilterChip $token={token} onClick={() => handleQuickDate(30)}>{intl.formatMessage({ id: 'orders.filter.last30Days' })}</FilterChip>
+              <FilterChip $token={token} onClick={() => handleQuickDate(90)}>{intl.formatMessage({ id: 'orders.filter.last3Months' })}</FilterChip>
             </ChipGrid>
           </DrawerSection>
 
           <DrawerSection $token={token}>
-            <h3>自定义日期</h3>
+            <h3>{intl.formatMessage({ id: 'orders.filter.customDate' })}</h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                <DatePicker 
                  value={tempDateRange[0]} 
@@ -925,7 +929,7 @@ const OrdersContent = () => {
                  style={{ flex: 1 }} 
                  inputReadOnly 
                />
-               <span style={{ color: token.colorTextSecondary }}>至</span>
+               <span style={{ color: token.colorTextSecondary }}>{intl.formatMessage({ id: 'orders.filter.dateTo' })}</span>
                <DatePicker 
                  value={tempDateRange[1]} 
                  onChange={d => setTempDateRange([tempDateRange[0], d])} 

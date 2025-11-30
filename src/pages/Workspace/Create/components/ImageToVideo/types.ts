@@ -18,11 +18,10 @@ export interface Model {
   videoDurationEnum: string | null; // 视频时长枚举（以逗号分隔，如 "10,15,25"）- 当 videoDuration 为空时使用
   videoFps: number | null;
   videoMaxFrames: number | null;
-  videoAspectRatios: string | null; // 视频比例（文生视频使用此字段）
+  videoAspectRatios: string | null; // 视频比例（图生视频也使用此字段）
   videoAspectRatiosEnum: string | null; // 支持的视频比例枚举（portrait，landscape）- 当 videoAspectRatios 为空时使用
   videoAspectResolution: string | null;
   videoFormats: string | null;
-  imageAspectRatios: string | null; // 图片比例（文生视频不使用此字段）
   supportCameraMotion: boolean;
   supportImg2video: boolean;
   supportVideoEdit: boolean;
@@ -41,10 +40,11 @@ export interface GenerationTask {
   taskType: string;
   modelName: string;
   modelCode: string;
-  status: number; // 0: 处理中, 2: 成功, 3: 失败
+  status: number; // 0: 排队, 1: 处理中, 2: 成功, 3: 失败
   inputType: string;
   outputType: string;
   resultUrls: string[] | null;
+  inputUrls: string[] | null; // 图生视频需要输入图片URL
   thumbnailUrl: string | null;
   errorMessage: string | null;
   createTime: string;
@@ -57,7 +57,6 @@ export interface GenerationTask {
   durationMs?: number | null;
   model?: {
     videoAspectRatios?: string | null;
-    imageAspectRatios?: string | null;
   } | null;
 }
 
@@ -79,6 +78,15 @@ export interface TaskOutputFile {
   sortOrder: number;
   createTime: string;
   extraMetadataMap: any | null;
+}
+
+export interface TaskInputFile {
+  id: number;
+  taskId: number;
+  fileUrl: string;
+  fileType: string;
+  sortOrder: number;
+  createTime: string;
 }
 
 export interface TaskDetailModel {
@@ -127,7 +135,7 @@ export interface TaskDetail {
   endTime: string;
   createTime: string;
   updateTime: string;
-  inputFiles: any[];
+  inputFiles: TaskInputFile[];
   outputFiles: TaskOutputFile[];
   model: TaskDetailModel;
 }

@@ -222,6 +222,103 @@ export const ActionOverlay = styled.div`
   }
 `;
 
+// 图片上传相关样式
+export const InputImageContainer = styled.div`
+  width: 100%;
+  height: 260px;
+  border-radius: 12px;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+
+  &:hover .overlay-actions {
+    opacity: 1;
+  }
+
+  img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto !important; 
+    height: auto !important;
+    object-fit: contain; 
+    display: block;
+    border-radius: 12px;
+  }
+`;
+
+export const OverlayActions = styled.div`
+  position: absolute;
+  top: 0; 
+  left: 0; 
+  right: 0; 
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  z-index: 10;
+`;
+
+export const CustomUploadArea = styled.div<{ $isDark?: boolean; $isDragging?: boolean }>`
+  width: 100%;
+  height: 260px;
+  border-radius: 12px;
+  border: 1px dashed ${props => props.$isDark ? '#444' : '#d9d9d9'};
+  background: ${props => props.$isDark ? '#1f1f1f' : '#fafafa'};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  
+  ${props => props.$isDragging && `
+    border-color: #1890ff;
+    background: ${props.$isDark ? '#2a2a2a' : '#f0f7ff'};
+  `}
+  
+  &:hover {
+    border-color: #1890ff;
+  }
+  
+  input[type="file"] {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+`;
+
+export const UploadIcon = styled.div<{ $isDark?: boolean }>`
+  margin-bottom: 16px;
+  color: #1890ff;
+  font-size: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+export const UploadText = styled.div<{ $isDark?: boolean }>`
+  color: ${props => props.$isDark ? '#fff' : '#333'};
+  font-size: 16px;
+  margin-bottom: 8px;
+`;
+
+export const UploadHint = styled.div<{ $isDark?: boolean }>`
+  color: ${props => props.$isDark ? '#999' : '#999'};
+  font-size: 12px;
+`;
+
 export const AspectRatioOption = styled.div`
   display: flex;
   align-items: center;
@@ -650,214 +747,5 @@ export const ResolutionTag = styled.div`
   border: 1px solid ${props => props.theme.mode === 'dark' ? '#2a4a6a' : '#91d5ff'};
   color: ${props => props.theme.mode === 'dark' ? '#91d5ff' : '#1890ff'};
   font-weight: 500;
-`;
-
-// 历史记录相关样式
-export const HistorySection = styled.div`
-  margin-top: 32px;
-  padding-top: 32px;
-  border-top: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : '#e8e8e8'};
-`;
-
-export const HistoryTitle = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-  
-  h4 {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-`;
-
-export const HistoryGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 12px;
-  }
-`;
-
-export const HistoryCard = styled.div`
-  position: relative;
-  border-radius: 12px;
-  overflow: hidden;
-  background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#fff'};
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : '#e8e8e8'};
-  transition: all 0.3s ease;
-  cursor: pointer;
-  
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    border-color: #1890ff;
-  }
-`;
-
-export const HistoryVideoWrapper = styled.div`
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  background: ${props => props.theme.mode === 'dark' ? '#0a0a0a' : '#f5f5f5'};
-  
-  video, img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-`;
-
-export const HistoryStatusBadge = styled.div<{ status: number }>`
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 600;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  
-  ${props => {
-    if (props.status === 2) {
-      return `
-        background: rgba(82, 196, 26, 0.2);
-        color: #52c41a;
-        border: 1px solid rgba(82, 196, 26, 0.3);
-      `;
-    } else if (props.status === 3 || props.status === 4) {
-      return `
-        background: rgba(255, 77, 79, 0.2);
-        color: #ff4d4f;
-        border: 1px solid rgba(255, 77, 79, 0.3);
-      `;
-    } else {
-      return `
-        background: rgba(24, 144, 255, 0.2);
-        color: #1890ff;
-        border: 1px solid rgba(24, 144, 255, 0.3);
-      `;
-    }
-  }}
-`;
-
-export const HistoryInfo = styled.div`
-  padding: 12px;
-`;
-
-export const HistoryModelName = styled.div`
-  font-size: 13px;
-  font-weight: 600;
-  color: ${props => props.theme.mode === 'dark' ? '#fff' : '#333'};
-  margin-bottom: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-`;
-
-export const HistoryTime = styled.div`
-  font-size: 11px;
-  color: ${props => props.theme.mode === 'dark' ? '#999' : '#666'};
-`;
-
-export const HistoryEmpty = styled.div`
-  text-align: center;
-  padding: 40px 20px;
-  color: ${props => props.theme.mode === 'dark' ? '#666' : '#999'};
-`;
-
-// 等待任务显示区域
-export const WaitingTaskCard = styled.div`
-  background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#fff'};
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : '#e8e8e8'};
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 20px;
-  position: relative;
-  overflow: hidden;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #1890ff, #52c41a, #1890ff);
-    background-size: 200% 100%;
-    animation: progress-bar 2s linear infinite;
-  }
-  
-  @keyframes progress-bar {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-  }
-`;
-
-export const WaitingTaskHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-`;
-
-export const WaitingTaskTitle = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  color: ${props => props.theme.mode === 'dark' ? '#fff' : '#333'};
-`;
-
-export const WaitingTaskInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-bottom: 16px;
-`;
-
-export const WaitingTaskInfoRow = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: ${props => props.theme.mode === 'dark' ? '#999' : '#666'};
-  
-  .label {
-    color: ${props => props.theme.mode === 'dark' ? '#666' : '#999'};
-    min-width: 60px;
-  }
-  
-  .value {
-    color: ${props => props.theme.mode === 'dark' ? '#fff' : '#333'};
-    font-weight: 500;
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-`;
-
-export const WaitingTaskPrompt = styled.div`
-  background: ${props => props.theme.mode === 'dark' ? '#0a0a0a' : '#f5f5f5'};
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 13px;
-  line-height: 1.6;
-  color: ${props => props.theme.mode === 'dark' ? '#ccc' : '#666'};
-  max-height: 80px;
-  overflow-y: auto;
-  font-family: 'SF Mono', 'Menlo', monospace;
-  white-space: pre-wrap;
-  word-break: break-word;
 `;
 

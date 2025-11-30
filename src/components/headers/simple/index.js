@@ -26,7 +26,21 @@ const SimpleHeader = () => {
   const theme = React.useContext(ThemeContext);
   const intl = useIntl();
   const [isDark, setIsDark] = useState(theme.mode === 'dark');
-  const [userInfo, setUserInfo] = useState(null);
+  // 先从 localStorage 加载旧的用户信息，避免页面刷新时闪烁
+  const [userInfo, setUserInfo] = useState(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      const storedUserInfo = localStorage.getItem('userInfo');
+      if (storedUserInfo) {
+        try {
+          return JSON.parse(storedUserInfo);
+        } catch (e) {
+          console.error("Failed to parse stored user info", e);
+        }
+      }
+    }
+    return null;
+  });
   const [scrolled, setScrolled] = useState(false);
   const { locale, changeLocale } = useLocale();
   const [languages, setLanguages] = useState([]);
@@ -45,34 +59,28 @@ const SimpleHeader = () => {
   }, []);
 
   useEffect(() => {
-    // 页面刷新时，如果有 token，重新获取用户详情
+    // 页面刷新时，如果有 token，异步获取最新的用户信息
     const token = localStorage.getItem('token');
     if (token) {
+      // 异步获取最新数据，更新到 state 和 localStorage
       auth.getUserInfo().then(result => {
         if (result.success) {
-          setUserInfo(result.data);
+          const newUserInfo = result.data;
+          setUserInfo(newUserInfo);
+          // 保存到 localStorage，供下次刷新使用
+          localStorage.setItem('userInfo', JSON.stringify(newUserInfo));
         } else {
-          // 如果获取失败，尝试使用本地存储的用户信息
-          const storedUserInfo = localStorage.getItem('userInfo');
-          if (storedUserInfo) {
-            try {
-              setUserInfo(JSON.parse(storedUserInfo));
-            } catch (e) {
-              console.error("Failed to parse user info", e);
-            }
-          }
+          // 如果获取失败，保留旧数据（已经在 state 中了，无需处理）
+          console.warn("Failed to fetch latest user info, using cached data");
         }
+      }).catch(error => {
+        // 网络错误等情况，保留旧数据
+        console.error("Error fetching user info:", error);
       });
     } else {
-      // 如果没有 token，尝试从本地存储获取用户信息（用于展示）
-      const storedUserInfo = localStorage.getItem('userInfo');
-      if (storedUserInfo) {
-        try {
-          setUserInfo(JSON.parse(storedUserInfo));
-        } catch (e) {
-          console.error("Failed to parse user info", e);
-        }
-      }
+      // 如果没有 token，清除用户信息
+      setUserInfo(null);
+      localStorage.removeItem('userInfo');
     }
   }, []);
 

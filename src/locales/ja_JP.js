@@ -1152,4 +1152,214 @@ export default {
   'home.features.imageToVideo.description': '静止画像をアップロードすると、AIがシーンの光と物理関係を理解し、自動的に後続の動きを生成し、写真を生き生きとさせます。',
   'home.features.multimodal.title': 'マルチモーダルエコシステム',
   'home.features.multimodal.description': 'Stable Diffusionのテキストから画像だけでなく、Midjourneyのスタイル転送とElevenLabsのオーディオ合成も統合。1つのワークフローですべての創作を完了。',
+  
+  // 請求ページ
+  'billing.page.title': '財務センター',
+  'billing.page.description': '資金の出入りと請求明細を管理',
+  'billing.button.refresh': '更新',
+  'billing.button.recharge': 'チャージ',
+  'billing.button.reset': 'リセット',
+  'billing.button.apply': 'フィルタを適用',
+  
+  // 残高カード
+  'billing.balance.cny': 'CNY残高',
+  'billing.balance.usdt': 'USDT残高',
+  'billing.balance.usd': 'USD残高',
+  'billing.balance.token': 'トークン残高',
+  'billing.balance.frozen': '凍結',
+  
+  // 取引タイプ
+  'billing.type.frozen': '資金凍結',
+  'billing.type.aiModelFee': 'モデル呼び出し',
+  'billing.type.recharge': 'チャージ',
+  'billing.type.refund': '返金',
+  'billing.type.reward': '報酬',
+  'billing.type.all': 'すべてのタイプ',
+  
+  // 通貨
+  'billing.coin.all': 'すべての通貨',
+  'billing.coin.usdt': 'USDT',
+  'billing.coin.cny': 'CNY',
+  'billing.coin.usd': 'USD',
+  
+  // テーブル
+  'billing.table.type': 'タイプ',
+  'billing.table.coinType': '通貨',
+  'billing.table.time': '時間',
+  'billing.table.amount': '金額',
+  'billing.table.remark': '備考',
+  'billing.table.balance': '残高',
+  'billing.table.empty': '請求書なし',
+  
+  // フィルタ
+  'billing.filter.title': 'フィルタ条件',
+  'billing.filter.button': 'フィルタと日付',
+  'billing.filter.changeType': '変更タイプ',
+  'billing.filter.coinType': '通貨タイプ',
+  'billing.filter.remark': '備考検索',
+  'billing.filter.remarkPlaceholder': '備考キーワードを入力',
+  'billing.filter.remarkSearch': '備考検索',
+  'billing.filter.dateQuick': 'クイック日付',
+  'billing.filter.dateCustom': 'カスタム日付',
+  'billing.filter.dateTo': 'から',
+  'billing.filter.days7': '過去7日間',
+  'billing.filter.days30': '過去30日間',
+  'billing.filter.days90': '過去3ヶ月',
+  
+  // プレースホルダー
+  'billing.placeholder.changeType': '変更タイプ',
+  'billing.placeholder.coinType': '通貨',
+  'billing.placeholder.remark': '備考検索',
+  
+  // メッセージ
+  'billing.message.fetchBalanceError': '残高の取得に失敗しました',
+  'billing.message.fetchRecordsError': '請求記録の取得に失敗しました',
+  'billing.message.tryAgain': '請求記録の取得に失敗しました。後でもう一度お試しください',
+  
+  // チャージページ
+  'recharge.page.title': 'アカウントチャージ',
+  'recharge.page.backLink': '財務センターに戻る',
+  'recharge.balance.title': 'アカウント残高',
+  'recharge.balance.refresh': '更新',
+  
+  // チャージセクション
+  'recharge.section.coinType': 'チャージ通貨',
+  'recharge.section.paymentMethod': '支払い方法',
+  'recharge.section.amount': 'チャージ金額',
+  
+  // 注文詳細
+  'recharge.order.title': '注文詳細',
+  'recharge.order.type': 'チャージタイプ',
+  'recharge.order.typeValue': 'アカウント残高チャージ',
+  'recharge.order.account': 'チャージアカウント',
+  'recharge.order.accountLoading': '読み込み中...',
+  'recharge.order.paymentMethod': '支払い方法',
+  'recharge.order.paymentMethodPlease': '選択してください',
+  'recharge.order.total': '支払い総額',
+  
+  // ボタン
+  'recharge.button.pay': '今すぐ支払う',
+  'recharge.button.customize': 'カスタム金額',
+  
+  // プレースホルダー
+  'recharge.placeholder.customAmount': 'カスタム金額を入力',
+  
+  // セキュリティ
+  'recharge.security.ssl': 'SSL暗号化通信、資金の安全を保護',
+  'recharge.security.agreement': '支払いをクリックすると同意したことになります',
+  'recharge.security.agreementLink': 'チャージサービス契約',
+  
+  // 空状態
+  'recharge.empty.noCurrency': 'サポートされている通貨はありません',
+  'recharge.empty.noPaymentMethod': '{currency} 通貨の支払い方法はサポートされていません',
+  'recharge.empty.pleaseSelectCurrency': '先にチャージ通貨を選択してください',
+  'recharge.empty.pleaseSelectPayment': '先に支払い方法を選択してください',
+  'recharge.empty.noProducts': '利用可能な製品はありません',
+  'recharge.empty.noPresets': '{currency} 通貨のプリセット金額はサポートされていません',
+  
+  // メッセージ
+  'recharge.message.invalidAmount': '有効な金額を入力してください',
+  'recharge.message.selectPaymentMethod': '支払い方法を選択してください',
+  'recharge.message.selectAmount': 'チャージ金額を選択してください',
+  'recharge.message.fetchBalanceError': '残高の取得に失敗しました。後でもう一度お試しください',
+  'recharge.message.fetchUserInfoError': 'ユーザー情報の取得に失敗しました',
+  'recharge.message.fetchCurrenciesError': '通貨リストの取得に失敗しました。後でもう一度お試しください',
+  'recharge.message.fetchPaymentMethodsError': '支払い方法の取得に失敗しました。後でもう一度お試しください',
+  'recharge.message.fetchCreemProductsError': 'Creem製品リストの取得に失敗しました。後でもう一度お試しください',
+  'recharge.message.fetchCreemProductsWarning': 'Creem製品リストの取得に失敗しました',
+  'recharge.message.orderCreated': '注文が正常に作成されました',
+  'recharge.message.orderCreateFailed': 'チャージ注文の作成に失敗しました',
+  'recharge.message.paymentProcessing': '支払いページを開いています。支払いを完了してください...',
+  'recharge.message.popupBlocked': '支払いウィンドウを開けません。ブラウザのポップアップ設定を確認してください',
+  'recharge.message.paymentUrlError': '支払いリンクの取得に失敗しました',
+  'recharge.message.checkoutSessionError': '支払いセッションの作成に失敗しました',
+  'recharge.message.paymentError': '支払い処理に失敗しました。後でもう一度お試しください',
+  'recharge.message.redirecting': '支払いページにリダイレクトしています。支払いを完了してください...',
+  'recharge.message.paymentUrlFailed': '支払いリンクが利用できません',
+  'recharge.message.paymentSuccess': '支払いが成功しました！残高が更新されました',
+  'recharge.message.orderCancelled': '注文がキャンセルされました',
+  'recharge.message.paymentFailed': '支払いに失敗しました',
+  'recharge.message.orderExpired': '期限切れ',
+  'recharge.message.queryOrderError': '注文ステータスの照会に失敗しました',
+  'recharge.message.rechargeError': 'チャージリクエストに失敗しました。後でもう一度お試しください',
+
+  // 注文ページ
+  'orders.title': '注文履歴',
+  'orders.subtitle': 'すべてのチャージ注文記録とステータスを表示',
+  'orders.refresh': '更新',
+  'orders.goToRecharge': 'チャージ',
+
+  // 統計カード
+  'orders.stats.totalOrders': '総注文数',
+  'orders.stats.pending': '支払待ち',
+  'orders.stats.paid': '支払済み',
+  'orders.stats.totalAmount': '総チャージ金額',
+
+  // テーブル列
+  'orders.table.orderNo': '注文番号',
+  'orders.table.createTime': '作成日時',
+  'orders.table.amount': '金額',
+  'orders.table.paymentMethod': '支払方法',
+  'orders.table.status': 'ステータス',
+  'orders.table.action': '操作',
+  'orders.table.view': '表示',
+  'orders.table.cancel': 'キャンセル',
+  'orders.table.empty': '注文記録がありません',
+
+  // 注文ステータス
+  'orders.status.pending': '支払待ち',
+  'orders.status.paid': '支払済み',
+  'orders.status.success': '完了',
+  'orders.status.cancelled': 'キャンセル済み',
+  'orders.status.failed': '失敗',
+  'orders.status.expired': '期限切れ',
+  'orders.status.all': 'すべてのステータス',
+
+  // 支払方法
+  'orders.payment.alipay': 'Alipay',
+  'orders.payment.wechat': 'WeChat Pay',
+  'orders.payment.bank': '銀行カード',
+  'orders.payment.usdt': 'USDT',
+  'orders.payment.creem': 'Creem',
+  'orders.payment.all': 'すべての方法',
+
+  // 通貨
+  'orders.coin.all': 'すべての通貨',
+
+  // フィルター
+  'orders.filter.title': 'フィルターオプション',
+  'orders.filter.button': '注文をフィルター',
+  'orders.filter.reset': 'リセット',
+  'orders.filter.apply': '適用',
+  'orders.filter.orderStatus': '注文ステータス',
+  'orders.filter.paymentMethod': '支払方法',
+  'orders.filter.coinType': '通貨タイプ',
+  'orders.filter.orderNoSearch': '注文番号を検索',
+  'orders.filter.quickDate': 'クイック日付',
+  'orders.filter.customDate': 'カスタム日付',
+  'orders.filter.dateTo': 'から',
+  'orders.filter.last7Days': '過去7日間',
+  'orders.filter.last30Days': '過去30日間',
+  'orders.filter.last3Months': '過去3ヶ月',
+
+  // 検索と入力
+  'orders.search.placeholder': '注文番号を検索',
+  'orders.input.orderNo': '注文番号を入力',
+  'orders.select.orderStatus': '注文ステータス',
+  'orders.select.paymentMethod': '支払方法',
+  'orders.select.coinType': '通貨',
+
+  // メッセージ
+  'orders.message.fetchError': '注文の取得に失敗しました',
+  'orders.message.fetchErrorRetry': '注文の取得に失敗しました。後でもう一度お試しください',
+  'orders.message.statsError': '統計の取得に失敗しました',
+  'orders.message.cancelSuccess': '注文をキャンセルしました',
+  'orders.message.cancelError': '注文のキャンセルに失敗しました',
+  'orders.message.cancelErrorRetry': '注文のキャンセルに失敗しました。後でもう一度お試しください',
+  'orders.message.viewOrder': '注文番号: {orderNo}',
+
+  // 確認ダイアログ
+  'orders.confirm.cancel': 'この注文をキャンセルしてもよろしいですか？',
+  'orders.confirm.ok': 'OK',
+  'orders.confirm.cancelButton': 'キャンセル',
 }; 
