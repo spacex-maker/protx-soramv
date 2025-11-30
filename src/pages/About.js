@@ -5,6 +5,7 @@ import SimpleHeader from "components/headers/simple";
 import FooterSection from "./Home/components/FooterSection";
 import { Button, ConfigProvider, theme, Space, Tag } from "antd";
 import { RightOutlined, ApiOutlined, CodeFilled, BranchesOutlined } from "@ant-design/icons";
+import SEO, { SEOConfigs } from 'components/SEO';
 
 // ==========================================
 // 0. 资源配置 (更新为更具技术感的图)
@@ -428,6 +429,7 @@ const AboutContent = () => {
 
   return (
     <PageWrapper>
+      <SEO {...SEOConfigs.about} />
       <GlobalStyle />
       <SimpleHeader />
 

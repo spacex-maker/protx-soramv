@@ -6,7 +6,7 @@ import { message } from "antd";
 import { ThemeContext } from "styled-components";
 import { useLocale } from 'contexts/LocaleContext';
 import { useIntl } from 'react-intl';
-import { Helmet } from 'react-helmet';
+import SEO, { SEOConfigs } from 'components/SEO';
 
 import { PageContainer, VersionTag } from './styles';
 import { TopControls } from './components/TopControls';
@@ -85,11 +85,9 @@ const LoginPage = () => {
 
   return (
     <>
-      <Helmet>
-        <title>登录 - Sora MV</title>
-        <meta name="description" content="登录 Sora MV，开启您的视频创作之旅" />
+      <SEO {...SEOConfigs.login}>
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-      </Helmet>
+      </SEO>
       <PageContainer>
         <VersionTag>v1.4.3</VersionTag>
         

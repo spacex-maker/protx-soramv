@@ -1,6 +1,7 @@
 {
-  "short_name": "Treact",
-  "name": "Treact - Modern React Templates and Components for building Landing Pages",
+  "short_name": "Sora MV",
+  "name": "Sora MV - AI 视频生成平台",
+  "description": "领先的 AI 视频生成平台，基于 Sora、Kling、Grok 等顶尖 AI 模型，支持文本生成视频、图片生成视频等功能。",
   "icons": [
     {
       "src": "favicon.ico",
@@ -8,18 +9,51 @@
       "type": "image/x-icon"
     },
     {
-      "src": "logo192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "logo512.png",
-      "type": "image/png",
-      "sizes": "512x512"
+      "src": "logo192.ico",
+      "type": "image/x-icon",
+      "sizes": "192x192",
+      "purpose": "any maskable"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#000000",
-  "background_color": "#ffffff"
+  "orientation": "portrait-primary",
+  "theme_color": "#3b82f6",
+  "background_color": "#141414",
+  "scope": "/",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "categories": ["productivity", "multimedia", "entertainment"],
+  "screenshots": [
+    {
+      "src": "landing.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "label": "Sora MV 主页"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "工作台",
+      "short_name": "工作台",
+      "description": "进入 AI 视频生成工作台",
+      "url": "/workspace",
+      "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
+    },
+    {
+      "name": "文生视频",
+      "short_name": "文生视频",
+      "description": "使用文本生成视频",
+      "url": "/workspace?tab=t2v",
+      "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
+    },
+    {
+      "name": "图生视频",
+      "short_name": "图生视频",
+      "description": "使用图片生成视频",
+      "url": "/workspace?tab=i2v",
+      "icons": [{ "src": "favicon.ico", "sizes": "64x64" }]
+    }
+  ],
+  "prefer_related_applications": false
 }

@@ -7,10 +7,12 @@ import PricingSection from './components/PricingSection';
 import TechnologySection from './components/TechnologySection';
 import CallToActionSection from './components/CallToActionSection';
 import FooterSection from './components/FooterSection';
+import SEO, { SEOConfigs } from 'components/SEO';
 
 const HomePage = () => {
   return (
     <PageContainer>
+      <SEO {...SEOConfigs.home} />
       <SimpleHeader />
       <HeroSection />
       <FeaturesSection />

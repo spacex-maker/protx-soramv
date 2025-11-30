@@ -44,8 +44,22 @@ export const LocaleContext = createContext();
 
 export function LocaleProvider({ children }) {
   const [locale, setLocale] = useState(() => {
-    const saved = localStorage.getItem('locale') || 'zh';
-    return LOCALES[saved] || 'zh-CN';
+    // 1. 优先从 URL 参数读取语言
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlLang = urlParams.get('lang');
+    if (urlLang && LOCALES[urlLang]) {
+      localStorage.setItem('locale', urlLang); // 保存到 localStorage
+      return LOCALES[urlLang];
+    }
+    
+    // 2. 其次从 localStorage 读取
+    const saved = localStorage.getItem('locale');
+    if (saved && LOCALES[saved]) {
+      return LOCALES[saved];
+    }
+    
+    // 3. 默认中文
+    return 'zh-CN';
   });
 
   const changeLocale = (newLocale) => {

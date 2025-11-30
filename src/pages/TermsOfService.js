@@ -9,6 +9,7 @@ import SimpleHeader from "components/headers/simple";
 import FooterSection from "./Home/components/FooterSection";
 import { SectionHeading } from "components/misc/Headings";
 import { base } from "api/base";
+import SEO, { SEOConfigs } from 'components/SEO';
 
 const PageWrapper = styled.div`
   .App {

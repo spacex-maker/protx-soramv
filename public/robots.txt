@@ -1,3 +1,79 @@
-# https://www.robotstxt.org/robotstxt.html
+# Sora MV - AI 视频生成平台
+# https://soramv.cn
+
+# 允许所有搜索引擎爬虫
 User-agent: *
-Disallow:
+
+# 允许访问的路径
+Allow: /
+Allow: /login
+Allow: /signup
+Allow: /about
+Allow: /help
+Allow: /feedback
+Allow: /terms-of-service
+Allow: /privacy-policy
+
+# 禁止爬取的路径（用户私有内容和敏感页面）
+Disallow: /workspace
+Disallow: /profile
+Disallow: /billing
+Disallow: /recharge
+Disallow: /orders
+Disallow: /notifications
+Disallow: /verification
+Disallow: /privacy-preferences
+Disallow: /works
+Disallow: /invite
+Disallow: /decrypt
+Disallow: /test-crypto
+Disallow: /api/
+Disallow: /*.json$
+Disallow: /*?*token=
+Disallow: /*?*password=
+
+# 针对 Google 的特殊规则
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+# 针对 Bing 的特殊规则
+User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+# 针对百度的特殊规则
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 2
+
+# 针对搜狗的特殊规则
+User-agent: Sogou web spider
+Allow: /
+Crawl-delay: 2
+
+# 针对 360 的特殊规则
+User-agent: 360Spider
+Allow: /
+Crawl-delay: 2
+
+# 针对神马搜索的特殊规则
+User-agent: YisouSpider
+Allow: /
+Crawl-delay: 2
+
+# 禁止恶意爬虫
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+# Sitemap 位置
+Sitemap: https://soramv.cn/sitemap.xml

@@ -3,6 +3,7 @@ import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import SimpleHeader from "components/headers/simple";
 import FooterSection from "./Home/components/FooterSection";
+import SEO, { SEOConfigs, generateFAQStructuredData } from 'components/SEO';
 import { 
   Button, 
   Input, 
