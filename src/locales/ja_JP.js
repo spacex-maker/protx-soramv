@@ -1143,6 +1143,12 @@ export default {
   'feedback.success.description': '貴重なフィードバックをありがとうございます。製品チームはすべてのフィードバックを注意深く読みます。バグレポートの場合、提供された連絡先を通じてお問い合わせする場合があります。',
   'feedback.success.back': '戻る',
   'feedback.success.another': 'もう一度送信',
+  // ホームヒーローセクション
+  'home.hero.title': 'Sora MV',
+  'home.hero.subtitle': 'AI駆動の動画生成プラットフォーム',
+  'home.hero.description': 'Sora技術を使用して、あなたのクリエイティブなテキストと画像を驚くべき動画作品に変換します。単なるツールではなく、あなたの創造性の延長です。',
+  'home.hero.cta.signup': '無料で創作を始める',
+  'home.hero.cta.login': 'ログイン',
   // ホーム機能セクション
   'home.features.title': 'オールインワン創作ワークショップ。',
   'home.features.subtitle': '動画生成だけでなく、創造性を全方位的に支援します。',

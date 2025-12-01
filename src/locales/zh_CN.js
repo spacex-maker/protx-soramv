@@ -1284,6 +1284,12 @@ export default {
   'feedback.success.description': '感谢您的宝贵意见。我们的产品团队会仔细阅读每一条反馈。如果是 Bug 反馈，我们可能会通过预留的联系方式与您沟通。',
   'feedback.success.back': '返回上一页',
   'feedback.success.another': '再提一条',
+  // 首页 Hero 区域
+  'home.hero.title': 'Sora MV',
+  'home.hero.subtitle': 'AI 驱动的视频生成平台',
+  'home.hero.description': '使用 Sora 技术，将您的创意文字和图片转化为惊艳的视频作品。不仅仅是工具，更是您创意的延伸。',
+  'home.hero.cta.signup': '免费开始创作',
+  'home.hero.cta.login': '立即登录',
   // 首页特性区域
   'home.features.title': '全能创作工坊。',
   'home.features.subtitle': '不仅仅是生成视频，更是对创意的全方位赋能。',

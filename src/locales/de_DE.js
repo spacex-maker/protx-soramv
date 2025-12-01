@@ -1069,6 +1069,12 @@ export default {
   'feedback.success.description': 'Vielen Dank für Ihr wertvolles Feedback. Unser Produktteam wird jedes Feedback sorgfältig lesen. Wenn es sich um einen Fehlerbericht handelt, können wir Sie über die bereitgestellten Kontaktinformationen kontaktieren.',
   'feedback.success.back': 'Zurück',
   'feedback.success.another': 'Weiteres senden',
+  // Homepage Hero-Bereich
+  'home.hero.title': 'Sora MV',
+  'home.hero.subtitle': 'KI-gestützte Videogenerierungsplattform',
+  'home.hero.description': 'Nutzen Sie Sora-Technologie, um Ihre kreativen Texte und Bilder in beeindruckende Videoinhalte zu verwandeln. Mehr als nur ein Werkzeug – eine Erweiterung Ihrer Kreativität.',
+  'home.hero.cta.signup': 'Kostenlos loslegen',
+  'home.hero.cta.login': 'Anmelden',
   // Homepage-Funktionsbereich
   'home.features.title': 'All-in-One-Kreativwerkstatt.',
   'home.features.subtitle': 'Mehr als nur Videogenerierung, es ist eine umfassende kreative Ermächtigung.',

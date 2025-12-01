@@ -1123,6 +1123,12 @@ export default {
   'feedback.success.description': '소중한 피드백을 주셔서 감사합니다. 제품 팀은 모든 피드백을 주의 깊게 읽을 것입니다. 버그 보고인 경우 제공된 연락처를 통해 연락할 수 있습니다.',
   'feedback.success.back': '돌아가기',
   'feedback.success.another': '다시 제출',
+  // 홈 히어로 섹션
+  'home.hero.title': 'Sora MV',
+  'home.hero.subtitle': 'AI 기반 비디오 생성 플랫폼',
+  'home.hero.description': 'Sora 기술을 사용하여 창의적인 텍스트와 이미지를 놀라운 비디오 콘텐츠로 변환하세요. 단순한 도구가 아닌, 당신의 창의성의 확장입니다.',
+  'home.hero.cta.signup': '무료로 창작 시작',
+  'home.hero.cta.login': '로그인',
   // 홈 기능 섹션
   'home.features.title': '올인원 창작 작업실.',
   'home.features.subtitle': '단순한 비디오 생성을 넘어 창의성의 전방위 강화.',

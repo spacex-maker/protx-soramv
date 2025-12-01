@@ -1061,6 +1061,12 @@ export default {
   'feedback.success.description': 'Obrigado pelo seu valioso feedback. Nossa equipe de produto lerá cuidadosamente cada feedback. Se for um relatório de bug, podemos entrar em contato através das informações de contato fornecidas.',
   'feedback.success.back': 'Voltar',
   'feedback.success.another': 'Enviar outro',
+  // Seção Hero da página inicial
+  'home.hero.title': 'Sora MV',
+  'home.hero.subtitle': 'Plataforma de geração de vídeo movida por IA',
+  'home.hero.description': 'Use a tecnologia Sora para transformar seus textos e imagens criativas em conteúdo de vídeo impressionante. Mais do que uma ferramenta, é uma extensão da sua criatividade.',
+  'home.hero.cta.signup': 'Começar grátis',
+  'home.hero.cta.login': 'Entrar',
   // Seção de recursos da página inicial
   'home.features.title': 'Oficina criativa tudo-em-um.',
   'home.features.subtitle': 'Mais do que apenas geração de vídeo, é um empoderamento criativo abrangente.',

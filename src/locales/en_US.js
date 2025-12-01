@@ -1206,6 +1206,12 @@ export default {
   'feedback.success.description': 'Thank you for your valuable feedback. Our product team will carefully read every piece of feedback. If it\'s a bug report, we may contact you through the provided contact information.',
   'feedback.success.back': 'Go Back',
   'feedback.success.another': 'Submit Another',
+  // Home Hero Section
+  'home.hero.title': 'Sora MV',
+  'home.hero.subtitle': 'AI-Powered Video Generation Platform',
+  'home.hero.description': 'Use Sora technology to transform your creative text and images into stunning video content. More than just a tool, it\'s an extension of your creativity.',
+  'home.hero.cta.signup': 'Start Creating for Free',
+  'home.hero.cta.login': 'Sign In',
   // Home Features Section
   'home.features.title': 'All-in-One Creative Workshop.',
   'home.features.subtitle': 'More than just video generation, it\'s a comprehensive creative empowerment.',

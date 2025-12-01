@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect } from 'react';
 import { Typography, Space, Spin } from 'antd';
 import styled, { ThemeContext, keyframes, css } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
+import { FormattedMessage } from 'react-intl';
 import { StyledButton, EnterpriseButton } from '../styles';
 import { base } from '../../../api/base';
 import { useLocale } from '../../../contexts/LocaleContext';
@@ -134,23 +135,6 @@ const ImageItem = styled.div`
   }
 `;
 
-// 背景光晕 (替代原来的全屏遮罩)
-// 只在中心文字区域背后加一点光晕，不遮挡周围图片
-const CenterGlow = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 80%;
-  height: 80%;
-  border-radius: 50%;
-  z-index: 2;
-  background: ${props => props.theme.mode === 'dark'
-    ? 'radial-gradient(circle, rgba(2,6,23, 0.95) 0%, rgba(2,6,23, 0.4) 40%, transparent 70%)'
-    : 'radial-gradient(circle, rgba(255,255,255, 0.95) 0%, rgba(255,255,255, 0.5) 40%, transparent 70%)'};
-  pointer-events: none; /* 关键：让鼠标穿透光晕，摸到图片 */
-`;
-
 // 内容区域
 const HeroContentWrapper = styled(motion.div)`
   position: relative;
@@ -269,9 +253,6 @@ const HeroSection = () => {
   return (
     <HeroContainer theme={theme}>
       {loading && <Spin size="large" style={{ position: 'absolute', zIndex: 50 }} />}
-      
-      {/* 背景光晕：只在中心文字后面，不遮挡周围图片 */}
-      <CenterGlow theme={theme} />
 
       {!loading && images.length > 0 && (
         <MasonryContainer>
@@ -311,18 +292,19 @@ const HeroSection = () => {
       >
         <div className="interactive">
           <Title level={1} className="hero-title">
-            Sora MV<br/>AI 驱动的视频生成平台
+            <FormattedMessage id="home.hero.title" />
+            <br/>
+            <FormattedMessage id="home.hero.subtitle" />
           </Title>
           <Paragraph className="hero-description">
-            使用 Sora 技术，将您的创意文字和图片转化为惊艳的视频作品。
-            不仅仅是工具，更是您创意的延伸。
+            <FormattedMessage id="home.hero.description" />
           </Paragraph>
           <Space size="large">
             <EnterpriseButton size="large" onClick={() => navigate('/signup')}>
-              免费开始创作
+              <FormattedMessage id="home.hero.cta.signup" />
             </EnterpriseButton>
             <StyledButton size="large" onClick={() => navigate('/login')}>
-              立即登录
+              <FormattedMessage id="home.hero.cta.login" />
             </StyledButton>
           </Space>
         </div>
