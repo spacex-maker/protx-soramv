@@ -12,6 +12,8 @@ import {
   EyeInvisibleOutlined,
   DownOutlined,
   PhoneOutlined,
+  MailOutlined,
+  LockOutlined,
 } from '@ant-design/icons';
 import { 
   SiWechat, 
@@ -19,6 +21,9 @@ import {
   SiSinaweibo, 
   SiAlipay 
 } from 'react-icons/si';
+import { message } from 'antd';
+import { base } from '../../../../api/base';
+import { auth } from '../../../../api/auth';
 
 import {
   RightSectionWrapper,
@@ -41,6 +46,23 @@ import {
   ErrorText,
   ForgotPasswordLink
 } from './styles';
+
+// 登录方式编码到图标的映射
+const LOGIN_METHOD_ICONS = {
+  phone_sms: PhoneOutlined,
+  wechat: SiWechat,
+  qq: SiTencentqq,
+  weibo: SiSinaweibo,
+  alipay: SiAlipay,
+  google: GoogleOutlined,
+  github: GithubOutlined,
+  apple: AppleOutlined,
+  facebook: FacebookOutlined,
+  twitter: TwitterOutlined,
+  linkedin: LinkedinOutlined,
+  email: MailOutlined,
+  password: LockOutlined,
+};
 
 const emailSuffixes = [
   "@qq.com",
@@ -70,9 +92,59 @@ export const RightSection = ({
   const [showPassword, setShowPassword] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+  const [loginMethods, setLoginMethods] = useState([]);
   const dropdownRef = useRef(null);
   const emailSuffixButtonRef = useRef(null);
   const inputWrapperRef = useRef(null);
+
+  // 检测是否能访问谷歌
+  const checkGoogleAccess = () => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      const timeout = setTimeout(() => {
+        resolve(false);
+      }, 3000);
+      
+      img.onload = () => {
+        clearTimeout(timeout);
+        resolve(true);
+      };
+      img.onerror = () => {
+        clearTimeout(timeout);
+        resolve(false);
+      };
+      img.src = 'https://www.google.com/favicon.ico?' + Date.now();
+    });
+  };
+
+  // 根据 locale 获取对应国家的登录方式，如果能访问谷歌则额外添加
+  useEffect(() => {
+    const fetchLoginMethods = async () => {
+      // 中文使用中国(CN)的登录方式，其他使用美国(US)的登录方式
+      const countryCode = locale === 'zh' ? 'CN' : 'US';
+      const result = await base.getLoginMethodsByCountry(countryCode);
+      if (result.success && result.data) {
+        let methods = result.data;
+        
+        // 检测是否能访问谷歌，如果能且列表中没有谷歌，则添加
+        const canAccessGoogle = await checkGoogleAccess();
+        const hasGoogle = methods.some(m => m.code === 'google');
+        
+        if (canAccessGoogle && !hasGoogle) {
+          methods = [...methods, {
+            code: 'google',
+            name: '{"zh":"Google","en":"Google"}',
+            iconUrl: null,
+            isDefault: false,
+            sort: 99
+          }];
+        }
+        
+        setLoginMethods(methods);
+      }
+    };
+    fetchLoginMethods();
+  }, [locale]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -107,6 +179,22 @@ export const RightSection = ({
     const emailPrefix = email.split("@")[0];
     setEmail(emailPrefix + suffix);
     setShowSuffixDropdown(false);
+  };
+
+  // 处理社交登录按钮点击
+  const handleSocialLogin = async (methodCode) => {
+    if (methodCode === 'google') {
+      // 谷歌登录
+      const result = await auth.getGoogleAuthUrl();
+      if (result.success && result.data) {
+        window.location.href = result.data;
+      } else {
+        message.error(result.message || '获取谷歌授权链接失败');
+      }
+    } else {
+      // 其他登录方式暂未实现
+      message.info('该登录方式正在开发中');
+    }
   };
 
   const handleSuffixButtonClick = (e) => {
@@ -209,48 +297,33 @@ export const RightSection = ({
           </Divider>
 
           <SocialLogin>
-            {locale === 'zh' ? (
-              // 中国国内登录方式
-              <>
-                <SocialButton type="button" socialType="wechat" index={0} title="微信登录">
-                  <SiWechat />
+            {loginMethods.map((method, index) => {
+              const IconComponent = LOGIN_METHOD_ICONS[method.code];
+              // 解析多语言名称，获取当前语言的名称
+              let methodName = method.code;
+              try {
+                const nameObj = JSON.parse(method.name);
+                methodName = nameObj[locale] || nameObj['en'] || method.code;
+              } catch {
+                methodName = method.name || method.code;
+              }
+              
+              // 将 phone_sms 映射为 phone 类型以匹配样式
+              const socialType = method.code === 'phone_sms' ? 'phone' : method.code;
+              
+              return IconComponent ? (
+                <SocialButton 
+                  key={method.code}
+                  type="button" 
+                  socialType={socialType} 
+                  index={index} 
+                  title={methodName}
+                  onClick={() => handleSocialLogin(method.code)}
+                >
+                  <IconComponent />
                 </SocialButton>
-                <SocialButton type="button" socialType="qq" index={1} title="QQ登录">
-                  <SiTencentqq />
-                </SocialButton>
-                <SocialButton type="button" socialType="weibo" index={2} title="微博登录">
-                  <SiSinaweibo />
-                </SocialButton>
-                <SocialButton type="button" socialType="alipay" index={3} title="支付宝登录">
-                  <SiAlipay />
-                </SocialButton>
-                <SocialButton type="button" socialType="phone" index={4} title="手机号登录">
-                  <PhoneOutlined />
-                </SocialButton>
-              </>
-            ) : (
-              // 国际登录方式
-              <>
-                <SocialButton type="button" socialType="google" index={0} title="Google">
-                  <GoogleOutlined />
-                </SocialButton>
-                <SocialButton type="button" socialType="github" index={1} title="GitHub">
-                  <GithubOutlined />
-                </SocialButton>
-                <SocialButton type="button" socialType="apple" index={2} title="Apple">
-                  <AppleOutlined />
-                </SocialButton>
-                <SocialButton type="button" socialType="facebook" index={3} title="Facebook">
-                  <FacebookOutlined />
-                </SocialButton>
-                <SocialButton type="button" socialType="twitter" index={4} title="Twitter">
-                  <TwitterOutlined />
-                </SocialButton>
-                <SocialButton type="button" socialType="linkedin" index={5} title="LinkedIn">
-                  <LinkedinOutlined />
-                </SocialButton>
-              </>
-            )}
+              ) : null;
+            })}
           </SocialLogin>
 
           <Footer>

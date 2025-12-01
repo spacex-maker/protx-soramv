@@ -3,14 +3,16 @@ import styled from "styled-components";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import SimpleHeader from "components/headers/simple";
-import { ConfigProvider, theme, Button, Switch, Divider, message } from "antd";
+import { ConfigProvider, theme, Button, Switch, Divider, message, Spin } from "antd";
 import { 
   ArrowLeftOutlined, 
   SafetyOutlined, 
   CheckCircleOutlined,
-  InfoCircleOutlined 
+  InfoCircleOutlined,
+  LoadingOutlined
 } from "@ant-design/icons";
 import { useIntl } from 'react-intl';
+import { base } from '../api';
 
 // ==========================================
 // 1. 样式系统 (Styled System)
@@ -283,6 +285,8 @@ const PrivacyPreferencesContent = () => {
   const navigate = useNavigate();
   const intl = useIntl();
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   
   // 隐私偏好状态
   const [preferences, setPreferences] = useState({
@@ -306,17 +310,57 @@ const PrivacyPreferencesContent = () => {
     thirdPartySharing: false, // 第三方数据共享
   });
 
-  // 从 localStorage 加载保存的偏好设置
+  // 从服务器或 localStorage 加载保存的偏好设置
   useEffect(() => {
-    const saved = localStorage.getItem('privacyPreferences');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setPreferences(prev => ({ ...prev, ...parsed }));
-      } catch (e) {
-        console.error('Failed to load privacy preferences:', e);
+    const loadPreferences = async () => {
+      const userToken = localStorage.getItem('token');
+      setIsLoggedIn(!!userToken);
+      
+      if (userToken) {
+        // 用户已登录，从服务器加载
+        try {
+          const response = await base.getPrivacyPreferences();
+          if (response.success && response.data) {
+            const serverData = response.data;
+            setPreferences({
+              cookiesEssential: true, // 始终为 true
+              cookiesFunctional: serverData.cookiesFunctional ?? true,
+              cookiesAnalytics: serverData.cookiesAnalytics ?? true,
+              cookiesMarketing: serverData.cookiesMarketing ?? false,
+              dataCollection: serverData.dataCollection ?? true,
+              dataAnalytics: serverData.dataAnalytics ?? true,
+              dataPersonalization: serverData.dataPersonalization ?? false,
+              marketingEmails: serverData.marketingEmails ?? false,
+              marketingSms: serverData.marketingSms ?? false,
+              marketingPush: serverData.marketingPush ?? false,
+              thirdPartySharing: serverData.thirdPartySharing ?? false,
+            });
+          }
+        } catch (e) {
+          console.error('Failed to load privacy preferences from server:', e);
+          // 如果服务器获取失败，尝试从 localStorage 加载
+          loadFromLocalStorage();
+        }
+      } else {
+        // 用户未登录，从 localStorage 加载
+        loadFromLocalStorage();
       }
-    }
+      setInitialLoading(false);
+    };
+
+    const loadFromLocalStorage = () => {
+      const saved = localStorage.getItem('privacyPreferences');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          setPreferences(prev => ({ ...prev, ...parsed }));
+        } catch (e) {
+          console.error('Failed to load privacy preferences from localStorage:', e);
+        }
+      }
+    };
+
+    loadPreferences();
   }, []);
 
   // 处理偏好设置变更
@@ -331,11 +375,28 @@ const PrivacyPreferencesContent = () => {
   const handleSave = async () => {
     setLoading(true);
     try {
-      // 保存到 localStorage
+      // 始终保存到 localStorage（作为备份）
       localStorage.setItem('privacyPreferences', JSON.stringify(preferences));
       
-      // 这里可以添加 API 调用来保存到服务器
-      // await api.savePrivacyPreferences(preferences);
+      // 如果用户已登录，同时保存到服务器
+      if (isLoggedIn) {
+        const response = await base.updatePrivacyPreferences({
+          cookiesFunctional: preferences.cookiesFunctional,
+          cookiesAnalytics: preferences.cookiesAnalytics,
+          cookiesMarketing: preferences.cookiesMarketing,
+          dataCollection: preferences.dataCollection,
+          dataAnalytics: preferences.dataAnalytics,
+          dataPersonalization: preferences.dataPersonalization,
+          marketingEmails: preferences.marketingEmails,
+          marketingSms: preferences.marketingSms,
+          marketingPush: preferences.marketingPush,
+          thirdPartySharing: preferences.thirdPartySharing,
+        });
+        
+        if (!response.success) {
+          throw new Error(response.message || '保存失败');
+        }
+      }
       
       message.success(intl.formatMessage({ 
         id: 'privacyPreferences.saveSuccess', 
@@ -354,6 +415,22 @@ const PrivacyPreferencesContent = () => {
       setLoading(false);
     }
   };
+
+  // 加载状态显示
+  if (initialLoading) {
+    return (
+      <PageLayout $token={token}>
+        <SimpleHeader />
+        <ContentContainer
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}
+        >
+          <Spin indicator={<LoadingOutlined style={{ fontSize: 32, color: token.colorPrimary }} spin />} />
+        </ContentContainer>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout $token={token}>
@@ -660,10 +737,16 @@ const PrivacyPreferencesContent = () => {
           <InfoBox $token={token}>
             <InfoCircleOutlined className="info-icon" />
             <div className="info-content">
-              {intl.formatMessage({ 
-                id: 'privacyPreferences.info', 
-                defaultMessage: '您的隐私偏好设置将保存在本地，并会在您下次访问时自动应用。您随时可以返回此页面修改这些设置。' 
-              })}
+              {isLoggedIn 
+                ? intl.formatMessage({ 
+                    id: 'privacyPreferences.info.loggedIn', 
+                    defaultMessage: '您的隐私偏好设置将保存到您的账户中，并在所有设备上同步。您随时可以返回此页面修改这些设置。' 
+                  })
+                : intl.formatMessage({ 
+                    id: 'privacyPreferences.info', 
+                    defaultMessage: '您的隐私偏好设置将保存在本地，并会在您下次访问时自动应用。登录后可将设置同步到云端。' 
+                  })
+              }
             </div>
           </InfoBox>
         </PreferencesCard>

@@ -93,5 +93,74 @@ export const base = {
         message: error.response?.data?.message || '获取实名认证配置失败'
       };
     }
+  },
+
+  // 获取用户隐私偏好设置
+  getPrivacyPreferences: async () => {
+    try {
+      const { data } = await axios.get('/productx/user-privacy-preferences/get');
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取隐私偏好设置失败'
+      };
+    }
+  },
+
+  // 更新用户隐私偏好设置
+  updatePrivacyPreferences: async (preferences) => {
+    try {
+      const { data } = await axios.post('/productx/user-privacy-preferences/update', preferences);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '保存隐私偏好设置失败'
+      };
+    }
+  },
+
+  // 提交职位申请
+  submitJobApplication: async (formData) => {
+    try {
+      const { data } = await axios.post('/base/productx/job-application/submit', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '申请提交失败'
+      };
+    }
+  },
+
+  // 获取我的申请记录
+  getMyApplications: async () => {
+    try {
+      const { data } = await axios.get('/productx/job-application/my-applications');
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取申请记录失败'
+      };
+    }
+  },
+
+  // 根据国家代码获取支持的登录方式
+  getLoginMethodsByCountry: async (countryCode) => {
+    try {
+      const { data } = await axios.get(`/base/country-login-methods/country/${countryCode}`);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取登录方式失败'
+      };
+    }
   }
 }; 

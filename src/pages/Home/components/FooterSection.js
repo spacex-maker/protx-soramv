@@ -7,7 +7,8 @@ import {
   GithubOutlined,
   TwitterOutlined,
   WeiboOutlined,
-  MailOutlined
+  MailOutlined,
+  TeamOutlined
 } from '@ant-design/icons';
 import { ContentWrapper } from '../styles';
 
@@ -122,10 +123,25 @@ const Copyright = styled.div`
 `;
 
 const BrandSection = styled.div`
+  p {
+    color: ${props => props.theme.mode === 'dark' ? '#86868b' : '#6e6e73'};
+    font-size: 14px;
+    line-height: 1.6;
+    max-width: 280px;
+  }
+`;
+
+const BrandHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  
   h3 {
     font-size: 24px;
     font-weight: 700;
-    margin-bottom: 16px;
+    margin: 0;
     background: ${props => props.theme.mode === 'dark'
       ? 'linear-gradient(135deg, #fff 0%, #86868b 100%)'
       : 'linear-gradient(135deg, #1d1d1f 0%, #6e6e73 100%)'};
@@ -133,12 +149,64 @@ const BrandSection = styled.div`
     -webkit-text-fill-color: transparent;
     letter-spacing: -0.02em;
   }
+`;
+
+const JoinUsButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: ${props => props.theme.mode === 'dark' ? '#fff' : '#fff'};
+  background: ${props => props.theme.mode === 'dark'
+    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+    : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'};
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  box-shadow: ${props => props.theme.mode === 'dark'
+    ? '0 2px 8px rgba(102, 126, 234, 0.3)'
+    : '0 2px 8px rgba(99, 102, 241, 0.25)'};
   
-  p {
-    color: ${props => props.theme.mode === 'dark' ? '#86868b' : '#6e6e73'};
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  
+  &:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: ${props => props.theme.mode === 'dark'
+      ? '0 6px 20px rgba(102, 126, 234, 0.4)'
+      : '0 6px 20px rgba(99, 102, 241, 0.35)'};
+    
+    &::before {
+      opacity: 1;
+    }
+  }
+  
+  &:active {
+    transform: translateY(0) scale(0.98);
+  }
+  
+  .icon {
     font-size: 14px;
-    line-height: 1.6;
-    max-width: 280px;
+    transition: transform 0.3s ease;
+  }
+  
+  &:hover .icon {
+    transform: scale(1.1);
   }
 `;
 
@@ -156,7 +224,17 @@ const FooterSectionComponent = () => {
           {/* 品牌介绍 */}
           <Col xs={24} sm={12} md={6}>
             <BrandSection theme={theme}>
-              <h3>Sora MV</h3>
+              <BrandHeader theme={theme}>
+                <h3>Sora MV</h3>
+                <JoinUsButton 
+                  theme={theme}
+                  onClick={() => navigate('/join-us')}
+                  aria-label={intl.formatMessage({ id: 'footer.joinUs', defaultMessage: '加入我们' })}
+                >
+                  <TeamOutlined className="icon" />
+                  {intl.formatMessage({ id: 'footer.joinUs', defaultMessage: '加入我们' })}
+                </JoinUsButton>
+              </BrandHeader>
               <p>
                 {intl.formatMessage({ id: 'footer.brand.description', defaultMessage: 'AI 驱动的视频生成平台，使用 Sora 技术将您的创意转化为惊艳的视频作品。' })}
               </p>

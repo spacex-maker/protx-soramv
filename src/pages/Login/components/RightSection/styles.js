@@ -48,7 +48,31 @@ const SOCIAL_COLORS = {
   phone: {
     color: '#52C41A',
     hoverColor: '#389E0D'
+  },
+  phone_sms: {
+    color: '#52C41A',
+    hoverColor: '#389E0D'
+  },
+  email: {
+    color: '#1890FF',
+    hoverColor: '#096DD9'
+  },
+  password: {
+    color: '#722ED1',
+    hoverColor: '#531DAB'
   }
+};
+
+// 默认颜色配置
+const DEFAULT_SOCIAL_COLOR = {
+  color: '#666666',
+  hoverColor: '#444444'
+};
+
+// 获取社交媒体颜色，如果不存在则返回默认值
+const getSocialColor = (type, property) => {
+  const colorConfig = SOCIAL_COLORS[type] || DEFAULT_SOCIAL_COLOR;
+  return colorConfig[property];
 };
 
 export const RightSectionWrapper = styled.div`
@@ -351,7 +375,7 @@ export const SocialButton = styled.button`
   height: 40px;
   border-radius: 50%;
   border: none;
-  background: ${props => props.socialType ? SOCIAL_COLORS[props.socialType].color : 'transparent'};
+  background: ${props => getSocialColor(props.socialType, 'color')};
   color: white;
   display: flex;
   align-items: center;
@@ -369,7 +393,7 @@ export const SocialButton = styled.button`
   }
 
   &:hover {
-    background: ${props => props.socialType ? SOCIAL_COLORS[props.socialType].hoverColor : 'transparent'};
+    background: ${props => getSocialColor(props.socialType, 'hoverColor')};
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   }

@@ -84,5 +84,49 @@ export const auth = {
   // 刷新 token
   refreshToken: () => {
     return axios.post('/auth/refresh-token');
+  },
+
+  // 获取谷歌登录授权URL
+  getGoogleAuthUrl: async () => {
+    try {
+      const { data } = await axios.get('/base/productx/auth/google/auth-url');
+      return data;
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.message || '获取谷歌授权URL失败' 
+      };
+    }
+  },
+
+  // 处理谷歌登录回调
+  handleGoogleAuth: async ({ code, redirectUri, state }) => {
+    try {
+      const { data } = await axios.post('/base/productx/auth/google/handle-auth', {
+        code,
+        redirectUri,
+        state
+      });
+      
+      if (data.success) {
+        const token = data.data;
+        localStorage.setItem('token', token);
+        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        
+        // 登录成功后立即获取用户信息
+        const userInfoResult = await auth.getUserInfo();
+        if (!userInfoResult.success) {
+          return { success: false, message: '获取用户信息失败' };
+        }
+        
+        return { success: true };
+      }
+      return data;
+    } catch (error) {
+      return { 
+        success: false, 
+        message: error.response?.data?.message || '谷歌登录失败' 
+      };
+    }
   }
 }; 

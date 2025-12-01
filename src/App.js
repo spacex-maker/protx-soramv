@@ -39,6 +39,7 @@ import StorageNodes from './pages/Workspace/StorageNodes';
 import UnderDevelopmentPage from './pages/UnderDevelopment';
 import TermsOfServicePage from './pages/TermsOfService';
 import PrivacyPolicyPage from './pages/PrivacyPolicy';
+import GoogleCallback from './pages/GoogleCallback';
 
 // 语言配置映射
 const localeMap = {
@@ -258,6 +259,7 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/auth/google/callback" element={<GoogleCallback />} />
               <Route path="/workspace" element={
                 <PrivateRoute>
                   <CloudDrivePage />
@@ -314,6 +316,7 @@ export default function App() {
               <Route path="/feedback" element={<FeedbackPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/about" element={<AboutPage />} />
+              <Route path="/join-us" element={<JoinUs />} />
               <Route path="/works" element={
                 <PrivateRoute>
                   <WorksPage />
