@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import styled, { keyframes, css } from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
+import { FormattedMessage, useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
 import instance from "api/axios"; // 假设您的 axios 实例
 import { 
@@ -255,6 +256,7 @@ const PaginationWrapper = styled.div`
 
 const InviteSystem = () => {
   const { token } = theme.useToken();
+  const intl = useIntl();
   
   // 状态管理
   const [loading, setLoading] = useState(true);
@@ -324,18 +326,18 @@ const InviteSystem = () => {
   // 操作处理
   const handleCopy = (text) => {
     navigator.clipboard.writeText(text);
-    message.success("复制成功");
+    message.success(intl.formatMessage({ id: 'invite.copy.success' }));
   };
 
   const handleWithdraw = async () => {
-    if (withdrawAmount <= 0) return message.warning("请输入提现金额");
-    if (withdrawAmount > inviteData.stats.availableReward) return message.error("余额不足");
+    if (withdrawAmount <= 0) return message.warning(intl.formatMessage({ id: 'invite.withdraw.enterAmount' }));
+    if (withdrawAmount > inviteData.stats.availableReward) return message.error(intl.formatMessage({ id: 'invite.withdraw.insufficientBalance' }));
 
     setWithdrawLoading(true);
     // 模拟提现 API
     await new Promise(r => setTimeout(r, 1000));
     
-    message.success(`成功提现 ¥${withdrawAmount} 到余额`);
+    message.success(intl.formatMessage({ id: 'invite.withdraw.success' }, { amount: withdrawAmount }));
     setInviteData(prev => ({
       ...prev,
       stats: {
@@ -376,12 +378,12 @@ const InviteSystem = () => {
           <LeftPanel $token={token}>
             <div>
               <Tag color="gold" style={{ border: 'none', background: 'rgba(255,255,255,0.2)', color: 'white', marginBottom: 16 }}>
-                <TrophyFilled style={{ marginRight: 6 }} /> 合作伙伴计划
+                <TrophyFilled style={{ marginRight: 6 }} /> <FormattedMessage id="invite.partnerProgram" />
               </Tag>
-              <h1>邀请好友<br/>共创无限价值</h1>
+              <h1><FormattedMessage id="invite.title.line1" /><br/><FormattedMessage id="invite.title.line2" /></h1>
               <p style={{ marginTop: 16 }}>
-                每邀请一位好友，您将获得 <b>¥20</b> 现金奖励。<br/>
-                好友注册即送 <b>¥10</b> 新人礼包。
+                <FormattedMessage id="invite.reward.inviter" values={{ amount: <b>¥20</b> }} /><br/>
+                <FormattedMessage id="invite.reward.invitee" values={{ amount: <b>¥10</b> }} />
               </p>
             </div>
 
@@ -389,22 +391,22 @@ const InviteSystem = () => {
               <StepItem>
                 <div className="step-icon"><UserAddOutlined /></div>
                 <div className="step-content">
-                  <h4>1. 分享链接</h4>
-                  <span>通过微信、社群分享专属链接</span>
+                  <h4><FormattedMessage id="invite.step1.title" /></h4>
+                  <span><FormattedMessage id="invite.step1.desc" /></span>
                 </div>
               </StepItem>
               <StepItem>
                 <div className="step-icon"><ThunderboltFilled /></div>
                 <div className="step-content">
-                  <h4>2. 好友激活</h4>
-                  <span>好友完成注册并验证手机号</span>
+                  <h4><FormattedMessage id="invite.step2.title" /></h4>
+                  <span><FormattedMessage id="invite.step2.desc" /></span>
                 </div>
               </StepItem>
               <StepItem>
                 <div className="step-icon"><WalletOutlined /></div>
                 <div className="step-content">
-                  <h4>3. 提现收益</h4>
-                  <span>收益实时到账，可提现至余额</span>
+                  <h4><FormattedMessage id="invite.step3.title" /></h4>
+                  <span><FormattedMessage id="invite.step3.desc" /></span>
                 </div>
               </StepItem>
             </RewardSteps>
@@ -416,14 +418,14 @@ const InviteSystem = () => {
             {/* 1. 邀请码区域 */}
             <TicketBox $token={token}>
               <div style={{ fontSize: 12, color: token.colorTextTertiary, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 700 }}>
-                YOUR EXCLUSIVE CODE
+                <FormattedMessage id="invite.exclusiveCode" />
               </div>
               <div className="code">{inviteData.code}</div>
               <div className="actions">
                 <Button type="primary" size="large" icon={<CopyOutlined />} onClick={() => handleCopy(inviteData.code)}>
-                  复制邀请码
+                  <FormattedMessage id="invite.copyCode" />
                 </Button>
-                <Tooltip title="查看二维码">
+                <Tooltip title={intl.formatMessage({ id: 'invite.viewQrcode' })}>
                   <Button size="large" icon={<QrcodeOutlined />} onClick={() => setQrVisible(true)} />
                 </Tooltip>
               </div>
@@ -433,40 +435,40 @@ const InviteSystem = () => {
             <StatsBar $token={token}>
               <div className="stat-item">
                 <div className="val">{inviteData.stats.totalInvites}</div>
-                <div className="lbl">累计邀请</div>
+                <div className="lbl"><FormattedMessage id="invite.stats.totalInvites" /></div>
               </div>
               <div className="stat-item">
                 <div className="val" style={{ color: token.colorSuccess }}>
                   ¥{inviteData.stats.availableReward.toFixed(2)}
                 </div>
-                <div className="lbl">可提现金额</div>
+                <div className="lbl"><FormattedMessage id="invite.stats.availableReward" /></div>
                 <Button 
                   type="link" 
                   size="small" 
                   style={{ padding: 0, height: 'auto', marginTop: 4 }}
                   onClick={() => setWithdrawVisible(true)}
                 >
-                  立即提现
+                  <FormattedMessage id="invite.withdrawNow" />
                 </Button>
               </div>
               <div className="stat-item">
                 <div className="val" style={{ color: token.colorTextTertiary }}>¥{inviteData.stats.totalReward}</div>
-                <div className="lbl">历史总收益</div>
+                <div className="lbl"><FormattedMessage id="invite.stats.totalReward" /></div>
               </div>
             </StatsBar>
 
             {/* 3. 邀请记录 (带筛选和分页) */}
             <ListHeader $token={token}>
-              <h3>邀请记录</h3>
+              <h3><FormattedMessage id="invite.history.title" /></h3>
               <div style={{ display: 'flex', gap: 8 }}>
                 <Select 
                   defaultValue="all" 
                   size="small"
                   style={{ width: 100 }}
                   options={[
-                    { value: 'all', label: '全部' },
-                    { value: 'active', label: '已激活' },
-                    { value: 'pending', label: '待激活' },
+                    { value: 'all', label: intl.formatMessage({ id: 'invite.filter.all' }) },
+                    { value: 'active', label: intl.formatMessage({ id: 'invite.filter.active' }) },
+                    { value: 'pending', label: intl.formatMessage({ id: 'invite.filter.pending' }) },
                   ]}
                   onChange={setStatusFilter}
                 />
@@ -497,14 +499,14 @@ const InviteSystem = () => {
                         <>
                           <div className="amount">+¥{item.reward.toFixed(2)}</div>
                           <div className="status" style={{ color: token.colorSuccess }}>
-                            <CheckCircleFilled style={{ fontSize: 10, marginRight: 4 }} />已入账
+                            <CheckCircleFilled style={{ fontSize: 10, marginRight: 4 }} /><FormattedMessage id="invite.status.credited" />
                           </div>
                         </>
                       ) : (
                         <>
                           <div className="amount" style={{ color: token.colorTextDisabled }}>--</div>
                           <div className="status" style={{ color: token.colorWarning }}>
-                            <ClockCircleFilled style={{ fontSize: 10, marginRight: 4 }} />待激活
+                            <ClockCircleFilled style={{ fontSize: 10, marginRight: 4 }} /><FormattedMessage id="invite.status.pending" />
                           </div>
                         </>
                       )}
@@ -512,7 +514,7 @@ const InviteSystem = () => {
                   </UserRow>
                 ))
               ) : (
-                <Empty description="暂无记录" style={{ margin: '40px 0' }} />
+                <Empty description={intl.formatMessage({ id: 'invite.history.empty' })} style={{ margin: '40px 0' }} />
               )}
             </div>
 
@@ -535,13 +537,13 @@ const InviteSystem = () => {
       
       {/* 1. 提现弹窗 */}
       <Modal
-        title="提现收益"
+        title={intl.formatMessage({ id: 'invite.withdraw.title' })}
         open={withdrawVisible}
         onCancel={() => setWithdrawVisible(false)}
         footer={[
-          <Button key="back" onClick={() => setWithdrawVisible(false)}>取消</Button>,
+          <Button key="back" onClick={() => setWithdrawVisible(false)}><FormattedMessage id="invite.withdraw.cancel" /></Button>,
           <Button key="submit" type="primary" loading={withdrawLoading} onClick={handleWithdraw}>
-            确认提现
+            <FormattedMessage id="invite.withdraw.confirm" />
           </Button>,
         ]}
         centered
@@ -549,12 +551,12 @@ const InviteSystem = () => {
       >
         <div style={{ paddingTop: 16 }}>
           <div style={{ marginBottom: 16, background: token.colorFillQuaternary, padding: 16, borderRadius: 12, textAlign: 'center' }}>
-            <div style={{ fontSize: 13, color: token.colorTextSecondary }}>可提现金额</div>
+            <div style={{ fontSize: 13, color: token.colorTextSecondary }}><FormattedMessage id="invite.stats.availableReward" /></div>
             <div style={{ fontSize: 24, fontWeight: 700, color: token.colorPrimary }}>
               ¥{inviteData.stats.availableReward.toFixed(2)}
             </div>
           </div>
-          <div style={{ marginBottom: 8 }}>提现金额</div>
+          <div style={{ marginBottom: 8 }}><FormattedMessage id="invite.withdraw.amount" /></div>
           <InputNumber
             style={{ width: '100%' }}
             size="large"
@@ -565,7 +567,7 @@ const InviteSystem = () => {
             onChange={setWithdrawAmount}
           />
           <div style={{ marginTop: 12, fontSize: 12, color: token.colorTextTertiary }}>
-            * 提现金额将直接转入您的账户余额，可用于消费。
+            <FormattedMessage id="invite.withdraw.note" />
           </div>
         </div>
       </Modal>
@@ -579,7 +581,7 @@ const InviteSystem = () => {
         width={320}
       >
         <div style={{ textAlign: 'center', padding: '24px 0 8px' }}>
-          <h3 style={{ marginBottom: 24 }}>扫码加入</h3>
+          <h3 style={{ marginBottom: 24 }}><FormattedMessage id="invite.qrcode.title" /></h3>
           <div style={{ 
             background: '#fff', padding: 16, borderRadius: 16, display: 'inline-block',
             boxShadow: '0 4px 12px rgba(0,0,0,0.1)', border: `1px solid ${token.colorBorderSecondary}`
@@ -587,7 +589,7 @@ const InviteSystem = () => {
             <QrcodeOutlined style={{ fontSize: 160, color: '#000' }} />
           </div>
           <Button type="text" icon={<CopyOutlined />} style={{ marginTop: 16 }} onClick={() => handleCopy(inviteData.link)}>
-            复制链接
+            <FormattedMessage id="invite.copyLink" />
           </Button>
         </div>
       </Modal>

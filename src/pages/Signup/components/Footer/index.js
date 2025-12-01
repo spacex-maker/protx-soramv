@@ -1,12 +1,13 @@
 import React from 'react';
-import { FormattedMessage } from 'react-intl';
+import { useIntl } from 'react-intl';
 import { FooterWrapper, Copyright, PhilosophyQuoteWrapper, PoweredByWrapper } from './styles';
 
 export const Footer = () => {
+  const intl = useIntl();
   return (
     <FooterWrapper>
       <PhilosophyQuote>
-        技术应是为人民服务
+        {intl.formatMessage({ id: 'common.philosophy' })}
       </PhilosophyQuote>
       <PoweredBy>
         Powered by ProTX

@@ -228,7 +228,7 @@ const SignupPage = () => {
           handleSubmit={handleSubmit}
         />
         <PhilosophyQuote>
-          技术应是为人民服务
+          {intl.formatMessage({ id: 'common.philosophy' })}
         </PhilosophyQuote>
         <PoweredBy>
           © 2024 ProTX Team. All rights reserved.
