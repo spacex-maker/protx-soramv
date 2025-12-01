@@ -1,5 +1,6 @@
-import React, { useRef, useEffect } from 'react';
-import { Button, Spin, Empty, Pagination, Tooltip } from 'antd';
+import React, { useRef } from 'react';
+import { Button, Spin, Empty, Pagination, Tooltip, Modal, message } from 'antd';
+import instance from 'api/axios';
 import { 
   ReloadOutlined, 
   SyncOutlined, 
@@ -297,6 +298,7 @@ interface HistorySectionProps {
   onRefresh: () => void;
   onPageChange: (page: number, pageSize: number) => void;
   onTaskClick: (taskId: number) => void;
+  onTaskDeleted?: (taskId: number) => void;
   getStatusText?: (status: number) => string;
 }
 
@@ -307,6 +309,7 @@ interface HistoryCardProps {
   onTaskClick: (taskId: number) => void;
   onDownload: (e: React.MouseEvent, url: string, id: string) => void;
   onCopyPrompt: (e: React.MouseEvent, prompt: string) => void;
+  onDelete: (e: React.MouseEvent, taskId: number) => void;
   onVideoError: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
   onVideoAbort: (e: React.SyntheticEvent<HTMLVideoElement>) => void;
   renderCardContent: (task: any, videoRef?: React.RefObject<HTMLVideoElement | null>) => React.ReactNode;
@@ -319,6 +322,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
   onTaskClick,
   onDownload,
   onCopyPrompt,
+  onDelete,
   onVideoError,
   onVideoAbort,
   renderCardContent,
@@ -365,7 +369,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
           </Tooltip>
         )}
         <Tooltip title="删除">
-          <ActionBtn className="delete" onClick={(e) => { e.stopPropagation(); }}>
+          <ActionBtn className="delete" onClick={(e) => onDelete(e, task.id)}>
             <DeleteOutlined />
           </ActionBtn>
         </Tooltip>
@@ -418,8 +422,35 @@ const HistorySection: React.FC<HistorySectionProps> = ({
   onRefresh,
   onPageChange,
   onTaskClick,
+  onTaskDeleted,
 }) => {
   const intl = useIntl();
+  
+  const handleDelete = async (e: React.MouseEvent, taskId: number) => {
+    e.stopPropagation();
+    
+    Modal.confirm({
+      title: intl.formatMessage({ id: 'create.history.deleteConfirm.title', defaultMessage: '确认删除' }),
+      content: intl.formatMessage({ id: 'create.history.deleteConfirm.content', defaultMessage: '确定要删除这个任务吗？删除后将无法恢复。' }),
+      okText: intl.formatMessage({ id: 'common.confirm', defaultMessage: '确定' }),
+      cancelText: intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' }),
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          const response = await instance.delete(`/productx/sa-ai-gen-task/${taskId}`);
+          if (response.data?.success) {
+            message.success(intl.formatMessage({ id: 'create.history.deleteSuccess', defaultMessage: '删除成功' }));
+            onTaskDeleted?.(taskId);
+            onRefresh();
+          } else {
+            message.error(response.data?.message || intl.formatMessage({ id: 'create.history.deleteFailed', defaultMessage: '删除失败' }));
+          }
+        } catch (error: any) {
+          message.error(error.response?.data?.message || intl.formatMessage({ id: 'create.history.deleteFailed', defaultMessage: '删除失败' }));
+        }
+      },
+    });
+  };
   
   const handleDownload = (e: React.MouseEvent, url: string, id: string) => {
     e.stopPropagation();
@@ -560,6 +591,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                   onTaskClick={onTaskClick}
                   onDownload={handleDownload}
                   onCopyPrompt={handleCopyPrompt}
+                  onDelete={handleDelete}
                   onVideoError={handleVideoError}
                   onVideoAbort={handleVideoAbort}
                   renderCardContent={renderCardContent}

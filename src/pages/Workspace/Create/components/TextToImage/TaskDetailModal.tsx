@@ -16,17 +16,28 @@ import {
   ColumnWidthOutlined,
   ExpandOutlined,
   HeartOutlined,
+  HeartFilled,
   StarOutlined,
+  StarFilled,
   ShareAltOutlined,
   FieldNumberOutlined,
   ThunderboltOutlined,
   FileJpgOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 import styled, { keyframes } from 'styled-components';
 import { FormattedMessage, useIntl } from 'react-intl';
 import instance from 'api/axios';
 import { TaskDetail, TaskOutputFile } from './types';
+import {
+  likeModel,
+  unlikeModel,
+  favoriteModel,
+  unfavoriteModel,
+  getInteractionStatus,
+  ModelInteractionResponse,
+} from 'api/modelInteraction';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -516,6 +527,29 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
   // 图片信息缓存：fileId -> ImageInfo
   const [imageInfoMap, setImageInfoMap] = useState<Record<number, ImageInfo>>({});
 
+  // 点赞收藏状态
+  const [isLiked, setIsLiked] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [favoritesCount, setFavoritesCount] = useState(0);
+  const [likeLoading, setLikeLoading] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+
+  // 获取模型交互状态
+  const fetchInteractionStatus = useCallback(async (modelId: number) => {
+    try {
+      const response = await getInteractionStatus(modelId);
+      setIsLiked(response.isLiked);
+      setIsFavorited(response.isFavorited);
+      setLikesCount(response.likesCount);
+      setFavoritesCount(response.favoritesCount);
+    } catch (error) {
+      // 未登录或其他错误，使用默认值
+      setIsLiked(false);
+      setIsFavorited(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (open && taskId) {
       fetchTaskDetail();
@@ -526,6 +560,60 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
       setImageInfoMap({});
     }
   }, [open, taskId]);
+
+  // 当任务加载完成后获取模型交互状态
+  useEffect(() => {
+    if (taskDetail?.model?.id) {
+      fetchInteractionStatus(taskDetail.model.id);
+    }
+  }, [taskDetail?.model?.id, fetchInteractionStatus]);
+
+  const handleLike = async () => {
+    if (!taskDetail?.model?.id || likeLoading) return;
+    setLikeLoading(true);
+    try {
+      let response: ModelInteractionResponse;
+      if (isLiked) {
+        response = await unlikeModel(taskDetail.model.id);
+        message.success(intl.formatMessage({ id: 'create.model.unliked', defaultMessage: '已取消喜欢' }));
+      } else {
+        response = await likeModel(taskDetail.model.id);
+        message.success(intl.formatMessage({ id: 'create.model.liked', defaultMessage: '已喜欢' }));
+      }
+      setIsLiked(response.isLiked);
+      setLikesCount(response.likesCount);
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '操作失败' }));
+    } finally {
+      setLikeLoading(false);
+    }
+  };
+
+  const handleFavorite = async () => {
+    if (!taskDetail?.model?.id || favoriteLoading) return;
+    setFavoriteLoading(true);
+    try {
+      let response: ModelInteractionResponse;
+      if (isFavorited) {
+        response = await unfavoriteModel(taskDetail.model.id);
+        message.success(intl.formatMessage({ id: 'create.model.unfavorited', defaultMessage: '已取消收藏' }));
+      } else {
+        response = await favoriteModel(taskDetail.model.id);
+        message.success(intl.formatMessage({ id: 'create.model.favorited', defaultMessage: '已收藏' }));
+      }
+      setIsFavorited(response.isFavorited);
+      setFavoritesCount(response.favoritesCount);
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '操作失败' }));
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    message.success(intl.formatMessage({ id: 'create.model.linkCopied', defaultMessage: '链接已复制' }));
+  };
 
   // 加载图片信息
   const loadImageInfo = useCallback(async (file: TaskOutputFile) => {
@@ -702,13 +790,24 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
 
                 {/* 底部操作栏 (右下角) */}
                 <ActionBar>
-                    <ActionButton onClick={() => message.success(intl.formatMessage({ id: 'create.taskDetail.liked' }))}>
-                        <HeartOutlined /> <FormattedMessage id="create.taskDetail.like" />
-                    </ActionButton>
-                    <ActionButton onClick={() => message.success(intl.formatMessage({ id: 'create.taskDetail.collected' }))}>
-                        <StarOutlined /> <FormattedMessage id="create.taskDetail.collect" />
-                    </ActionButton>
-                    <ActionButton onClick={() => message.info(intl.formatMessage({ id: 'create.taskDetail.linkCopied' }))}>
+                    {/* 点赞 */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <ActionButton onClick={handleLike} disabled={likeLoading} style={isLiked ? { background: 'rgba(255,77,79,0.3)', borderColor: '#ff4d4f' } : {}}>
+                        {likeLoading ? <LoadingOutlined /> : (isLiked ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />)}
+                        <FormattedMessage id="create.taskDetail.like" />
+                      </ActionButton>
+                      {likesCount > 0 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{likesCount}</span>}
+                    </div>
+                    {/* 收藏 */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <ActionButton onClick={handleFavorite} disabled={favoriteLoading} style={isFavorited ? { background: 'rgba(250,173,20,0.3)', borderColor: '#faad14' } : {}}>
+                        {favoriteLoading ? <LoadingOutlined /> : (isFavorited ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />)}
+                        <FormattedMessage id="create.taskDetail.collect" />
+                      </ActionButton>
+                      {favoritesCount > 0 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{favoritesCount}</span>}
+                    </div>
+                    {/* 分享 */}
+                    <ActionButton onClick={handleShare}>
                         <ShareAltOutlined /> <FormattedMessage id="create.taskDetail.share" />
                     </ActionButton>
                     {taskDetail.outputFiles && taskDetail.outputFiles.length > 0 && (

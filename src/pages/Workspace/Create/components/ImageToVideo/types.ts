@@ -32,6 +32,9 @@ export interface Model {
   tokenCost: number | null; // 视频每秒token消耗或图片生成每张消耗
   videoSupportStyle: string | null; // 视频支持风格枚举（以逗号分隔，如 "fun,normal,spicy"）
   videoQuality: string | null; // 视频质量枚举（以逗号分隔，如 "standard,high"）
+  likesCount?: number; // 点赞总数
+  favoritesCount?: number; // 收藏总数
+  coverImage?: string | null; // 封面图
 }
 
 // 生成任务记录类型
@@ -109,6 +112,8 @@ export interface TaskDetailModel {
   supportVideoEdit: boolean;
   supportCharacterConsistency: boolean;
   supportReference: boolean;
+  likesCount?: number;
+  favoritesCount?: number;
 }
 
 export interface TaskDetail {

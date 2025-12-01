@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Modal, Typography, Tag, Spin, message, Button, Tooltip, Space, Divider } from 'antd';
 import {
   CloseOutlined,
@@ -14,12 +14,26 @@ import {
   CodeFilled,
   CalendarOutlined,
   FileImageOutlined,
-  VideoCameraOutlined
+  VideoCameraOutlined,
+  HeartOutlined,
+  HeartFilled,
+  StarOutlined,
+  StarFilled,
+  ShareAltOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 import styled, { css, keyframes } from 'styled-components';
 import { useIntl } from 'react-intl';
 import instance from 'api/axios';
 import dayjs from 'dayjs';
+import {
+  likeModel,
+  unlikeModel,
+  favoriteModel,
+  unfavoriteModel,
+  getInteractionStatus,
+  ModelInteractionResponse,
+} from 'api/modelInteraction';
 
 // ==========================================
 // 1. 样式系统
@@ -399,13 +413,90 @@ interface TaskDetailModalProps {
 const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId }) => {
   const intl = useIntl();
   const [loading, setLoading] = useState(false);
-  const [task, setTask] = useState<any | null>(null); 
+  const [task, setTask] = useState<any | null>(null);
+  
+  // 点赞收藏状态
+  const [isLiked, setIsLiked] = useState(false);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [favoritesCount, setFavoritesCount] = useState(0);
+  const [likeLoading, setLikeLoading] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+
+  // 获取模型交互状态
+  const fetchInteractionStatus = useCallback(async (modelId: number) => {
+    try {
+      const response = await getInteractionStatus(modelId);
+      setIsLiked(response.isLiked);
+      setIsFavorited(response.isFavorited);
+      setLikesCount(response.likesCount);
+      setFavoritesCount(response.favoritesCount);
+    } catch (error) {
+      // 未登录或其他错误，使用默认值
+      setIsLiked(false);
+      setIsFavorited(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (open && taskId) {
       fetchDetail();
     }
   }, [open, taskId]);
+
+  // 当任务加载完成后获取模型交互状态
+  useEffect(() => {
+    if (task?.model?.id) {
+      fetchInteractionStatus(task.model.id);
+    }
+  }, [task?.model?.id, fetchInteractionStatus]);
+
+  const handleLike = async () => {
+    if (!task?.model?.id || likeLoading) return;
+    setLikeLoading(true);
+    try {
+      let response: ModelInteractionResponse;
+      if (isLiked) {
+        response = await unlikeModel(task.model.id);
+        message.success(intl.formatMessage({ id: 'create.model.unliked', defaultMessage: '已取消喜欢' }));
+      } else {
+        response = await likeModel(task.model.id);
+        message.success(intl.formatMessage({ id: 'create.model.liked', defaultMessage: '已喜欢' }));
+      }
+      setIsLiked(response.isLiked);
+      setLikesCount(response.likesCount);
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '操作失败' }));
+    } finally {
+      setLikeLoading(false);
+    }
+  };
+
+  const handleFavorite = async () => {
+    if (!task?.model?.id || favoriteLoading) return;
+    setFavoriteLoading(true);
+    try {
+      let response: ModelInteractionResponse;
+      if (isFavorited) {
+        response = await unfavoriteModel(task.model.id);
+        message.success(intl.formatMessage({ id: 'create.model.unfavorited', defaultMessage: '已取消收藏' }));
+      } else {
+        response = await favoriteModel(task.model.id);
+        message.success(intl.formatMessage({ id: 'create.model.favorited', defaultMessage: '已收藏' }));
+      }
+      setIsFavorited(response.isFavorited);
+      setFavoritesCount(response.favoritesCount);
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '操作失败' }));
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    message.success(intl.formatMessage({ id: 'create.model.linkCopied', defaultMessage: '链接已复制' }));
+  };
 
   const fetchDetail = async () => {
     if (!taskId) return;
@@ -533,14 +624,36 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
           </TitleArea>
 
           <ActionArea>
+            {/* 点赞 */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <Tooltip title={intl.formatMessage({ id: 'create.model.like', defaultMessage: '喜欢' })}>
+                <GlassButton onClick={handleLike} disabled={likeLoading} style={isLiked ? { background: 'rgba(255,77,79,0.3)', borderColor: '#ff4d4f' } : {}}>
+                  {likeLoading ? <LoadingOutlined /> : (isLiked ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />)}
+                </GlassButton>
+              </Tooltip>
+              {likesCount > 0 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{likesCount}</span>}
+            </div>
+            {/* 收藏 */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <Tooltip title={intl.formatMessage({ id: 'create.model.favorite', defaultMessage: '收藏' })}>
+                <GlassButton onClick={handleFavorite} disabled={favoriteLoading} style={isFavorited ? { background: 'rgba(250,173,20,0.3)', borderColor: '#faad14' } : {}}>
+                  {favoriteLoading ? <LoadingOutlined /> : (isFavorited ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />)}
+                </GlassButton>
+              </Tooltip>
+              {favoritesCount > 0 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{favoritesCount}</span>}
+            </div>
+            {/* 分享 */}
+            <Tooltip title={intl.formatMessage({ id: 'create.model.share', defaultMessage: '分享' })}>
+              <GlassButton onClick={handleShare}>
+                <ShareAltOutlined />
+              </GlassButton>
+            </Tooltip>
+            {/* 下载 */}
             {hasOutputVideo && (
               <GlassButton $primary onClick={handleDownload}>
                 <DownloadOutlined /> {intl.formatMessage({ id: 'create.taskDetail.download', defaultMessage: '下载' })}
               </GlassButton>
             )}
-            <GlassButton onClick={() => message.info(intl.formatMessage({ id: 'create.taskDetail.feature.developing', defaultMessage: '功能开发中' }))}>
-              <SyncOutlined /> {intl.formatMessage({ id: 'create.taskDetail.regenerate', defaultMessage: '再次生成' })}
-            </GlassButton>
           </ActionArea>
         </HeroContent>
       </HeroSection>

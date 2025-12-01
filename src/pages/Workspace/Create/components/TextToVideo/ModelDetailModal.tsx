@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Tag, Typography, message, Tooltip, Button } from 'antd';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Tag, Typography, message, Tooltip, Button, Spin } from 'antd';
 import {
   CheckCircleOutlined,
   CheckOutlined,
@@ -21,6 +21,7 @@ import {
   ClockCircleOutlined,
   CameraOutlined,
   FileImageOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 import styled, { css } from 'styled-components';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -28,6 +29,14 @@ import { Model } from './types';
 import { getModelAspectRatios } from './utils';
 import { getAspectRatioOption } from './utils';
 import { normalizeUrl, isVideoUrl } from './utils';
+import {
+  likeModel,
+  unlikeModel,
+  favoriteModel,
+  unfavoriteModel,
+  getInteractionStatus,
+  ModelInteractionResponse,
+} from 'api/modelInteraction';
 
 const { Text, Paragraph } = Typography;
 
@@ -294,6 +303,28 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
   const intl = useIntl();
   const [isLiked, setIsLiked] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
+  const [favoritesCount, setFavoritesCount] = useState(0);
+  const [likeLoading, setLikeLoading] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+
+  // 获取交互状态
+  const fetchInteractionStatus = useCallback(async () => {
+    if (!model?.id) return;
+    try {
+      const response = await getInteractionStatus(model.id);
+      setIsLiked(response.isLiked);
+      setIsFavorited(response.isFavorited);
+      setLikesCount(response.likesCount);
+      setFavoritesCount(response.favoritesCount);
+    } catch (error) {
+      // 未登录或其他错误，使用默认值
+      setIsLiked(false);
+      setIsFavorited(false);
+      setLikesCount((model as any).likesCount || 0);
+      setFavoritesCount((model as any).favoritesCount || 0);
+    }
+  }, [model?.id]);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -302,21 +333,55 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
     if (open) {
       document.addEventListener('keydown', handleEscape);
       document.body.style.overflow = 'hidden';
+      // 获取交互状态
+      fetchInteractionStatus();
     }
     return () => {
       document.removeEventListener('keydown', handleEscape);
       document.body.style.overflow = '';
     };
-  }, [open, onClose]);
+  }, [open, onClose, fetchInteractionStatus]);
 
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    message.success(intl.formatMessage({ id: isLiked ? 'create.model.unliked' : 'create.model.liked', defaultMessage: isLiked ? '已取消喜欢' : '已喜欢' }));
+  const handleLike = async () => {
+    if (!model?.id || likeLoading) return;
+    setLikeLoading(true);
+    try {
+      let response: ModelInteractionResponse;
+      if (isLiked) {
+        response = await unlikeModel(model.id);
+        message.success(intl.formatMessage({ id: 'create.model.unliked', defaultMessage: '已取消喜欢' }));
+      } else {
+        response = await likeModel(model.id);
+        message.success(intl.formatMessage({ id: 'create.model.liked', defaultMessage: '已喜欢' }));
+      }
+      setIsLiked(response.isLiked);
+      setLikesCount(response.likesCount);
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '操作失败，请稍后重试' }));
+    } finally {
+      setLikeLoading(false);
+    }
   };
 
-  const handleFavorite = () => {
-    setIsFavorited(!isFavorited);
-    message.success(intl.formatMessage({ id: isFavorited ? 'create.model.unfavorited' : 'create.model.favorited', defaultMessage: isFavorited ? '已取消收藏' : '已收藏' }));
+  const handleFavorite = async () => {
+    if (!model?.id || favoriteLoading) return;
+    setFavoriteLoading(true);
+    try {
+      let response: ModelInteractionResponse;
+      if (isFavorited) {
+        response = await unfavoriteModel(model.id);
+        message.success(intl.formatMessage({ id: 'create.model.unfavorited', defaultMessage: '已取消收藏' }));
+      } else {
+        response = await favoriteModel(model.id);
+        message.success(intl.formatMessage({ id: 'create.model.favorited', defaultMessage: '已收藏' }));
+      }
+      setIsFavorited(response.isFavorited);
+      setFavoritesCount(response.favoritesCount);
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '操作失败，请稍后重试' }));
+    } finally {
+      setFavoriteLoading(false);
+    }
   };
 
   const handleShare = () => {
@@ -396,29 +461,40 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
 
             {/* 操作栏 */}
             <ActionBar>
-              <Tooltip title={intl.formatMessage({ id: 'create.model.like', defaultMessage: 'Like' })}>
-                <Button 
-                  shape="circle" 
-                  size="large" 
-                  type={isLiked ? "primary" : "default"} 
-                  danger={isLiked}
-                  icon={isLiked ? <HeartFilled /> : <HeartOutlined />} 
-                  onClick={handleLike} 
-                />
-              </Tooltip>
-              <Tooltip title={intl.formatMessage({ id: 'create.model.favorite', defaultMessage: 'Favorite' })}>
-                <Button 
-                  shape="circle" 
-                  size="large" 
-                  type={isFavorited ? "primary" : "default"} 
-                  icon={isFavorited ? <StarFilled /> : <StarOutlined />} 
-                  onClick={handleFavorite}
-                  style={isFavorited ? { backgroundColor: '#faad14', borderColor: '#faad14' } : {}}
-                />
-              </Tooltip>
-              <Tooltip title={intl.formatMessage({ id: 'create.model.share', defaultMessage: 'Share' })}>
-                <Button shape="circle" size="large" icon={<ShareAltOutlined />} onClick={handleShare} />
-              </Tooltip>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <Tooltip title={intl.formatMessage({ id: 'create.model.like', defaultMessage: 'Like' })}>
+                  <Button 
+                    shape="circle" 
+                    size="large" 
+                    type={isLiked ? "primary" : "default"} 
+                    danger={isLiked}
+                    icon={likeLoading ? <LoadingOutlined /> : (isLiked ? <HeartFilled /> : <HeartOutlined />)} 
+                    onClick={handleLike}
+                    disabled={likeLoading}
+                  />
+                </Tooltip>
+                <span style={{ fontSize: 12, color: '#999', minHeight: 18 }}>{likesCount > 0 ? likesCount : ''}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <Tooltip title={intl.formatMessage({ id: 'create.model.favorite', defaultMessage: 'Favorite' })}>
+                  <Button 
+                    shape="circle" 
+                    size="large" 
+                    type={isFavorited ? "primary" : "default"} 
+                    icon={favoriteLoading ? <LoadingOutlined /> : (isFavorited ? <StarFilled /> : <StarOutlined />)} 
+                    onClick={handleFavorite}
+                    disabled={favoriteLoading}
+                    style={isFavorited ? { backgroundColor: '#faad14', borderColor: '#faad14' } : {}}
+                  />
+                </Tooltip>
+                <span style={{ fontSize: 12, color: '#999', minHeight: 18 }}>{favoritesCount > 0 ? favoritesCount : ''}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <Tooltip title={intl.formatMessage({ id: 'create.model.share', defaultMessage: 'Share' })}>
+                  <Button shape="circle" size="large" icon={<ShareAltOutlined />} onClick={handleShare} />
+                </Tooltip>
+                <span style={{ fontSize: 12, color: 'transparent', minHeight: 18 }}>&nbsp;</span>
+              </div>
             </ActionBar>
 
             {/* 描述文本 */}

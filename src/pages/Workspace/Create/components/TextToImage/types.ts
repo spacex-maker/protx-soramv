@@ -91,6 +91,8 @@ export interface TaskDetailModel {
   supportInpaint: boolean;
   modelLevel: number;
   parentModelCode: string;
+  likesCount?: number;
+  favoritesCount?: number;
 }
 
 export interface TaskDetail {
