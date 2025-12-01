@@ -1,6 +1,7 @@
 import React, { useRef } from "react";
 import styled, { createGlobalStyle, css } from "styled-components";
 import { motion, useScroll, useTransform, useInView } from "framer-motion";
+import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
 import FooterSection from "./Home/components/FooterSection";
 import { Button, ConfigProvider, theme, Space, Tag } from "antd";
@@ -420,6 +421,7 @@ const AboutContent = () => {
   const { token } = theme.useToken();
   const { scrollY } = useScroll();
   const heroY = useTransform(scrollY, [0, 1000], [0, 300]);
+  const intl = useIntl();
 
   const techStackItems = [
     "Stable Diffusion XL", "ComfyUI Nodes", "ControlNet", "IP-Adapter", 
@@ -442,12 +444,12 @@ const AboutContent = () => {
           transition={{ duration: 1, ease: "easeOut" }}
         >
           <HeroTitle>
-            <GradientText>开源内核。</GradientText><br />
-            <span style={{ color: '#fff' }}>无限可能。</span>
+            <GradientText>{intl.formatMessage({ id: 'about.hero.title1', defaultMessage: '开源内核。' })}</GradientText><br />
+            <span style={{ color: '#fff' }}>{intl.formatMessage({ id: 'about.hero.title2', defaultMessage: '无限可能。' })}</span>
           </HeroTitle>
           <HeroSubtitle>
-            基于 <span className="tech-tag">Stable Diffusion</span> 与 <span className="tech-tag">ComfyUI</span> 生态。<br/>
-            我们将最前沿的 2025 生成式 AI 技术栈，封装进极致的交互体验中。
+            {intl.formatMessage({ id: 'about.hero.subtitle1', defaultMessage: '基于' })} <span className="tech-tag">Stable Diffusion</span> {intl.formatMessage({ id: 'about.hero.subtitle2', defaultMessage: '与' })} <span className="tech-tag">ComfyUI</span> {intl.formatMessage({ id: 'about.hero.subtitle3', defaultMessage: '生态。' })}<br/>
+            {intl.formatMessage({ id: 'about.hero.description', defaultMessage: '我们将最前沿的 2025 生成式 AI 技术栈，封装进极致的交互体验中。' })}
           </HeroSubtitle>
         </HeroContent>
       </HeroContainer>
@@ -456,7 +458,7 @@ const AboutContent = () => {
       <TechStackBar>
         <TechText>
           {techStackItems.map((item, i) => (
-            <span key={i}>Powered by <b>{item}</b></span>
+            <span key={i}>{intl.formatMessage({ id: 'about.tech.poweredBy', defaultMessage: 'Powered by' })} <b>{item}</b></span>
           ))}
         </TechText>
       </TechStackBar>
@@ -469,8 +471,8 @@ const AboutContent = () => {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <h2>不仅仅是生成。<br/>这是全流程的<span style={{color: '#fff'}}>创造力引擎。</span></h2>
-          <p>从文生图的精准控制，到视频生成的物理模拟，我们追求技术的极限。</p>
+          <h2>{intl.formatMessage({ id: 'about.philosophy.title1', defaultMessage: '不仅仅是生成。' })}<br/>{intl.formatMessage({ id: 'about.philosophy.title2', defaultMessage: '这是全流程的' })}<span style={{color: '#fff'}}>{intl.formatMessage({ id: 'about.philosophy.title3', defaultMessage: '创造力引擎。' })}</span></h2>
+          <p>{intl.formatMessage({ id: 'about.philosophy.description', defaultMessage: '从文生图的精准控制，到视频生成的物理模拟，我们追求技术的极限。' })}</p>
         </SectionHeader>
 
         <BentoGrid>
@@ -479,8 +481,8 @@ const AboutContent = () => {
             <div className="overlay" />
             <div className="content">
               <div className="tag"><ApiOutlined /> ComfyUI Workflow</div>
-              <h3>节点级精准控制。</h3>
-              <p>底层采用 ComfyUI 节点式架构，支持 ControlNet 姿态控制、IP-Adapter 风格迁移。我们把复杂的节点逻辑封装为直觉化的滑块，让每一次生成都如你所愿。</p>
+              <h3>{intl.formatMessage({ id: 'about.bento.comfy.title', defaultMessage: '节点级精准控制。' })}</h3>
+              <p>{intl.formatMessage({ id: 'about.bento.comfy.description', defaultMessage: '底层采用 ComfyUI 节点式架构，支持 ControlNet 姿态控制、IP-Adapter 风格迁移。我们把复杂的节点逻辑封装为直觉化的滑块，让每一次生成都如你所愿。' })}</p>
             </div>
           </BentoCard>
 
@@ -489,8 +491,8 @@ const AboutContent = () => {
             <div className="overlay" />
             <div className="content">
               <div className="tag"><BranchesOutlined /> Open Source</div>
-              <h3>拥抱开源生态。</h3>
-              <p>基于 Stable Diffusion 3.5 & XL Turbo。不仅生成速度飞快，更拥有社区海量 LoRA 模型支持。</p>
+              <h3>{intl.formatMessage({ id: 'about.bento.opensource.title', defaultMessage: '拥抱开源生态。' })}</h3>
+              <p>{intl.formatMessage({ id: 'about.bento.opensource.description', defaultMessage: '基于 Stable Diffusion 3.5 & XL Turbo。不仅生成速度飞快，更拥有社区海量 LoRA 模型支持。' })}</p>
             </div>
           </BentoCard>
 
@@ -499,8 +501,8 @@ const AboutContent = () => {
             <div className="overlay" />
             <div className="content">
               <div className="tag">2025 Tech Stack</div>
-              <h3>DiT 视频架构。</h3>
-              <p>引入 Diffusion Transformer (DiT) 与时空注意力机制，实现 SORA 级别的物理世界模拟。</p>
+              <h3>{intl.formatMessage({ id: 'about.bento.video.title', defaultMessage: 'DiT 视频架构。' })}</h3>
+              <p>{intl.formatMessage({ id: 'about.bento.video.description', defaultMessage: '引入 Diffusion Transformer (DiT) 与时空注意力机制，实现 SORA 级别的物理世界模拟。' })}</p>
             </div>
           </BentoCard>
 
@@ -509,8 +511,8 @@ const AboutContent = () => {
             <div className="overlay" />
             <div className="content">
               <div className="tag">Multi-Modal</div>
-              <h3>音画同步，感官觉醒。</h3>
-              <p>不仅仅是视觉。集成最新的音频生成模型，支持 Text-to-Audio 与视频画面的自动对齐。从视觉到听觉，构建完整的沉浸式体验。</p>
+              <h3>{intl.formatMessage({ id: 'about.bento.audio.title', defaultMessage: '音画同步，感官觉醒。' })}</h3>
+              <p>{intl.formatMessage({ id: 'about.bento.audio.description', defaultMessage: '不仅仅是视觉。集成最新的音频生成模型，支持 Text-to-Audio 与视频画面的自动对齐。从视觉到听觉，构建完整的沉浸式体验。' })}</p>
             </div>
           </BentoCard>
         </BentoGrid>
@@ -519,8 +521,8 @@ const AboutContent = () => {
       {/* 4. 深度技术解析 (Vertical Stack) */}
       <TechSection>
         <SectionHeader style={{ maxWidth: 1000, margin: '0 auto 100px', textAlign: 'center' }}>
-          <h2>技术架构解析。</h2>
-          <p>深入了解驱动 ProductX 的核心引擎。</p>
+          <h2>{intl.formatMessage({ id: 'about.techSection.title', defaultMessage: '技术架构解析。' })}</h2>
+          <p>{intl.formatMessage({ id: 'about.techSection.description', defaultMessage: '深入了解驱动 ProductX 的核心引擎。' })}</p>
         </SectionHeader>
 
         <TechCard
@@ -531,26 +533,26 @@ const AboutContent = () => {
         >
           <TechVisual $bg={images.scopeSD} />
           <TechInfo>
-            <h3>生成式绘画的基石。</h3>
+            <h3>{intl.formatMessage({ id: 'about.techCard.sd.title', defaultMessage: '生成式绘画的基石。' })}</h3>
             <p className="desc">
-              我们深度集成了 Stable Diffusion 最新的生成模型。通过自定义的 VAE 和优化的采样器（Sampler），我们在保证画质细腻的同时，将生成速度提升了 300%。
+              {intl.formatMessage({ id: 'about.techCard.sd.description', defaultMessage: '我们深度集成了 Stable Diffusion 最新的生成模型。通过自定义的 VAE 和优化的采样器（Sampler），我们在保证画质细腻的同时，将生成速度提升了 300%。' })}
             </p>
             <div className="specs">
               <div className="spec-item">
-                <h4>Base Model</h4>
+                <h4>{intl.formatMessage({ id: 'about.techCard.spec.baseModel', defaultMessage: 'Base Model' })}</h4>
                 <span>SDXL Turbo / SD 3.5</span>
               </div>
               <div className="spec-item">
-                <h4>Resolution</h4>
-                <span>Up to 4K Upscaling</span>
+                <h4>{intl.formatMessage({ id: 'about.techCard.spec.resolution', defaultMessage: 'Resolution' })}</h4>
+                <span>{intl.formatMessage({ id: 'about.techCard.spec.resolution.value', defaultMessage: 'Up to 4K Upscaling' })}</span>
               </div>
               <div className="spec-item">
-                <h4>Control</h4>
+                <h4>{intl.formatMessage({ id: 'about.techCard.spec.control', defaultMessage: 'Control' })}</h4>
                 <span>Multi-ControlNet</span>
               </div>
               <div className="spec-item">
-                <h4>Speed</h4>
-                <span>&lt; 1s (Turbo Mode)</span>
+                <h4>{intl.formatMessage({ id: 'about.techCard.spec.speed', defaultMessage: 'Speed' })}</h4>
+                <span>{intl.formatMessage({ id: 'about.techCard.spec.speed.value', defaultMessage: '< 1s (Turbo Mode)' })}</span>
               </div>
             </div>
           </TechInfo>
@@ -564,26 +566,26 @@ const AboutContent = () => {
         >
           <TechVisual $bg={images.scopeVideoGen} />
           <TechInfo>
-            <h3>下一代视频物理引擎。</h3>
+            <h3>{intl.formatMessage({ id: 'about.techCard.video.title', defaultMessage: '下一代视频物理引擎。' })}</h3>
             <p className="desc">
-              摒弃传统的 2D 动画逻辑，采用 2025 最新的 DiT (Diffusion Transformer) 架构。模型理解光影、重力与物体运动规律，生成的不仅仅是视频，而是符合物理逻辑的动态世界。
+              {intl.formatMessage({ id: 'about.techCard.video.description', defaultMessage: '摒弃传统的 2D 动画逻辑，采用 2025 最新的 DiT (Diffusion Transformer) 架构。模型理解光影、重力与物体运动规律，生成的不仅仅是视频，而是符合物理逻辑的动态世界。' })}
             </p>
             <div className="specs">
               <div className="spec-item">
-                <h4>Architecture</h4>
+                <h4>{intl.formatMessage({ id: 'about.techCard.spec.architecture', defaultMessage: 'Architecture' })}</h4>
                 <span>DiT + Spatio-Temporal</span>
               </div>
               <div className="spec-item">
-                <h4>Frame Rate</h4>
-                <span>24 / 60 FPS Interpolation</span>
+                <h4>{intl.formatMessage({ id: 'about.techCard.spec.frameRate', defaultMessage: 'Frame Rate' })}</h4>
+                <span>{intl.formatMessage({ id: 'about.techCard.spec.frameRate.value', defaultMessage: '24 / 60 FPS Interpolation' })}</span>
               </div>
               <div className="spec-item">
-                <h4>Consistency</h4>
-                <span>High Temporal Stability</span>
+                <h4>{intl.formatMessage({ id: 'about.techCard.spec.consistency', defaultMessage: 'Consistency' })}</h4>
+                <span>{intl.formatMessage({ id: 'about.techCard.spec.consistency.value', defaultMessage: 'High Temporal Stability' })}</span>
               </div>
               <div className="spec-item">
-                <h4>Length</h4>
-                <span>Infinite Loop Extension</span>
+                <h4>{intl.formatMessage({ id: 'about.techCard.spec.length', defaultMessage: 'Length' })}</h4>
+                <span>{intl.formatMessage({ id: 'about.techCard.spec.length.value', defaultMessage: 'Infinite Loop Extension' })}</span>
               </div>
             </div>
           </TechInfo>
@@ -597,18 +599,18 @@ const AboutContent = () => {
         >
           <TechVisual $bg={images.scopeImg2Img} />
           <TechInfo>
-            <h3>图生图与风格迁移。</h3>
+            <h3>{intl.formatMessage({ id: 'about.techCard.img2img.title', defaultMessage: '图生图与风格迁移。' })}</h3>
             <p className="desc">
-              利用 IP-Adapter 和 T2I-Adapter 技术，我们实现了零样本（Zero-shot）风格迁移。上传一张参考图，即可瞬间复刻其构图、光影与艺术风格，让创意无限裂变。
+              {intl.formatMessage({ id: 'about.techCard.img2img.description', defaultMessage: '利用 IP-Adapter 和 T2I-Adapter 技术，我们实现了零样本（Zero-shot）风格迁移。上传一张参考图，即可瞬间复刻其构图、光影与艺术风格，让创意无限裂变。' })}
             </p>
             <div className="specs">
               <div className="spec-item">
-                <h4>Technology</h4>
+                <h4>{intl.formatMessage({ id: 'about.techCard.spec.technology', defaultMessage: 'Technology' })}</h4>
                 <span>IP-Adapter Plus</span>
               </div>
               <div className="spec-item">
-                <h4>Precision</h4>
-                <span>Pixel-Perfect Inpainting</span>
+                <h4>{intl.formatMessage({ id: 'about.techCard.spec.precision', defaultMessage: 'Precision' })}</h4>
+                <span>{intl.formatMessage({ id: 'about.techCard.spec.precision.value', defaultMessage: 'Pixel-Perfect Inpainting' })}</span>
               </div>
             </div>
           </TechInfo>
@@ -623,14 +625,14 @@ const AboutContent = () => {
           transition={{ duration: 0.6 }}
         >
           <h2 style={{ fontSize: 'clamp(40px, 6vw, 64px)', fontWeight: 800, marginBottom: '24px', color: '#fff' }}>
-            准备好体验未来了吗？
+            {intl.formatMessage({ id: 'about.cta.title', defaultMessage: '准备好体验未来了吗？' })}
           </h2>
           <p style={{ fontSize: '20px', color: '#86868b', marginBottom: '48px' }}>
-            加入专业创作者的行列，释放 AI 的极致潜能。
+            {intl.formatMessage({ id: 'about.cta.description', defaultMessage: '加入专业创作者的行列，释放 AI 的极致潜能。' })}
           </p>
           <Space size="large">
             <AppleButton onClick={() => window.location.href = '/signup'}>
-              立即开始
+              {intl.formatMessage({ id: 'about.cta.button.start', defaultMessage: '立即开始' })}
             </AppleButton>
             <Button 
               type="text" 
@@ -638,7 +640,7 @@ const AboutContent = () => {
               style={{ color: '#fff', fontSize: 18 }} 
               onClick={() => window.location.href = '/docs'}
             >
-              阅读技术文档 <RightOutlined />
+              {intl.formatMessage({ id: 'about.cta.button.docs', defaultMessage: '阅读技术文档' })} <RightOutlined />
             </Button>
           </Space>
         </motion.div>
