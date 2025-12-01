@@ -1,17 +1,25 @@
 import axios from 'axios';
 
-// 获取基础URL：本地测试环境使用 localhost:8080，否则使用环境变量或默认值
+// 获取基础URL：根据前端域名判断使用哪个后端
 const getBaseURL = () => {
+  const hostname = window.location.hostname;
+  
   // 判断是否为本地开发环境
-  const isLocalhost = window.location.hostname === 'localhost' || 
-                      window.location.hostname === '127.0.0.1' ||
-                      window.location.hostname === '';
+  const isLocalhost = hostname === 'localhost' || 
+                      hostname === '127.0.0.1' ||
+                      hostname === '';
   
   if (isLocalhost) {
     return process.env.REACT_APP_API_URL || 'http://localhost:8080';
   }
   
-  return process.env.REACT_APP_API_URL || 'https://app.anakkix.cn';
+  // 如果前端域名是 ai2obj.com，使用国际版后端
+  if (hostname.includes('ai2obj.com')) {
+    return 'https://api.ai2obj.com';
+  }
+  
+  // 其他情况（中国用户，anakkix.cn域名），使用中国版后端
+  return 'https://app.anakkix.cn';
 };
 
 // 创建 axios 实例
