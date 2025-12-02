@@ -145,7 +145,8 @@ const SignupPage = () => {
 
     try {
       const response = await axios.post('/base/productx/user/register-send-email', {
-        email
+        email,
+        locale: locale
       });
 
       if (response.data.success) {

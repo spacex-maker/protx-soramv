@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { useIntl } from 'react-intl';
@@ -128,6 +128,7 @@ const CallToActionSection = () => {
   const navigate = useNavigate();
   const intl = useIntl();
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [triggerPoint, setTriggerPoint] = useState({ 
     x: 0, 
     y: 0, 
@@ -138,6 +139,12 @@ const CallToActionSection = () => {
     borderRadius: 0 
   });
   const buttonRef = useRef(null);
+
+  // 检查用户登录状态
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+  }, []);
 
   const handleButtonClick = (e) => {
     e.preventDefault();
@@ -175,7 +182,8 @@ const CallToActionSection = () => {
   const handleTransitionComplete = () => {
     // 延迟跳转，确保动画完全完成
     setTimeout(() => {
-      navigate('/signup');
+      // 根据登录状态跳转到不同页面
+      navigate(isLoggedIn ? '/workspace' : '/signup');
       // 重置状态，以便下次可以再次使用
       setTimeout(() => {
         setIsTransitioning(false);
@@ -227,7 +235,7 @@ const CallToActionSection = () => {
         isActive={isTransitioning}
         buttonRect={triggerPoint}
         onComplete={handleTransitionComplete}
-        targetPath="/signup"
+        targetPath={isLoggedIn ? '/workspace' : '/signup'}
       />
     </>
   );
