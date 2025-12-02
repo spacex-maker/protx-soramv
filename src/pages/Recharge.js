@@ -727,7 +727,7 @@ const RechargeContent = () => {
   const [payMethod, setPayMethod] = useState('');
   const [loading, setLoading] = useState(false);
   const [balanceLoading, setBalanceLoading] = useState(false);
-  const [balance, setBalance] = useState({ cny: 0.00, usdt: 0.00, usd: 0.00 });
+  const [balance, setBalance] = useState({ cny: 0.00, usdt: 0.00, usd: 0.00, token: 0.00 });
   const [username, setUsername] = useState('');
   const [currentOrderNo, setCurrentOrderNo] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
@@ -758,11 +758,12 @@ const RechargeContent = () => {
     try {
       const response = await instance.get('/productx/user/balance');
       if (response.data.success && response.data.data) {
-        const { balance: cnyBalance, usdtAmount, usdBalance } = response.data.data;
+        const { balance: cnyBalance, usdtAmount, usdBalance, tokenBalance } = response.data.data;
         setBalance({ 
           cny: cnyBalance || 0, 
           usdt: usdtAmount || 0,
-          usd: usdBalance || 0
+          usd: usdBalance || 0,
+          token: tokenBalance || 0
         });
       }
     } catch (error) {
