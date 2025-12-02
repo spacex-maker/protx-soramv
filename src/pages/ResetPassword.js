@@ -38,6 +38,24 @@ const floatAnimation = keyframes`
   100% { transform: translateY(0px); }
 `;
 
+const shimmerAnimation = keyframes`
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+`;
+
+const glowAnimation = keyframes`
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(99, 102, 241, 0.4), 
+                0 0 10px rgba(99, 102, 241, 0.2),
+                0 0 20px rgba(99, 102, 241, 0.1);
+  }
+  50% { 
+    box-shadow: 0 0 10px rgba(99, 102, 241, 0.6), 
+                0 0 20px rgba(99, 102, 241, 0.4),
+                0 0 30px rgba(99, 102, 241, 0.2);
+  }
+`;
+
 // ==========================================
 // 2. 样式组件
 // ==========================================
@@ -114,7 +132,7 @@ const AuthCard = styled(motion.div)`
 // 左侧视觉面板
 const LeftPanel = styled.div`
   flex: 1;
-  background: linear-gradient(135deg, ${props => props.$token.colorPrimary} 0%, #6366f1 100%);
+  background: url("https://public-1258150206.cos.ap-nanjing.myqcloud.com/resetpassword.jpg") center center / cover no-repeat;
   padding: 60px;
   display: flex;
   flex-direction: column;
@@ -123,7 +141,7 @@ const LeftPanel = styled.div`
   position: relative;
   overflow: hidden;
 
-  /* 装饰背景 */
+  /* 半透明遮罩层，增强文字可读性 */
   &::before {
     content: '';
     position: absolute;
@@ -131,8 +149,7 @@ const LeftPanel = styled.div`
     left: 0;
     right: 0;
     bottom: 0;
-    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-    opacity: 0.6;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.6) 0%, rgba(139, 92, 246, 0.6) 100%);
   }
 
   @media (max-width: 768px) {
@@ -227,7 +244,7 @@ const StyledInput = styled.input`
   height: 52px;
   padding: 0 16px;
   padding-left: 48px; /* Space for icon */
-  border-radius: 12px;
+  border-radius: 26px;
   border: 1px solid ${props => props.$token.colorBorder};
   background: ${props => props.$token.colorBgLayout};
   color: ${props => props.$token.colorText};
@@ -249,11 +266,15 @@ const StyledInput = styled.input`
 const InputIcon = styled.div`
   position: absolute;
   left: 16px;
-  top: ${props => props.$hasLabel ? '44px' : '16px'}; /* Adjust based on label presence */
+  top: ${props => props.$hasLabel ? 'calc(8px + 14px + 8px + 26px)' : '26px'}; /* label height + margin + half input height */
+  transform: translateY(-50%);
   color: ${props => props.$token.colorTextTertiary};
   font-size: 18px;
   pointer-events: none;
   transition: color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   ${StyledInput}:focus ~ & {
     color: ${props => props.$token.colorPrimary};
@@ -264,24 +285,44 @@ const ActionButton = styled.button`
   position: absolute;
   right: 12px;
   top: ${props => props.$hasLabel ? '38px' : '10px'};
-  height: 32px;
-  padding: 0 12px;
-  border-radius: 8px;
-  border: none;
-  background: ${props => props.$disabled ? 'transparent' : props.$token.colorPrimaryBg};
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  
+  /* 玻璃膜效果 */
+  background: ${props => props.$disabled 
+    ? 'rgba(128, 128, 128, 0.1)' 
+    : 'linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.15) 100%)'};
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  
   color: ${props => props.$disabled ? props.$token.colorTextDisabled : props.$token.colorPrimary};
   font-size: 13px;
   font-weight: 600;
   cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
-  transition: all 0.2s;
+  transition: all 0.3s ease;
+  
+  /* 光晕效果 */
+  ${props => !props.$disabled && !props.$noGlow && css`
+    animation: ${glowAnimation} 2s ease-in-out infinite;
+  `}
 
   &:hover:not(:disabled) {
-    background: ${props => props.$token.colorPrimary};
-    color: white;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%);
+    border-color: rgba(99, 102, 241, 0.5);
+    transform: scale(1.02);
+    box-shadow: 0 0 15px rgba(99, 102, 241, 0.5), 
+                0 0 30px rgba(99, 102, 241, 0.3),
+                0 0 45px rgba(99, 102, 241, 0.1);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
   }
 
   &.sending {
-    animation: ${pulseAnimation} 1.5s infinite;
+    animation: ${pulseAnimation} 1.5s infinite, ${glowAnimation} 1s ease-in-out infinite;
   }
 `;
 
@@ -366,6 +407,57 @@ const SuccessView = styled(motion.div)`
   p {
     color: ${props => props.$token.colorTextSecondary};
     margin-bottom: 32px;
+  }
+`;
+
+const BackToLoginLink = styled(Link)`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-weight: 500;
+  font-size: 14px;
+  position: relative;
+  overflow: hidden;
+  background: ${props => props.$token.colorBgLayout};
+  border: 1px solid ${props => props.$token.colorBorder};
+  color: ${props => props.$token.colorText};
+  transition: all 0.3s ease;
+
+  /* 炫光效果 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.4) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: ${shimmerAnimation} 2.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  &:hover {
+    transform: translateX(-4px);
+    border-color: ${props => props.$token.colorPrimary};
+    color: ${props => props.$token.colorPrimary};
+    box-shadow: 0 4px 12px ${props => props.$token.colorPrimary}20;
+  }
+
+  .anticon {
+    transition: transform 0.3s ease;
+  }
+
+  &:hover .anticon {
+    transform: translateX(-3px);
   }
 `;
 
@@ -466,10 +558,10 @@ const ResetPasswordContent = () => {
         message.success(intl.formatMessage({ id: 'resetPassword.success.codeSent', defaultMessage: '验证码已发送' }));
         setCountdown(60);
       } else {
-        message.error(res.data.message || '发送失败');
+        message.error(res.data.message || intl.formatMessage({ id: 'resetPassword.error.sendFailed', defaultMessage: '发送失败' }));
       }
     } catch (err) {
-      message.error('发送失败，请稍后重试');
+      message.error(intl.formatMessage({ id: 'resetPassword.error.sendFailed', defaultMessage: '发送失败，请稍后重试' }));
     } finally {
       setIsSending(false);
     }
@@ -477,8 +569,8 @@ const ResetPasswordContent = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !code || !password) return message.error('请填写完整信息');
-    if (password.length < 6) return message.error('密码长度至少6位');
+    if (!email || !code || !password) return message.error(intl.formatMessage({ id: 'resetPassword.error.incomplete', defaultMessage: '请填写完整信息' }));
+    if (password.length < 6) return message.error(intl.formatMessage({ id: 'resetPassword.error.passwordLength', defaultMessage: '密码长度至少6位' }));
 
     setLoading(true);
     try {
@@ -486,10 +578,10 @@ const ResetPasswordContent = () => {
       if (res.data.success) {
         setIsSuccess(true);
       } else {
-        message.error(res.data.message || '重置失败');
+        message.error(res.data.message || intl.formatMessage({ id: 'resetPassword.error.resetFailed', defaultMessage: '重置失败' }));
       }
     } catch (err) {
-      message.error('重置失败，请稍后重试');
+      message.error(intl.formatMessage({ id: 'resetPassword.error.resetFailed', defaultMessage: '重置失败，请稍后重试' }));
     } finally {
       setLoading(false);
     }
@@ -500,7 +592,7 @@ const ResetPasswordContent = () => {
   return (
     <PageLayout $token={token}>
       <Helmet>
-        <title>Reset Password - Sora MV</title>
+        <title>{intl.formatMessage({ id: 'resetPassword.page.title', defaultMessage: 'Reset Password - Sora MV' })}</title>
       </Helmet>
 
       <TopRightControls>
@@ -531,8 +623,8 @@ const ResetPasswordContent = () => {
               <SafetyCertificateOutlined />
             </BrandIcon>
             <Quote>
-              <h2>Secure your account,<br/>Protect your creativity.</h2>
-              <p>We implement bank-grade security protocols to ensure your data and creations remain exclusively yours.</p>
+              <h2><FormattedMessage id="resetPassword.promo.title" defaultMessage="Secure your account, Protect your creativity." /></h2>
+              <p><FormattedMessage id="resetPassword.promo.description" defaultMessage="We implement bank-grade security protocols to ensure your data and creations remain exclusively yours." /></p>
             </Quote>
           </LeftPanel>
 
@@ -549,23 +641,23 @@ const ResetPasswordContent = () => {
                 >
                   <FormHeader $token={token}>
                     <div style={{ marginBottom: 16 }}>
-                      <Link to="/login" style={{ color: token.colorTextSecondary, display: 'flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
+                      <BackToLoginLink to="/login" $token={token}>
                         <ArrowLeftOutlined /> <FormattedMessage id="resetPassword.backToLogin" defaultMessage="返回登录" />
-                      </Link>
+                      </BackToLoginLink>
                     </div>
                     <h1><FormattedMessage id="resetPassword.title" defaultMessage="重置密码" /></h1>
                     <p><FormattedMessage id="resetPassword.subtitle" defaultMessage="输入您的邮箱地址和新密码以重置账户访问权限。" /></p>
                   </FormHeader>
 
-                  <Form onSubmit={handleSubmit}>
+                  <Form onSubmit={handleSubmit} autoComplete="off">
                     {/* Email Input */}
                     <InputGroup $token={token} ref={dropdownRef}>
-                      <label>电子邮箱</label>
+                      <label>{intl.formatMessage({ id: 'resetPassword.email.label', defaultMessage: '电子邮箱' })}</label>
                       <StyledInput 
                         $token={token} 
                         value={email}
                         onChange={handleEmailChange}
-                        placeholder="name@example.com" 
+                        placeholder={intl.formatMessage({ id: 'resetPassword.email.placeholder', defaultMessage: 'name@example.com' })} 
                         type="email"
                       />
                       <InputIcon $token={token} $hasLabel><MailOutlined /></InputIcon>
@@ -586,13 +678,14 @@ const ResetPasswordContent = () => {
 
                     {/* Code Input */}
                     <InputGroup $token={token}>
-                      <label>验证码</label>
+                      <label>{intl.formatMessage({ id: 'resetPassword.code.label', defaultMessage: '验证码' })}</label>
                       <StyledInput 
                         $token={token} 
                         value={code}
                         onChange={e => setCode(e.target.value)}
-                        placeholder="6位数字验证码" 
+                        placeholder={intl.formatMessage({ id: 'resetPassword.code.placeholder', defaultMessage: '6位数字验证码' })} 
                         maxLength={6}
+                        autoComplete="off"
                       />
                       <InputIcon $token={token} $hasLabel><SafetyCertificateOutlined /></InputIcon>
                       <ActionButton 
@@ -603,27 +696,39 @@ const ResetPasswordContent = () => {
                         type="button"
                         onClick={handleSendCode}
                       >
-                        {isSending ? '发送中...' : countdown > 0 ? `${countdown}s 后重试` : '发送验证码'}
+                        {isSending 
+                          ? intl.formatMessage({ id: 'resetPassword.sendCode.sending', defaultMessage: '发送中...' }) 
+                          : countdown > 0 
+                            ? intl.formatMessage({ id: 'resetPassword.sendCode.retry', defaultMessage: '{seconds}秒后重试' }, { seconds: countdown })
+                            : intl.formatMessage({ id: 'resetPassword.sendCode', defaultMessage: '发送验证码' })}
                       </ActionButton>
                     </InputGroup>
 
                     {/* Password Input */}
                     <InputGroup $token={token}>
-                      <label>新密码</label>
+                      <label>{intl.formatMessage({ id: 'resetPassword.password.label', defaultMessage: '新密码' })}</label>
                       <StyledInput 
                         $token={token} 
                         type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={e => setPassword(e.target.value)}
-                        placeholder="设置新密码 (至少6位)" 
+                        placeholder={intl.formatMessage({ id: 'resetPassword.password.placeholder', defaultMessage: '设置新密码 (至少6位)' })} 
+                        autoComplete="new-password"
                       />
                       <InputIcon $token={token} $hasLabel><LockOutlined /></InputIcon>
                       <ActionButton 
                         $token={token} 
                         $hasLabel
+                        $noGlow
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        style={{ background: 'transparent', color: token.colorTextSecondary }}
+                        style={{ 
+                          background: 'transparent', 
+                          color: token.colorTextSecondary,
+                          border: 'none',
+                          backdropFilter: 'none',
+                          boxShadow: 'none'
+                        }}
                       >
                         {showPassword ? <EyeInvisibleOutlined /> : <EyeOutlined />}
                       </ActionButton>
@@ -635,7 +740,9 @@ const ResetPasswordContent = () => {
                       disabled={loading}
                       whileTap={{ scale: 0.98 }}
                     >
-                      {loading ? '提交中...' : '确认重置'}
+                      {loading 
+                        ? intl.formatMessage({ id: 'resetPassword.button.loading', defaultMessage: '提交中...' }) 
+                        : intl.formatMessage({ id: 'resetPassword.button', defaultMessage: '确认重置' })}
                     </SubmitButton>
                   </Form>
                 </motion.div>
@@ -647,10 +754,10 @@ const ResetPasswordContent = () => {
                   animate={{ opacity: 1, scale: 1 }}
                 >
                   <div className="icon-box"><CheckCircleFilled /></div>
-                  <h2>重置成功</h2>
-                  <p>您的密码已成功更新，现在可以使用新密码登录了。</p>
+                  <h2><FormattedMessage id="resetPassword.success.title" defaultMessage="重置成功" /></h2>
+                  <p><FormattedMessage id="resetPassword.success.description" defaultMessage="您的密码已成功更新，现在可以使用新密码登录了。" /></p>
                   <SubmitButton $token={token} onClick={() => navigate('/login')}>
-                    立即登录
+                    <FormattedMessage id="resetPassword.goToLogin" defaultMessage="立即登录" />
                   </SubmitButton>
                 </SuccessView>
               )}

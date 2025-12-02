@@ -105,9 +105,7 @@ export const LoginBox = styled.div`
     ? 'transparent' 
     : '#ffffff'};
   border-radius: 1rem;
-  box-shadow: ${props => props.theme.mode === 'dark' 
-    ? 'none' 
-    : '0 4px 24px rgba(0, 0, 0, 0.08)'};
+  box-shadow: none;
   animation: ${fadeInScale} 0.8s ease-out 0.5s both;
 
   @media (max-width: 768px) {

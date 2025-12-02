@@ -203,6 +203,13 @@ const HeroSection = () => {
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [columns, setColumns] = useState([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // 检查用户登录状态
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    setIsLoggedIn(!!token);
+  }, []);
 
   // 保持原有数据获取逻辑
   useEffect(() => {
@@ -300,12 +307,14 @@ const HeroSection = () => {
             <FormattedMessage id="home.hero.description" />
           </Paragraph>
           <Space size="large">
-            <EnterpriseButton size="large" onClick={() => navigate('/signup')}>
-              <FormattedMessage id="home.hero.cta.signup" />
+            <EnterpriseButton size="large" onClick={() => navigate(isLoggedIn ? '/workspace' : '/signup')}>
+              <FormattedMessage id={isLoggedIn ? "home.hero.cta.workspace" : "home.hero.cta.signup"} defaultMessage={isLoggedIn ? "进入工作台" : "免费开始创作"} />
             </EnterpriseButton>
-            <StyledButton size="large" onClick={() => navigate('/login')}>
-              <FormattedMessage id="home.hero.cta.login" />
-            </StyledButton>
+            {!isLoggedIn && (
+              <StyledButton size="large" onClick={() => navigate('/login')}>
+                <FormattedMessage id="home.hero.cta.login" />
+              </StyledButton>
+            )}
           </Space>
         </div>
       </HeroContentWrapper>

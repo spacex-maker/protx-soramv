@@ -56,11 +56,48 @@ const SignupPage = () => {
       try {
         const response = await axios.get('/base/countries/list-all-enable');
         if (response.data.success) {
-          setCountries(response.data.data);
-          // 默认选中中国（如果存在）
-          const china = response.data.data.find(country => country.code === 'CN');
-          if (china) {
-            setCountryCode(china.code);
+          let countriesList = response.data.data;
+          
+          // 语言与首选国家的映射
+          const languageCountryMap = {
+            'en': 'US',  // 英语 -> 美国
+            'zh': 'CN',  // 中文 -> 中国
+            'ja': 'JP',  // 日语 -> 日本
+            'fr': 'FR',  // 法语 -> 法国
+            'de': 'DE',  // 德语 -> 德国
+            'es': 'ES',  // 西班牙语 -> 西班牙
+            'it': 'IT',  // 意大利语 -> 意大利
+            'pt': 'PT',  // 葡萄牙语 -> 葡萄牙
+            'ru': 'RU',  // 俄语 -> 俄罗斯
+            'ko': 'KR',  // 韩语 -> 韩国
+            'ar': 'SA'   // 阿拉伯语 -> 沙特阿拉伯
+          };
+          
+          // 获取当前语言对应的首选国家代码
+          const getPreferredCountryCode = () => {
+            for (const [langPrefix, countryCode] of Object.entries(languageCountryMap)) {
+              if (locale.startsWith(langPrefix)) {
+                return countryCode;
+              }
+            }
+            return 'CN'; // 默认中国
+          };
+          
+          const preferredCountryCode = getPreferredCountryCode();
+          
+          // 将首选国家排在第一位
+          countriesList = countriesList.sort((a, b) => {
+            if (a.code === preferredCountryCode) return -1;
+            if (b.code === preferredCountryCode) return 1;
+            return 0;
+          });
+          
+          setCountries(countriesList);
+          
+          // 默认选中首选国家
+          const preferredCountry = countriesList.find(country => country.code === preferredCountryCode);
+          if (preferredCountry) {
+            setCountryCode(preferredCountry.code);
           }
         }
       } catch (error) {
@@ -70,7 +107,7 @@ const SignupPage = () => {
     };
 
     fetchCountries();
-  }, []);
+  }, [locale]);
 
   const toggleTheme = () => {
     const newIsDark = !isDark;
