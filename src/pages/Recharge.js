@@ -891,6 +891,11 @@ const RechargeContent = () => {
         const products = result.data.map(product => ({
           amount: parseFloat(product.amount),
           productId: product.creemProductId,
+          productName: product.productName,
+          baseToken: product.baseToken || 0,
+          bonusToken: product.bonusToken || 0,
+          totalToken: (product.baseToken || 0) + (product.bonusToken || 0),
+          tag: product.tag,
           product: product,
         }));
         setCreemProducts(products);
@@ -1346,7 +1351,7 @@ const RechargeContent = () => {
                             key={i} 
                             $token={token} 
                             $active={selectedCreemProduct?.productId === product.productId} 
-                            $tag={product.product?.badgeText || ''}
+                            $tag={product.tag || ''}
                             onClick={() => handlePresetClick(product.amount, product)}
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
@@ -1355,11 +1360,22 @@ const RechargeContent = () => {
                               <span className="symbol">{symbol}</span>
                               <span className="num">{product.amount}</span>
                             </div>
-                            {product.product?.badgeText && (
+                            {product.totalToken > 0 && (
                               <span className="bonus-badge">
                                 <GiftFilled style={{ marginRight: 4 }} />
-                                {product.product.badgeText}
+                                {product.totalToken.toLocaleString()} Tokens
+                                {product.bonusToken > 0 && ` (+${product.bonusToken.toLocaleString()})`}
                               </span>
+                            )}
+                            {product.productName && (
+                              <div style={{ 
+                                fontSize: 11, 
+                                color: token.colorTextTertiary, 
+                                marginTop: 4,
+                                fontWeight: 500
+                              }}>
+                                {product.productName}
+                              </div>
                             )}
                           </AmountCard>
                         ))

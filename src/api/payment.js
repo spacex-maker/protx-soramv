@@ -21,7 +21,6 @@ export const payment = {
         // creem 支付特定参数
         ...(params.paymentMethod === 'creem' && {
           creemProductId: params.creemProductId,
-          creemPriceId: params.creemPriceId,
         }),
       });
       return data;
