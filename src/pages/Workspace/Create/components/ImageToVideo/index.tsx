@@ -366,13 +366,13 @@ const ImageToVideo: React.FC = () => {
 
     // 验证文件类型
     if (!file.type.startsWith('image/')) {
-      message.error('请选择图片文件');
+      message.error(intl.formatMessage({ id: 'create.i2v.fileType.error', defaultMessage: '请选择图片文件' }));
       return;
     }
 
     // 验证文件大小（例如限制为10MB）
     if (file.size > 10 * 1024 * 1024) {
-      message.error('图片文件大小不能超过10MB');
+      message.error(intl.formatMessage({ id: 'create.i2v.fileSize.error', defaultMessage: '图片文件大小不能超过10MB' }));
       return;
     }
 
@@ -382,7 +382,7 @@ const ImageToVideo: React.FC = () => {
       setOriginalImageFile(file);
       form.setFieldsValue({ inputFile: file.name });
     } catch (error) {
-      message.error('图片读取失败');
+      message.error(intl.formatMessage({ id: 'create.i2v.fileRead.error', defaultMessage: '图片读取失败' }));
     }
   };
 
@@ -1337,7 +1337,7 @@ const ImageToVideo: React.FC = () => {
                       <FormattedMessage id="create.i2v.upload" defaultMessage="上传参考图片 (起始帧)" />
                     </Space>
                   }
-                  rules={[{ required: true, message: '请上传参考图片' }]}
+                  rules={[{ required: true, message: intl.formatMessage({ id: 'create.i2v.upload.required', defaultMessage: '请上传参考图片' }) }]}
                   style={{ marginBottom: 20, marginTop: 0 }}
                 >
                   {originalImageUrl ? (
@@ -1350,7 +1350,7 @@ const ImageToVideo: React.FC = () => {
                           icon={<DeleteOutlined />}
                           onClick={handleRemoveImage}
                         >
-                          更换图片
+                          <FormattedMessage id="create.i2v.replaceImage" defaultMessage="更换图片" />
                         </Button>
                       </OverlayActions>
                     </InputImageContainer>
@@ -1376,7 +1376,9 @@ const ImageToVideo: React.FC = () => {
                       <UploadText $isDark={isDark}>
                         <FormattedMessage id="create.i2v.upload.click" defaultMessage="点击或拖拽上传" />
                       </UploadText>
-                      <UploadHint $isDark={isDark}>支持 JPG, PNG, WebP</UploadHint>
+                      <UploadHint $isDark={isDark}>
+                        <FormattedMessage id="create.i2v.upload.supportedFormats" defaultMessage="支持 JPG, PNG, WebP" />
+                      </UploadHint>
                     </CustomUploadArea>
                   )}
                 </Form.Item>
@@ -1419,7 +1421,7 @@ const ImageToVideo: React.FC = () => {
                       </Space>
                     </Space>
                   }
-                  rules={[{ required: true, message: '请输入视频运动的引导描述' }]}
+                  rules={[{ required: true, message: intl.formatMessage({ id: 'create.i2v.prompt.required', defaultMessage: '请输入视频运动的引导描述' }) }]}
                   style={{ marginBottom: 20 }}
                 >
                   <TextArea 

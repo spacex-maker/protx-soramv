@@ -362,7 +362,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
     >
       <StatusTag $status={task.status}>
         {task.status === 1 ? <SyncOutlined spin /> : <CloseCircleFilled />}
-        {task.status === 1 ? 'Processing' : 'Failed'}
+        {task.status === 1 ? intl.formatMessage({ id: 'create.history.status.processing', defaultMessage: 'Processing' }) : intl.formatMessage({ id: 'create.history.status.failed', defaultMessage: 'Failed' })}
       </StatusTag>
 
       {hasInputImages && (
@@ -374,20 +374,20 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
 
       <TopActions className="top-actions">
         {task.prompt && (
-          <Tooltip title="复制提示词">
+          <Tooltip title={intl.formatMessage({ id: 'create.history.copyPrompt', defaultMessage: '复制提示词' })}>
             <ActionBtn onClick={(e) => onCopyPrompt(e, task.prompt)}>
               <CopyOutlined />
             </ActionBtn>
           </Tooltip>
         )}
         {task.resultUrls?.[0] && (
-          <Tooltip title="下载">
+          <Tooltip title={intl.formatMessage({ id: 'create.history.download', defaultMessage: '下载' })}>
             <ActionBtn onClick={(e) => onDownload(e, task.resultUrls[0], task.id)}>
               <DownloadOutlined />
             </ActionBtn>
           </Tooltip>
         )}
-        <Tooltip title="删除">
+        <Tooltip title={intl.formatMessage({ id: 'create.history.delete', defaultMessage: '删除' })}>
           <ActionBtn className="delete" onClick={(e) => onDelete(e, task.id)}>
             <DeleteOutlined />
           </ActionBtn>
@@ -513,7 +513,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       return (
         <LoadingPlaceholder>
           <SyncOutlined spin style={{ color: '#3b82f6' }} />
-          <span>生成中...</span>
+          <span>{intl.formatMessage({ id: 'create.history.generating', defaultMessage: '生成中...' })}</span>
         </LoadingPlaceholder>
       );
     }
@@ -522,7 +522,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       return (
         <LoadingPlaceholder>
           <CloseCircleFilled style={{ color: '#ef4444' }} />
-          <span>生成失败</span>
+          <span>{intl.formatMessage({ id: 'create.history.generationFailed', defaultMessage: '生成失败' })}</span>
         </LoadingPlaceholder>
       );
     }
@@ -531,7 +531,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       return (
         <LoadingPlaceholder>
           <FileTextOutlined style={{ fontSize: 24 }} />
-          <span>无预览</span>
+          <span>{intl.formatMessage({ id: 'create.history.noPreview', defaultMessage: '无预览' })}</span>
         </LoadingPlaceholder>
       );
     }
@@ -577,7 +577,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
     <Container>
       <Header>
         <TitleArea>
-          <h3>历史记录</h3>
+          <h3>{intl.formatMessage({ id: 'create.history.title', defaultMessage: '历史记录' })}</h3>
           <span className="count-badge">{historyPagination.total}</span>
         </TitleArea>
         <Button 
@@ -587,7 +587,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
           loading={historyLoading}
           style={{ borderRadius: '8px' }}
         >
-          刷新
+          {intl.formatMessage({ id: 'create.history.refresh', defaultMessage: '刷新' })}
         </Button>
       </Header>
 
@@ -631,7 +631,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
       ) : (
         <Empty 
           image={Empty.PRESENTED_IMAGE_SIMPLE} 
-          description={<span style={{ color: '#999' }}>暂无历史记录</span>} 
+          description={<span style={{ color: '#999' }}>{intl.formatMessage({ id: 'create.history.empty', defaultMessage: '暂无历史记录' })}</span>} 
           style={{ margin: '80px 0' }}
         />
       )}

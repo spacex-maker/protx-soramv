@@ -606,7 +606,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
         <HeroContent>
           <TitleArea>
             <GradientTitle>
-              {task.modelName || '未命名任务'}
+              {task.modelName || intl.formatMessage({ id: 'create.taskDetail.unnamedTask', defaultMessage: '未命名任务' })}
               {renderStatus(task.status)}
             </GradientTitle>
             <div className="meta-row">
@@ -662,7 +662,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
       {hasOutputVideo && (
         <ResultSection id="result-video-section">
           <SectionLabel>
-            <PlayCircleFilled style={{color: '#2997ff'}}/> {intl.formatMessage({ id: 'create.taskDetail.result', defaultMessage: '生成结果' })} / Result
+            <PlayCircleFilled style={{color: '#2997ff'}}/> {intl.formatMessage({ id: 'create.taskDetail.result', defaultMessage: '生成结果' })}
           </SectionLabel>
           <VideoPlayerBox>
             <video 
@@ -681,7 +681,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
         {hasPrompt && (
           <div>
             <PromptBox>
-              <h3><ThunderboltFilled /> Prompt / 提示词</h3>
+              <h3><ThunderboltFilled /> {intl.formatMessage({ id: 'create.taskDetail.prompt.title', defaultMessage: 'Prompt / 提示词' })}</h3>
               <div className="prompt-text">
                 {task.prompt}
               </div>

@@ -454,7 +454,7 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
                 <PriceTag>
                   <DollarOutlined />
                   {model.tokenCost} Token
-                  <span style={{ fontSize: 10, opacity: 0.8, fontWeight: 400 }}>/ sec</span>
+                  <span style={{ fontSize: 10, opacity: 0.8, fontWeight: 400 }}>{intl.formatMessage({ id: 'create.model.price.perSecond', defaultMessage: '/ sec' })}</span>
                 </PriceTag>
               )}
             </MetaRow>
@@ -518,31 +518,31 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
           </SectionTitle>
           <FeatureList>
             <FeatureTag>
-              <CheckOutlined /> T2V (Text to Video)
+              <CheckOutlined /> {intl.formatMessage({ id: 'create.model.capability.t2v', defaultMessage: 'T2V (Text to Video)' })}
             </FeatureTag>
             {model.supportImg2video && (
               <FeatureTag>
-                <CheckOutlined /> Img2Video
+                <CheckOutlined /> {intl.formatMessage({ id: 'create.model.capability.img2video', defaultMessage: 'Img2Video' })}
               </FeatureTag>
             )}
             {model.supportVideoEdit && (
               <FeatureTag>
-                <CheckOutlined /> Video Edit
+                <CheckOutlined /> {intl.formatMessage({ id: 'create.model.capability.videoEdit', defaultMessage: 'Video Edit' })}
               </FeatureTag>
             )}
             {model.supportCharacterConsistency && (
               <FeatureTag>
-                <CheckOutlined /> Character Consistency
+                <CheckOutlined /> {intl.formatMessage({ id: 'create.model.capability.characterConsistency', defaultMessage: 'Character Consistency' })}
               </FeatureTag>
             )}
             {model.supportReference && (
               <FeatureTag>
-                <CheckOutlined /> Reference
+                <CheckOutlined /> {intl.formatMessage({ id: 'create.model.capability.reference', defaultMessage: 'Reference' })}
               </FeatureTag>
             )}
             {model.supportCameraMotion && (
               <FeatureTag>
-                <CheckOutlined /> Camera Motion
+                <CheckOutlined /> {intl.formatMessage({ id: 'create.model.capability.cameraMotion', defaultMessage: 'Camera Motion' })}
               </FeatureTag>
             )}
           </FeatureList>
@@ -553,7 +553,7 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
             {aspectRatios.length > 0 && (
               <InfoCard>
                 <BorderOutlined className="card-icon" />
-                <span className="card-title">Aspect Ratios</span>
+                <span className="card-title">{intl.formatMessage({ id: 'create.model.aspectRatios', defaultMessage: 'Aspect Ratios' })}</span>
                 <div className="card-content" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {aspectRatios.slice(0, 3).map((ratio) => {
                     const ratioOption = getAspectRatioOption(ratio, intl);
@@ -575,10 +575,10 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
             {(model.videoDefaultResolution || model.videoMaxResolution) && (
               <InfoCard>
                 <DesktopOutlined className="card-icon" />
-                <span className="card-title">Resolution</span>
+                <span className="card-title">{intl.formatMessage({ id: 'create.model.resolution', defaultMessage: 'Resolution' })}</span>
                 <div className="card-content">
-                  {model.videoDefaultResolution && <div>Default: {model.videoDefaultResolution}</div>}
-                  {model.videoMaxResolution && <div style={{ fontSize: 12, opacity: 0.7 }}>Max: {model.videoMaxResolution}</div>}
+                  {model.videoDefaultResolution && <div>{intl.formatMessage({ id: 'create.model.resolution.default', defaultMessage: 'Default' })}: {model.videoDefaultResolution}</div>}
+                  {model.videoMaxResolution && <div style={{ fontSize: 12, opacity: 0.7 }}>{intl.formatMessage({ id: 'create.model.resolution.max', defaultMessage: 'Max' })}: {model.videoMaxResolution}</div>}
                 </div>
               </InfoCard>
             )}
@@ -587,9 +587,9 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
             {model.videoDuration && (
               <InfoCard>
                 <ClockCircleOutlined className="card-icon" />
-                <span className="card-title">Duration</span>
+                <span className="card-title">{intl.formatMessage({ id: 'create.model.duration', defaultMessage: 'Duration' })}</span>
                 <div className="card-content">
-                  Max: {model.videoDuration}s
+                  {intl.formatMessage({ id: 'create.model.resolution.max', defaultMessage: 'Max' })}: {model.videoDuration}s
                 </div>
               </InfoCard>
             )}
@@ -598,7 +598,7 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
             {model.videoFormats && (
               <InfoCard>
                 <FileImageOutlined className="card-icon" />
-                <span className="card-title">Formats</span>
+                <span className="card-title">{intl.formatMessage({ id: 'create.model.formats', defaultMessage: 'Formats' })}</span>
                 <div className="card-content" style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                   {model.videoFormats.split(',').slice(0, 3).map((format) => (
                     <Tag key={format} style={{ margin: 0, fontSize: 10 }}>{format.toUpperCase()}</Tag>
