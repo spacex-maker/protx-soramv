@@ -1232,6 +1232,19 @@ const RechargeContent = () => {
                   </div>
                 );
               })}
+              {/* Token 余额显示 */}
+              <div className="balance-item">
+                <div className="coin-label">
+                  <CreditCardOutlined style={{ fontSize: 16, color: token.colorWarning }} />
+                  <span>Token</span>
+                </div>
+                <div className="coin-value">
+                  {balance.token.toLocaleString('zh-CN', { 
+                    minimumFractionDigits: 2, 
+                    maximumFractionDigits: 6 
+                  })}
+                </div>
+              </div>
             </div>
           </Spin>
         </BalanceCard>

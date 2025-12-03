@@ -568,6 +568,8 @@ export default {
   'create.i2v.replaceImage': '画像を置き換え',
   'create.i2v.upload.supportedFormats': 'JPG、PNG、WebPをサポート',
   'create.i2v.upload.required': '参照画像をアップロードしてください',
+  'create.i2v.upload': '参照画像をアップロード (開始フレーム)',
+  'create.i2v.upload.click': 'クリックまたはドラッグしてアップロード',
   'create.i2v.prompt.required': '動きのガイダンス説明を入力してください',
   'create.i2v.uploading.image': 'クラウドに画像をアップロード中...',
   'create.i2v.upload.success': '画像のアップロードに成功しました',

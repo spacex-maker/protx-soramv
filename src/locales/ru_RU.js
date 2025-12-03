@@ -478,6 +478,8 @@ export default {
   'create.i2v.replaceImage': 'Заменить изображение',
   'create.i2v.upload.supportedFormats': 'Поддерживает JPG, PNG, WebP',
   'create.i2v.upload.required': 'Пожалуйста, загрузите эталонное изображение',
+  'create.i2v.upload': 'Загрузить Эталонное Изображение (Начальный Кадр)',
+  'create.i2v.upload.click': 'Нажмите или перетащите для загрузки',
   'create.i2v.prompt.required': 'Пожалуйста, введите описание движения',
   'create.i2v.uploading.image': 'Загрузка изображения в облако...',
   'create.i2v.upload.success': 'Изображение успешно загружено',

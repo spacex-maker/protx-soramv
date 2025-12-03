@@ -637,6 +637,8 @@ export default {
   'create.i2v.upload.supportedFormats': '支持 JPG, PNG, WebP',
   'create.i2v.upload.required': '请上传参考图片',
   'create.i2v.prompt.required': '请输入视频运动的引导描述',
+  'create.i2v.upload': '上传参考图片 (起始帧)',
+  'create.i2v.upload.click': '点击或拖拽上传',
   'create.i2v.uploading.image': '正在上传图片到云端...',
   'create.i2v.upload.success': '图片上传成功',
   'create.i2v.upload.failed': '图片上传失败，请重试',

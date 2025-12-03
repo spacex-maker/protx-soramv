@@ -549,6 +549,8 @@ export default {
   'create.i2v.replaceImage': 'Bild ersetzen',
   'create.i2v.upload.supportedFormats': 'Unterstützt JPG, PNG, WebP',
   'create.i2v.upload.required': 'Bitte laden Sie ein Referenzbild hoch',
+  'create.i2v.upload': 'Referenzbild Hochladen (Startbild)',
+  'create.i2v.upload.click': 'Klicken oder ziehen zum Hochladen',
   'create.i2v.prompt.required': 'Bitte geben Sie eine Bewegungsbeschreibung ein',
   'create.i2v.uploading.image': 'Bild wird in die Cloud hochgeladen...',
   'create.i2v.upload.success': 'Bild erfolgreich hochgeladen',

@@ -494,6 +494,8 @@ export default {
   'create.i2v.replaceImage': 'استبدال الصورة',
   'create.i2v.upload.supportedFormats': 'يدعم JPG و PNG و WebP',
   'create.i2v.upload.required': 'يرجى تحميل صورة مرجعية',
+  'create.i2v.upload': 'تحميل الصورة المرجعية (الإطار الأول)',
+  'create.i2v.upload.click': 'انقر أو اسحب للتحميل',
   'create.i2v.prompt.required': 'يرجى إدخال وصف إرشادي للحركة',
   'create.i2v.uploading.image': 'جارٍ تحميل الصورة إلى السحابة...',
   'create.i2v.upload.success': 'تم تحميل الصورة بنجاح',

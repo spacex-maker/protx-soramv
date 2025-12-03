@@ -582,6 +582,8 @@ export default {
   'create.i2v.replaceImage': 'Replace Image',
   'create.i2v.upload.supportedFormats': 'Supports JPG, PNG, WebP',
   'create.i2v.upload.required': 'Please upload a reference image',
+  'create.i2v.upload': 'Upload Reference Image (Starting Frame)',
+  'create.i2v.upload.click': 'Click or drag to upload',
   'create.i2v.prompt.required': 'Please enter a motion guidance description',
   'create.i2v.uploading.image': 'Uploading image to cloud...',
   'create.i2v.upload.success': 'Image uploaded successfully',

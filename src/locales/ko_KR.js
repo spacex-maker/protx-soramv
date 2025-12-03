@@ -548,6 +548,8 @@ export default {
   'create.i2v.replaceImage': '이미지 교체',
   'create.i2v.upload.supportedFormats': 'JPG, PNG, WebP 지원',
   'create.i2v.upload.required': '참조 이미지를 업로드하세요',
+  'create.i2v.upload': '참조 이미지 업로드 (시작 프레임)',
+  'create.i2v.upload.click': '클릭하거나 드래그하여 업로드',
   'create.i2v.prompt.required': '동작 가이드 설명을 입력하세요',
   'create.i2v.uploading.image': '클라우드에 이미지 업로드 중...',
   'create.i2v.upload.success': '이미지 업로드 성공',
