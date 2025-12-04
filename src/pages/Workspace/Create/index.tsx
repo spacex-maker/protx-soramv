@@ -6,7 +6,8 @@ import {
   PictureOutlined,
   VideoCameraOutlined,
   SwapOutlined,
-  FileImageOutlined
+  FileImageOutlined,
+  ApartmentOutlined
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
@@ -15,6 +16,7 @@ import TextToImage from './components/TextToImage';
 import TextToVideo from './components/TextToVideo';
 import ImageToImage from './components/ImageToImage';
 import ImageToVideo from './components/ImageToVideo';
+import Workflow from './components/Workflow';
 
 const { Content } = Layout;
 
@@ -111,7 +113,7 @@ const Create: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>('textToImage');
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(['textToImage', 'textToVideo', 'imageToImage', 'imageToVideo']));
+  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(['textToImage', 'textToVideo', 'imageToImage', 'imageToVideo', 'workflow']));
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
   
   useEffect(() => {
@@ -203,6 +205,16 @@ const Create: React.FC = () => {
         </Space>
       ),
       children: <ImageToVideo />
+    },
+    {
+      key: 'workflow',
+      label: (
+        <Space>
+          <ApartmentOutlined />
+          <FormattedMessage id="create.tab.workflow" defaultMessage="工作流" />
+        </Space>
+      ),
+      children: <Workflow />
     }
   ];
 

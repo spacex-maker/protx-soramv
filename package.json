@@ -5,6 +5,7 @@
   "dependencies": {
     "@ant-design/icons": "^5.5.2",
     "@babel/runtime": "^7.26.0",
+    "@hocuspocus/provider": "^3.4.0",
     "@popperjs/core": "^2.11.8",
     "@react-three/drei": "^9.114.3",
     "@react-three/fiber": "^8.16.5",
@@ -13,6 +14,7 @@
     "@testing-library/jest-dom": "^5.16.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^14.4.3",
+    "@xyflow/react": "^12.9.3",
     "antd": "^5.23.2",
     "aos": "^2.3.4",
     "axios": "^1.7.9",
@@ -52,6 +54,7 @@
     "three": "^0.181.2",
     "twin.macro": "^3.0.0-rc.4",
     "typescript": "^5.0.0",
+    "yjs": "^13.6.27",
     "zustand": "^5.0.8"
   },
   "scripts": {

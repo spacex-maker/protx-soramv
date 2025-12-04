@@ -162,5 +162,171 @@ export const base = {
         message: error.response?.data?.message || '获取登录方式失败'
       };
     }
+  },
+
+  // ========== AI工作流相关接口 ==========
+  
+  // 创建工作流
+  createWorkflow: async (workflowData) => {
+    try {
+      const { data } = await axios.post('/productx/ai-workflow/create', workflowData);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '创建工作流失败'
+      };
+    }
+  },
+
+  // 更新工作流
+  updateWorkflow: async (workflowData) => {
+    try {
+      const { data } = await axios.post('/productx/ai-workflow/update', workflowData);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '更新工作流失败'
+      };
+    }
+  },
+
+  // 获取工作流详情
+  getWorkflowDetail: async (id) => {
+    try {
+      const { data } = await axios.get(`/productx/ai-workflow/detail/${id}`);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取工作流详情失败'
+      };
+    }
+  },
+
+  // 获取我的工作流列表
+  getMyWorkflowList: async (params) => {
+    try {
+      const { data } = await axios.get('/productx/ai-workflow/my-list', { params });
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取工作流列表失败'
+      };
+    }
+  },
+
+  // 删除工作流
+  deleteWorkflow: async (id) => {
+    try {
+      const { data } = await axios.post(`/productx/ai-workflow/delete/${id}`);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '删除工作流失败'
+      };
+    }
+  },
+
+  // 发布工作流
+  publishWorkflow: async (id) => {
+    try {
+      const { data } = await axios.post(`/productx/ai-workflow/publish/${id}`);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '发布工作流失败'
+      };
+    }
+  },
+
+  // 下架工作流
+  unpublishWorkflow: async (id) => {
+    try {
+      const { data } = await axios.post(`/productx/ai-workflow/unpublish/${id}`);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '下架工作流失败'
+      };
+    }
+  },
+
+  // 运行工作流
+  runWorkflow: async (id, inputParams) => {
+    try {
+      const { data } = await axios.post(`/productx/ai-workflow/run/${id}`, inputParams);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '运行工作流失败'
+      };
+    }
+  },
+
+  // ========== 节点配置相关 ==========
+  // 获取所有启用的节点配置
+  getNodeConfigList: async () => {
+    try {
+      const { data } = await axios.get('/productx/node-config/list');
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取节点配置失败'
+      };
+    }
+  },
+
+  // 根据分类获取节点配置
+  getNodeConfigByCategory: async (category) => {
+    try {
+      const { data } = await axios.get(`/productx/node-config/category/${category}`);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取节点配置失败'
+      };
+    }
+  },
+
+  // 根据节点Key获取节点配置
+  getNodeConfigByKey: async (nodeKey) => {
+    try {
+      const { data } = await axios.get(`/productx/node-config/key/${nodeKey}`);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取节点配置失败'
+      };
+    }
+  },
+
+  // 上传图片到 public bucket
+  uploadWorkflowImage: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const { data } = await axios.post('/productx/node-config/upload-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '图片上传失败'
+      };
+    }
   }
 }; 
