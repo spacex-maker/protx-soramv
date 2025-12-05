@@ -6,6 +6,9 @@ import RunwayGen3Node from './RunwayGen3Node';
 import SoraProNode from './SoraProNode';
 import OutputPreviewNode from './OutputPreviewNode';
 import VideoUpscaleNode from './VideoUpscaleNode';
+import StableDiffusionXLNode from './StableDiffusionXLNode';
+import ImageDisplayNode from './ImageDisplayNode';
+import ImageToVideoNode from './ImageToVideoNode';
 import { NodeTypes } from '@xyflow/react';
 
 // 节点类型映射
@@ -18,6 +21,9 @@ export const nodeTypes: NodeTypes = {
   'sora_pro': SoraProNode,
   'output_preview': OutputPreviewNode,
   'video_upscale': VideoUpscaleNode,
+  'stable-diffusion-xl': StableDiffusionXLNode,
+  'image_display': ImageDisplayNode,
+  'image_to_video': ImageToVideoNode,
 };
 
 // 导出所有节点组件
@@ -30,5 +36,8 @@ export {
   SoraProNode,
   OutputPreviewNode,
   VideoUpscaleNode,
+  StableDiffusionXLNode,
+  ImageDisplayNode,
+  ImageToVideoNode,
 };
 
