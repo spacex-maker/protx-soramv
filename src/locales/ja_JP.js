@@ -1650,4 +1650,11 @@ export default {
   'about.cta.description': 'プロのクリエイターに加わり、AIの究極の可能性を解放しましょう。',
   'about.cta.button.start': '今すぐ始める',
   'about.cta.button.docs': 'ドキュメントを読む',
+  
+  // Community コミュニティ
+  'community.explore.title': 'コミュニティを探索',
+  'community.explore.subtitle': 'インスピレーションを発見し、ワークフローをリミックスし、数千人のAIクリエイターとつながりましょう。',
+  'community.posts': '{count} 投稿',
+  'community.empty': 'コミュニティチャンネルがありません',
+  'community.loadFailed': '読み込みに失敗しました',
 }; 

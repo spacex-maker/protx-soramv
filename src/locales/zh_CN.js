@@ -747,6 +747,7 @@ export default {
   'userMenu.item.subscription': '订阅管理',
   'userMenu.item.orders': '订单记录',
   'userMenu.item.works': '我的作品',
+  'userMenu.item.community': '社区',
   'userMenu.item.notifications': '消息通知',
   'userMenu.item.help': '帮助中心',
   'userMenu.item.invite': '邀请好友',
@@ -1796,4 +1797,11 @@ export default {
   'about.cta.description': '加入专业创作者的行列，释放 AI 的极致潜能。',
   'about.cta.button.start': '立即开始',
   'about.cta.button.docs': '阅读技术文档',
+  
+  // Community 社区
+  'community.explore.title': '探索社区',
+  'community.explore.subtitle': '发现灵感，混音工作流，与数千名 AI 创作者连接。',
+  'community.posts': '{count} 个帖子',
+  'community.empty': '暂无社区频道',
+  'community.loadFailed': '加载失败',
 }; 

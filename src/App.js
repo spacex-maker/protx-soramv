@@ -40,6 +40,10 @@ import UnderDevelopmentPage from './pages/UnderDevelopment';
 import TermsOfServicePage from './pages/TermsOfService';
 import PrivacyPolicyPage from './pages/PrivacyPolicy';
 import GoogleCallback from './pages/GoogleCallback';
+import CommunityPage from './pages/Community';
+import ChannelDetailPage from './pages/Community/ChannelDetail';
+import PostDetailPage from './pages/Community/PostDetail';
+import ChallengeDetailPage from './pages/Community/ChallengeDetailPage';
 
 // 语言配置映射
 const localeMap = {
@@ -334,6 +338,27 @@ export default function App() {
                   </PrivateRoute>
                 }
               />
+              {/* 社区相关路由 */}
+              <Route path="/community" element={
+                <PrivateRoute>
+                  <CommunityPage />
+                </PrivateRoute>
+              } />
+              <Route path="/community/challenge/:challengeId" element={
+                <PrivateRoute>
+                  <ChallengeDetailPage />
+                </PrivateRoute>
+              } />
+              <Route path="/community/:channelKey" element={
+                <PrivateRoute>
+                  <ChannelDetailPage />
+                </PrivateRoute>
+              } />
+              <Route path="/community/post/:postId" element={
+                <PrivateRoute>
+                  <PostDetailPage />
+                </PrivateRoute>
+              } />
               {/* 404 路由 - 捕获所有未匹配的路由 */}
               <Route path="*" element={<UnderDevelopmentPage />} />
             </Routes>

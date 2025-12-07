@@ -1562,4 +1562,11 @@ export default {
   'about.cta.description': 'Rejoignez les rangs des créateurs professionnels et libérez le potentiel ultime de l\'IA.',
   'about.cta.button.start': 'Commencer',
   'about.cta.button.docs': 'Lire la documentation',
+  
+  // Community
+  'community.explore.title': 'Explorer les communautés',
+  'community.explore.subtitle': 'Découvrez l\'inspiration, remixez les workflows et connectez-vous avec des milliers de créateurs IA.',
+  'community.posts': '{count} publications',
+  'community.empty': 'Aucun canal communautaire',
+  'community.loadFailed': 'Échec du chargement',
 }; 

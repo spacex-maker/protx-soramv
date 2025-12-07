@@ -664,6 +664,7 @@ const UserMenu = ({ userInfo, onLogout }) => {
       title: intl.formatMessage({ id: 'userMenu.group.workspace', defaultMessage: '工作台' }),
       items: [
         { label: intl.formatMessage({ id: 'userMenu.item.works', defaultMessage: '我的作品' }), icon: <ContainerOutlined />, path: '/works' },
+        { label: intl.formatMessage({ id: 'userMenu.item.community', defaultMessage: '社区' }), icon: <TeamOutlined />, path: '/community' },
         { label: intl.formatMessage({ id: 'userMenu.item.notifications', defaultMessage: '消息通知' }), icon: <BellOutlined />, path: '/notifications' },
       ]
     },

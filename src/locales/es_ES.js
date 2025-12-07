@@ -1471,4 +1471,11 @@ export default {
   'about.cta.description': 'Únete a las filas de creadores profesionales y libera el potencial definitivo de la IA.',
   'about.cta.button.start': 'Comenzar',
   'about.cta.button.docs': 'Leer documentación',
+  
+  // Community
+  'community.explore.title': 'Explorar comunidades',
+  'community.explore.subtitle': 'Descubre inspiración, remezcla flujos de trabajo y conéctate con miles de creadores de IA.',
+  'community.posts': '{count} publicaciones',
+  'community.empty': 'No hay canales comunitarios',
+  'community.loadFailed': 'Error al cargar',
 }; 

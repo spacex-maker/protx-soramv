@@ -1718,4 +1718,11 @@ export default {
   'about.cta.description': 'Join the ranks of professional creators and unleash the ultimate potential of AI.',
   'about.cta.button.start': 'Get Started',
   'about.cta.button.docs': 'Read Documentation',
+  
+  // Community
+  'community.explore.title': 'Explore Communities',
+  'community.explore.subtitle': 'Discover inspiration, remix workflows, and connect with thousands of AI creators.',
+  'community.posts': '{count} posts',
+  'community.empty': 'No community channels',
+  'community.loadFailed': 'Failed to load',
 }; 

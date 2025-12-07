@@ -1602,4 +1602,11 @@ export default {
   'about.cta.description': '전문 크리에이터 대열에 합류하여 AI의 궁극적인 잠재력을 발휘하세요.',
   'about.cta.button.start': '시작하기',
   'about.cta.button.docs': '문서 읽기',
+  
+  // Community 커뮤니티
+  'community.explore.title': '커뮤니티 탐색',
+  'community.explore.subtitle': '영감을 발견하고, 워크플로를 리믹스하며, 수천 명의 AI 크리에이터와 연결하세요.',
+  'community.posts': '{count}개 게시물',
+  'community.empty': '커뮤니티 채널이 없습니다',
+  'community.loadFailed': '로드 실패',
 }; 

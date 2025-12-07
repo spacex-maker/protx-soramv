@@ -1477,4 +1477,11 @@ export default {
   'about.cta.description': 'Присоединяйтесь к рядам профессиональных создателей и раскройте предельный потенциал ИИ.',
   'about.cta.button.start': 'Начать',
   'about.cta.button.docs': 'Читать документацию',
+  
+  // Community
+  'community.explore.title': 'Исследовать сообщества',
+  'community.explore.subtitle': 'Откройте для себя вдохновение, ремикшируйте рабочие процессы и общайтесь с тысячами создателей ИИ.',
+  'community.posts': '{count} публикаций',
+  'community.empty': 'Нет каналов сообщества',
+  'community.loadFailed': 'Ошибка загрузки',
 }; 

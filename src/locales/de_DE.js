@@ -1548,4 +1548,11 @@ export default {
   'about.cta.description': 'Schließen Sie sich den professionellen Kreativen an und entfesseln Sie das ultimative Potenzial der KI.',
   'about.cta.button.start': 'Jetzt starten',
   'about.cta.button.docs': 'Dokumentation lesen',
+  
+  // Community
+  'community.explore.title': 'Communities erkunden',
+  'community.explore.subtitle': 'Entdecken Sie Inspiration, remixen Sie Workflows und verbinden Sie sich mit Tausenden von KI-Kreativen.',
+  'community.posts': '{count} Beiträge',
+  'community.empty': 'Keine Community-Kanäle',
+  'community.loadFailed': 'Laden fehlgeschlagen',
 }; 
