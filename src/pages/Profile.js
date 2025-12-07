@@ -6,6 +6,7 @@ import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
 import instance from "api/axios";
 import { auth } from "api/auth";
+import { getFollowersList, getFollowingList, getRelationStatus, followUser, unfollowUser } from "api/community";
 import { 
   Button, 
   Input, 
@@ -420,6 +421,13 @@ const ProfileContent = () => {
   const [loading, setLoading] = useState(false);
   const [editedInfo, setEditedInfo] = useState({});
   const [avatarFile, setAvatarFile] = useState(null); // 保存选中的头像文件对象
+  const [followersCount, setFollowersCount] = useState(0);
+  const [followingCount, setFollowingCount] = useState(0);
+  const [followersModalOpen, setFollowersModalOpen] = useState(false);
+  const [followingModalOpen, setFollowingModalOpen] = useState(false);
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
 
   // 是否已实名认证：后端定义 2 为已通过
   const isVerified = realnameInfo?.realnameStatus === 2;
@@ -467,6 +475,85 @@ const ProfileContent = () => {
     };
     fetchRealnameInfo();
   }, []);
+
+  // 获取关注和粉丝数
+  useEffect(() => {
+    const fetchRelationStats = async () => {
+      const userId = userInfo?.id || userInfo?.userId;
+      if (!userId) return;
+      try {
+        const status = await getRelationStatus(userId);
+        setFollowersCount(status.followersCount || 0);
+        setFollowingCount(status.followingCount || 0);
+      } catch (e) {
+        console.error('获取关注统计失败', e);
+      }
+    };
+    const userId = userInfo?.id || userInfo?.userId;
+    if (userId) {
+      fetchRelationStats();
+    }
+  }, [userInfo?.id, userInfo?.userId]);
+
+  // 加载粉丝列表
+  const loadFollowersList = async () => {
+    const userId = userInfo?.id || userInfo?.userId;
+    if (!userId) return;
+    setLoadingFollowers(true);
+    try {
+      const list = await getFollowersList(userId);
+      setFollowersList(list);
+    } catch (e) {
+      message.error(e.message || '加载粉丝列表失败');
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
+  // 加载关注列表
+  const loadFollowingList = async () => {
+    const userId = userInfo?.id || userInfo?.userId;
+    if (!userId) return;
+    setLoadingFollowers(true);
+    try {
+      const list = await getFollowingList(userId);
+      setFollowingList(list);
+    } catch (e) {
+      message.error(e.message || intl.formatMessage({ id: 'profile.message.loadFollowingFailed', defaultMessage: '加载关注列表失败' }));
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
+  // 处理关注/取消关注
+  const handleFollowInModal = async (targetUserId, isFollowing) => {
+    try {
+      if (isFollowing) {
+        await unfollowUser(targetUserId);
+      } else {
+        await followUser(targetUserId, 'PROFILE');
+      }
+      // 刷新列表
+      if (followersModalOpen) {
+        loadFollowersList();
+      }
+      if (followingModalOpen) {
+        loadFollowingList();
+      }
+      // 刷新统计
+      const userId = userInfo?.id || userInfo?.userId;
+      if (userId) {
+        const status = await getRelationStatus(userId);
+        setFollowersCount(status.followersCount || 0);
+        setFollowingCount(status.followingCount || 0);
+      }
+      message.success(isFollowing 
+        ? intl.formatMessage({ id: 'profile.message.unfollowSuccess', defaultMessage: '取消关注成功' })
+        : intl.formatMessage({ id: 'profile.message.followSuccess', defaultMessage: '关注成功' }));
+    } catch (e) {
+      message.error(e.message || intl.formatMessage({ id: 'profile.message.operationFailed', defaultMessage: '操作失败' }));
+    }
+  };
 
 
   const handleEditClick = () => {
@@ -648,6 +735,28 @@ const ProfileContent = () => {
                 <span className="value">¥ {(userInfo.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                 <span className="label">{intl.formatMessage({ id: 'profile.balance', defaultMessage: '余额' })}</span>
               </StatItem>
+              <StatItem 
+                $token={token} 
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  setFollowersModalOpen(true);
+                  loadFollowersList();
+                }}
+              >
+                <span className="value">{followersCount}</span>
+                <span className="label">{intl.formatMessage({ id: 'profile.followers', defaultMessage: '粉丝' })}</span>
+              </StatItem>
+              <StatItem 
+                $token={token}
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  setFollowingModalOpen(true);
+                  loadFollowingList();
+                }}
+              >
+                <span className="value">{followingCount}</span>
+                <span className="label">{intl.formatMessage({ id: 'profile.following', defaultMessage: '关注' })}</span>
+              </StatItem>
             </StatsGrid>
 
             <Tabs
@@ -820,6 +929,118 @@ const ProfileContent = () => {
             </div>
           </div>
         </FormSection>
+      </Modal>
+
+      {/* 粉丝列表模态框 */}
+      <Modal
+        title={intl.formatMessage({ id: 'profile.modal.followers', defaultMessage: '粉丝列表' })}
+        open={followersModalOpen}
+        onCancel={() => setFollowersModalOpen(false)}
+        footer={null}
+        width={500}
+        centered
+      >
+        <Spin spinning={loadingFollowers}>
+          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            {followersList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: token.colorTextSecondary }}>
+                {intl.formatMessage({ id: 'profile.modal.noFollowers', defaultMessage: '暂无粉丝' })}
+              </div>
+            ) : (
+              followersList.map((follower) => (
+                <div
+                  key={follower.userId}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 0',
+                    borderBottom: `1px solid ${token.colorBorderSecondary}`
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                    <AntAvatar src={follower.avatar} size={40} icon={<UserOutlined />} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500, color: token.colorText }}>
+                        {follower.nickname || follower.username}
+                      </div>
+                      {follower.description && (
+                        <div style={{ fontSize: '12px', color: token.colorTextSecondary, marginTop: '4px' }}>
+                          {follower.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    type={follower.isFollowing ? 'default' : 'primary'}
+                    size="small"
+                    onClick={() => handleFollowInModal(follower.userId, follower.isFollowing)}
+                  >
+                    {follower.isMutual
+                      ? intl.formatMessage({ id: 'profile.modal.mutual', defaultMessage: '互相关注' })
+                      : follower.isFollowing
+                      ? intl.formatMessage({ id: 'profile.modal.following', defaultMessage: '已关注' })
+                      : intl.formatMessage({ id: 'profile.modal.follow', defaultMessage: '关注' })}
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </Spin>
+      </Modal>
+
+      {/* 关注列表模态框 */}
+      <Modal
+        title={intl.formatMessage({ id: 'profile.modal.followingList', defaultMessage: '关注列表' })}
+        open={followingModalOpen}
+        onCancel={() => setFollowingModalOpen(false)}
+        footer={null}
+        width={500}
+        centered
+      >
+        <Spin spinning={loadingFollowers}>
+          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            {followingList.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: token.colorTextSecondary }}>
+                {intl.formatMessage({ id: 'profile.modal.noFollowing', defaultMessage: '暂无关注' })}
+              </div>
+            ) : (
+              followingList.map((following) => (
+                <div
+                  key={following.userId}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '12px 0',
+                    borderBottom: `1px solid ${token.colorBorderSecondary}`
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: 1 }}>
+                    <AntAvatar src={following.avatar} size={40} icon={<UserOutlined />} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 500, color: token.colorText }}>
+                        {following.nickname || following.username}
+                      </div>
+                      {following.description && (
+                        <div style={{ fontSize: '12px', color: token.colorTextSecondary, marginTop: '4px' }}>
+                          {following.description}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    type="default"
+                    size="small"
+                    onClick={() => handleFollowInModal(following.userId, true)}
+                  >
+                    {intl.formatMessage({ id: 'profile.modal.unfollow', defaultMessage: '取消关注' })}
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+        </Spin>
       </Modal>
     </PageBackground>
   );

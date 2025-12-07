@@ -6,12 +6,12 @@ import {
 import { 
   HeartOutlined, HeartFilled, StarOutlined, StarFilled, 
   EyeOutlined, ArrowLeftOutlined, CopyOutlined, ShareAltOutlined,
-  ThunderboltFilled, DownloadOutlined
+  ThunderboltFilled, DownloadOutlined, UserAddOutlined, CheckOutlined
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
-import { getPostDetail, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus } from 'api/community';
+import { getPostDetail, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus, followUser, unfollowUser, getRelationStatus } from 'api/community';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -83,6 +83,8 @@ const ImageContainer = styled.div`
 // 右侧：信息与操作区 (Sticky Sidebar)
 const SidebarSection = styled.div`
   width: 400px;
+  max-width: 400px;
+  min-width: 0;
   flex-shrink: 0;
   
   // 核心：粘性定位
@@ -91,6 +93,7 @@ const SidebarSection = styled.div`
   height: fit-content;
   max-height: calc(100vh - 120px);
   overflow-y: auto;
+  overflow-x: hidden; // 防止水平滚动条
   
   // 隐藏滚动条但保留功能
   &::-webkit-scrollbar {
@@ -103,6 +106,7 @@ const SidebarSection = styled.div`
 
   @media (max-width: 1024px) {
     width: 100%;
+    max-width: 100%;
     position: static;
     max-height: none;
   }
@@ -129,6 +133,62 @@ const UserCard = styled.div`
       font-size: 12px;
       color: #888;
     }
+  }
+`;
+
+// 优化后的关注按钮
+const FollowButton = styled(Button)`
+  min-width: 90px;
+  height: 36px;
+  border-radius: 18px;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  
+  &.follow-btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      transform: translateY(-1px);
+    }
+    
+    &:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
+    }
+  }
+  
+  &.follow-btn-following {
+    background: ${props => props.theme.mode === 'dark' ? '#2a2a2a' : '#f5f5f5'};
+    border: 1px solid ${props => props.theme.mode === 'dark' ? '#444' : '#e0e0e0'};
+    color: ${props => props.theme.mode === 'dark' ? '#ccc' : '#666'};
+    
+    &:hover:not(:disabled) {
+      background: ${props => props.theme.mode === 'dark' ? '#333' : '#ebebeb'};
+      border-color: ${props => props.theme.mode === 'dark' ? '#555' : '#d0d0d0'};
+    }
+  }
+  
+  &.follow-btn-mutual {
+    background: ${props => props.theme.mode === 'dark' ? '#1a3a2a' : '#e6f7f0'};
+    border: 1px solid ${props => props.theme.mode === 'dark' ? '#2d5a3d' : '#91d5b3'};
+    color: ${props => props.theme.mode === 'dark' ? '#6cd4a0' : '#52c41a'};
+    
+    &:hover:not(:disabled) {
+      background: ${props => props.theme.mode === 'dark' ? '#1f4a35' : '#d4f4e6'};
+      border-color: ${props => props.theme.mode === 'dark' ? '#3d6a4d' : '#73d19d'};
+    }
+  }
+  
+  .anticon {
+    margin-right: 4px;
+    font-size: 14px;
   }
 `;
 
@@ -167,8 +227,13 @@ const PromptBox = styled.div`
     line-height: 1.6;
     color: ${props => props.theme.mode === 'dark' ? '#ccc' : '#444'};
     word-break: break-all;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
     max-height: 200px;
     overflow-y: auto;
+    overflow-x: hidden; // 防止水平滚动
+    width: 100%;
+    box-sizing: border-box;
   }
 `;
 
@@ -236,6 +301,65 @@ const StyledTags = styled.div`
   }
 `;
 
+// 炫光效果模型名称
+const GlowModelName = styled.div`
+  font-weight: 500;
+  background: linear-gradient(
+    90deg,
+    #667eea 0%,
+    #764ba2 25%,
+    #f093fb 50%,
+    #4facfe 75%,
+    #667eea 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 3s linear infinite;
+  position: relative;
+  display: block;
+  width: 100%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  
+  @keyframes shimmer {
+    0% {
+      background-position: 0% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.3) 50%,
+      transparent 100%
+    );
+    animation: shine 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  
+  @keyframes shine {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+`;
+
 const PostDetailPage = () => {
   const intl = useIntl();
   const navigate = useNavigate();
@@ -243,6 +367,8 @@ const PostDetailPage = () => {
   const [loading, setLoading] = useState(false);
   const [post, setPost] = useState(null);
   const [interaction, setInteraction] = useState(null);
+  const [relation, setRelation] = useState(null);
+  const [followLoading, setFollowLoading] = useState(false);
 
   useEffect(() => {
     if (postId) fetchPostDetailData();
@@ -254,6 +380,9 @@ const PostDetailPage = () => {
       const data = await getPostDetail(Number(postId));
       setPost(data);
       loadInteractionStatus(Number(postId));
+      if (data.userId) {
+        loadRelationStatus(data.userId);
+      }
     } catch (error) {
       message.error('Load failed');
     } finally {
@@ -265,6 +394,13 @@ const PostDetailPage = () => {
     try {
       const status = await getPostInteractionStatus(id);
       setInteraction(status);
+    } catch (e) { /* ignore */ }
+  };
+
+  const loadRelationStatus = async (targetUserId) => {
+    try {
+      const status = await getRelationStatus(targetUserId);
+      setRelation(status);
     } catch (e) { /* ignore */ }
   };
 
@@ -287,6 +423,22 @@ const PostDetailPage = () => {
       setInteraction(prev => ({ ...prev, isCollected: res.isCollected, collectsCount: res.collectsCount }));
       setPost(prev => ({ ...prev, collectCount: res.collectsCount }));
     } catch (e) { message.error('Failed'); }
+  };
+
+  const handleFollow = async () => {
+    if (!post || !post.userId) return;
+    setFollowLoading(true);
+    try {
+      const isFollowing = relation?.isFollowing;
+      const res = isFollowing ? await unfollowUser(post.userId) : await followUser(post.userId, 'WORK_DETAIL');
+      setRelation(res);
+      message.success(isFollowing ? '取消关注成功' : '关注成功');
+    } catch (e) { 
+      const errorMessage = e.message || e.response?.data?.message || '操作失败';
+      message.error(errorMessage); 
+    } finally {
+      setFollowLoading(false);
+    }
   };
 
   const handleCopy = (text) => {
@@ -369,7 +521,36 @@ const PostDetailPage = () => {
                         <div className="date">{new Date(post.createTime).toLocaleDateString()}</div>
                     </div>
                 </div>
-                <Button type="default" size="small" shape="round">Follow</Button>
+                <FollowButton 
+                    className={
+                        relation?.isFollowing 
+                            ? (relation?.isMutual ? 'follow-btn-mutual' : 'follow-btn-following')
+                            : 'follow-btn-primary'
+                    }
+                    size="small" 
+                    shape="round"
+                    onClick={handleFollow}
+                    loading={followLoading}
+                    disabled={followLoading}
+                >
+                    {followLoading ? (
+                        <FormattedMessage id="common.processing" defaultMessage="处理中..." />
+                    ) : relation?.isFollowing ? (
+                        <>
+                            <CheckOutlined />
+                            {relation?.isMutual ? (
+                                <FormattedMessage id="user.mutual_follow" defaultMessage="互相关注" />
+                            ) : (
+                                <FormattedMessage id="user.following" defaultMessage="已关注" />
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <UserAddOutlined />
+                            <FormattedMessage id="common.follow" defaultMessage="关注" />
+                        </>
+                    )}
+                </FollowButton>
             </UserCard>
 
             <ActionGroup>
@@ -453,7 +634,7 @@ const PostDetailPage = () => {
                 <Row gutter={[16, 16]}>
                     <Col span={12}>
                         <Text type="secondary" style={{ fontSize: 12 }}>Model</Text>
-                        <div style={{ fontWeight: 500 }}>{post.modelKey || 'SDXL 1.0'}</div>
+                        <GlowModelName>{post.modelKey || 'SDXL 1.0'}</GlowModelName>
                     </Col>
                     <Col span={12}>
                         <Text type="secondary" style={{ fontSize: 12 }}>Resolution</Text>

@@ -38,12 +38,7 @@ import {
   getInteractionStatus,
   ModelInteractionResponse,
 } from 'api/modelInteraction';
-import {
-  createPost,
-  listChannels,
-  CommunityChannel,
-} from 'api/community';
-import { Select } from 'antd';
+import PublishToCommunityModal from './PublishToCommunityModal';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -543,9 +538,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
 
   // 发布相关状态
   const [publishModalVisible, setPublishModalVisible] = useState(false);
-  const [publishLoading, setPublishLoading] = useState(false);
-  const [channels, setChannels] = useState<CommunityChannel[]>([]);
-  const [selectedChannelId, setSelectedChannelId] = useState<number | undefined>(undefined);
 
   // 获取模型交互状态
   const fetchInteractionStatus = useCallback(async (modelId: number) => {
@@ -627,58 +619,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
     message.success(intl.formatMessage({ id: 'create.model.linkCopied', defaultMessage: '链接已复制' }));
   };
 
-  // 加载频道列表
-  useEffect(() => {
-    if (publishModalVisible) {
-      loadChannels();
-    }
-  }, [publishModalVisible]);
-
-  const loadChannels = async () => {
-    try {
-      const data = await listChannels();
-      setChannels(data);
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '加载频道失败' }));
-    }
-  };
-
-  const handlePublish = async () => {
-    if (!taskDetail || !taskDetail.outputFiles || taskDetail.outputFiles.length === 0) {
-      message.warning(intl.formatMessage({ id: 'create.taskDetail.noOutputs', defaultMessage: '没有可发布的输出文件' }));
-      return;
-    }
-
-    setPublishLoading(true);
-    try {
-      const mediaUrls = taskDetail.outputFiles.map(file => file.fileUrl);
-      const coverUrl = taskDetail.model?.coverImage || mediaUrls[0];
-
-      await createPost({
-        title: taskDetail.modelName || undefined,
-        mediaType: 'IMAGE',
-        mediaUrls,
-        coverUrl,
-        prompt: taskDetail.prompt || undefined,
-        negativePrompt: undefined,
-        modelKey: taskDetail.modelCode || undefined,
-        generationParams: taskDetail.model ? JSON.stringify({
-          imageMaxResolution: taskDetail.model.imageMaxResolution,
-          imageFormats: taskDetail.model.imageFormats,
-          imageAspectRatios: taskDetail.model.imageAspectRatios,
-        }) : undefined,
-        channelId: selectedChannelId,
-      });
-
-      message.success(intl.formatMessage({ id: 'create.taskDetail.publishSuccess', defaultMessage: '发布成功，等待审核' }));
-      setPublishModalVisible(false);
-      setSelectedChannelId(undefined);
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '发布失败' }));
-    } finally {
-      setPublishLoading(false);
-    }
-  };
 
   // 加载图片信息
   const loadImageInfo = useCallback(async (file: TaskOutputFile) => {
@@ -1109,40 +1049,12 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
       )}
 
       {/* 发布模态框 */}
-      <Modal
-        title={<FormattedMessage id="create.taskDetail.publish" defaultMessage="发布到社区" />}
+      <PublishToCommunityModal
         open={publishModalVisible}
-        onCancel={() => {
-          setPublishModalVisible(false);
-          setSelectedChannelId(undefined);
-        }}
-        onOk={handlePublish}
-        confirmLoading={publishLoading}
-        okText={intl.formatMessage({ id: 'common.publish', defaultMessage: '发布' })}
-        cancelText={intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' })}
-      >
-        <div style={{ marginBottom: 16 }}>
-          <label style={{ display: 'block', marginBottom: 8 }}>
-            <FormattedMessage id="create.taskDetail.selectChannel" defaultMessage="选择频道（可选）" />
-          </label>
-          <Select
-            style={{ width: '100%' }}
-            placeholder={intl.formatMessage({ id: 'create.taskDetail.selectChannelPlaceholder', defaultMessage: '请选择频道' })}
-            value={selectedChannelId}
-            onChange={setSelectedChannelId}
-            allowClear
-          >
-            {channels.map(channel => (
-              <Select.Option key={channel.id} value={channel.id}>
-                {channel.name}
-              </Select.Option>
-            ))}
-          </Select>
-        </div>
-        <div style={{ fontSize: 12, color: '#999' }}>
-          <FormattedMessage id="create.taskDetail.publishTip" defaultMessage="发布后作品将进入审核状态，审核通过后会在社区中展示" />
-        </div>
-      </Modal>
+        onCancel={() => setPublishModalVisible(false)}
+        onSuccess={fetchTaskDetail}
+        taskDetail={taskDetail}
+      />
     </StyledModal>
   );
 };

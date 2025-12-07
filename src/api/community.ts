@@ -228,3 +228,95 @@ export const getLatestChallenge = async (): Promise<DailyChallenge> => {
   return response.data.data;
 };
 
+/**
+ * 获取当前可用的挑战列表（截止日期前的）
+ */
+export const getAvailableChallenges = async (): Promise<DailyChallenge[]> => {
+  const response = await instance.get<ApiResponse<DailyChallenge[]>>(
+    '/productx/community/challenge/available'
+  );
+  return response.data.data;
+};
+
+export interface UserRelationResponse {
+  targetUserId: number;
+  isFollowing: boolean;
+  isMutual: boolean;
+  followingCount: number;
+  followersCount: number;
+}
+
+export interface UserRelationListResponse {
+  userId: number;
+  nickname?: string;
+  avatar?: string;
+  username?: string;
+  description?: string;
+  isFollowing: boolean;
+  isMutual: boolean;
+}
+
+/**
+ * 关注用户
+ */
+export const followUser = async (targetUserId: number, followSource?: string): Promise<UserRelationResponse> => {
+  const response = await instance.post<ApiResponse<UserRelationResponse>>(
+    `/productx/user/relation/${targetUserId}/follow`,
+    null,
+    { params: { followSource: followSource || 'WORK_DETAIL' } }
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '关注失败');
+  }
+  return response.data.data;
+};
+
+/**
+ * 取消关注
+ */
+export const unfollowUser = async (targetUserId: number): Promise<UserRelationResponse> => {
+  const response = await instance.post<ApiResponse<UserRelationResponse>>(
+    `/productx/user/relation/${targetUserId}/unfollow`
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '取消关注失败');
+  }
+  return response.data.data;
+};
+
+/**
+ * 获取关注状态
+ */
+export const getRelationStatus = async (targetUserId: number): Promise<UserRelationResponse> => {
+  const response = await instance.get<ApiResponse<UserRelationResponse>>(
+    `/productx/user/relation/${targetUserId}/status`
+  );
+  return response.data.data;
+};
+
+/**
+ * 获取粉丝列表
+ */
+export const getFollowersList = async (userId: number): Promise<UserRelationListResponse[]> => {
+  const response = await instance.get<ApiResponse<UserRelationListResponse[]>>(
+    `/productx/user/relation/${userId}/followers`
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '获取粉丝列表失败');
+  }
+  return response.data.data;
+};
+
+/**
+ * 获取关注列表
+ */
+export const getFollowingList = async (userId: number): Promise<UserRelationListResponse[]> => {
+  const response = await instance.get<ApiResponse<UserRelationListResponse[]>>(
+    `/productx/user/relation/${userId}/following`
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '获取关注列表失败');
+  }
+  return response.data.data;
+};
+
