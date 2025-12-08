@@ -133,15 +133,24 @@ const ChannelDetailPage = () => {
         return;
       }
       fetchChannel();
-      fetchPosts();
     }
   }, [channelKey, navigate]);
 
+  // 当频道加载完成后，重置分页并加载第一页
   useEffect(() => {
-    if (channelKey) {
+    if (channel?.id) {
+      setPage(1);
+      setPosts([]);
+      setHasMore(true);
+    }
+  }, [channel?.id]);
+
+  // 当频道或页码变化时，加载帖子列表
+  useEffect(() => {
+    if (channel?.id) {
       fetchPosts();
     }
-  }, [page]);
+  }, [channel?.id, page]);
 
   const fetchChannel = async () => {
     setLoading(true);
@@ -156,10 +165,15 @@ const ChannelDetailPage = () => {
   };
 
   const fetchPosts = async () => {
+    // 确保频道已加载
+    if (!channel?.id) {
+      return;
+    }
+    
     setPostsLoading(true);
     try {
       const data = await listPosts({
-        channelId: channel?.id,
+        channelId: channel.id,
         page,
         pageSize: 20,
         sortBy: 'latest',

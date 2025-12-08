@@ -504,7 +504,7 @@ const ProfileContent = () => {
       const list = await getFollowersList(userId);
       setFollowersList(list);
     } catch (e) {
-      message.error(e.message || '加载粉丝列表失败');
+      message.error(e.message || intl.formatMessage({ id: 'profile.message.loadFollowersFailed', defaultMessage: '加载粉丝列表失败' }));
     } finally {
       setLoadingFollowers(false);
     }

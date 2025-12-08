@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Modal, Select, Empty, Spin, message, Typography, theme, Tag } from 'antd';
+import { Modal, Select, Empty, Spin, message, Typography, theme, Tag, Image, Radio } from 'antd';
 import { FormattedMessage, useIntl } from 'react-intl';
 import {
   ClockCircleOutlined,
   CheckCircleFilled,
   FireOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
+import styled from 'styled-components';
 import dayjs from 'dayjs'; // 建议使用 dayjs 处理日期格式化
 import {
   listChannels,
@@ -18,6 +20,48 @@ import { TaskDetail } from './types';
 
 const { Text, Title, Paragraph } = Typography;
 const { useToken } = theme;
+
+// 封面选择器样式
+const CoverSelector = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 4px;
+`;
+
+const CoverItem = styled.div<{ $isSelected: boolean }>`
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid ${props => props.$isSelected ? '#1890ff' : 'transparent'};
+  background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#f5f5f5'};
+  transition: all 0.2s;
+  
+  &:hover {
+    border-color: ${props => props.$isSelected ? '#1890ff' : '#40a9ff'};
+    transform: scale(1.05);
+  }
+`;
+
+const SelectedOverlay = styled.div`
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  background: #1890ff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.4);
+`;
 
 interface PublishToCommunityModalProps {
   open: boolean;
@@ -40,6 +84,7 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
   const [availableChallenges, setAvailableChallenges] = useState<DailyChallenge[]>([]);
   const [selectedChallengeId, setSelectedChallengeId] = useState<number | undefined>(undefined);
   const [loadingChallenges, setLoadingChallenges] = useState(false);
+  const [selectedCoverIndex, setSelectedCoverIndex] = useState<number>(0); // 选中的封面索引
 
   // 加载频道列表
   useEffect(() => {
@@ -54,9 +99,12 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
       const selectedChannel = channels.find(c => c.id === selectedChannelId);
       if (selectedChannel?.channelKey === 'daily-challenge') {
         loadAvailableChallenges();
+        // 重置封面选择为第一张
+        setSelectedCoverIndex(0);
       } else {
         setAvailableChallenges([]);
         setSelectedChallengeId(undefined);
+        setSelectedCoverIndex(0);
       }
     }
   }, [selectedChannelId, open, channels]);
@@ -98,7 +146,11 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
     setPublishLoading(true);
     try {
       const mediaUrls = taskDetail.outputFiles.map(file => file.fileUrl);
-      const coverUrl = taskDetail.model?.coverImage || mediaUrls[0];
+      // 如果是每日挑战，使用用户选择的封面；否则使用默认逻辑
+      const isDailyChallenge = selectedChannel?.channelKey === 'daily-challenge';
+      const coverUrl = isDailyChallenge 
+        ? mediaUrls[selectedCoverIndex] || mediaUrls[0]
+        : taskDetail.model?.coverImage || mediaUrls[0];
 
       await createPost({
         title: taskDetail.modelName || undefined,
@@ -131,6 +183,7 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
     setSelectedChannelId(undefined);
     setSelectedChallengeId(undefined);
     setAvailableChallenges([]);
+    setSelectedCoverIndex(0);
     onCancel();
   };
 
@@ -337,6 +390,49 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 封面选择区域 - 仅当选择每日挑战频道时显示 */}
+      {selectedChannelId && 
+       channels.find(c => c.id === selectedChannelId)?.channelKey === 'daily-challenge' &&
+       taskDetail?.outputFiles && 
+       taskDetail.outputFiles.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <Title level={5} style={{ marginBottom: 12, fontSize: 14 }}>
+            <FormattedMessage id="create.taskDetail.selectCover" defaultMessage="选择封面" />
+            <Text type="secondary" style={{ fontSize: 12, fontWeight: 'normal', marginLeft: 8 }}>
+              (可选)
+            </Text>
+          </Title>
+          <CoverSelector>
+            {taskDetail.outputFiles.map((file, index) => {
+              const isSelected = selectedCoverIndex === index;
+              return (
+                <CoverItem
+                  key={file.id}
+                  $isSelected={isSelected}
+                  onClick={() => setSelectedCoverIndex(index)}
+                >
+                  <Image
+                    src={file.fileUrl}
+                    alt={`Cover ${index + 1}`}
+                    preview={false}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                    }}
+                  />
+                  {isSelected && (
+                    <SelectedOverlay>
+                      <CheckOutlined />
+                    </SelectedOverlay>
+                  )}
+                </CoverItem>
+              );
+            })}
+          </CoverSelector>
         </div>
       )}
 
