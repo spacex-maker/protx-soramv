@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled, { css, keyframes } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
-import { listChannels } from 'api/community';
+import { listChannels, getCurrentChallenge } from 'api/community';
 import { RightOutlined } from '@ant-design/icons';
 
 const { Title, Paragraph } = Typography;
@@ -248,17 +248,28 @@ const CommunityPage = () => {
       // await new Promise(resolve => setTimeout(resolve, 800)); 
       setChannels(data);
     } catch (error) {
-      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'community.loadFailed', defaultMessage: '加载失败' }));
+      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'community.loadFailed', defaultMessage: 'Load failed' }));
     } finally {
       setLoading(false);
     }
   };
 
-  const handleChannelClick = (channel) => {
+  const handleChannelClick = async (channel) => {
     // 如果是每日挑战频道，跳转到挑战页面
     if (channel.channelKey === 'daily-challenge') {
-      // 可以传递当前挑战ID，如果没有则使用默认值1
-      navigate(`/community/challenge/1`);
+      try {
+        // 获取当前挑战，然后跳转到对应的挑战页面
+        const currentChallenge = await getCurrentChallenge();
+        if (currentChallenge && currentChallenge.id) {
+          navigate(`/community/challenge/${currentChallenge.id}`);
+        } else {
+          // 如果没有当前挑战，跳转到最新挑战
+          navigate(`/community/challenge`);
+        }
+      } catch (error) {
+        // 如果获取失败，跳转到最新挑战（不带ID，让页面自己处理）
+        navigate(`/community/challenge`);
+      }
     } else {
       navigate(`/community/${channel.channelKey}`);
     }
@@ -352,7 +363,7 @@ const CommunityPage = () => {
         {!loading && channels.length === 0 && (
           <div style={{ textAlign: 'center', padding: '100px 0' }}>
             <Typography.Text type="secondary" style={{ fontSize: 18 }}>
-              <FormattedMessage id="community.empty" defaultMessage="暂无社区频道" />
+              <FormattedMessage id="community.empty" defaultMessage="No community channels available" />
             </Typography.Text>
           </div>
         )}

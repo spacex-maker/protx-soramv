@@ -238,6 +238,17 @@ export const getAvailableChallenges = async (): Promise<DailyChallenge[]> => {
   return response.data.data;
 };
 
+/**
+ * 获取所有挑战列表（按时间倒序，最新的在前）
+ */
+export const listAllChallenges = async (limit?: number): Promise<DailyChallenge[]> => {
+  const response = await instance.get<ApiResponse<DailyChallenge[]>>(
+    '/productx/community/challenge/list',
+    { params: limit ? { limit } : {} }
+  );
+  return response.data.data;
+};
+
 export interface UserRelationResponse {
   targetUserId: number;
   isFollowing: boolean;

@@ -5,7 +5,7 @@ import { HeartOutlined, HeartFilled, StarOutlined, StarFilled, EyeOutlined } fro
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
-import { getChannelByKey, listPosts, CommunityPost } from 'api/community';
+import { getChannelByKey, listPosts, CommunityPost, getCurrentChallenge } from 'api/community';
 import { likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus } from 'api/community';
 
 const { Title, Text } = Typography;
@@ -129,7 +129,22 @@ const ChannelDetailPage = () => {
     if (channelKey) {
       // 如果是每日挑战频道，重定向到挑战页面
       if (channelKey === 'daily-challenge') {
-        navigate('/community/challenge/1', { replace: true });
+        const redirectToCurrentChallenge = async () => {
+          try {
+            // 获取当前挑战，然后跳转到对应的挑战页面
+            const currentChallenge = await getCurrentChallenge();
+            if (currentChallenge && currentChallenge.id) {
+              navigate(`/community/challenge/${currentChallenge.id}`, { replace: true });
+            } else {
+              // 如果没有当前挑战，跳转到最新挑战
+              navigate('/community/challenge', { replace: true });
+            }
+          } catch (error) {
+            // 如果获取失败，跳转到最新挑战（不带ID，让页面自己处理）
+            navigate('/community/challenge', { replace: true });
+          }
+        };
+        redirectToCurrentChallenge();
         return;
       }
       fetchChannel();
@@ -158,7 +173,7 @@ const ChannelDetailPage = () => {
       const data = await getChannelByKey(channelKey);
       setChannel(data);
     } catch (error) {
-      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '加载失败' }));
+      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: 'Load failed' }));
     } finally {
       setLoading(false);
     }
@@ -192,7 +207,7 @@ const ChannelDetailPage = () => {
         loadInteractionStatus(post.id);
       });
     } catch (error) {
-      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '加载失败' }));
+      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: 'Load failed' }));
     } finally {
       setPostsLoading(false);
     }
@@ -234,7 +249,7 @@ const ChannelDetailPage = () => {
         return post;
       }));
     } catch (error) {
-      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '操作失败' }));
+      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: 'Operation failed' }));
     }
   };
 
@@ -262,7 +277,7 @@ const ChannelDetailPage = () => {
         return post;
       }));
     } catch (error) {
-      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '操作失败' }));
+      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: 'Operation failed' }));
     }
   };
 
@@ -390,13 +405,13 @@ const ChannelDetailPage = () => {
       {hasMore && !postsLoading && (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <Button onClick={handleLoadMore}>
-            <FormattedMessage id="common.loadMore" defaultMessage="加载更多" />
+            <FormattedMessage id="common.loadMore" defaultMessage="Load More" />
           </Button>
         </div>
       )}
 
       {posts.length === 0 && !postsLoading && (
-        <Empty description={intl.formatMessage({ id: 'community.noPosts', defaultMessage: '暂无作品' })} />
+        <Empty description={intl.formatMessage({ id: 'community.noPosts', defaultMessage: 'No posts yet' })} />
       )}
       </Container>
     </PageLayout>

@@ -384,7 +384,7 @@ const PostDetailPage = () => {
         loadRelationStatus(data.userId);
       }
     } catch (error) {
-      message.error('Load failed');
+      message.error(intl.formatMessage({ id: 'common.loadFailed', defaultMessage: 'Load failed' }));
     } finally {
       setLoading(false);
     }
@@ -412,7 +412,7 @@ const PostDetailPage = () => {
       const res = isLiked ? await unlikePost(post.id) : await likePost(post.id);
       setInteraction(prev => ({ ...prev, isLiked: res.isLiked, likesCount: res.likesCount }));
       setPost(prev => ({ ...prev, likeCount: res.likesCount })); // 更新本地显示
-    } catch (e) { message.error('Failed'); }
+    } catch (e) { message.error(intl.formatMessage({ id: 'common.operationFailed', defaultMessage: 'Operation failed' })); }
   };
 
   const handleCollect = async () => {
@@ -422,7 +422,7 @@ const PostDetailPage = () => {
       const res = isCollected ? await uncollectPost(post.id) : await collectPost(post.id);
       setInteraction(prev => ({ ...prev, isCollected: res.isCollected, collectsCount: res.collectsCount }));
       setPost(prev => ({ ...prev, collectCount: res.collectsCount }));
-    } catch (e) { message.error('Failed'); }
+    } catch (e) { message.error(intl.formatMessage({ id: 'common.operationFailed', defaultMessage: 'Operation failed' })); }
   };
 
   const handleFollow = async () => {
@@ -432,9 +432,12 @@ const PostDetailPage = () => {
       const isFollowing = relation?.isFollowing;
       const res = isFollowing ? await unfollowUser(post.userId) : await followUser(post.userId, 'WORK_DETAIL');
       setRelation(res);
-      message.success(isFollowing ? '取消关注成功' : '关注成功');
+      message.success(isFollowing 
+        ? intl.formatMessage({ id: 'user.unfollowSuccess', defaultMessage: 'Unfollowed successfully' })
+        : intl.formatMessage({ id: 'user.followSuccess', defaultMessage: 'Followed successfully' })
+      );
     } catch (e) { 
-      const errorMessage = e.message || e.response?.data?.message || '操作失败';
+      const errorMessage = e.message || e.response?.data?.message || intl.formatMessage({ id: 'common.operationFailed', defaultMessage: 'Operation failed' });
       message.error(errorMessage); 
     } finally {
       setFollowLoading(false);
@@ -517,7 +520,7 @@ const PostDetailPage = () => {
                 <div className="user-info">
                     <Avatar src={post.userAvatar} size={48} icon={<EyeOutlined />} />
                     <div>
-                        <div className="name">{post.userNickname || 'Creator'}</div>
+                        <div className="name">{post.userNickname || <FormattedMessage id="common.creator" defaultMessage="Creator" />}</div>
                         <div className="date">{new Date(post.createTime).toLocaleDateString()}</div>
                     </div>
                 </div>
@@ -534,20 +537,20 @@ const PostDetailPage = () => {
                     disabled={followLoading}
                 >
                     {followLoading ? (
-                        <FormattedMessage id="common.processing" defaultMessage="处理中..." />
+                        <FormattedMessage id="common.processing" defaultMessage="Processing..." />
                     ) : relation?.isFollowing ? (
                         <>
                             <CheckOutlined />
                             {relation?.isMutual ? (
-                                <FormattedMessage id="user.mutual_follow" defaultMessage="互相关注" />
+                                <FormattedMessage id="user.mutual_follow" defaultMessage="Mutual" />
                             ) : (
-                                <FormattedMessage id="user.following" defaultMessage="已关注" />
+                                <FormattedMessage id="user.following" defaultMessage="Following" />
                             )}
                         </>
                     ) : (
                         <>
                             <UserAddOutlined />
-                            <FormattedMessage id="common.follow" defaultMessage="关注" />
+                            <FormattedMessage id="common.follow" defaultMessage="Follow" />
                         </>
                     )}
                 </FollowButton>
@@ -563,7 +566,7 @@ const PostDetailPage = () => {
                     <FormattedMessage id="post.remix" defaultMessage="Remix / Try this" />
                 </Button>
                 
-                <Tooltip title={isLiked ? "Unlike" : "Like"}>
+                <Tooltip title={isLiked ? intl.formatMessage({id: 'common.unlike', defaultMessage: 'Unlike'}) : intl.formatMessage({id: 'common.like', defaultMessage: 'Like'})}>
                     <button 
                         className={`icon-btn ${isLiked ? 'active' : ''}`} 
                         onClick={handleLike}
@@ -574,7 +577,7 @@ const PostDetailPage = () => {
                     </button>
                 </Tooltip>
 
-                <Tooltip title={isCollected ? "Unsaved" : "Save"}>
+                <Tooltip title={isCollected ? intl.formatMessage({id: 'common.unsave', defaultMessage: 'Unsave'}) : intl.formatMessage({id: 'common.save', defaultMessage: 'Save'})}>
                     <button 
                         className={`icon-btn ${isCollected ? 'active' : ''}`} 
                         onClick={handleCollect}
@@ -591,14 +594,14 @@ const PostDetailPage = () => {
             {post.prompt && (
                 <PromptBox>
                     <div className="box-header">
-                        <span className="label">Prompt</span>
+                        <span className="label"><FormattedMessage id="post.prompt" defaultMessage="Prompt" /></span>
                         <Button 
                             type="text" 
                             size="small" 
                             icon={<CopyOutlined />} 
                             onClick={() => handleCopy(post.prompt)}
                         >
-                            Copy
+                            <FormattedMessage id="common.copy" defaultMessage="Copy" />
                         </Button>
                     </div>
                     <div className="content">
@@ -610,14 +613,14 @@ const PostDetailPage = () => {
             {post.negativePrompt && (
                 <PromptBox>
                     <div className="box-header">
-                        <span className="label">Negative Prompt</span>
+                        <span className="label"><FormattedMessage id="post.negativePrompt" defaultMessage="Negative Prompt" /></span>
                         <Button 
                             type="text" 
                             size="small" 
                             icon={<CopyOutlined />} 
                             onClick={() => handleCopy(post.negativePrompt)}
                         >
-                            Copy
+                            <FormattedMessage id="common.copy" defaultMessage="Copy" />
                         </Button>
                     </div>
                     <div className="content" style={{ color: '#ff7875' }}>
@@ -629,23 +632,23 @@ const PostDetailPage = () => {
             {/* 3. 参数与标签 */}
             <div style={{ marginBottom: 24 }}>
                 <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: 12 }}>
-                    Details
+                    <FormattedMessage id="post.details" defaultMessage="Details" />
                 </Text>
                 <Row gutter={[16, 16]}>
                     <Col span={12}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>Model</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}><FormattedMessage id="post.model" defaultMessage="Model" /></Text>
                         <GlowModelName>{post.modelKey || 'SDXL 1.0'}</GlowModelName>
                     </Col>
                     <Col span={12}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>Resolution</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}><FormattedMessage id="post.resolution" defaultMessage="Resolution" /></Text>
                         <div style={{ fontWeight: 500 }}>1024 x 1024</div>
                     </Col>
                     <Col span={12}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>Steps</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}><FormattedMessage id="post.steps" defaultMessage="Steps" /></Text>
                         <div style={{ fontWeight: 500 }}>30</div>
                     </Col>
                     <Col span={12}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>Guidance Scale</Text>
+                        <Text type="secondary" style={{ fontSize: 12 }}><FormattedMessage id="post.cfgScale" defaultMessage="Guidance Scale" /></Text>
                         <div style={{ fontWeight: 500 }}>7.0</div>
                     </Col>
                 </Row>
@@ -663,7 +666,7 @@ const PostDetailPage = () => {
             
             {/* 4. 统计信息 */}
             <Space size="large" style={{ color: '#888' }}>
-                <span><EyeOutlined /> {post.viewCount} Views</span>
+                <span><EyeOutlined /> <FormattedMessage id="common.viewCount" defaultMessage="{count} Views" values={{count: post.viewCount}} /></span>
                 <span>{new Date(post.createTime).toLocaleDateString()}</span>
             </Space>
 
