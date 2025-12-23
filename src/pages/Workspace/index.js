@@ -72,8 +72,8 @@ const CloudDrivePage = () => {
   return (
     <>
       <Helmet>
-        <title>{intl.formatMessage({ id: 'page.cloudDrive.title', defaultMessage: '我的作品' })} - Sora MV</title>
-        <meta name="description" content={intl.formatMessage({ id: 'page.cloudDrive.description', defaultMessage: 'Sora MV 视频平台 - 使用 AI 技术生成高质量视频' })} />
+        <title>工作台 - Sora MV</title>
+        <meta name="description" content="Sora MV 工作台 - 使用 AI 技术生成高质量视频" />
       </Helmet>
       <Layout style={{ minHeight: '100vh', height: '100vh', overflow: 'hidden' }}>
         <SimpleHeader />
