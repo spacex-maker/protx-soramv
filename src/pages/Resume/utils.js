@@ -140,3 +140,111 @@ export const mergeSkills = (savedSkills, defaultSkills) => {
   return normalizeSkills(merged, defaultSkills);
 };
 
+// 将后端数组格式转换为前端对象格式
+export const convertBackendSkillsToFrontend = (backendSkillsArray, defaultSkills) => {
+  if (!backendSkillsArray || !Array.isArray(backendSkillsArray)) {
+    return defaultSkills;
+  }
+
+  // 初始化前端格式，使用默认技能作为基础
+  const frontendSkills = {};
+  Object.keys(defaultSkills).forEach(category => {
+    frontendSkills[category] = [];
+  });
+
+  // 按分类分组后端数据
+  const skillsByCategory = {};
+  backendSkillsArray.forEach(skill => {
+    if (skill && skill.category && skill.name) {
+      if (!skillsByCategory[skill.category]) {
+        skillsByCategory[skill.category] = [];
+      }
+      skillsByCategory[skill.category].push({
+        name: skill.name,
+        percentage: skill.percentage || 0,
+        iconType: skill.iconType || 'CodeOutlined',
+        id: skill.id, // 保留ID用于更新
+        sortOrder: skill.sortOrder || 0
+      });
+    }
+  });
+
+  // 按 sortOrder 排序并合并到前端格式
+  Object.keys(skillsByCategory).forEach(category => {
+    const sortedSkills = skillsByCategory[category].sort((a, b) => {
+      return (a.sortOrder || 0) - (b.sortOrder || 0);
+    });
+    
+    // 如果分类存在于默认技能中，合并数据（保留用户修改的百分比）
+    if (frontendSkills[category]) {
+      const defaultSkillMap = new Map();
+      defaultSkills[category].forEach(s => {
+        if (s && s.name) {
+          defaultSkillMap.set(s.name, s);
+        }
+      });
+
+      // 合并：优先使用后端数据，如果后端没有则使用默认数据
+      const mergedSkills = [];
+      const processedNames = new Set();
+
+      // 先处理后端数据
+      sortedSkills.forEach(backendSkill => {
+        const defaultSkill = defaultSkillMap.get(backendSkill.name);
+        if (defaultSkill) {
+          // 如果默认数据中存在，合并（保留后端的百分比）
+          mergedSkills.push({
+            ...defaultSkill,
+            percentage: backendSkill.percentage,
+            id: backendSkill.id,
+            sortOrder: backendSkill.sortOrder
+          });
+        } else {
+          // 如果默认数据中不存在，直接添加后端数据
+          mergedSkills.push(backendSkill);
+        }
+        processedNames.add(backendSkill.name);
+      });
+
+      // 添加默认数据中存在但后端没有的技能
+      defaultSkills[category].forEach(defaultSkill => {
+        if (!processedNames.has(defaultSkill.name)) {
+          mergedSkills.push(defaultSkill);
+        }
+      });
+
+      frontendSkills[category] = mergedSkills;
+    } else {
+      // 如果分类不存在于默认技能中，直接使用后端数据
+      frontendSkills[category] = sortedSkills;
+    }
+  });
+
+  return normalizeSkills(frontendSkills, defaultSkills);
+};
+
+// 将前端对象格式转换为后端数组格式
+export const convertFrontendSkillsToBackend = (frontendSkills) => {
+  const backendSkillsArray = [];
+  
+  Object.keys(frontendSkills).forEach(category => {
+    const skills = frontendSkills[category];
+    if (Array.isArray(skills)) {
+      skills.forEach((skill, index) => {
+        if (skill && skill.name) {
+          backendSkillsArray.push({
+            id: skill.id || null, // 如果有ID则保留，用于更新；否则为null，用于新增
+            category: category,
+            name: skill.name,
+            percentage: skill.percentage || 0,
+            iconType: skill.iconType || 'CodeOutlined',
+            sortOrder: skill.sortOrder !== undefined ? skill.sortOrder : index
+          });
+        }
+      });
+    }
+  });
+
+  return backendSkillsArray;
+};
+

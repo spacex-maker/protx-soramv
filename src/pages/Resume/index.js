@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ConfigProvider, theme, message } from "antd";
 import SimpleHeader from "components/headers/simple";
 import dayjs from 'dayjs';
+import { resume as resumeApi } from '../../api/resume';
 
 // 组件
 import PersonalInfo from './components/PersonalInfo';
@@ -39,7 +40,7 @@ import {
   defaultPortfolio,
   defaultSummary
 } from './constants';
-import { mergeSkills } from './utils';
+import { mergeSkills, convertBackendSkillsToFrontend, convertFrontendSkillsToBackend } from './utils';
 
 export default function Resume() {
   const { token } = theme.useToken();
@@ -69,10 +70,161 @@ export default function Resume() {
 
   // 数据加载
   useEffect(() => {
-    const savedSkills = localStorage.getItem('resume-skills');
-    const savedInfo = localStorage.getItem('resume-info');
-    const savedEducation = localStorage.getItem('resume-education');
-    const savedCareer = localStorage.getItem('resume-career');
+    // 加载个人信息 - 从后端 API 获取
+    const loadPersonalInfo = async () => {
+      try {
+        const response = await resumeApi.getPersonalInfo();
+        if (response.success && response.data) {
+          // 将后端返回的数据映射到前端格式
+          const backendData = response.data;
+          setPersonalInfo({
+            name: backendData.name || '',
+            title: backendData.title || '',
+            age: backendData.age || '',
+            gender: backendData.gender || '',
+            location: backendData.location || '',
+            experience: backendData.experience || '',
+            email: backendData.email || '',
+            phone: backendData.phone || '',
+            wechat: backendData.wechat || '',
+            github: backendData.github || '',
+            linkedin: backendData.linkedin || '',
+            blog: backendData.blog || '',
+            website: backendData.website || '',
+            address: backendData.address || '',
+            expectedSalary: backendData.expectedSalary || '',
+            availability: backendData.availability || ''
+          });
+        } else {
+          // 如果后端没有数据，使用默认值
+          setPersonalInfo(defaultPersonalInfo);
+        }
+      } catch (error) {
+        console.error('Failed to load personal info:', error);
+        // 出错时使用默认值
+        setPersonalInfo(defaultPersonalInfo);
+      }
+    };
+
+    loadPersonalInfo();
+
+    // 加载技能栈 - 从后端 API 获取
+    const loadSkills = async () => {
+      try {
+        const response = await resumeApi.getSkills();
+        if (response.success && response.data && Array.isArray(response.data) && response.data.length > 0) {
+          // 将后端返回的数组格式转换为前端对象格式
+          const frontendSkills = convertBackendSkillsToFrontend(response.data, defaultSkills);
+          setSkills(frontendSkills);
+        } else {
+          // 如果后端没有数据，使用默认值
+          setSkills(defaultSkills);
+        }
+      } catch (error) {
+        console.error('Failed to load skills:', error);
+        // 出错时使用默认值
+        setSkills(defaultSkills);
+      }
+    };
+
+    loadSkills();
+
+    // 加载教育经历 - 从后端 API 获取
+    const loadEducation = async () => {
+      try {
+        const response = await resumeApi.getEducation();
+        if (response.success && response.data && Array.isArray(response.data)) {
+          // 将后端返回的数据转换为前端格式
+          const frontendEducation = response.data.map(item => ({
+            id: item.id,
+            degree: item.degree || '',
+            major: item.major || '',
+            school: item.school || '',
+            startDate: item.startDate || '',
+            endDate: item.endDate || '',
+            description: item.description || ''
+          }));
+          // 如果后端有数据就使用，没有数据就使用空数组（不使用默认数据，因为默认数据的ID在后端不存在）
+          setEducation(frontendEducation);
+        } else {
+          // 如果后端没有数据，使用空数组（不使用默认数据）
+          setEducation([]);
+        }
+      } catch (error) {
+        console.error('Failed to load education:', error);
+        // 出错时使用空数组（不使用默认数据）
+        setEducation([]);
+      }
+    };
+
+    loadEducation();
+
+    // 加载职业生涯 - 从后端 API 获取
+    const loadCareer = async () => {
+      try {
+        const response = await resumeApi.getCareer();
+        if (response.success && response.data && Array.isArray(response.data)) {
+          // 将后端返回的数据转换为前端格式
+          const frontendCareer = response.data.map(item => ({
+            id: item.id,
+            company: item.company || '',
+            position: item.position || '',
+            location: item.location || '',
+            department: item.department || '',
+            startDate: item.startDate || '',
+            endDate: item.endDate || '',
+            description: item.description || '',
+            responsibilities: Array.isArray(item.responsibilities) ? item.responsibilities : [],
+            achievements: Array.isArray(item.achievements) ? item.achievements : [],
+            technologies: Array.isArray(item.technologies) ? item.technologies : []
+          }));
+          setCareer(frontendCareer);
+        } else {
+          // 如果后端没有数据，使用空数组
+          setCareer([]);
+        }
+      } catch (error) {
+        console.error('Failed to load career:', error);
+        // 出错时使用空数组
+        setCareer([]);
+      }
+    };
+
+    loadCareer();
+
+    // 加载项目经验 - 从后端 API 获取
+    const loadProjects = async () => {
+      try {
+        const response = await resumeApi.getProjects();
+        if (response.success && response.data && Array.isArray(response.data)) {
+          // 将后端返回的数据转换为前端格式
+          const frontendProjects = response.data.map(item => ({
+            id: item.id,
+            name: item.name || '',
+            description: item.description || '',
+            role: item.role || '',
+            startDate: item.startDate || '',
+            endDate: item.endDate || '',
+            technologies: Array.isArray(item.technologies) ? item.technologies : [],
+            highlights: Array.isArray(item.highlights) ? item.highlights : [],
+            link: item.link || '',
+            demo: item.demo || ''
+          }));
+          setProjects(frontendProjects);
+        } else {
+          // 如果后端没有数据，使用空数组
+          setProjects([]);
+        }
+      } catch (error) {
+        console.error('Failed to load projects:', error);
+        // 出错时使用空数组
+        setProjects([]);
+      }
+    };
+
+    loadProjects();
+
+    // 其他模块仍从 localStorage 加载（后续会改为 API）
     const savedProjects = localStorage.getItem('resume-projects');
     const savedCertifications = localStorage.getItem('resume-certifications');
     const savedLanguages = localStorage.getItem('resume-languages');
@@ -81,48 +233,6 @@ export default function Resume() {
     const savedPortfolio = localStorage.getItem('resume-portfolio');
     const savedSummary = localStorage.getItem('resume-summary');
     
-    try {
-      const parsedSkills = savedSkills ? JSON.parse(savedSkills) : null;
-      setSkills(mergeSkills(parsedSkills, defaultSkills));
-    } catch (e) {
-      console.error('Failed to parse saved skills:', e);
-      setSkills(defaultSkills);
-    }
-    
-    if (savedInfo) {
-      try {
-        const parsedInfo = JSON.parse(savedInfo);
-        setPersonalInfo({ ...defaultPersonalInfo, ...parsedInfo });
-      } catch (e) {
-        console.error('Failed to parse saved info:', e);
-        setPersonalInfo(defaultPersonalInfo);
-      }
-    }
-
-    if (savedEducation) {
-      try {
-        setEducation(JSON.parse(savedEducation));
-      } catch (e) {
-        console.error('Failed to parse saved education:', e);
-      }
-    }
-
-    if (savedCareer) {
-      try {
-        setCareer(JSON.parse(savedCareer));
-      } catch (e) {
-        console.error('Failed to parse saved career:', e);
-      }
-    }
-
-    if (savedProjects) {
-      try {
-        setProjects(JSON.parse(savedProjects));
-      } catch (e) {
-        console.error('Failed to parse saved projects:', e);
-      }
-    }
-
     if (savedCertifications) {
       try {
         setCertifications(JSON.parse(savedCertifications));
@@ -207,11 +317,57 @@ export default function Resume() {
     }));
   };
 
+  // 保存个人信息到后端
+  const handleSavePersonalInfo = async () => {
+    try {
+      const response = await resumeApi.savePersonalInfo(personalInfo);
+      if (response.success) {
+        setIsEditingInfo(false);
+        message.success('个人信息已保存！');
+      } else {
+        message.error(response.message || '保存个人信息失败');
+      }
+    } catch (error) {
+      console.error('Failed to save personal info:', error);
+      message.error('保存个人信息失败，请稍后重试');
+    }
+  };
+
   // 技能处理
   const handleSkillPercentageChange = (category, index, percentage) => {
     const newSkills = { ...skills };
     newSkills[category][index].percentage = percentage;
     setSkills(newSkills);
+  };
+
+  // 保存技能栈到后端
+  const handleSaveSkills = async () => {
+    try {
+      // 将前端对象格式转换为后端数组格式
+      const backendSkillsArray = convertFrontendSkillsToBackend(skills);
+      
+      const response = await resumeApi.saveSkills(backendSkillsArray);
+      if (response.success) {
+        setIsEditing(false);
+        message.success('技能栈已保存！');
+        
+        // 保存成功后，重新加载技能数据以获取最新的ID等信息
+        try {
+          const reloadResponse = await resumeApi.getSkills();
+          if (reloadResponse.success && reloadResponse.data && Array.isArray(reloadResponse.data) && reloadResponse.data.length > 0) {
+            const frontendSkills = convertBackendSkillsToFrontend(reloadResponse.data, defaultSkills);
+            setSkills(frontendSkills);
+          }
+        } catch (reloadError) {
+          console.error('Failed to reload skills after save:', reloadError);
+        }
+      } else {
+        message.error(response.message || '保存技能栈失败');
+      }
+    } catch (error) {
+      console.error('Failed to save skills:', error);
+      message.error('保存技能栈失败，请稍后重试');
+    }
   };
 
   // 教育信息处理
@@ -222,10 +378,14 @@ export default function Resume() {
   };
 
   const handleAddEducation = () => {
-    const newId = Math.max(...education.map(e => e.id), 0) + 1;
+    // 使用负数作为临时ID，用于区分新增项
+    const existingIds = education.map(e => typeof e.id === 'number' ? e.id : 0);
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    const newTempId = maxId > 0 ? -Math.abs(maxId) - 1 : -1;
+    
     setEducation(prev => [
       {
-        id: newId,
+        id: newTempId,
         degree: '本科',
         major: '',
         school: '',
@@ -237,9 +397,101 @@ export default function Resume() {
     ]);
   };
 
-  const handleDeleteEducation = (id) => {
-    setEducation(prev => prev.filter(item => item.id !== id));
-    message.success('教育经历已删除');
+  // 删除教育经历
+  const handleDeleteEducation = async (id) => {
+    // 如果是临时ID（负数），直接从本地删除
+    if (typeof id === 'number' && id < 0) {
+      setEducation(prev => prev.filter(item => item.id !== id));
+      message.success('教育经历已删除');
+      return;
+    }
+
+    // 如果是真实ID，调用后端API删除
+    try {
+      const response = await resumeApi.deleteEducation(id);
+      if (response.success) {
+        setEducation(prev => prev.filter(item => item.id !== id));
+        message.success('教育经历已删除');
+      } else {
+        message.error(response.message || '删除教育经历失败');
+      }
+    } catch (error) {
+      console.error('Failed to delete education:', error);
+      message.error('删除教育经历失败，请稍后重试');
+    }
+  };
+
+  // 保存教育经历到后端
+  const handleSaveEducation = async () => {
+    try {
+      // 如果没有教育经历，直接返回
+      if (!education || education.length === 0) {
+        setIsEditingEducation(false);
+        message.success('教育经历已保存！');
+        return;
+      }
+
+      // 区分新增和更新
+      // 注意：只有ID是正数且大于0的才认为是已存在的记录，需要更新
+      // 负数ID或0/null/undefined都认为是新记录，需要新增
+      const savePromises = education.map(async (item) => {
+        // 判断是否为已存在的记录：ID必须是正数且大于0
+        const isExisting = typeof item.id === 'number' && item.id > 0;
+        
+        const requestData = {
+          degree: item.degree || '',
+          major: item.major || '',
+          school: item.school || '',
+          startDate: item.startDate || '',
+          endDate: item.endDate || '',
+          description: item.description || ''
+        };
+
+        if (isExisting) {
+          // 更新已存在的记录
+          requestData.id = item.id;
+          return await resumeApi.updateEducation(requestData);
+        } else {
+          // 新增记录（包括负数ID、0、null、undefined等情况）
+          return await resumeApi.saveEducation(requestData);
+        }
+      });
+
+      const results = await Promise.all(savePromises);
+      
+      // 检查是否所有操作都成功
+      const allSuccess = results.every(result => result.success);
+      
+      if (allSuccess) {
+        setIsEditingEducation(false);
+        message.success('教育经历已保存！');
+        
+        // 保存成功后，重新加载教育数据以获取最新的ID等信息
+        try {
+          const reloadResponse = await resumeApi.getEducation();
+          if (reloadResponse.success && reloadResponse.data && Array.isArray(reloadResponse.data)) {
+            const frontendEducation = reloadResponse.data.map(item => ({
+              id: item.id,
+              degree: item.degree || '',
+              major: item.major || '',
+              school: item.school || '',
+              startDate: item.startDate || '',
+              endDate: item.endDate || '',
+              description: item.description || ''
+            }));
+            setEducation(frontendEducation);
+          }
+        } catch (reloadError) {
+          console.error('Failed to reload education after save:', reloadError);
+        }
+      } else {
+        const failedResults = results.filter(result => !result.success);
+        message.error(failedResults[0]?.message || '保存教育经历失败');
+      }
+    } catch (error) {
+      console.error('Failed to save education:', error);
+      message.error('保存教育经历失败，请稍后重试');
+    }
   };
 
   // 职业生涯处理
@@ -250,10 +502,14 @@ export default function Resume() {
   };
 
   const handleAddCareer = () => {
-    const newId = Math.max(...career.map(c => c.id), 0) + 1;
+    // 使用负数作为临时ID，用于区分新增项
+    const existingIds = career.map(c => typeof c.id === 'number' ? c.id : 0);
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    const newTempId = maxId > 0 ? -Math.abs(maxId) - 1 : -1;
+    
     setCareer(prev => [
       {
-        id: newId,
+        id: newTempId,
         company: '',
         position: '',
         location: '',
@@ -269,9 +525,109 @@ export default function Resume() {
     ]);
   };
 
-  const handleDeleteCareer = (id) => {
-    setCareer(prev => prev.filter(item => item.id !== id));
-    message.success('工作经历已删除');
+  // 删除职业生涯
+  const handleDeleteCareer = async (id) => {
+    // 如果是临时ID（负数），直接从本地删除
+    if (typeof id === 'number' && id < 0) {
+      setCareer(prev => prev.filter(item => item.id !== id));
+      message.success('工作经历已删除');
+      return;
+    }
+
+    // 如果是真实ID，调用后端API删除
+    try {
+      const response = await resumeApi.deleteCareer(id);
+      if (response.success) {
+        setCareer(prev => prev.filter(item => item.id !== id));
+        message.success('工作经历已删除');
+      } else {
+        message.error(response.message || '删除工作经历失败');
+      }
+    } catch (error) {
+      console.error('Failed to delete career:', error);
+      message.error('删除工作经历失败，请稍后重试');
+    }
+  };
+
+  // 保存职业生涯到后端
+  const handleSaveCareer = async () => {
+    try {
+      // 如果没有职业生涯，直接返回
+      if (!career || career.length === 0) {
+        setIsEditingCareer(false);
+        message.success('职业生涯已保存！');
+        return;
+      }
+
+      // 区分新增和更新
+      // 注意：只有ID是正数且大于0的才认为是已存在的记录，需要更新
+      // 负数ID或0/null/undefined都认为是新记录，需要新增
+      const savePromises = career.map(async (item) => {
+        // 判断是否为已存在的记录：ID必须是正数且大于0
+        const isExisting = typeof item.id === 'number' && item.id > 0;
+        
+        const requestData = {
+          company: item.company || '',
+          position: item.position || '',
+          location: item.location || '',
+          department: item.department || '',
+          startDate: item.startDate || '',
+          endDate: item.endDate || '',
+          description: item.description || '',
+          responsibilities: Array.isArray(item.responsibilities) ? item.responsibilities : [],
+          achievements: Array.isArray(item.achievements) ? item.achievements : [],
+          technologies: Array.isArray(item.technologies) ? item.technologies : []
+        };
+
+        if (isExisting) {
+          // 更新已存在的记录
+          requestData.id = item.id;
+          return await resumeApi.updateCareer(requestData);
+        } else {
+          // 新增记录（包括负数ID、0、null、undefined等情况）
+          return await resumeApi.saveCareer(requestData);
+        }
+      });
+
+      const results = await Promise.all(savePromises);
+      
+      // 检查是否所有操作都成功
+      const allSuccess = results.every(result => result.success);
+      
+      if (allSuccess) {
+        setIsEditingCareer(false);
+        message.success('职业生涯已保存！');
+        
+        // 保存成功后，重新加载职业生涯数据以获取最新的ID等信息
+        try {
+          const reloadResponse = await resumeApi.getCareer();
+          if (reloadResponse.success && reloadResponse.data && Array.isArray(reloadResponse.data)) {
+            const frontendCareer = reloadResponse.data.map(item => ({
+              id: item.id,
+              company: item.company || '',
+              position: item.position || '',
+              location: item.location || '',
+              department: item.department || '',
+              startDate: item.startDate || '',
+              endDate: item.endDate || '',
+              description: item.description || '',
+              responsibilities: Array.isArray(item.responsibilities) ? item.responsibilities : [],
+              achievements: Array.isArray(item.achievements) ? item.achievements : [],
+              technologies: Array.isArray(item.technologies) ? item.technologies : []
+            }));
+            setCareer(frontendCareer);
+          }
+        } catch (reloadError) {
+          console.error('Failed to reload career after save:', reloadError);
+        }
+      } else {
+        const failedResults = results.filter(result => !result.success);
+        message.error(failedResults[0]?.message || '保存职业生涯失败');
+      }
+    } catch (error) {
+      console.error('Failed to save career:', error);
+      message.error('保存职业生涯失败，请稍后重试');
+    }
   };
 
   // 项目经验处理
@@ -282,10 +638,14 @@ export default function Resume() {
   };
 
   const handleAddProject = () => {
-    const newId = Math.max(...projects.map(p => p.id), 0) + 1;
+    // 使用负数作为临时ID，用于区分新增项
+    const existingIds = projects.map(p => typeof p.id === 'number' ? p.id : 0);
+    const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 0;
+    const newTempId = maxId > 0 ? -Math.abs(maxId) - 1 : -1;
+    
     setProjects(prev => [
       {
-        id: newId,
+        id: newTempId,
         name: '',
         description: '',
         role: '',
@@ -300,9 +660,107 @@ export default function Resume() {
     ]);
   };
 
-  const handleDeleteProject = (id) => {
-    setProjects(prev => prev.filter(item => item.id !== id));
-    message.success('项目已删除');
+  // 删除项目经验
+  const handleDeleteProject = async (id) => {
+    // 如果是临时ID（负数），直接从本地删除
+    if (typeof id === 'number' && id < 0) {
+      setProjects(prev => prev.filter(item => item.id !== id));
+      message.success('项目已删除');
+      return;
+    }
+
+    // 如果是真实ID，调用后端API删除
+    try {
+      const response = await resumeApi.deleteProject(id);
+      if (response.success) {
+        setProjects(prev => prev.filter(item => item.id !== id));
+        message.success('项目已删除');
+      } else {
+        message.error(response.message || '删除项目失败');
+      }
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      message.error('删除项目失败，请稍后重试');
+    }
+  };
+
+  // 保存项目经验到后端
+  const handleSaveProjects = async () => {
+    try {
+      // 如果没有项目经验，直接返回
+      if (!projects || projects.length === 0) {
+        setIsEditingProjects(false);
+        message.success('项目经验已保存！');
+        return;
+      }
+
+      // 区分新增和更新
+      // 注意：只有ID是正数且大于0的才认为是已存在的记录，需要更新
+      // 负数ID或0/null/undefined都认为是新记录，需要新增
+      const savePromises = projects.map(async (item) => {
+        // 判断是否为已存在的记录：ID必须是正数且大于0
+        const isExisting = typeof item.id === 'number' && item.id > 0;
+        
+        const requestData = {
+          name: item.name || '',
+          description: item.description || '',
+          role: item.role || '',
+          startDate: item.startDate || '',
+          endDate: item.endDate || '',
+          technologies: Array.isArray(item.technologies) ? item.technologies : [],
+          highlights: Array.isArray(item.highlights) ? item.highlights : [],
+          link: item.link || '',
+          demo: item.demo || ''
+        };
+
+        if (isExisting) {
+          // 更新已存在的记录
+          requestData.id = item.id;
+          return await resumeApi.updateProject(requestData);
+        } else {
+          // 新增记录（包括负数ID、0、null、undefined等情况）
+          return await resumeApi.saveProject(requestData);
+        }
+      });
+
+      const results = await Promise.all(savePromises);
+      
+      // 检查是否所有操作都成功
+      const allSuccess = results.every(result => result.success);
+      
+      if (allSuccess) {
+        setIsEditingProjects(false);
+        message.success('项目经验已保存！');
+        
+        // 保存成功后，重新加载项目经验数据以获取最新的ID等信息
+        try {
+          const reloadResponse = await resumeApi.getProjects();
+          if (reloadResponse.success && reloadResponse.data && Array.isArray(reloadResponse.data)) {
+            const frontendProjects = reloadResponse.data.map(item => ({
+              id: item.id,
+              name: item.name || '',
+              description: item.description || '',
+              role: item.role || '',
+              startDate: item.startDate || '',
+              endDate: item.endDate || '',
+              technologies: Array.isArray(item.technologies) ? item.technologies : [],
+              highlights: Array.isArray(item.highlights) ? item.highlights : [],
+              link: item.link || '',
+              demo: item.demo || ''
+            }));
+            setProjects(frontendProjects);
+          }
+        } catch (reloadError) {
+          console.error('Failed to reload projects after save:', reloadError);
+        }
+      } else {
+        const failedResults = results.filter(result => !result.success);
+        message.error(failedResults[0]?.message || '保存项目经验失败');
+      }
+    } catch (error) {
+      console.error('Failed to save projects:', error);
+      message.error('保存项目经验失败，请稍后重试');
+    }
   };
 
   // 证书处理
@@ -489,7 +947,7 @@ export default function Resume() {
               isEditingInfo={isEditingInfo}
               onEditToggle={setIsEditingInfo}
               onInfoChange={handleInfoChange}
-              onSave={handleSave}
+              onSave={handleSavePersonalInfo}
               variants={itemVariants}
             />
 
@@ -501,7 +959,7 @@ export default function Resume() {
               activeSkillTab={activeSkillTab}
               onTabChange={setActiveSkillTab}
               onEditToggle={setIsEditing}
-              onSave={handleSave}
+              onSave={handleSaveSkills}
               onSkillPercentageChange={handleSkillPercentageChange}
               variants={itemVariants}
             />
@@ -512,7 +970,7 @@ export default function Resume() {
               education={education}
               isEditingEducation={isEditingEducation}
               onEditToggle={setIsEditingEducation}
-              onSave={handleSave}
+              onSave={handleSaveEducation}
               onEducationChange={handleEducationChange}
               onAddEducation={handleAddEducation}
               onDeleteEducation={handleDeleteEducation}
@@ -525,7 +983,7 @@ export default function Resume() {
               career={career}
               isEditingCareer={isEditingCareer}
               onEditToggle={setIsEditingCareer}
-              onSave={handleSave}
+              onSave={handleSaveCareer}
               onCareerChange={handleCareerChange}
               onAddCareer={handleAddCareer}
               onDeleteCareer={handleDeleteCareer}
@@ -538,7 +996,7 @@ export default function Resume() {
               projects={projects}
               isEditingProjects={isEditingProjects}
               onEditToggle={setIsEditingProjects}
-              onSave={handleSave}
+              onSave={handleSaveProjects}
               onProjectChange={handleProjectChange}
               onAddProject={handleAddProject}
               onDeleteProject={handleDeleteProject}
