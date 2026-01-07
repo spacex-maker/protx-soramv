@@ -58,12 +58,42 @@ const HeroSection = styled.div`
 const HeroBackground = styled.div`
   position: absolute;
   inset: 0;
-  background-image: url(${props => props.src});
-  background-size: cover;
-  background-position: center;
-  opacity: 0.9;
-  filter: blur(8px) brightness(0.8);
-  transform: scale(1.05);
+  ${props => props.src ? `
+    background-image: url(${props.src});
+    background-size: cover;
+    background-position: center;
+    opacity: 0.9;
+    filter: blur(8px) brightness(0.8);
+    transform: scale(1.05);
+  ` : `
+    background: linear-gradient(135deg, 
+      #667eea 0%, 
+      #764ba2 25%, 
+      #f093fb 50%, 
+      #4facfe 75%, 
+      #00f2fe 100%
+    );
+    background-size: 400% 400%;
+    animation: gradientShift 20s ease infinite;
+    opacity: 0.95;
+    position: relative;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: 
+        radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+      pointer-events: none;
+    }
+  `}
+  
+  @keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
 `;
 
 const HeroContent = styled.div`
@@ -574,7 +604,7 @@ const ChallengeDetailPage = () => {
 
         {/* 1. Hero Header */}
         <HeroSection>
-          <HeroBackground src={challenge.coverUrl || 'https://via.placeholder.com/1500'} />
+          <HeroBackground src={challenge.coverUrl || null} />
           <HeroContent>
             <div>
               <StatusBadge className={isOngoing ? 'live' : isEnded ? 'ended' : ''}>
