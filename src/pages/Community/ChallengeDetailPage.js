@@ -58,6 +58,22 @@ const HeroSection = styled.div`
 const HeroBackground = styled.div`
   position: absolute;
   inset: 0;
+  
+  /* 默认渐变背景 */
+  background: linear-gradient(135deg, 
+    #ff6b6b 0%,
+    #ee5a6f 15%,
+    #c44569 30%,
+    #8b2f5b 45%,
+    #6a1b9a 60%,
+    #4a148c 75%,
+    #1a237e 90%,
+    #0d47a1 100%
+  );
+  background-size: 300% 300%;
+  animation: gradientShift 15s ease infinite;
+  
+  /* 如果有图片，则覆盖渐变背景 */
   ${props => props.src ? `
     background-image: url(${props.src});
     background-size: cover;
@@ -65,34 +81,51 @@ const HeroBackground = styled.div`
     opacity: 0.9;
     filter: blur(8px) brightness(0.8);
     transform: scale(1.05);
-  ` : `
-    background: linear-gradient(135deg, 
-      #667eea 0%, 
-      #764ba2 25%, 
-      #f093fb 50%, 
-      #4facfe 75%, 
-      #00f2fe 100%
+    animation: none;
+  ` : ''}
+  
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(circle at 20% 30%, rgba(255, 215, 0, 0.15) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(255, 107, 107, 0.2) 0%, transparent 50%),
+      radial-gradient(circle at 50% 50%, rgba(138, 43, 226, 0.1) 0%, transparent 60%);
+    pointer-events: none;
+    animation: shimmer 10s ease-in-out infinite;
+    ${props => props.src ? 'display: none;' : ''}
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      45deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.03) 50%,
+      transparent 70%
     );
-    background-size: 400% 400%;
-    animation: gradientShift 20s ease infinite;
-    opacity: 0.95;
-    position: relative;
-    
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: 
-        radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
-      pointer-events: none;
-    }
-  `}
+    background-size: 200% 200%;
+    animation: shine 8s linear infinite;
+    pointer-events: none;
+    ${props => props.src ? 'display: none;' : ''}
+  }
   
   @keyframes gradientShift {
-    0% { background-position: 0% 50%; }
+    0%, 100% { background-position: 0% 50%; }
     50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+  }
+  
+  @keyframes shimmer {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+  
+  @keyframes shine {
+    0% { background-position: -200% -200%; }
+    100% { background-position: 200% 200%; }
   }
 `;
 
@@ -212,6 +245,33 @@ const DetailCard = styled.div`
     display: flex;
     align-items: center;
     gap: 10px;
+  }
+`;
+
+const MarkdownContent = styled.div`
+  font-size: 16px;
+  line-height: 1.8;
+  color: ${props => props.theme.mode === 'dark' ? '#e5e5e5' : '#1f1f1f'};
+  word-break: break-word;
+  
+  p {
+    margin: 8px 0;
+  }
+  
+  strong {
+    font-weight: 700;
+    color: ${props => props.theme.mode === 'dark' ? '#fff' : '#000'};
+  }
+  
+  ul {
+    margin: 12px 0 16px 0;
+    padding-left: 28px;
+    list-style: disc;
+    
+    li {
+      margin: 6px 0;
+      color: inherit;
+    }
   }
 `;
 
@@ -358,12 +418,24 @@ const StyledTabs = styled(Tabs)`
 const parseRewardsConfig = (rewardsConfig) => {
   try {
     const config = JSON.parse(rewardsConfig);
-    return {
-      first: config['1st'] || config.first || 0,
-      second: config['2nd'] || config.second || 0,
-      third: config['3rd'] || config.third || 0,
+    
+    // 辅助函数：提取奖励值（支持数字或 {badge, tokens} 对象）
+    const extractValue = (value) => {
+      if (typeof value === 'number') return value;
+      if (typeof value === 'object' && value !== null && 'tokens' in value) {
+        return Number(value.tokens) || 0;
+      }
+      return 0;
     };
-  } catch (e) { return { first: 0, second: 0, third: 0 }; }
+    
+    return {
+      first: extractValue(config['1st'] || config.first),
+      second: extractValue(config['2nd'] || config.second),
+      third: extractValue(config['3rd'] || config.third),
+    };
+  } catch (e) { 
+    return { first: 0, second: 0, third: 0 }; 
+  }
 };
 
 // 解析标签数组：支持数组、JSON字符串、逗号分隔字符串
@@ -390,6 +462,55 @@ const parseTags = (tags) => {
   }
   
   return [];
+};
+
+// 简单的 Markdown 转 HTML 渲染器
+const renderMarkdown = (text) => {
+  if (!text) return '';
+  
+  // 按行处理
+  const lines = text.split('\n');
+  const result = [];
+  let inList = false;
+  let listItems = [];
+  
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    
+    // 检查是否是列表项（数字或星号开头）
+    const isListItem = /^\s*(\d+\.|\*)\s+/.test(line);
+    
+    if (isListItem) {
+      // 移除列表标记，处理粗体
+      const content = line.replace(/^\s*(\d+\.|\*)\s+/, '').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      listItems.push(`<li>${content}</li>`);
+      inList = true;
+    } else {
+      // 如果之前在列表中，现在结束列表
+      if (inList && listItems.length > 0) {
+        result.push(`<ul>${listItems.join('')}</ul>`);
+        listItems = [];
+        inList = false;
+      }
+      
+      // 处理普通行
+      if (line.trim()) {
+        // 处理粗体
+        line = line.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        result.push(`<p>${line}</p>`);
+      } else if (result.length > 0) {
+        // 空行作为段落分隔
+        result.push('<br>');
+      }
+    }
+  }
+  
+  // 如果最后还有未闭合的列表
+  if (inList && listItems.length > 0) {
+    result.push(`<ul>${listItems.join('')}</ul>`);
+  }
+  
+  return result.join('');
 };
 
 const calculateTotalPrize = (config) => {
@@ -534,12 +655,53 @@ const ChallengeDetailPage = () => {
       setLoading(true);
       try {
         // Load list of challenges for the drawer
-        listAllChallenges(50).then(setAllChallenges).catch(console.error);
+        listAllChallenges(50)
+          .then(challenges => {
+            // 清理 challenges 数据，确保没有对象字段被直接渲染
+            const cleanedChallenges = Array.isArray(challenges) ? challenges.map(item => ({
+              id: item.id,
+              title: typeof item.title === 'string' ? item.title : '',
+              description: typeof item.description === 'string' ? item.description : undefined,
+              coverUrl: typeof item.coverUrl === 'string' ? item.coverUrl : undefined,
+              requiredTags: typeof item.requiredTags === 'string' ? item.requiredTags : undefined,
+              requiredModel: typeof item.requiredModel === 'string' ? item.requiredModel : undefined,
+              referenceImageUrl: typeof item.referenceImageUrl === 'string' ? item.referenceImageUrl : undefined,
+              startTime: typeof item.startTime === 'string' ? item.startTime : '',
+              endTime: typeof item.endTime === 'string' ? item.endTime : '',
+              votingEndTime: typeof item.votingEndTime === 'string' ? item.votingEndTime : '',
+              rewardsConfig: typeof item.rewardsConfig === 'string' ? item.rewardsConfig : undefined,
+              status: Number(item.status) || 0,
+              createTime: typeof item.createTime === 'string' ? item.createTime : '',
+            })) : [];
+            setAllChallenges(cleanedChallenges);
+          })
+          .catch(console.error);
         
         let data;
         if (challengeId) data = await getChallengeById(Number(challengeId));
         else data = await getCurrentChallenge();
-        setChallenge(data);
+        
+        // 清理 challenge 数据，确保没有对象字段被直接渲染
+        if (data) {
+          const cleanedChallenge = {
+            id: data.id,
+            title: typeof data.title === 'string' ? data.title : '',
+            description: typeof data.description === 'string' ? data.description : undefined,
+            coverUrl: typeof data.coverUrl === 'string' ? data.coverUrl : undefined,
+            requiredTags: typeof data.requiredTags === 'string' ? data.requiredTags : undefined,
+            requiredModel: typeof data.requiredModel === 'string' ? data.requiredModel : undefined,
+            referenceImageUrl: typeof data.referenceImageUrl === 'string' ? data.referenceImageUrl : undefined,
+            startTime: typeof data.startTime === 'string' ? data.startTime : '',
+            endTime: typeof data.endTime === 'string' ? data.endTime : '',
+            votingEndTime: typeof data.votingEndTime === 'string' ? data.votingEndTime : '',
+            rewardsConfig: typeof data.rewardsConfig === 'string' ? data.rewardsConfig : undefined,
+            status: Number(data.status) || 0,
+            createTime: typeof data.createTime === 'string' ? data.createTime : '',
+          };
+          setChallenge(cleanedChallenge);
+        } else {
+          setChallenge(null);
+        }
       } catch(e) { 
         message.error(intl.formatMessage({ id: 'community.challenge.loadFailed', defaultMessage: 'Failed to load challenge data' })); 
       } finally {
@@ -554,7 +716,58 @@ const ChallengeDetailPage = () => {
     if(challenge?.id) {
       setPostsLoading(true);
       listPosts({ challengeId: challenge.id, page: 1, pageSize: 50, sortBy: 'latest' })
-        .then(data => setChallengePosts(data))
+        .then(data => {
+          // 确保返回的是数组，并清理数据
+          const posts = Array.isArray(data) ? data : [];
+          // 确保每个 post 的 mediaUrls 是数组，并清理所有对象字段
+          const cleanedPosts = posts.map(post => {
+            let mediaUrls = [];
+            if (Array.isArray(post.mediaUrls)) {
+              mediaUrls = post.mediaUrls;
+            } else if (typeof post.mediaUrls === 'string') {
+              try {
+                const parsed = JSON.parse(post.mediaUrls);
+                mediaUrls = Array.isArray(parsed) ? parsed : [];
+              } catch (e) {
+                mediaUrls = [];
+              }
+            }
+            
+            // 清理所有可能包含对象的字段，确保它们不会被直接渲染
+            const cleanedPost = {
+              id: post.id,
+              userId: post.userId,
+              userNickname: typeof post.userNickname === 'string' ? post.userNickname : '',
+              userAvatar: typeof post.userAvatar === 'string' ? post.userAvatar : undefined,
+              title: typeof post.title === 'string' ? post.title : '',
+              mediaType: post.mediaType,
+              mediaUrls,
+              coverUrl: typeof post.coverUrl === 'string' ? post.coverUrl : undefined,
+              prompt: typeof post.prompt === 'string' ? post.prompt : undefined,
+              negativePrompt: typeof post.negativePrompt === 'string' ? post.negativePrompt : undefined,
+              modelKey: typeof post.modelKey === 'string' ? post.modelKey : undefined,
+              generationParams: typeof post.generationParams === 'string' ? post.generationParams : undefined,
+              viewCount: Number(post.viewCount) || 0,
+              likeCount: Number(post.likeCount) || 0,
+              commentCount: Number(post.commentCount) || 0,
+              collectCount: Number(post.collectCount) || 0,
+              status: Number(post.status) || 0,
+              isFeatured: Boolean(post.isFeatured),
+              channelId: post.channelId,
+              channelName: typeof post.channelName === 'string' ? post.channelName : undefined,
+              isChallengeEntry: Boolean(post.isChallengeEntry),
+              challengeId: post.challengeId,
+              challengeScore: post.challengeScore ? Number(post.challengeScore) : undefined,
+              isLiked: Boolean(post.isLiked),
+              isCollected: Boolean(post.isCollected),
+              tags: Array.isArray(post.tags) ? post.tags : [],
+              createTime: typeof post.createTime === 'string' ? post.createTime : '',
+            };
+            
+            return cleanedPost;
+          });
+          setChallengePosts(cleanedPosts);
+        })
         .catch(console.error)
         .finally(() => setPostsLoading(false));
     }
@@ -604,7 +817,7 @@ const ChallengeDetailPage = () => {
 
         {/* 1. Hero Header */}
         <HeroSection>
-          <HeroBackground src={challenge.coverUrl || null} />
+          <HeroBackground src={challenge.coverUrl} />
           <HeroContent>
             <div>
               <StatusBadge className={isOngoing ? 'live' : isEnded ? 'ended' : ''}>
@@ -653,20 +866,26 @@ const ChallengeDetailPage = () => {
                          <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
                        ) : challengePosts.length > 0 ? (
                          <MasonryGrid>
-                            {challengePosts.map(post => (
-                                <ArtCard key={post.id} onClick={() => navigate(`/community/post/${post.id}`)}>
-                                    <img src={post.coverUrl || post.mediaUrls[0]} loading="lazy" alt={post.title} />
-                                    <div className="stats">
-                                        <HeartFilled /> {post.likeCount}
-                                    </div>
-                                    <div className="overlay">
-                                        <div className="user-info">
-                                            <Avatar src={post.userAvatar} size={24} />
-                                            <span>{post.userNickname}</span>
+                            {challengePosts.map(post => {
+                                // 安全获取图片URL
+                                const imageUrl = post.coverUrl || (Array.isArray(post.mediaUrls) && post.mediaUrls.length > 0 ? post.mediaUrls[0] : '');
+                                const likeCount = post.likeCount || 0;
+                                
+                                return (
+                                    <ArtCard key={post.id} onClick={() => navigate(`/community/post/${post.id}`)}>
+                                        {imageUrl && <img src={imageUrl} loading="lazy" alt={post.title || ''} />}
+                                        <div className="stats">
+                                            <HeartFilled /> {likeCount}
                                         </div>
-                                    </div>
-                                </ArtCard>
-                            ))}
+                                        <div className="overlay">
+                                            <div className="user-info">
+                                                <Avatar src={post.userAvatar} size={24} />
+                                                <span>{post.userNickname || ''}</span>
+                                            </div>
+                                        </div>
+                                    </ArtCard>
+                                );
+                            })}
                          </MasonryGrid>
                        ) : (
                          <Empty description={<FormattedMessage id="challenge.noEntries" defaultMessage="No entries yet. Be the first!" />} />
@@ -680,9 +899,7 @@ const ChallengeDetailPage = () => {
                    children: (
                      <DetailCard>
                         <Title level={4}><FormattedMessage id="common.description" defaultMessage="Description" /></Title>
-                        <Paragraph style={{fontSize: 16, lineHeight: 1.8, color: 'inherit'}}>
-                          {challenge.description}
-                        </Paragraph>
+                        <MarkdownContent dangerouslySetInnerHTML={{ __html: renderMarkdown(challenge.description) }} />
                         
                         <Divider />
                         
