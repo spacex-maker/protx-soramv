@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useIntl } from "react-intl";
 import AnimationRevealPage from "helpers/AnimationRevealPage.js";
-import { Container, ContentWithPaddingXl } from "components/misc/Layouts";
-import tw from "twin.macro";
+import { Container } from "components/misc/Layouts";
 import styled from "styled-components";
-import { css } from "styled-components/macro"; //eslint-disable-line
 import SimpleHeader from "components/headers/simple";
 import FooterSection from "./Home/components/FooterSection";
 import { SectionHeading } from "components/misc/Headings";
 import { base } from "api/base";
-import SEO, { SEOConfigs } from 'components/SEO';
 
 const PageWrapper = styled.div`
   .App {
@@ -17,30 +14,145 @@ const PageWrapper = styled.div`
   }
 `;
 
-const HeadingRow = tw.div`flex`;
-const Heading = tw(SectionHeading)`text-gray-900 dark:text-gray-100 mb-10`;
+const StyledContainer = styled(Container)`
+  position: relative;
+  padding-top: 100px;
+  
+  @media (max-width: 768px) {
+    padding-top: 80px;
+  }
+  
+  @media (max-width: 480px) {
+    padding-top: 60px;
+  }
+`;
+
+const StyledContentWrapper = styled.div`
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 80px 40px;
+  
+  @media (max-width: 768px) {
+    padding: 60px 20px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 40px 16px;
+  }
+`;
+
+const HeadingRow = styled.div`
+  display: flex;
+`;
+
+const Heading = styled(SectionHeading)`
+  color: ${props => props.theme.mode === 'dark' ? '#f0f0f0' : '#1a1a1a'};
+  margin-bottom: 40px;
+  
+  @media (max-width: 768px) {
+    margin-bottom: 24px;
+    font-size: 24px;
+  }
+`;
+
 const Text = styled.div`
-  ${tw`text-lg text-gray-800 dark:text-gray-200`}
+  font-size: 18px;
+  line-height: 1.8;
+  color: ${props => props.theme.mode === 'dark' ? '#e0e0e0' : '#333333'};
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  
+  @media (max-width: 768px) {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  
   p {
-    ${tw`mt-2 leading-loose`}
+    margin-top: 8px;
+    margin-bottom: 8px;
+    line-height: 1.8;
+    
+    @media (max-width: 768px) {
+      line-height: 1.6;
+      margin-top: 6px;
+      margin-bottom: 6px;
+    }
   }
+  
   h1 {
-    ${tw`text-3xl font-bold mt-10`}
+    font-size: 28px;
+    font-weight: 700;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    color: ${props => props.theme.mode === 'dark' ? '#f0f0f0' : '#1a1a1a'};
+    
+    @media (max-width: 768px) {
+      font-size: 22px;
+      margin-top: 32px;
+      margin-bottom: 12px;
+    }
   }
+  
   h2 {
-    ${tw`text-2xl font-bold mt-8`}
+    font-size: 24px;
+    font-weight: 700;
+    margin-top: 32px;
+    margin-bottom: 12px;
+    color: ${props => props.theme.mode === 'dark' ? '#f0f0f0' : '#1a1a1a'};
+    
+    @media (max-width: 768px) {
+      font-size: 20px;
+      margin-top: 24px;
+      margin-bottom: 10px;
+    }
   }
+  
   h3 {
-    ${tw`text-xl font-bold mt-6`}
+    font-size: 20px;
+    font-weight: 700;
+    margin-top: 24px;
+    margin-bottom: 10px;
+    color: ${props => props.theme.mode === 'dark' ? '#f0f0f0' : '#1a1a1a'};
+    
+    @media (max-width: 768px) {
+      font-size: 18px;
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
   }
+  
   ul {
-    ${tw`list-disc list-inside`}
+    list-style-type: disc;
+    list-style-position: inside;
+    padding-left: 0;
+    margin: 16px 0;
+    
+    @media (max-width: 768px) {
+      margin: 12px 0;
+    }
+    
     li {
-      ${tw`ml-2 mb-3`}
+      margin-left: 8px;
+      margin-bottom: 12px;
+      line-height: 1.8;
+      
+      @media (max-width: 768px) {
+        margin-left: 4px;
+        margin-bottom: 8px;
+        line-height: 1.6;
+      }
+      
       p {
-        ${tw`mt-0 inline leading-normal`}
+        margin-top: 0;
+        margin-bottom: 0;
+        display: inline;
+        line-height: 1.6;
       }
     }
+  }
+  
+  strong {
+    font-weight: 600;
   }
 `;
 
@@ -65,8 +177,8 @@ export default ({ headingText }) => {
     <PageWrapper>
       <SimpleHeader />
       <AnimationRevealPage>
-        <Container style={{ paddingTop: '100px' }}>
-          <ContentWithPaddingXl>
+        <StyledContainer>
+          <StyledContentWrapper>
             <HeadingRow>
               <Heading>{headingText || intl.formatMessage({ id: 'termsOfService.title', defaultMessage: '服务条款' })}</Heading>
             </HeadingRow>
@@ -222,8 +334,8 @@ export default ({ headingText }) => {
               <li>{intl.formatMessage({ id: 'termsOfService.section13.hours', defaultMessage: '客服时间：工作日 9:00-18:00' })}</li>
             </ul>
             </Text>
-          </ContentWithPaddingXl>
-        </Container>
+          </StyledContentWrapper>
+        </StyledContainer>
       </AnimationRevealPage>
       <FooterSection />
     </PageWrapper>

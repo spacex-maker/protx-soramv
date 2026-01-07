@@ -44,6 +44,7 @@ import CommunityPage from './pages/Community';
 import ChannelDetailPage from './pages/Community/ChannelDetail';
 import PostDetailPage from './pages/Community/PostDetail';
 import ChallengeDetailPage from './pages/Community/ChallengeDetailPage';
+import ResumePage from './pages/Resume';
 
 // 语言配置映射
 const localeMap = {
@@ -328,6 +329,7 @@ export default function App() {
               } />
               <Route path="/decrypt" element={<FileDecryptPage />} />
               <Route path="/test-crypto" element={<TestCrypto />} />
+              <Route path="/resume" element={<ResumePage />} />
               <Route
                 path="/workspace/storage-nodes"
                 element={
