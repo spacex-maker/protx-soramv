@@ -1285,37 +1285,39 @@ const TextToImage: React.FC = () => {
                   />
                 </Form.Item>
 
-                {/* 反向提示词 (可选) */}
-                <Form.Item
-                  name="negativePrompt"
-                  label={
-                    <Space>
-                      <EditOutlined
-                        style={{ color: '#1890ff', fontSize: 12 }}
-                      />
-                      <FormattedMessage
-                        id="create.negativePrompt"
-                        defaultMessage="反向提示词 (Negative)"
-                      />
-                      <Tooltip
-                        title={intl.formatMessage({
-                          id: 'create.negativePrompt.tooltip',
-                          defaultMessage: '你不希望画面中出现的元素',
-                        })}
-                      >
-                        <InfoCircleOutlined style={{ color: '#999' }} />
-                      </Tooltip>
-                    </Space>
-                  }
-                  style={{ marginBottom: 20 }}
-                >
-                  <Input
-                    placeholder={intl.formatMessage({
-                      id: 'create.negativePrompt.placeholder',
-                      defaultMessage: '例如：模糊，低质量，变形的手指...',
-                    })}
-                  />
-                </Form.Item>
+                {/* 反向提示词 (可选) - 仅当模型支持时显示 */}
+                {(selectedModel?.supportNegativePrompt || selectedFamily?.supportNegativePrompt) && (
+                  <Form.Item
+                    name="negativePrompt"
+                    label={
+                      <Space>
+                        <EditOutlined
+                          style={{ color: '#1890ff', fontSize: 12 }}
+                        />
+                        <FormattedMessage
+                          id="create.negativePrompt"
+                          defaultMessage="反向提示词 (Negative)"
+                        />
+                        <Tooltip
+                          title={intl.formatMessage({
+                            id: 'create.negativePrompt.tooltip',
+                            defaultMessage: '你不希望画面中出现的元素',
+                          })}
+                        >
+                          <InfoCircleOutlined style={{ color: '#999' }} />
+                        </Tooltip>
+                      </Space>
+                    }
+                    style={{ marginBottom: 20 }}
+                  >
+                    <Input
+                      placeholder={intl.formatMessage({
+                        id: 'create.negativePrompt.placeholder',
+                        defaultMessage: '例如：模糊，低质量，变形的手指...',
+                      })}
+                    />
+                  </Form.Item>
+                )}
 
                 {/* 参数设置行：画面比例、输出格式、分辨率 */}
                 <Row gutter={16} style={{ marginBottom: 20 }}>

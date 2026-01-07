@@ -12,6 +12,7 @@ export interface ModelFamily {
   supportControlnet: boolean;
   supportInpaint: boolean;
   supportReference: boolean;
+  supportNegativePrompt: boolean;
   currency: string | null;
   outputPrice: number | null;
   companyCode: string | null;
@@ -32,6 +33,7 @@ export interface Model {
   supportControlnet: boolean;
   supportInpaint: boolean;
   supportReference: boolean;
+  supportNegativePrompt: boolean;
   currency: string | null;
   outputPrice: number | null;
   coverImage: string | null;
