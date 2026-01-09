@@ -13,6 +13,7 @@ import styled from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { listPosts, getChallengeById, getCurrentChallenge, listAllChallenges } from 'api/community';
+import SubmitChallengeModal from './SubmitChallengeModal';
 
 const { Title, Text, Paragraph } = Typography;
 const { Countdown } = Statistic;
@@ -649,6 +650,9 @@ const ChallengeDetailPage = () => {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // 提交作品模态框状态
+  const [submitModalVisible, setSubmitModalVisible] = useState(false);
+  
   // Initialize Data
   useEffect(() => {
     const initData = async () => {
@@ -775,7 +779,66 @@ const ChallengeDetailPage = () => {
 
   const handleJoin = () => {
     if (!challenge) return;
-    navigate('/create', { state: { challengeId: challenge.id, prompt: challenge.title } });
+    setSubmitModalVisible(true);
+  };
+
+  const handleSubmitSuccess = () => {
+    // 提交成功后，重新加载帖子列表
+    if (challenge?.id) {
+      setPostsLoading(true);
+      listPosts({ challengeId: challenge.id, page: 1, pageSize: 50, sortBy: 'latest' })
+        .then(data => {
+          const posts = Array.isArray(data) ? data : [];
+          const cleanedPosts = posts.map(post => {
+            let mediaUrls = [];
+            if (Array.isArray(post.mediaUrls)) {
+              mediaUrls = post.mediaUrls;
+            } else if (typeof post.mediaUrls === 'string') {
+              try {
+                const parsed = JSON.parse(post.mediaUrls);
+                mediaUrls = Array.isArray(parsed) ? parsed : [];
+              } catch (e) {
+                mediaUrls = [];
+              }
+            }
+            
+            const cleanedPost = {
+              id: post.id,
+              userId: post.userId,
+              userNickname: typeof post.userNickname === 'string' ? post.userNickname : '',
+              userAvatar: typeof post.userAvatar === 'string' ? post.userAvatar : undefined,
+              title: typeof post.title === 'string' ? post.title : '',
+              mediaType: post.mediaType,
+              mediaUrls,
+              coverUrl: typeof post.coverUrl === 'string' ? post.coverUrl : undefined,
+              prompt: typeof post.prompt === 'string' ? post.prompt : undefined,
+              negativePrompt: typeof post.negativePrompt === 'string' ? post.negativePrompt : undefined,
+              modelKey: typeof post.modelKey === 'string' ? post.modelKey : undefined,
+              generationParams: typeof post.generationParams === 'string' ? post.generationParams : undefined,
+              viewCount: Number(post.viewCount) || 0,
+              likeCount: Number(post.likeCount) || 0,
+              commentCount: Number(post.commentCount) || 0,
+              collectCount: Number(post.collectCount) || 0,
+              status: Number(post.status) || 0,
+              isFeatured: Boolean(post.isFeatured),
+              channelId: post.channelId,
+              channelName: typeof post.channelName === 'string' ? post.channelName : undefined,
+              isChallengeEntry: Boolean(post.isChallengeEntry),
+              challengeId: post.challengeId,
+              challengeScore: post.challengeScore ? Number(post.challengeScore) : undefined,
+              isLiked: Boolean(post.isLiked),
+              isCollected: Boolean(post.isCollected),
+              tags: Array.isArray(post.tags) ? post.tags : [],
+              createTime: typeof post.createTime === 'string' ? post.createTime : '',
+            };
+            
+            return cleanedPost;
+          });
+          setChallengePosts(cleanedPosts);
+        })
+        .catch(console.error)
+        .finally(() => setPostsLoading(false));
+    }
   };
 
   if (loading || !challenge) {
@@ -1094,6 +1157,14 @@ const ChallengeDetailPage = () => {
               )}
           </div>
       </Drawer>
+
+      {/* 提交作品模态框 */}
+      <SubmitChallengeModal
+        open={submitModalVisible}
+        onCancel={() => setSubmitModalVisible(false)}
+        onSuccess={handleSubmitSuccess}
+        challenge={challenge}
+      />
     </PageWrapper>
   );
 };
