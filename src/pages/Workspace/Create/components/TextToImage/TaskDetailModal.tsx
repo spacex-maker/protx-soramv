@@ -39,6 +39,7 @@ import {
   ModelInteractionResponse,
 } from 'api/modelInteraction';
 import PublishToCommunityModal from './PublishToCommunityModal';
+import TaskDetailMobile from './TaskDetailMobile';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -518,6 +519,14 @@ interface TaskDetailModalProps {
 
 const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId }) => {
   const intl = useIntl();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [loading, setLoading] = useState(false);
   const [taskDetail, setTaskDetail] = useState<TaskDetail | null>(null);
   
@@ -554,6 +563,23 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
     }
   }, []);
 
+  const fetchTaskDetail = useCallback(async () => {
+    if (!taskId) return;
+    setLoading(true);
+    try {
+      const response = await instance.get(`/productx/sa-ai-gen-task/${taskId}/detail`);
+      if (response.data.success && response.data.data) {
+        setTaskDetail(response.data.data);
+      } else {
+        message.error(response.data.message || intl.formatMessage({ id: 'create.taskDetail.loadFailed' }));
+      }
+    } catch (error: any) {
+      message.error(error.response?.data?.message || intl.formatMessage({ id: 'create.taskDetail.loadFailed' }));
+    } finally {
+      setLoading(false);
+    }
+  }, [taskId, intl]);
+
   useEffect(() => {
     if (open && taskId) {
       fetchTaskDetail();
@@ -563,7 +589,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
       setPreviewCurrent(0);
       setImageInfoMap({});
     }
-  }, [open, taskId]);
+  }, [open, taskId, fetchTaskDetail]);
 
   // 当任务加载完成后获取模型交互状态
   useEffect(() => {
@@ -668,22 +694,15 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
     }
   }, [taskDetail, loadImageInfo, imageInfoMap]);
 
-  const fetchTaskDetail = async () => {
-    if (!taskId) return;
-    setLoading(true);
-    try {
-      const response = await instance.get(`/productx/sa-ai-gen-task/${taskId}/detail`);
-      if (response.data.success && response.data.data) {
-        setTaskDetail(response.data.data);
-      } else {
-        message.error(response.data.message || intl.formatMessage({ id: 'create.taskDetail.loadFailed' }));
-      }
-    } catch (error: any) {
-      message.error(error.response?.data?.message || intl.formatMessage({ id: 'create.taskDetail.loadFailed' }));
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (isMobile) {
+    return (
+      <TaskDetailMobile 
+        open={open}
+        onClose={onClose}
+        taskId={taskId}
+      />
+    );
+  }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);

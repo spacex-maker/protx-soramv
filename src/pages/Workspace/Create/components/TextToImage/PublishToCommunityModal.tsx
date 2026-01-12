@@ -19,6 +19,7 @@ import {
   DailyChallenge,
 } from 'api/community';
 import { TaskDetail } from './types';
+import PublishToCommunityMobile from './PublishToCommunityMobile';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -138,7 +139,9 @@ const ChannelCard = styled.div<{ $isSelected: boolean; $themeColor?: string; $co
   transform: ${props => props.$isSelected ? 'scale(1.02) translateY(-8px)' : 'scale(0.96)'};
   box-shadow: ${props => props.$isSelected ? '0 20px 40px rgba(0,0,0,0.3)' : '0 8px 20px rgba(0,0,0,0.1)'};
   
-  ${props => props.$isSelected && css`animation: ${pulseSelection} 2s infinite;`}
+  ${props => props.$isSelected ? css`
+    animation: ${pulseSelection} 2s infinite;
+  ` : ''}
 
   &::before {
     content: '';
@@ -173,6 +176,10 @@ const ChallengeItem = styled.div<{ $isSelected: boolean }>`
   &:hover { background: rgba(0, 113, 227, 0.05); }
 `;
 
+const AnimatedChallengeList = styled.div`
+  animation: ${fadeIn} 0.5s ease forwards;
+`;
+
 const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
   open,
   onCancel,
@@ -181,6 +188,14 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
 }) => {
   const intl = useIntl();
   const { token } = theme.useToken();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [publishLoading, setPublishLoading] = useState(false);
   const [channels, setChannels] = useState<CommunityChannel[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<number | undefined>(undefined);
@@ -249,6 +264,17 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
       setPublishLoading(false);
     }
   };
+
+  if (isMobile) {
+    return (
+      <PublishToCommunityMobile 
+        open={open}
+        onCancel={onCancel}
+        onSuccess={onSuccess}
+        taskDetail={taskDetail}
+      />
+    );
+  }
 
   return (
     <StyledModalWrapper>
@@ -320,7 +346,7 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
 
           {/* 3. 挑战选择 */}
           {availableChallenges.length > 0 && (
-            <div style={{ animation: `${fadeIn} 0.5s ease forwards` }}>
+            <AnimatedChallengeList>
               <SectionLabel>3. <FormattedMessage id="create.taskDetail.selectChallenge" /> (Required)</SectionLabel>
               {availableChallenges.map(challenge => (
                 <ChallengeItem 
@@ -342,7 +368,7 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
                   {selectedChallengeId === challenge.id && <CheckCircleFilled style={{ color: '#0071e3', fontSize: 20 }} />}
                 </ChallengeItem>
               ))}
-            </div>
+            </AnimatedChallengeList>
           )}
         </div>
       </Modal>
