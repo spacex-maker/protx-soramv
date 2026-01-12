@@ -532,14 +532,15 @@ const SubmitChallengeModal = ({ open, onCancel, onSuccess, challenge }) => {
       const channels = await listChannels();
       const challengeChannel = channels.find(c => c.channelKey === 'daily-challenge');
 
+      // 只需要传递taskId，后端会自动从任务中获取prompt、negativePrompt、modelKey、generationParams等字段
       await createPost({
         title: selectedTask.modelName || challenge.title,
         mediaType: 'IMAGE',
         mediaUrls,
         coverUrl: mediaUrls[selectedCoverIndex],
-        modelKey: selectedTask.modelCode,
         channelId: challengeChannel?.id,
         challengeId: challenge.id,
+        taskId: selectedTask.id, // 传递taskId，后端自动关联查询
       });
 
       message.success(intl.formatMessage({ id: 'challenge.submitSuccess', defaultMessage: '提交成功！' }));

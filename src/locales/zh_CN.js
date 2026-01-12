@@ -1867,6 +1867,8 @@ export default {
   'challenge.req.resolution': '分辨率必须至少为 1024x1024。',
   'challenge.req.nsfw': '禁止 NSFW 内容。',
   'challenge.timeRemaining': '剩余时间',
+  'challenge.startsIn': '距离开始',
+  'challenge.notStarted': '挑战未开始',
   'challenge.closed': '挑战已结束',
   'challenge.submitEntry': '提交作品',
   'challenge.viewWinners': '查看获奖者',

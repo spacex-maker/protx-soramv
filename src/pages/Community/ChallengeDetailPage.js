@@ -855,10 +855,16 @@ const ChallengeDetailPage = () => {
   const rewards = parseRewardsConfig(challenge.rewardsConfig);
   const totalPrize = rewards.first + rewards.second + rewards.third;
   const deadline = new Date(challenge.endTime).getTime();
-  const isOngoing = challenge.status === 1;
-  const isEnded = challenge.status === 3;
-  const isVoting = challenge.status === 2;
+  const startTime = new Date(challenge.startTime).getTime();
+  const votingEndTime = challenge.votingEndTime ? new Date(challenge.votingEndTime).getTime() : deadline;
   const now = Date.now();
+  
+  // 状态判断：优先使用时间判断，如果时间符合就不判断status字段
+  // 0=未开始, 1=进行中, 2=评审中, 3=已结束
+  const isNotStarted = now < startTime;
+  const isOngoing = now >= startTime && now < deadline;
+  const isVoting = now >= deadline && now < votingEndTime;
+  const isEnded = now >= votingEndTime;
   const timeLeft = Math.max(0, deadline - now);
   
   const filteredNav = allChallenges.filter(c => c.title?.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -885,7 +891,9 @@ const ChallengeDetailPage = () => {
             <div>
               <StatusBadge className={isOngoing ? 'live' : isEnded ? 'ended' : ''}>
                  {isOngoing && <FireFilled />} 
-                 {isOngoing ? (
+                 {isNotStarted ? (
+                    <FormattedMessage id="challenge.status.upcoming" defaultMessage="Upcoming" />
+                 ) : isOngoing ? (
                     <FormattedMessage id="challenge.status.live" defaultMessage="Live Now" />
                  ) : isVoting ? (
                     <FormattedMessage id="challenge.status.voting" defaultMessage="Voting Phase" />
@@ -1011,9 +1019,15 @@ const ChallengeDetailPage = () => {
              <DetailCard>
                 <div style={{ textAlign: 'center', marginBottom: 24 }}>
                    <div style={{ fontSize: 14, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>
-                      <FormattedMessage id="challenge.timeRemaining" defaultMessage="Time Remaining" />
+                      {isNotStarted ? (
+                          <FormattedMessage id="challenge.startsIn" defaultMessage="Starts In" />
+                      ) : (
+                          <FormattedMessage id="challenge.timeRemaining" defaultMessage="Time Remaining" />
+                      )}
                    </div>
-                   {isOngoing ? (
+                   {isNotStarted ? (
+                      <Countdown value={startTime} format="D[d] H[h] m[m] s[s]" valueStyle={{ fontSize: 32, fontWeight: 700 }} />
+                   ) : isOngoing ? (
                       <Countdown value={deadline} format="D[d] H[h] m[m] s[s]" valueStyle={{ fontSize: 32, fontWeight: 700 }} />
                    ) : (
                       <div style={{ fontSize: 24, fontWeight: 700 }}>
@@ -1030,9 +1044,11 @@ const ChallengeDetailPage = () => {
                   style={{ height: 50, fontSize: 16, fontWeight: 600 }}
                   icon={<PlusOutlined />}
                   onClick={handleJoin}
-                  disabled={!isOngoing}
+                  disabled={!isOngoing || isNotStarted}
                 >
-                  {isOngoing ? (
+                  {isNotStarted ? (
+                      <FormattedMessage id="challenge.notStarted" defaultMessage="Challenge Not Started" />
+                  ) : isOngoing ? (
                       <FormattedMessage id="challenge.submitEntry" defaultMessage="Submit Entry" />
                   ) : (
                       <FormattedMessage id="challenge.viewWinners" defaultMessage="View Winners" />

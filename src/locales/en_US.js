@@ -1788,6 +1788,8 @@ export default {
   'challenge.req.resolution': 'Resolution must be at least 1024x1024.',
   'challenge.req.nsfw': 'No NSFW content.',
   'challenge.timeRemaining': 'Time Remaining',
+  'challenge.startsIn': 'Starts In',
+  'challenge.notStarted': 'Challenge Not Started',
   'challenge.closed': 'Challenge Closed',
   'challenge.submitEntry': 'Submit Entry',
   'challenge.viewWinners': 'View Winners',

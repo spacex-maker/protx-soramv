@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  Spin, message, Button, Typography, Tag, Row, Col, Avatar, Tooltip, Divider, Space 
+  Spin, message, Button, Typography, Tag, Row, Col, Avatar, Tooltip, Divider, Space, Image 
 } from 'antd';
 import { 
   HeartOutlined, HeartFilled, StarOutlined, StarFilled, 
@@ -58,9 +58,6 @@ const MainContainer = styled.div`
 const MediaSection = styled.div`
   flex: 1;
   min-width: 0; // 防止 flex 子项溢出
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
 `;
 
 const ImageContainer = styled.div`
@@ -71,11 +68,15 @@ const ImageContainer = styled.div`
   box-shadow: 0 4px 20px rgba(0,0,0,0.05);
   position: relative;
   
-  img {
+  .ant-image {
+    width: 100%;
+    display: block;
+  }
+  
+  .ant-image-img {
     width: 100%;
     height: auto;
     display: block;
-    // 增加一点过渡效果
     transition: transform 0.3s;
   }
 `;
@@ -500,13 +501,25 @@ const PostDetailPage = () => {
       </NavBar>
 
       <MainContainer>
-        {/* 左侧：图片瀑布流展示 */}
+        {/* 左侧：图片展示（两张一行） */}
         <MediaSection>
-          {post.mediaUrls.map((url, index) => (
-            <ImageContainer key={index}>
-              <img src={url} alt={`Creation ${index}`} loading="lazy" />
-            </ImageContainer>
-          ))}
+          <Row gutter={[16, 16]}>
+            {post.mediaUrls.map((url, index) => (
+              <Col key={index} xs={24} sm={12}>
+                <ImageContainer>
+                  <Image
+                    src={url}
+                    alt={`Creation ${index + 1}`}
+                    loading="lazy"
+                    style={{ width: '100%', height: 'auto' }}
+                    preview={{
+                      mask: <div style={{ padding: '8px', color: '#fff', fontSize: '14px' }}>预览</div>
+                    }}
+                  />
+                </ImageContainer>
+              </Col>
+            ))}
+          </Row>
         </MediaSection>
 
         {/* 右侧：详情 Sticky Sidebar */}

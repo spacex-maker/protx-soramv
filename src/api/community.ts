@@ -76,6 +76,7 @@ export interface CreatePostRequest {
   channelId?: number;
   tagIds?: number[];
   challengeId?: number;
+  taskId?: number; // 关联的生成任务ID（如果传入，将自动从任务中获取prompt、negativePrompt、modelKey、generationParams等字段）
 }
 
 export interface DailyChallenge {
@@ -535,6 +536,7 @@ export interface PostReviewQueryRequest {
   onlyMine?: boolean;
   userId?: number;
   channelId?: number;
+  sortOrder?: 'asc' | 'desc'; // asc=最早在前, desc=最新在前
 }
 
 export interface PostReviewListResponse {

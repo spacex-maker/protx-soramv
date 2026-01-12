@@ -1543,6 +1543,8 @@ export default {
   'challenge.req.resolution': 'Разрешение должно быть не менее 1024x1024.',
   'challenge.req.nsfw': 'Контент NSFW запрещен.',
   'challenge.timeRemaining': 'Осталось времени',
+  'challenge.startsIn': 'До начала',
+  'challenge.notStarted': 'Челлендж еще не начался',
   'challenge.closed': 'Челлендж закрыт',
   'challenge.submitEntry': 'Отправить работу',
   'challenge.viewWinners': 'Посмотреть победителей',

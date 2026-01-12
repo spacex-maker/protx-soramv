@@ -1668,6 +1668,8 @@ export default {
   'challenge.req.resolution': '해상도는 최소 1024x1024여야 합니다.',
   'challenge.req.nsfw': 'NSFW 콘텐츠는 금지됩니다.',
   'challenge.timeRemaining': '남은 시간',
+  'challenge.startsIn': '시작까지',
+  'challenge.notStarted': '챌린지가 아직 시작되지 않았습니다',
   'challenge.closed': '챌린지 종료',
   'challenge.submitEntry': '작품 제출',
   'challenge.viewWinners': '수상자 보기',

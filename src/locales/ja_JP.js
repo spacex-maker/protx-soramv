@@ -1716,6 +1716,8 @@ export default {
   'challenge.req.resolution': '解像度は少なくとも1024x1024である必要があります。',
   'challenge.req.nsfw': 'NSFWコンテンツは禁止されています。',
   'challenge.timeRemaining': '残り時間',
+  'challenge.startsIn': '開始まで',
+  'challenge.notStarted': 'チャレンジはまだ開始されていません',
   'challenge.closed': 'チャレンジ終了',
   'challenge.submitEntry': '作品を提出',
   'challenge.viewWinners': '受賞者を見る',

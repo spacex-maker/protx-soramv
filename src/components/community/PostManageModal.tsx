@@ -81,19 +81,20 @@ const PostManageModal: React.FC<PostManageModalProps> = ({ visible, onCancel }) 
 
   // 筛选状态
   const [reviewedStatus, setReviewedStatus] = useState<number | undefined>(undefined);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // 默认最新在前
 
   useEffect(() => {
     if (visible) {
       loadChannels();
       loadPendingPosts();
     }
-  }, [visible, pendingPage, selectedChannelId]);
+  }, [visible, pendingPage, selectedChannelId, sortOrder]);
 
   useEffect(() => {
     if (visible && activeTab === 'reviewed') {
       loadReviewedPosts();
     }
-  }, [visible, activeTab, reviewedPage, reviewedStatus, selectedChannelId]);
+  }, [visible, activeTab, reviewedPage, reviewedStatus, selectedChannelId, sortOrder]);
 
   const loadChannels = async () => {
     try {
@@ -111,6 +112,7 @@ const PostManageModal: React.FC<PostManageModalProps> = ({ visible, onCancel }) 
         currentPage: pendingPage,
         pageSize,
         channelId: selectedChannelId,
+        sortOrder,
       };
       const result = await getPendingPosts(query);
       setPendingData(result.data || []);
@@ -130,6 +132,7 @@ const PostManageModal: React.FC<PostManageModalProps> = ({ visible, onCancel }) 
         pageSize,
         status: reviewedStatus,
         channelId: selectedChannelId,
+        sortOrder,
       };
       const result = await getMyReviewedPosts(query);
       setReviewedData(result.data || []);
@@ -369,6 +372,18 @@ const PostManageModal: React.FC<PostManageModalProps> = ({ visible, onCancel }) 
                 <Option key={channel.id} value={channel.id}>{channel.name}</Option>
               ))}
             </Select>
+            <Select
+              placeholder="排序方式"
+              style={{ width: 150 }}
+              value={sortOrder}
+              onChange={(value) => {
+                setSortOrder(value);
+                setPendingPage(1);
+              }}
+            >
+              <Option value="desc">最新在前</Option>
+              <Option value="asc">最早在前</Option>
+            </Select>
           </FilterBar>
           <Table
             dataSource={pendingData}
@@ -430,6 +445,18 @@ const PostManageModal: React.FC<PostManageModalProps> = ({ visible, onCancel }) 
             >
               <Option value={1}>已通过</Option>
               <Option value={9}>已拒绝</Option>
+            </Select>
+            <Select
+              placeholder="排序方式"
+              style={{ width: 150 }}
+              value={sortOrder}
+              onChange={(value) => {
+                setSortOrder(value);
+                setReviewedPage(1);
+              }}
+            >
+              <Option value="desc">最新在前</Option>
+              <Option value="asc">最早在前</Option>
             </Select>
           </FilterBar>
           <Table

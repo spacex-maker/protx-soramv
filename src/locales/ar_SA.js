@@ -1821,6 +1821,8 @@ export default {
   'challenge.req.resolution': 'يجب أن تكون الدقة على الأقل 1024x1024.',
   'challenge.req.nsfw': 'لا يُسمح بالمحتوى غير المناسب.',
   'challenge.timeRemaining': 'الوقت المتبقي',
+  'challenge.startsIn': 'يبدأ في',
+  'challenge.notStarted': 'لم يبدأ التحدي بعد',
   'challenge.closed': 'التحدي مغلق',
   'challenge.submitEntry': 'إرسال المشاركة',
   'challenge.viewWinners': 'عرض الفائزين',
