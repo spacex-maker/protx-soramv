@@ -6,6 +6,7 @@ import styled, { css, keyframes } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
 import { listChannels, getCurrentChallenge } from 'api/community';
 import { RightOutlined } from '@ant-design/icons';
+import UserRoleCard from 'components/community/UserRoleCard';
 
 const { Title, Paragraph } = Typography;
 
@@ -44,15 +45,37 @@ const Container = styled.div`
   width: 100%;
   padding: 60px 40px;
   animation: ${fadeInUp} 0.6s ease-out;
+  position: relative;
 
   @media (max-width: 768px) {
     padding: 30px 20px;
   }
 `;
 
+const UserCardWrapper = styled.div`
+  position: absolute;
+  top: 60px;
+  right: 40px;
+  z-index: 10;
+  animation: ${fadeInUp} 0.8s ease-out;
+
+  @media (max-width: 768px) {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    z-index: 100;
+  }
+`;
+
 // 头部区域设计：大标题 + 引导语
 const HeroSection = styled.div`
   margin-bottom: 60px;
+  position: relative;
+  padding-right: 240px; // 为右侧用户卡片留出空间
+
+  @media (max-width: 1024px) {
+    padding-right: 0;
+  }
   
   .hero-title {
     font-size: 48px;
@@ -74,6 +97,10 @@ const HeroSection = styled.div`
     background-clip: text;
     animation: ${rainbowFlow} 3s ease infinite;
     filter: brightness(1.1);
+
+    @media (max-width: 768px) {
+      font-size: 36px;
+    }
   }
 
   .hero-subtitle {
@@ -81,6 +108,11 @@ const HeroSection = styled.div`
     color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)'};
     max-width: 600px;
     line-height: 1.6;
+
+    @media (max-width: 768px) {
+      font-size: 16px;
+      max-width: 100%;
+    }
   }
 `;
 
@@ -278,6 +310,7 @@ const CommunityPage = () => {
   return (
     <PageLayout>
       <SimpleHeader />
+
       <Container>
         {/* Hero Section */}
         <HeroSection>
@@ -291,6 +324,11 @@ const CommunityPage = () => {
             />
           </div>
         </HeroSection>
+
+        {/* 用户信息卡片 - 浮动在 Hero Section 右上角 */}
+        <UserCardWrapper>
+          <UserRoleCard showRoles={true} maxRoleDisplay={1} />
+        </UserCardWrapper>
 
         <Row gutter={[32, 32]}>
           {loading ? (

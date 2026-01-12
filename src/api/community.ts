@@ -17,7 +17,11 @@ export interface CommunityPost {
   likeCount: number;
   commentCount: number;
   collectCount: number;
-  status: number;
+  status: number; // 0=审核中, 1=公开, 2=私有, 9=违规下架
+  reviewerId?: number;
+  reviewerNickname?: string;
+  reviewTime?: string;
+  reviewComment?: string;
   isFeatured?: boolean;
   channelId?: number;
   channelName?: string;
@@ -267,6 +271,20 @@ export interface UserRelationListResponse {
   isMutual: boolean;
 }
 
+export interface CommunityUserRole {
+  id: number;
+  userId: number;
+  roleId: number;
+  roleName: string;
+  roleCode: string;
+  permissions?: string;
+  isOfficial: boolean;
+  description?: string;
+  expiredTime?: string;
+  expired: boolean;
+  createTime: string;
+}
+
 /**
  * 关注用户
  */
@@ -328,6 +346,246 @@ export const getFollowingList = async (userId: number): Promise<UserRelationList
   if (!response.data.success) {
     throw new Error(response.data.message || '获取关注列表失败');
   }
+  return response.data.data;
+};
+
+/**
+ * 获取当前用户的社区角色
+ */
+export const getMyRoles = async (): Promise<CommunityUserRole[]> => {
+  const response = await instance.get<ApiResponse<CommunityUserRole[]>>(
+    '/productx/community-user-role/my-roles'
+  );
+  return response.data.data;
+};
+
+// =============== 社区角色申请相关 ===============
+
+export interface CommunityRole {
+  id: number;
+  roleName: string;
+  roleCode: string;
+  permissions?: string;
+  isOfficial: boolean;
+  description?: string;
+  createTime: string;
+}
+
+export interface RoleApplicationRequest {
+  roleId: number;
+  applyReason: string;
+  experienceDescription?: string;
+  contactInfo?: string;
+}
+
+export interface RoleApplication {
+  id: number;
+  roleId: number;
+  roleName: string;
+  roleCode: string;
+  applyReason: string;
+  status: number; // 0-待审核，1-审核通过，2-审核拒绝，3-已撤回
+  statusDesc: string;
+  reviewTime?: string;
+  reviewComment?: string;
+  experienceDescription?: string;
+  contactInfo?: string;
+  createTime: string;
+  updateTime: string;
+  canWithdraw: boolean;
+}
+
+export interface RoleApplicationListResponse {
+  data: RoleApplication[];
+  totalNum: number;
+}
+
+/**
+ * 获取所有可申请的社区角色列表
+ */
+export const getAvailableRoles = async (): Promise<CommunityRole[]> => {
+  const response = await instance.get<ApiResponse<CommunityRole[]>>(
+    '/productx/community-role/available'
+  );
+  return response.data.data;
+};
+
+/**
+ * 提交角色申请
+ */
+export const applyForRole = async (request: RoleApplicationRequest): Promise<boolean> => {
+  const response = await instance.post<ApiResponse<boolean>>(
+    '/productx/community-role-application/apply',
+    request
+  );
+  return response.data.data;
+};
+
+/**
+ * 获取我的申请记录
+ */
+export const getMyApplications = async (params?: {
+  currentPage?: number;
+  pageSize?: number;
+  roleId?: number;
+  status?: number;
+}): Promise<RoleApplicationListResponse> => {
+  const response = await instance.post<ApiResponse<RoleApplicationListResponse>>(
+    '/productx/community-role-application/my-applications',
+    {
+      currentPage: params?.currentPage || 1,
+      pageSize: params?.pageSize || 10,
+      roleId: params?.roleId,
+      status: params?.status,
+    }
+  );
+  return response.data.data;
+};
+
+/**
+ * 撤回申请
+ */
+export const withdrawApplication = async (id: number): Promise<boolean> => {
+  const response = await instance.post<ApiResponse<boolean>>(
+    `/productx/community-role-application/withdraw/${id}`
+  );
+  return response.data.data;
+};
+
+/**
+ * 获取申请详情
+ */
+export const getApplicationDetail = async (id: number): Promise<RoleApplication> => {
+  const response = await instance.get<ApiResponse<RoleApplication>>(
+    `/productx/community-role-application/${id}`
+  );
+  return response.data.data;
+};
+
+// ==================== 帖子审核相关接口 ====================
+
+/**
+ * 频道信息
+ */
+export interface ChannelInfo {
+  id: number;
+  channelKey: string;
+  name: string;
+  description?: string;
+  iconUrl?: string;
+  coverUrl?: string;
+  themeColor?: string;
+  layoutMode?: string;
+  type?: string;
+  isVipOnly?: boolean;
+  allowUserPost?: boolean;
+}
+
+/**
+ * 审核帖子（专用于审核管理，不与社区帖子混用）
+ */
+export interface ReviewPost {
+  id: number;
+  title?: string;
+  mediaType: 'IMAGE' | 'VIDEO';
+  mediaUrls: string[];
+  coverUrl?: string;
+  prompt?: string;
+  negativePrompt?: string;
+  modelKey?: string;
+  generationParams?: string;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  collectCount: number;
+  status: number; // 0=审核中, 1=公开, 2=私有, 9=违规下架
+  isFeatured?: boolean;
+  isChallengeEntry?: boolean;
+  challengeId?: number;
+  challengeScore?: number;
+  // 用户信息
+  userId: number;
+  userNickname?: string;
+  username?: string;
+  userAvatar?: string;
+  // 审核信息
+  reviewerId?: number;
+  reviewerNickname?: string;
+  reviewTime?: string;
+  reviewComment?: string;
+  // 频道信息（子对象）
+  channel?: ChannelInfo;
+  // 挑战信息（子对象）
+  challenge?: DailyChallenge;
+  // 时间信息
+  createTime: string;
+  updateTime?: string;
+}
+
+export interface PostReviewRequest {
+  postId: number;
+  status: number; // 1=通过, 9=拒绝
+  reviewComment?: string;
+}
+
+export interface PostReviewQueryRequest {
+  currentPage: number;
+  pageSize: number;
+  status?: number; // 0=待审核, 1=已通过, 9=已拒绝
+  onlyMine?: boolean;
+  userId?: number;
+  channelId?: number;
+}
+
+export interface PostReviewListResponse {
+  data: ReviewPost[];
+  totalNum: number;
+}
+
+/**
+ * 检查是否有审核权限
+ */
+export const checkReviewPermission = async (): Promise<boolean> => {
+  const response = await instance.get<ApiResponse<boolean>>(
+    '/productx/post-review/check-permission'
+  );
+  return response.data.data;
+};
+
+/**
+ * 审核帖子
+ */
+export const reviewPost = async (request: PostReviewRequest): Promise<boolean> => {
+  const response = await instance.post<ApiResponse<boolean>>(
+    '/productx/post-review/review',
+    request
+  );
+  return response.data.data;
+};
+
+/**
+ * 查询待审核帖子列表
+ */
+export const getPendingPosts = async (
+  query: PostReviewQueryRequest
+): Promise<PostReviewListResponse> => {
+  const response = await instance.post<ApiResponse<PostReviewListResponse>>(
+    '/productx/post-review/pending',
+    query
+  );
+  return response.data.data;
+};
+
+/**
+ * 查询我审核的帖子列表
+ */
+export const getMyReviewedPosts = async (
+  query: PostReviewQueryRequest
+): Promise<PostReviewListResponse> => {
+  const response = await instance.post<ApiResponse<PostReviewListResponse>>(
+    '/productx/post-review/my-reviewed',
+    query
+  );
   return response.data.data;
 };
 

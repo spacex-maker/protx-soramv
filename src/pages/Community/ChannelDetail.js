@@ -3,12 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Card, Row, Col, Spin, message, Button, Image, Typography, Empty } from 'antd';
 import { HeartOutlined, HeartFilled, StarOutlined, StarFilled, EyeOutlined } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
 import { getChannelByKey, listPosts, CommunityPost, getCurrentChallenge } from 'api/community';
 import { likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus } from 'api/community';
+import UserRoleCard from 'components/community/UserRoleCard';
 
 const { Title, Text } = Typography;
+
+const fadeInUp = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+`;
 
 const PageLayout = styled.div`
   min-height: 100vh;
@@ -17,6 +23,20 @@ const PageLayout = styled.div`
   display: flex;
   flex-direction: column;
   padding-top: 80px;
+  position: relative;
+`;
+
+const UserCardWrapper = styled.div`
+  position: fixed;
+  top: 90px;
+  right: 40px;
+  z-index: 100;
+  animation: ${fadeInUp} 0.8s ease-out;
+
+  @media (max-width: 768px) {
+    top: 70px;
+    right: 20px;
+  }
 `;
 
 const Container = styled.div`
@@ -318,19 +338,25 @@ const ChannelDetailPage = () => {
   return (
     <PageLayout>
       <SimpleHeader />
+
       <Container>
-      <ChannelHeader bgColor={channel.themeColor} coverUrl={channel.coverUrl}>
-        <div className="content">
-          <Title level={1} style={{ color: '#fff', marginBottom: 12 }}>
-            {channel.name}
-          </Title>
-          {channel.description && (
-            <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 16 }}>
-              {channel.description}
-            </Text>
-          )}
-        </div>
-      </ChannelHeader>
+        {/* 用户信息卡片 - 浮动在右上角 */}
+        <UserCardWrapper>
+          <UserRoleCard showRoles={true} maxRoleDisplay={1} />
+        </UserCardWrapper>
+
+        <ChannelHeader bgColor={channel.themeColor} coverUrl={channel.coverUrl}>
+          <div className="content">
+            <Title level={1} style={{ color: '#fff', marginBottom: 12 }}>
+              {channel.name}
+            </Title>
+            {channel.description && (
+              <Text style={{ color: 'rgba(255,255,255,0.9)', fontSize: 16 }}>
+                {channel.description}
+              </Text>
+            )}
+          </div>
+        </ChannelHeader>
 
       <Row gutter={[24, 24]}>
         {posts.map((post) => {
