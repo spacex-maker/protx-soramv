@@ -12,6 +12,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
 import { getPostDetail, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus, followUser, unfollowUser, getRelationStatus } from 'api/community';
+import UserProfileModal from 'components/community/UserProfileModal';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -124,11 +125,22 @@ const UserCard = styled.div`
     display: flex;
     align-items: center;
     gap: 12px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    
+    &:hover {
+      opacity: 0.8;
+    }
+    
+    .ant-avatar {
+      cursor: pointer;
+    }
     
     .name {
       font-size: 16px;
       font-weight: 700;
       color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1f1f1f'};
+      cursor: pointer;
     }
     .date {
       font-size: 12px;
@@ -370,6 +382,7 @@ const PostDetailPage = () => {
   const [interaction, setInteraction] = useState(null);
   const [relation, setRelation] = useState(null);
   const [followLoading, setFollowLoading] = useState(false);
+  const [userProfileModalVisible, setUserProfileModalVisible] = useState(false);
 
   useEffect(() => {
     if (postId) fetchPostDetailData();
@@ -530,7 +543,7 @@ const PostDetailPage = () => {
             </Title>
 
             <UserCard>
-                <div className="user-info">
+                <div className="user-info" onClick={() => setUserProfileModalVisible(true)}>
                     <Avatar src={post.userAvatar} size={48} icon={<EyeOutlined />} />
                     <div>
                         <div className="name">{post.userNickname || <FormattedMessage id="common.creator" defaultMessage="Creator" />}</div>
@@ -685,6 +698,14 @@ const PostDetailPage = () => {
 
         </SidebarSection>
       </MainContainer>
+      
+      <UserProfileModal
+        visible={userProfileModalVisible}
+        onCancel={() => setUserProfileModalVisible(false)}
+        userId={post.userId}
+        userNickname={post.userNickname}
+        userAvatar={post.userAvatar}
+      />
     </PageLayout>
   );
 };
