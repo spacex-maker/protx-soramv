@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FormattedMessage } from 'react-intl';
-import { FireFilled, ClockCircleOutlined, UserOutlined, ThunderboltFilled } from '@ant-design/icons';
+import { FireFilled, ClockCircleOutlined, UserOutlined, ThunderboltFilled, EyeOutlined } from '@ant-design/icons';
 import { HeroSection as StyledHeroSection, HeroBackground, HeroContent, StatusBadge, ChallengeTitle, MetaRow } from './styled';
 import { getChallengeCoverUrl, generateDefaultChallengeBackground } from './utils';
 
@@ -58,6 +58,13 @@ const HeroSection = ({ challenge, challengePosts, isNotStarted, isOngoing, isVot
             )}
             <div className="item">
               <UserOutlined /> <FormattedMessage id="challenge.entriesCount" defaultMessage="{count} Entries" values={{count: challengePosts.length}} />
+            </div>
+            <div className="item">
+              <EyeOutlined /> <FormattedMessage 
+                id="challenge.viewCount" 
+                defaultMessage="{count} Views" 
+                values={{count: (challenge.viewCount || 0).toLocaleString()}} 
+              />
             </div>
           </MetaRow>
         </div>

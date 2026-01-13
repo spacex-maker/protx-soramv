@@ -1,5 +1,5 @@
 import styled from 'styled-components';
-import { Tabs } from 'antd';
+import { Tabs, Button } from 'antd';
 
 // Layout
 export const PageWrapper = styled.div`
@@ -1512,7 +1512,13 @@ export const CountdownLabel = styled.div`
   justify-content: center;
   gap: 8px;
   font-size: 12px;
-  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'};
+  color: ${props => {
+    // 根据父元素的 className 设置颜色
+    const parent = props.className || '';
+    if (parent.includes('live')) return '#52c41a';
+    if (parent.includes('upcoming')) return '#1890ff';
+    return props.theme.mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)';
+  }};
   text-transform: uppercase;
   letter-spacing: 1.5px;
   font-weight: 700;
@@ -1522,14 +1528,6 @@ export const CountdownLabel = styled.div`
   
   svg {
     font-size: 14px;
-  }
-  
-  ${CountdownSection}.live & {
-    color: #52c41a;
-  }
-  
-  ${CountdownSection}.upcoming & {
-    color: #1890ff;
   }
 `;
 

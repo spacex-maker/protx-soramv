@@ -51,7 +51,7 @@ const ActionCard = ({ isNotStarted, isOngoing, startTime, deadline, onJoin }) =>
     <DetailCard>
       <ActionCardContainer>
         <CountdownSection className={isOngoing ? 'live' : isNotStarted ? 'upcoming' : 'ended'}>
-          <CountdownLabel>
+          <CountdownLabel className={isOngoing ? 'live' : isNotStarted ? 'upcoming' : 'ended'}>
             {statusConfig.icon}
             <span>{statusConfig.label}</span>
           </CountdownLabel>

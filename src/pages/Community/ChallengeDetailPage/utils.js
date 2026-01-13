@@ -82,6 +82,7 @@ export const cleanChallengeData = (data) => {
     votingEndTime: typeof data.votingEndTime === 'string' ? data.votingEndTime : '',
     rewardsConfig: typeof data.rewardsConfig === 'string' ? data.rewardsConfig : undefined,
     status: Number(data.status) || 0,
+    viewCount: data.viewCount !== undefined && data.viewCount !== null ? Number(data.viewCount) : 0,
     createTime: typeof data.createTime === 'string' ? data.createTime : '',
   };
 };

@@ -684,25 +684,75 @@ const SubmitChallengeModal = ({ open, onCancel, onSuccess, challenge }) => {
 
                 {selectedTask && selectedTask.resultUrls && selectedTask.resultUrls.length > 1 && (
                   <div style={{ marginTop: '32px' }}>
-                    <SectionLabel>
-                      <FormattedMessage id="challenge.selectCover" defaultMessage="选择封面" />
-                    </SectionLabel>
-                    <CoverScrollContainer>
-                      {selectedTask.resultUrls.map((url, index) => (
-                        <CoverItem
-                          key={index}
-                          $isSelected={selectedCoverIndex === index}
-                          onClick={() => setSelectedCoverIndex(index)}
+                    <div style={{ 
+                      display: 'flex', 
+                      alignItems: 'flex-start', 
+                      gap: '24px',
+                      flexWrap: 'wrap'
+                    }}>
+                      <div style={{ flex: 1, minWidth: '300px' }}>
+                        <SectionLabel>
+                          <FormattedMessage id="challenge.selectCover" defaultMessage="选择封面" />
+                        </SectionLabel>
+                        <CoverScrollContainer>
+                          {selectedTask.resultUrls.map((url, index) => (
+                            <CoverItem
+                              key={index}
+                              $isSelected={selectedCoverIndex === index}
+                              onClick={() => setSelectedCoverIndex(index)}
+                            >
+                              <img src={url} alt={`Cover ${index + 1}`} />
+                              {selectedCoverIndex === index && (
+                                <CheckIcon>
+                                  <CheckCircleFilled />
+                                </CheckIcon>
+                              )}
+                            </CoverItem>
+                          ))}
+                        </CoverScrollContainer>
+                      </div>
+                      <div style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '12px', 
+                        paddingTop: '28px', 
+                        flexShrink: 0,
+                        minWidth: '120px'
+                      }}>
+                        <Button
+                          type="primary"
+                          size="large"
+                          onClick={handleSubmit}
+                          loading={publishLoading}
+                          disabled={!selectedTask}
+                          style={{ 
+                            borderRadius: '12px', 
+                            padding: '0 32px', 
+                            height: '44px', 
+                            fontWeight: 600,
+                            fontSize: '15px',
+                            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                            border: 'none',
+                            minWidth: '120px',
+                            boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                          }}
                         >
-                          <img src={url} alt={`Cover ${index + 1}`} />
-                          {selectedCoverIndex === index && (
-                            <CheckIcon>
-                              <CheckCircleFilled />
-                            </CheckIcon>
-                          )}
-                        </CoverItem>
-                      ))}
-                    </CoverScrollContainer>
+                          {intl.formatMessage({ id: 'common.submit', defaultMessage: '提交' })}
+                        </Button>
+                        <Button
+                          size="large"
+                          onClick={onCancel}
+                          style={{ 
+                            borderRadius: '12px', 
+                            height: '44px',
+                            padding: '0 24px',
+                            minWidth: '120px'
+                          }}
+                        >
+                          {intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' })}
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </>
@@ -754,13 +804,13 @@ const SubmitChallengeModal = ({ open, onCancel, onSuccess, challenge }) => {
         title={null}
         open={open}
         onCancel={onCancel}
-        onOk={activeTab === 'select' ? handleSubmit : undefined}
+        onOk={activeTab === 'select' && (!selectedTask || !selectedTask.resultUrls || selectedTask.resultUrls.length <= 1) ? handleSubmit : undefined}
         confirmLoading={publishLoading}
         width={activeTab === 'create' ? 1400 : 1100}
         centered
         okText={intl.formatMessage({ id: 'common.submit', defaultMessage: '提交' })}
-        footer={activeTab === 'create' ? null : undefined}
-        okButtonProps={activeTab === 'select' ? {
+        footer={activeTab === 'create' ? null : (selectedTask && selectedTask.resultUrls && selectedTask.resultUrls.length > 1 ? null : undefined)}
+        okButtonProps={activeTab === 'select' && (!selectedTask || !selectedTask.resultUrls || selectedTask.resultUrls.length <= 1) ? {
           disabled: !selectedTask,
           style: { 
             borderRadius: '12px', 
