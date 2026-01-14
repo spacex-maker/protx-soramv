@@ -41,6 +41,7 @@ import { useLocale } from 'contexts/LocaleContext';
 import instance from 'api/axios';
 import ModelDetailModal, { ModelDetail } from '../ModelDetailModal';
 import TaskDetailModal from './TaskDetailModal';
+import PromptVersionHistoryModal from 'components/common/PromptVersionHistoryModal';
 import { ModelFamily, Model, GenerationTask, GenerationTaskPageResponse } from './types';
 import {
   isFree,
@@ -140,6 +141,9 @@ const TextToImage: React.FC = () => {
   // 任务详情模态框相关状态
   const [taskDetailModalVisible, setTaskDetailModalVisible] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  
+  // 提示词版本历史模态框相关状态
+  const [promptVersionModalVisible, setPromptVersionModalVisible] = useState(false);
   
   // 生成记录相关状态
   const [historyTasks, setHistoryTasks] = useState<GenerationTask[]>([]);
@@ -1161,6 +1165,49 @@ const TextToImage: React.FC = () => {
                           id="create.prompt"
                           defaultMessage="提示词 (Prompt)"
                         />
+                        <Tooltip
+                          title={intl.formatMessage({
+                            id: 'create.prompt.version.history.tooltip',
+                            defaultMessage: '查看提示词版本历史',
+                          })}
+                        >
+                          <Button
+                            type="text"
+                            size="small"
+                            icon={<HistoryOutlined />}
+                            onClick={() => setPromptVersionModalVisible(true)}
+                            style={{
+                              fontSize: 12,
+                              height: 24,
+                              padding: '0 8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              borderRadius: 6,
+                              background: 'rgba(59, 130, 246, 0.1)',
+                              color: '#3b82f6',
+                              border: '1px solid rgba(59, 130, 246, 0.2)',
+                              fontWeight: 500,
+                              transition: 'all 0.3s ease',
+                              marginLeft: 8,
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.15)';
+                              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+                              e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
+                              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.2)';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }}
+                          >
+                            <FormattedMessage
+                              id="create.prompt.version.history"
+                              defaultMessage="版本历史"
+                            />
+                          </Button>
+                        </Tooltip>
                       </Space>
                       <div className="prompt-button-wrapper">
                         <Space size={8}>
@@ -2132,6 +2179,20 @@ const TextToImage: React.FC = () => {
           setSelectedTaskId(null);
         }}
         taskId={selectedTaskId}
+      />
+
+      {/* 提示词版本历史弹窗 */}
+      <PromptVersionHistoryModal
+        open={promptVersionModalVisible}
+        onClose={() => setPromptVersionModalVisible(false)}
+        moduleType="t2i"
+        onSelectPrompt={(prompt, negativePrompt) => {
+          form.setFieldsValue({ 
+            prompt,
+            ...(negativePrompt && { negativePrompt })
+          });
+          setPromptValue(prompt);
+        }}
       />
     </>
   );

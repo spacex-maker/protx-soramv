@@ -1073,6 +1073,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
         onCancel={() => setPublishModalVisible(false)}
         onSuccess={fetchTaskDetail}
         taskDetail={taskDetail}
+        taskId={taskId}
       />
     </StyledModal>
   );

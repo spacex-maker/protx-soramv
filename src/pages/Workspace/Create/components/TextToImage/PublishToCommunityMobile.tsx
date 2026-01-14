@@ -171,6 +171,7 @@ interface PublishToCommunityMobileProps {
   onCancel: () => void;
   onSuccess: () => void;
   taskDetail: TaskDetail | null;
+  taskId?: number | null; // 添加 taskId 参数
 }
 
 const PublishToCommunityMobile: React.FC<PublishToCommunityMobileProps> = ({
@@ -178,6 +179,7 @@ const PublishToCommunityMobile: React.FC<PublishToCommunityMobileProps> = ({
   onCancel,
   onSuccess,
   taskDetail,
+  taskId,
 }) => {
   const intl = useIntl();
   const [publishLoading, setPublishLoading] = useState(false);
@@ -225,6 +227,10 @@ const PublishToCommunityMobile: React.FC<PublishToCommunityMobileProps> = ({
 
   const handlePublish = async () => {
     if (!taskDetail?.outputFiles?.length) return;
+    if (!taskId) {
+      message.error(intl.formatMessage({ id: 'create.taskDetail.taskIdRequired', defaultMessage: '任务ID不能为空' }));
+      return;
+    }
     setPublishLoading(true);
     try {
       const mediaUrls = taskDetail.outputFiles.map((file) => file.fileUrl);
@@ -235,6 +241,7 @@ const PublishToCommunityMobile: React.FC<PublishToCommunityMobileProps> = ({
         coverUrl: mediaUrls[selectedCoverIndex],
         channelId: selectedChannelId,
         challengeId: selectedChallengeId,
+        taskId: taskId, // 添加 taskId
       });
       message.success(intl.formatMessage({ id: 'create.taskDetail.publishSuccess' }));
       onSuccess();

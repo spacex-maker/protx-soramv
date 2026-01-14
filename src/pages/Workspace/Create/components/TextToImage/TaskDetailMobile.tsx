@@ -469,6 +469,7 @@ const TaskDetailMobile: React.FC<TaskDetailMobileProps> = ({ open, onClose, task
         onCancel={() => setPublishModalVisible(false)}
         onSuccess={fetchTaskDetail}
         taskDetail={taskDetail}
+        taskId={taskId}
       />
     </MobileContainer>
   );
