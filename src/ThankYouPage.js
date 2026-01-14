@@ -29,8 +29,19 @@ export default () => {
    * Using gtag like this because we only want to use Google Analytics when Main Landing Page is rendered
    * Remove this part and the the gtag script inside public/index.html if you dont need google analytics
    */
-  window.gtag("js", new Date());
-  window.gtag("config", "UA-45799926-9");
+  React.useEffect(() => {
+    // 检查 gtag 是否已加载（由于延迟加载，可能需要等待）
+    const initGA = () => {
+      if (window.gtag) {
+        window.gtag("js", new Date());
+        window.gtag("config", "G-D564CHTEJ8");
+      } else {
+        // 如果 gtag 还未加载，等待一段时间后重试
+        setTimeout(initGA, 500);
+      }
+    };
+    initGA();
+  }, []);
 
   const downloadUrl = "/treact-ui.zip"
   React.useEffect(() => {

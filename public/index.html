@@ -165,15 +165,36 @@
     }
     </script>
 
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-45799926-9"></script>
+    <!-- Google Analytics 4 (gtag.js) - 延迟加载，避免阻塞页面渲染 -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      gtag('js', new Date());
-      gtag('config', 'UA-45799926-9');
+      // 延迟加载 Google Analytics，等页面加载完成后再加载
+      window.addEventListener('load', function() {
+        // 使用 setTimeout 进一步延迟，确保不影响首屏渲染
+        setTimeout(function() {
+          // 动态加载 GA4 脚本
+          var script = document.createElement('script');
+          script.async = true;
+          script.src = 'https://www.googletagmanager.com/gtag/js?id=G-D564CHTEJ8';
+          script.onerror = function() {
+            // 如果加载失败（如被墙），静默失败，不影响页面功能
+            console.warn('Google Analytics 加载失败，已跳过');
+          };
+          document.head.appendChild(script);
+          
+          // 初始化 gtag
+          window.dataLayer = window.dataLayer || [];
+          function gtag() {
+            dataLayer.push(arguments);
+          }
+          window.gtag = gtag;
+          gtag('js', new Date());
+          gtag('config', 'G-D564CHTEJ8', {
+            // 设置超时，避免长时间等待
+            'send_page_view': true,
+            'transport_type': 'beacon'
+          });
+        }, 2000); // 延迟 2 秒加载，确保页面主要内容已渲染
+      });
     </script>
 
     <!-- 暗黑模式初始化 -->
