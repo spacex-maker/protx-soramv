@@ -82,6 +82,35 @@ export const base = {
     }
   },
 
+  // 获取平台名称
+  getPlatformName: async () => {
+    try {
+      const { data } = await axios.get('/productx/sys-config/platform-name');
+      // 兼容两种响应格式：{success, data} 或 {code, data}
+      if (data.success === true && data.data) {
+        return {
+          success: true,
+          data: data.data
+        };
+      }
+      if (data.code === 200 && data.data) {
+        return {
+          success: true,
+          data: data.data
+        };
+      }
+      return {
+        success: false,
+        message: data.message || '获取平台名称失败'
+      };
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取平台名称失败'
+      };
+    }
+  },
+
   // 获取启用的 KYC 国家配置列表
   getKycCountryConfigs: async () => {
     try {

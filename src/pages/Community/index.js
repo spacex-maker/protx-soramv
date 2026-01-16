@@ -1,266 +1,312 @@
 import React, { useEffect, useState } from 'react';
-import { Row, Col, Skeleton, message, Typography, Avatar } from 'antd';
+import { Row, Col, Skeleton, message, Typography, Avatar, Button } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled, { css, keyframes } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
 import { listChannels, getCurrentChallenge } from 'api/community';
-import { RightOutlined } from '@ant-design/icons';
-import UserRoleCard from 'components/community/UserRoleCard';
+import { RightOutlined, FireFilled, CompassOutlined } from '@ant-design/icons';
+import FooterSection from 'pages/Home/components/FooterSection';
+import UserStatusDock from 'components/community/UserStatusDock';
 
-const { Title, Paragraph } = Typography;
+// 引入你之前设计的组件
+import CommunityContributors from './CommunityContributors';
+import ThePromptverse from './ThePromptverse';
+import RealitySlider from './RealitySlider';
+import BentoGrid from './BentoGrid';
+import RecipeTimeline from './RecipeTimeline';
+import MaterialLab from './MaterialLab';
 
-// 动画定义
+const { Title, Paragraph, Text } = Typography;
+
+// --- 动效定义 ---
+
 const fadeInUp = keyframes`
-  from { opacity: 0; transform: translateY(20px); }
+  from { opacity: 0; transform: translateY(40px); }
   to { opacity: 1; transform: translateY(0); }
 `;
 
-// 炫彩渐变流动动画
-const rainbowFlow = keyframes`
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+const float = keyframes`
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
 `;
+
+const ambientPulse = keyframes`
+  0% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+  100% { opacity: 0.3; transform: scale(1); }
+`;
+
+// --- 全局容器与背景 ---
 
 const PageLayout = styled.div`
   min-height: 100vh;
   width: 100%;
-  background: ${props => props.theme.mode === 'dark' ? '#000000' : '#ffffff'};
+  // 深色模式下使用深灰偏蓝的底色，更有科技感
+  background: ${props => props.theme.mode === 'dark' ? '#0a0a0b' : '#f5f7fa'};
   color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1f1f1f'};
+  position: relative;
+  overflow-x: hidden;
+`;
+
+// 环境光背景层 (Atmosphere Layer)
+const AmbientBackground = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+
+  // 噪点纹理，增加胶片质感
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+    opacity: ${props => props.theme.mode === 'dark' ? 0.07 : 0.4};
+    z-index: 1;
+  }
+
+  // 左上角光晕
+  .orb-1 {
+    position: absolute;
+    top: -10%;
+    left: -10%;
+    width: 50vw;
+    height: 50vw;
+    background: radial-gradient(circle, rgba(131, 56, 236, 0.15) 0%, transparent 70%);
+    filter: blur(80px);
+    animation: ${ambientPulse} 10s infinite ease-in-out;
+  }
+
+  // 右下角光晕
+  .orb-2 {
+    position: absolute;
+    bottom: -10%;
+    right: -10%;
+    width: 60vw;
+    height: 60vw;
+    background: radial-gradient(circle, rgba(58, 134, 255, 0.1) 0%, transparent 70%);
+    filter: blur(100px);
+    animation: ${ambientPulse} 15s infinite ease-in-out reverse;
+  }
+`;
+
+const MainContent = styled.div`
+  position: relative;
+  z-index: 1;
+  max-width: 1600px; // 更宽的容器，显得更开阔
+  margin: 0 auto;
+  padding: 0 40px;
+  padding-bottom: 120px;
+
+  @media (max-width: 768px) {
+    padding: 0 20px;
+    padding-bottom: 80px;
+  }
+`;
+
+// --- 板块分割与布局 ---
+
+// 通用板块容器，控制垂直节奏
+const SectionWrapper = styled.section`
+  margin-bottom: 140px; // 巨大的间距是“大气”的关键
+  position: relative;
+  animation: ${fadeInUp} 0.8s ease-out;
+  animation-fill-mode: both;
+
+  // 可以在这里给每个板块添加 subtle 的分割线或背景装饰
+  &:nth-child(even) {
+     // 偶数板块可以有一些特殊的装饰，比如背景侧边的光
+  }
+
+  @media (max-width: 768px) {
+    margin-bottom: 80px;
+  }
+`;
+
+// 专门用于 Hero 区域的容器
+const HeroWrapper = styled.div`
+  min-height: 90vh; // 占据第一屏的大部分
   display: flex;
   flex-direction: column;
-  padding-top: 60px;
-`;
-
-const Container = styled.div`
-  max-width: 1400px;
-  margin: 0 auto;
-  width: 100%;
-  padding: 60px 40px;
-  animation: ${fadeInUp} 0.6s ease-out;
+  justify-content: center;
+  align-items: center;
   position: relative;
-
-  @media (max-width: 768px) {
-    padding: 30px 20px;
-  }
-`;
-
-const UserCardWrapper = styled.div`
-  position: absolute;
-  top: 60px;
-  right: 40px;
-  z-index: 10;
-  animation: ${fadeInUp} 0.8s ease-out;
-
-  @media (max-width: 768px) {
-    position: fixed;
-    top: 70px;
-    right: 20px;
-    z-index: 100;
-  }
-`;
-
-// 头部区域设计：大标题 + 引导语
-const HeroSection = styled.div`
+  padding-top: 80px;
   margin-bottom: 60px;
-  position: relative;
-  padding-right: 240px; // 为右侧用户卡片留出空间
+`;
 
-  @media (max-width: 1024px) {
-    padding-right: 0;
-  }
-  
-  .hero-title {
-    font-size: 48px;
-    font-weight: 800;
-    margin-bottom: 16px;
-    letter-spacing: -1px;
-    background: linear-gradient(
-      90deg,
-      #ff006e 0%,
-      #8338ec 20%,
-      #3a86ff 40%,
-      #06ffa5 60%,
-      #ffbe0b 80%,
-      #ff006e 100%
-    );
-    background-size: 200% 200%;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: ${rainbowFlow} 3s ease infinite;
-    filter: brightness(1.1);
+// --- 顶部用户状态栏 ---
 
-    @media (max-width: 768px) {
-      font-size: 36px;
-    }
-  }
+const UserStatusDockWrapper = styled.div`
+  position: fixed;
+  top: 100px;
+  right: 40px;
+  z-index: 50;
+  transition: all 0.3s ease;
 
-  .hero-subtitle {
-    font-size: 18px;
-    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)'};
-    max-width: 600px;
-    line-height: 1.6;
-
-    @media (max-width: 768px) {
-      font-size: 16px;
-      max-width: 100%;
-    }
+  @media (max-width: 1200px) {
+    display: none; // 小屏幕时隐藏悬浮，依靠 Header
   }
 `;
 
-// 卡片容器：去除 Antd Card 默认样式，完全自定义
-const StyledCard = styled.div`
+// --- 标题组件 ---
+
+const SectionHeader = styled.div`
+  margin-bottom: 60px;
+  text-align: ${props => props.$center ? 'center' : 'left'};
   position: relative;
+
+  .subtitle-badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 100px;
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'};
+    color: ${props => props.theme.mode === 'dark' ? '#8338ec' : '#6200ea'};
+    font-weight: 600;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 16px;
+    border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(131, 56, 236, 0.3)' : 'rgba(98, 0, 234, 0.1)'};
+  }
+
+  h2 {
+    font-size: 42px;
+    font-weight: 800;
+    margin: 0 0 16px 0;
+    letter-spacing: -1px;
+    color: ${props => props.theme.mode === 'dark' ? '#fff' : '#111'};
+  }
+
+  p {
+    font-size: 18px;
+    color: ${props => props.theme.mode === 'dark' ? '#888' : '#666'};
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+    ${props => !props.$center && 'margin: 0;'}
+  }
+
+  @media (max-width: 768px) {
+    h2 { font-size: 32px; }
+    margin-bottom: 40px;
+  }
+`;
+
+// --- 频道卡片 (保持你的逻辑但增强样式) ---
+
+const ChannelGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 32px;
   width: 100%;
-  aspect-ratio: 4 / 3; // 更高的卡片比例
-  border-radius: 24px;
+`;
+
+const StyledChannelCard = styled.div`
+  position: relative;
+  height: 280px;
+  border-radius: 32px;
   overflow: hidden;
   cursor: pointer;
-  background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#f0f2f5'};
-  transform: translateZ(0); // 开启硬件加速
-  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  background: #000;
+  transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  border: 1px solid rgba(255,255,255,0.1);
 
   &:hover {
-    transform: translateY(-8px) scale(1.01);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    border-color: rgba(255,255,255,0.3);
 
-    .bg-image {
-      transform: scale(1.08);
+    .bg-img {
+      transform: scale(1.1);
+      opacity: 0.6;
+    }
+    
+    .content-blur {
+      backdrop-filter: blur(0px); // 悬停时清晰
+      background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
     }
 
-    .arrow-icon {
-      opacity: 1;
-      transform: translateX(0);
+    .arrow-btn {
+      width: 48px;
+      background: #fff;
+      color: #000;
     }
   }
-`;
 
-// 背景图片层
-const CardBackground = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-size: cover;
-  background-position: center;
-  transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
-  z-index: 0;
-`;
+  .bg-img {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-size: cover;
+    background-position: center;
+    transition: all 0.6s ease;
+    opacity: 0.8;
+  }
 
-// 渐变遮罩层：保证文字可读性，同时不遮挡图片美感
-const CardOverlay = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.2) 50%,
-    rgba(0, 0, 0, 0.8) 100%
-  );
-  z-index: 1;
-`;
+  .content-blur {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 50%, transparent 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 32px;
+    transition: all 0.4s ease;
+  }
 
-// 内容层
-const CardContent = styled.div`
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  padding: 32px;
-  z-index: 2;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  .meta-tag {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    background: rgba(0,0,0,0.4);
+    backdrop-filter: blur(10px);
+    padding: 6px 12px;
+    border-radius: 100px;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(255,255,255,0.2);
+  }
 
-  // 无论深浅色模式，卡片内的文字永远是白色的，因为背景是深色遮罩
-  color: #fff;
+  h3 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 8px 0;
+    text-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  }
 
-  .header-row {
+  p {
+    color: rgba(255,255,255,0.8);
+    font-size: 14px;
+    margin: 0;
+    max-width: 80%;
+    line-height: 1.5;
+  }
+
+  .arrow-btn {
+    position: absolute;
+    bottom: 32px;
+    right: 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.2);
     display: flex;
     align-items: center;
-    margin-bottom: 12px;
-  }
-
-  .channel-title {
-    font-size: 24px;
-    font-weight: 700;
-    margin: 0;
-    margin-left: 12px;
+    justify-content: center;
     color: #fff;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-  }
-
-  .channel-desc {
-    font-size: 14px;
-    color: rgba(255, 255, 255, 0.85);
-    line-height: 1.5;
-    margin-bottom: 0;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
+    transition: all 0.3s ease;
     overflow: hidden;
-    max-width: 90%;
   }
 `;
 
-// 右上角的装饰或统计
-const TopBadge = styled.div`
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  z-index: 2;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(8px);
-  padding: 6px 12px;
-  border-radius: 100px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #fff;
-  border: 1px solid rgba(255,255,255,0.1);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-`;
-
-// 悬浮时出现的箭头
-const ArrowIcon = styled(RightOutlined)`
-  position: absolute;
-  bottom: 36px;
-  right: 32px;
-  font-size: 20px;
-  color: #fff;
-  opacity: 0;
-  transform: translateX(-10px);
-  transition: all 0.3s ease;
-  z-index: 3;
-`;
-
-// 骨架屏样式适配
-const StyledSkeleton = styled(Skeleton.Node)`
-  width: 100% !important;
-  height: 100% !important;
-  aspect-ratio: 4 / 3;
-  border-radius: 24px;
-  
-  .ant-skeleton-image {
-    width: 100%;
-    height: 100%;
-    border-radius: 24px;
-  }
-`;
+// --- 主页面组件 ---
 
 const CommunityPage = () => {
   const intl = useIntl();
@@ -275,31 +321,23 @@ const CommunityPage = () => {
   const fetchChannels = async () => {
     setLoading(true);
     try {
-      // 模拟一点延迟，让骨架屏展示一下，更有质感
+      // 模拟一点延迟以展示骨架屏
+      await new Promise(resolve => setTimeout(resolve, 600)); 
       const data = await listChannels();
-      // await new Promise(resolve => setTimeout(resolve, 800)); 
       setChannels(data);
     } catch (error) {
-      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'community.loadFailed', defaultMessage: 'Load failed' }));
+      message.error('Failed to load channels');
     } finally {
       setLoading(false);
     }
   };
 
   const handleChannelClick = async (channel) => {
-    // 如果是每日挑战频道，跳转到挑战页面
     if (channel.channelKey === 'daily-challenge') {
       try {
-        // 获取当前挑战，然后跳转到对应的挑战页面
         const currentChallenge = await getCurrentChallenge();
-        if (currentChallenge && currentChallenge.id) {
-          navigate(`/community/challenge/${currentChallenge.id}`);
-        } else {
-          // 如果没有当前挑战，跳转到最新挑战
-          navigate(`/community/challenge`);
-        }
+        navigate(currentChallenge?.id ? `/community/challenge/${currentChallenge.id}` : `/community/challenge`);
       } catch (error) {
-        // 如果获取失败，跳转到最新挑战（不带ID，让页面自己处理）
         navigate(`/community/challenge`);
       }
     } else {
@@ -309,103 +347,109 @@ const CommunityPage = () => {
 
   return (
     <PageLayout>
+      <AmbientBackground>
+        <div className="orb-1" />
+        <div className="orb-2" />
+      </AmbientBackground>
+
       <SimpleHeader />
 
-      <Container>
-        {/* Hero Section */}
-        <HeroSection>
-          <div className="hero-title">
-            <FormattedMessage id="community.explore.title" defaultMessage="Explore Communities" />
-          </div>
-          <div className="hero-subtitle">
-            <FormattedMessage 
-              id="community.explore.subtitle" 
-              defaultMessage="Discover inspiration, remix workflows, and connect with thousands of AI creators." 
-            />
-          </div>
-        </HeroSection>
+      {/* 侧边悬浮的用户信息，只在大屏显示，不干扰主视觉 */}
+      <UserStatusDockWrapper>
+        <UserStatusDock />
+      </UserStatusDockWrapper>
 
-        {/* 用户信息卡片 - 浮动在 Hero Section 右上角 */}
-        <UserCardWrapper>
-          <UserRoleCard showRoles={true} maxRoleDisplay={1} />
-        </UserCardWrapper>
+      <MainContent>
+        
+        {/* 1. Hero Area: Promptverse (整合了标题和输入) */}
+        <HeroWrapper>
+          <ThePromptverse />
+        </HeroWrapper>
 
-        <Row gutter={[32, 32]}>
-          {loading ? (
-            // Loading State: 使用骨架屏代替 Spinner
-            Array.from({ length: 4 }).map((_, index) => (
-              <Col xs={24} sm={12} md={8} lg={8} key={index}>
-                <StyledSkeleton active />
-              </Col>
-            ))
-          ) : (
-            channels.map((channel) => (
-              <Col xs={24} sm={12} md={8} lg={8} key={channel.id}>
-                <StyledCard onClick={() => handleChannelClick(channel)}>
-                  {/* 背景图 */}
-                  <CardBackground 
-                    className="bg-image"
-                    style={{
-                      backgroundImage: channel.coverUrl 
-                        ? `url(${channel.coverUrl})` 
-                        : `linear-gradient(135deg, ${channel.themeColor || '#1890ff'}, #000)`
-                    }} 
+        {/* 2. Bento Grid: 热门内容橱窗 */}
+        <SectionWrapper>
+          <SectionHeader $center>
+            <span className="subtitle-badge">Trending Now</span>
+            <h2>Discover Inspiration</h2>
+            <p>Dive into the most popular creations generated by the community this week.</p>
+          </SectionHeader>
+          <BentoGrid />
+        </SectionWrapper>
+
+        {/* 3. Reality Slider: 虚实对比 (核心差异点) */}
+        <SectionWrapper>
+           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'end', marginBottom: 40 }}>
+              <SectionHeader style={{ margin: 0 }}>
+                <span className="subtitle-badge">From Bits to Atoms</span>
+                <h2>Virtual to Reality</h2>
+              </SectionHeader>
+              <Button type="text" icon={<RightOutlined />}>View Production Gallery</Button>
+           </div>
+           <RealitySlider />
+        </SectionWrapper>
+
+        {/* 4. Channels List: 社区频道 */}
+        <SectionWrapper>
+          <SectionHeader>
+             <span className="subtitle-badge"><CompassOutlined /> Communities</span>
+             <h2>Explore Channels</h2>
+          </SectionHeader>
+          
+          <ChannelGrid>
+            {loading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton.Node key={i} active style={{ width: '100%', height: 280, borderRadius: 32 }} />
+              ))
+            ) : (
+              channels.map(channel => (
+                <StyledChannelCard key={channel.id} onClick={() => handleChannelClick(channel)}>
+                  <div 
+                    className="bg-img" 
+                    style={{ backgroundImage: channel.coverUrl ? `url(${channel.coverUrl})` : 'linear-gradient(45deg, #111, #333)' }} 
                   />
-                  
-                  {/* 渐变遮罩 */}
-                  <CardOverlay />
+                  <div className="content-blur">
+                    <h3>{channel.name}</h3>
+                    <p>{channel.description || 'Join the discussion and share your creations.'}</p>
+                  </div>
+                  <div className="meta-tag">
+                     <FireFilled style={{ color: '#ff4d4f', marginRight: 4 }} />
+                     {channel.postCount || 0}
+                  </div>
+                  <div className="arrow-btn">
+                    <RightOutlined />
+                  </div>
+                </StyledChannelCard>
+              ))
+            )}
+          </ChannelGrid>
+        </SectionWrapper>
 
-                  {/* 右上角标签 (例如作品数) */}
-                  <TopBadge>
-                    <div style={{width: 6, height: 6, borderRadius: '50%', background: '#52c41a'}} />
-                    <FormattedMessage 
-                      id="community.posts" 
-                      defaultMessage="{count} posts" 
-                      values={{ count: channel.postCount || 0 }} 
-                    />
-                  </TopBadge>
+        {/* 5. Recipe Timeline: 教程流 */}
+        <SectionWrapper>
+          <SectionHeader $center>
+            <span className="subtitle-badge">Workflows</span>
+            <h2>How It's Made</h2>
+          </SectionHeader>
+          <RecipeTimeline />
+        </SectionWrapper>
 
-                  {/* 底部内容 */}
-                  <CardContent>
-                    <div className="header-row">
-                      {/* 如果有Icon，显示Avatar */}
-                      {channel.iconUrl && (
-                         <Avatar 
-                            src={channel.iconUrl} 
-                            size={40} 
-                            shape="square" 
-                            style={{ 
-                                borderRadius: 10, 
-                                backgroundColor: 'rgba(255,255,255,0.1)',
-                                border: '1px solid rgba(255,255,255,0.2)'
-                            }} 
-                         />
-                      )}
-                      <h3 className="channel-title">{channel.name}</h3>
-                    </div>
-                    
-                    {channel.description && (
-                      <p className="channel-desc">
-                        {channel.description}
-                      </p>
-                    )}
-                  </CardContent>
+        {/* 6. Material Lab: 商业转化 */}
+        <SectionWrapper>
+          <MaterialLab />
+        </SectionWrapper>
 
-                  <ArrowIcon className="arrow-icon" />
-                </StyledCard>
-              </Col>
-            ))
-          )}
-        </Row>
+        {/* 7. Contributors: 底部致谢 */}
+        <SectionWrapper style={{ marginBottom: 40 }}>
+          <SectionHeader $center>
+             <h2>Top Contributors</h2>
+          </SectionHeader>
+          <CommunityContributors />
+        </SectionWrapper>
 
-        {!loading && channels.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '100px 0' }}>
-            <Typography.Text type="secondary" style={{ fontSize: 18 }}>
-              <FormattedMessage id="community.empty" defaultMessage="No community channels available" />
-            </Typography.Text>
-          </div>
-        )}
-      </Container>
+      </MainContent>
+
+      {/* Footer */}
+      <FooterSection />
     </PageLayout>
   );
 };

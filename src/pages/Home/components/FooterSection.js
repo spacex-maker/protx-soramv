@@ -320,6 +320,11 @@ const FooterSectionComponent = () => {
                     {intl.formatMessage({ id: 'footer.product.works', defaultMessage: '我的作品' })}
                   </a>
                 </li>
+                <li>
+                  <a href="#" onClick={(e) => { e.preventDefault(); navigate('/community'); }}>
+                    {intl.formatMessage({ id: 'footer.product.community', defaultMessage: '社区' })}
+                  </a>
+                </li>
               </ul>
             </FooterSection>
           </Col>
