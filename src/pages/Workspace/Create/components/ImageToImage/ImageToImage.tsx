@@ -9,18 +9,14 @@ import {
   Form, 
   Space, 
   message, 
-  Empty,
-  Spin,
   Tooltip,
 } from 'antd';
 import { 
   ThunderboltOutlined,
-  DownloadOutlined, 
   FileImageOutlined,
   InfoCircleOutlined,
   EditOutlined,
   EyeOutlined,
-  CheckCircleOutlined,
   SwapOutlined,
   RobotOutlined,
   CloseOutlined,
@@ -35,13 +31,7 @@ import { ImageResult, Model, GenerationTask, GenerationTaskPageResponse, Waiting
 import { 
   GlobalSelectStyles,
   StyledCard,
-  ResultArea,
   AspectRatioOption,
-  ModelOptionWrapper,
-  ModelSelectDisplay,
-  AspectRatioTag,
-  ResolutionTag,
-  DetailButton,
   InputImageContainer,
   OverlayActions,
   CustomUploadArea,
@@ -51,8 +41,6 @@ import {
 } from './styles';
 import { 
   getAspectRatioOption, 
-  isImageUrl, 
-  normalizeUrl, 
   getModelAspectRatios, 
   getModelResolutions,
   getModelOutputFormats,
@@ -62,6 +50,8 @@ import HistorySection from './HistorySection';
 import TaskDetailModal from './TaskDetailModal';
 import WaitingTaskQueue from './WaitingTaskQueue';
 import ModelDetailModal from './ModelDetailModal';
+import ImageResultDisplay from './ImageResultDisplay';
+import ModelSelect from './ModelSelect';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -322,6 +312,12 @@ const ImageToImage: React.FC = () => {
     }
   };
 
+  // 显示模型详情（传递给 ModelSelect 组件）
+  const handleShowModelDetailFromSelect = (model: Model) => {
+    setSelectedModelForDetail(model);
+    setModelDetailModalVisible(true);
+  };
+
   // 处理文件选择
   const handleFileSelect = async (file: File | null) => {
     if (!file) {
@@ -390,51 +386,6 @@ const ImageToImage: React.FC = () => {
     }
   };
 
-  // 自定义模型选择框显示内容
-  const renderModelSelectDisplay = (model: Model | null) => {
-    if (!model) return null;
-    
-    const coverImage = (model as any).coverImage ? normalizeUrl((model as any).coverImage) : null;
-    const isVideo = coverImage ? !isImageUrl(coverImage) : false;
-    
-    return (
-      <ModelSelectDisplay coverImage={coverImage} isVideo={isVideo}>
-        {isVideo && coverImage && (
-          <video 
-            className="cover-video"
-            src={coverImage}
-            autoPlay
-            loop
-            muted
-            playsInline
-          />
-        )}
-        {!isVideo && coverImage && (
-          <img className="cover-image" src={coverImage} alt={model.modelName} />
-        )}
-        <div className="model-display-header">
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="model-display-name">
-              {model.modelName}
-            </div>
-            {model.modelCode && (
-              <div className="model-display-code">{model.modelCode}</div>
-            )}
-          </div>
-          {model.tokenCost !== null && model.tokenCost !== undefined && (
-            <div className="model-display-price">
-              <span className="model-display-price-amount">
-                {model.tokenCost}
-              </span>
-              <span className="model-display-price-currency">
-                Token
-              </span>
-            </div>
-          )}
-        </div>
-      </ModelSelectDisplay>
-    );
-  };
 
   // 获取支持的图片比例选项
   const getAvailableAspectRatios = () => {
@@ -1123,120 +1074,14 @@ const ImageToImage: React.FC = () => {
                 }}
               >
                 {/* 模型选择 */}
-                <Form.Item
-                  name="modelId"
-                  label={
-                    <Space>
-                      <RobotOutlined style={{ color: '#1890ff' }} />
-                      <FormattedMessage id="create.model.select" defaultMessage="选择模型" />
-                    </Space>
-                  }
-                  style={{ marginBottom: 28 }}
-                >
-                  <Select
-                    value={selectedModel?.id}
-                    onChange={handleModelChange}
-                    placeholder={intl.formatMessage({ 
-                      id: 'create.model.select.placeholder', 
-                      defaultMessage: '请选择要使用的图片生成模型' 
-                    })}
-                    loading={modelsLoading}
-                    style={{ width: '100%' }}
-                    optionLabelProp="label"
-                    dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-                    dropdownClassName="model-select-dropdown"
-                    className="model-image-select"
-                  >
-                    {models.map(model => (
-                      <Select.Option 
-                        key={model.id} 
-                        value={model.id}
-                        label={
-                          <div style={{ width: '100%' }}>
-                            {renderModelSelectDisplay(model)}
-                          </div>
-                        }
-                      >
-                        {(() => {
-                          const coverImage = (model as any).coverImage ? normalizeUrl((model as any).coverImage) : null;
-                          const isVideo = coverImage ? !isImageUrl(coverImage) : false;
-                          return (
-                            <ModelOptionWrapper coverImage={coverImage} isVideo={isVideo}>
-                              {isVideo && coverImage && (
-                                <video 
-                                  className="cover-video"
-                                  src={coverImage}
-                                  autoPlay
-                                  loop
-                                  muted
-                                  playsInline
-                                />
-                              )}
-                              {!isVideo && coverImage && (
-                                <img className="cover-image" src={coverImage} alt={model.modelName} />
-                              )}
-                              <div className="model-header">
-                                <FileImageOutlined style={{ color: '#1890ff', fontSize: 18, flexShrink: 0 }} />
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div className="model-name">
-                                    {model.modelName}
-                                  </div>
-                                  {model.modelCode && (
-                                    <div className="model-code">
-                                      {model.modelCode}
-                                    </div>
-                                  )}
-                                </div>
-                                {model.tokenCost !== null && model.tokenCost !== undefined && (
-                                  <div className="model-price">
-                                    <span className="model-price-amount">{model.tokenCost}</span>
-                                    <span className="model-price-currency">Token</span>
-                                  </div>
-                                )}
-                              </div>
-                              {model.description && (
-                                <div className="model-description" style={{ marginTop: 6, paddingLeft: 26 }}>
-                                  {model.description}
-                                </div>
-                              )}
-                              <div className="model-bottom-row">
-                                {(getModelAspectRatios(model).length > 0 || model.imageDefaultResolution) && (
-                                  <div className="model-aspect-ratios">
-                                    {getModelAspectRatios(model).map((ratio, index) => {
-                                      const ratioOption = getAspectRatioOption(ratio, intl);
-                                      return (
-                                        <AspectRatioTag key={index}>
-                                          {ratioOption.icon}
-                                          <span>{ratio}</span>
-                                        </AspectRatioTag>
-                                      );
-                                    })}
-                                    {model.imageDefaultResolution && (
-                                      <ResolutionTag>
-                                        {model.imageDefaultResolution}
-                                      </ResolutionTag>
-                                    )}
-                                  </div>
-                                )}
-                                <DetailButton
-                                  className="model-detail-button"
-                                  size="small"
-                                  icon={<EyeOutlined />}
-                                  onClick={(e: React.MouseEvent) => handleShowModelDetail(e, model)}
-                                >
-                                  <FormattedMessage
-                                    id="create.model.detail"
-                                    defaultMessage="详情"
-                                  />
-                                </DetailButton>
-                              </div>
-                            </ModelOptionWrapper>
-                          );
-                        })()}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+                <ModelSelect
+                  models={models}
+                  selectedModel={selectedModel}
+                  modelsLoading={modelsLoading}
+                  form={form}
+                  onModelChange={handleModelChange}
+                  onShowModelDetail={handleShowModelDetailFromSelect}
+                />
 
                 {/* 上传图片区域 */}
                 <Form.Item
@@ -1514,146 +1359,13 @@ const ImageToImage: React.FC = () => {
           </Col>
 
           {/* --- 右侧：结果展示区 --- */}
-          <Col xs={24} lg={15}>
-            <ResultArea>
-              {loading ? (
-                <Space direction="vertical" align="center">
-                  <Spin size="large" />
-                  <Text type="secondary" style={{ marginTop: 16 }}>
-                    {waitingTasks.length > 0 ? (
-                      <FormattedMessage 
-                        id="create.image.polling" 
-                        defaultMessage="正在生成图片，请稍候..." 
-                      />
-                    ) : (
-                      <FormattedMessage 
-                        id="create.image.analyzing" 
-                        defaultMessage="正在处理图片和提示词..." 
-                      />
-                    )}
-                  </Text>
-                </Space>
-              ) : generatedImage ? (
-                <div style={{ width: '100%' }}>
-                  <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <CheckCircleOutlined style={{ color: '#52c41a' }} />
-                      <FormattedMessage id="create.i2i.result" defaultMessage="生成对比" />
-                    </Title>
-                    <Button type="primary" icon={<DownloadOutlined />} href={generatedImage.url} download="sora_mv_i2i_image.png">
-                      <FormattedMessage id="create.download" defaultMessage="下载图片" />
-                    </Button>
-                  </div>
-                  <Row gutter={[24, 16]}>
-                    {/* 原图对比 */}
-                    <Col span={12}>
-                      <div style={{ 
-                        background: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.02)', 
-                        borderRadius: 12, 
-                        padding: 16,
-                        height: '100%'
-                      }}>
-                        <div style={{ 
-                          marginBottom: 12, 
-                          fontWeight: 600, 
-                          fontSize: 14,
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 6,
-                          color: isDark ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.65)'
-                        }}>
-                          <FileImageOutlined style={{ color: '#1890ff' }} />
-                          <FormattedMessage id="create.i2i.original" defaultMessage="原图" />
-                        </div>
-                        <div style={{ 
-                          width: '100%', 
-                          aspectRatio: '16 / 9',
-                          borderRadius: 8, 
-                          overflow: 'hidden', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center', 
-                          background: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)'
-                        }}>
-                          <img 
-                            src={originalImageUrl || "https://placehold.co/400x225?text=Original+Image"} 
-                            alt="Original Preview" 
-                            style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                          />
-                        </div>
-                      </div>
-                    </Col>
-                    
-                    {/* 生成图片预览 */}
-                    <Col span={12}>
-                      <div style={{ 
-                        background: isDark 
-                          ? 'linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(24, 144, 255, 0.12) 100%)' 
-                          : 'linear-gradient(135deg, rgba(24, 144, 255, 0.04) 0%, rgba(24, 144, 255, 0.08) 100%)', 
-                        borderRadius: 12, 
-                        padding: 16,
-                        height: '100%'
-                      }}>
-                        <div style={{ 
-                          marginBottom: 12, 
-                          fontWeight: 600, 
-                          fontSize: 14,
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: 6,
-                          color: '#1890ff'
-                        }}>
-                          <FileImageOutlined />
-                          <FormattedMessage id="create.image.result" defaultMessage="生成图片" />
-                        </div>
-                        <div style={{ 
-                          width: '100%', 
-                          aspectRatio: '16 / 9',
-                          borderRadius: 8, 
-                          overflow: 'hidden',
-                          background: '#000'
-                        }}>
-                          <img 
-                            src={normalizeUrl(generatedImage.url)}
-                            alt="Generated Preview" 
-                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                          />
-                        </div>
-                      </div>
-                    </Col>
-                  </Row>
-
-                  <div style={{ 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    alignItems: 'center',
-                    marginTop: 16,
-                    padding: '12px 0',
-                    borderTop: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.06)'
-                  }}>
-                    <Text type="secondary" style={{ fontSize: 13 }}>
-                      <FormattedMessage 
-                        id="create.image.info" 
-                        defaultMessage="比例: {ratio}" 
-                        values={{ 
-                          ratio: generatedImage.aspectRatio || 'auto'
-                        }} 
-                      />
-                    </Text>
-                  </div>
-                </div>
-              ) : (
-                <Empty
-                  image={<FileImageOutlined style={{ fontSize: 48, color: '#aaa' }} />}
-                  description={
-                    <Text type="secondary">
-                      <FormattedMessage id="create.i2i.empty" defaultMessage="生成结果与原图对比将显示在此处" />
-                    </Text>
-                  }
-                />
-              )}
-            </ResultArea>
-          </Col>
+          <ImageResultDisplay
+            loading={loading}
+            generatedImage={generatedImage}
+            waitingTasks={waitingTasks}
+            originalImageUrl={originalImageUrl}
+            isDark={isDark}
+          />
         </Row>
         
         {/* 生成记录 */}

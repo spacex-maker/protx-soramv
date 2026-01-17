@@ -3,73 +3,24 @@ import { Card, Select, Button } from 'antd';
 
 // 全局下拉菜单样式
 export const GlobalSelectStyles = createGlobalStyle`
-  /* 任务队列按钮发光动画 */
-  @keyframes taskQueuePulse {
-    0%, 100% {
-      box-shadow: 0 0 4px rgba(24, 144, 255, 0.4),
-                  0 0 8px rgba(24, 144, 255, 0.2),
-                  inset 0 0 2px rgba(24, 144, 255, 0.1);
-      border-color: rgba(24, 144, 255, 0.6);
-    }
-    50% {
-      box-shadow: 0 0 8px rgba(24, 144, 255, 0.7),
-                  0 0 16px rgba(24, 144, 255, 0.4),
-                  0 0 24px rgba(24, 144, 255, 0.2),
-                  inset 0 0 4px rgba(24, 144, 255, 0.2);
-      border-color: rgba(24, 144, 255, 0.9);
-    }
-  }
-  
-  .task-queue-button-active {
-    animation: taskQueuePulse 2s ease-in-out infinite;
-    border: 1px solid rgba(24, 144, 255, 0.6) !important;
-    background: linear-gradient(135deg, rgba(24, 144, 255, 0.05) 0%, rgba(24, 144, 255, 0.02) 100%) !important;
-    
-    &:hover {
-      animation: taskQueuePulse 1.5s ease-in-out infinite;
-      border-color: rgba(24, 144, 255, 0.8) !important;
-    }
-  }
-
   /* 下拉框输入框圆角 */
   .ant-select {
     .ant-select-selector {
       border-radius: 12px !important;
-      overflow: hidden !important;
     }
     
     &.ant-select-focused .ant-select-selector {
       border-radius: 12px !important;
-      overflow: hidden !important;
-    }
-    
-    &:hover .ant-select-selector {
-      border-radius: 12px !important;
-      overflow: hidden !important;
     }
   }
   
-  /* 模型选择框显示区域样式 */
-  .model-image-select {
-    margin-bottom: 24px !important;
-    
+  /* 模型家族选择框显示区域样式 */
+  .model-family-select {
     .ant-select-selector {
       padding: 0 !important;
-      min-height: 75px !important;
+      min-height: 65px !important;
       display: flex !important;
       align-items: center !important;
-      border-radius: 12px !important;
-      overflow: hidden !important;
-    }
-    
-    &.ant-select-focused .ant-select-selector {
-      border-radius: 12px !important;
-      overflow: hidden !important;
-    }
-    
-    &:hover .ant-select-selector {
-      border-radius: 12px !important;
-      overflow: hidden !important;
     }
     
     .ant-select-selection-item {
@@ -84,7 +35,67 @@ export const GlobalSelectStyles = createGlobalStyle`
     
     .ant-select-selection-placeholder {
       padding: 0 11px !important;
-      line-height: 75px !important;
+      line-height: 65px !important;
+    }
+    
+    /* 确保显示内容正确对齐 */
+    .ant-select-selection-item > * {
+      width: 100%;
+    }
+  }
+  
+  /* 艺术风格选择框显示区域样式 */
+  .model-style-select {
+    .ant-select-selector {
+      padding: 0 !important;
+      min-height: 65px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
+    
+    .ant-select-selection-item {
+      padding: 0 !important;
+      height: auto !important;
+      line-height: normal !important;
+      display: flex !important;
+      align-items: center !important;
+      width: 100% !important;
+      overflow: visible !important;
+    }
+    
+    .ant-select-selection-placeholder {
+      padding: 0 11px !important;
+      line-height: 65px !important;
+    }
+    
+    /* 确保显示内容正确对齐 */
+    .ant-select-selection-item > * {
+      width: 100%;
+    }
+  }
+  
+  /* 模型图片选择框显示区域样式 */
+  .model-image-select {
+    .ant-select-selector {
+      padding: 0 !important;
+      min-height: 65px !important;
+      display: flex !important;
+      align-items: center !important;
+    }
+    
+    .ant-select-selection-item {
+      padding: 0 !important;
+      height: auto !important;
+      line-height: normal !important;
+      display: flex !important;
+      align-items: center !important;
+      width: 100% !important;
+      overflow: visible !important;
+    }
+    
+    .ant-select-selection-placeholder {
+      padding: 0 11px !important;
+      line-height: 65px !important;
     }
     
     /* 确保显示内容正确对齐 */
@@ -111,8 +122,6 @@ export const GlobalSelectStyles = createGlobalStyle`
       border-radius: 8px !important;
       margin: 2px 0 !important;
       border: none !important;
-      box-shadow: none !important;
-      outline: none !important;
       
       &:first-child {
         margin-top: 0 !important;
@@ -120,30 +129,6 @@ export const GlobalSelectStyles = createGlobalStyle`
       
       &:last-child {
         margin-bottom: 0 !important;
-      }
-      
-      &.ant-select-item-option {
-        border: none !important;
-        box-shadow: none !important;
-        outline: none !important;
-      }
-      
-      &.ant-select-item-option-active {
-        border: none !important;
-        box-shadow: none !important;
-        outline: none !important;
-      }
-      
-      &.ant-select-item-option-selected {
-        border: none !important;
-        box-shadow: none !important;
-        outline: none !important;
-      }
-      
-      &:hover {
-        border: none !important;
-        box-shadow: none !important;
-        outline: none !important;
       }
     }
     
@@ -160,6 +145,31 @@ export const GlobalSelectStyles = createGlobalStyle`
           display: block;
           padding: 0 !important;
         }
+      }
+    }
+  }
+  
+  /* 提示词输入框标签样式 - 确保按钮靠右 */
+  .prompt-form-item {
+    .ant-form-item-label {
+      width: 100% !important;
+      max-width: 100% !important;
+      
+      > label {
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+    }
+    
+    .prompt-label-wrapper {
+      display: flex !important;
+      align-items: center !important;
+      width: 100% !important;
+      justify-content: space-between !important;
+      
+      .prompt-button-wrapper {
+        margin-left: auto !important;
+        flex-shrink: 0 !important;
       }
     }
   }
@@ -331,16 +341,17 @@ export const AspectRatioOption = styled.div`
 `;
 
 // 模型选择框显示组件（用于 Select 的显示框）
-export const ModelSelectDisplay = styled.div<{ coverImage?: string | null; isVideo?: boolean }>`
+export const ModelSelectDisplay = styled.div<{ coverImage?: string | null }>`
   display: flex;
   align-items: center;
   gap: 8px;
   position: relative;
   overflow: hidden;
-  border-radius: 12px;
-  padding: 12px 12px;
-  min-height: 75px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 65px;
   height: 100%;
+  width: 100%;
   
   /* 背景图样式：从右到左渐变透明，显示右边部分 */
   ${(props) =>
@@ -353,12 +364,12 @@ export const ModelSelectDisplay = styled.div<{ coverImage?: string | null; isVid
       right: 0;
       bottom: 0;
       width: 40%;
+      max-width: 40%;
       background-image: url(${props.coverImage});
       background-size: cover;
       background-position: center right;
       background-repeat: no-repeat;
       z-index: 0;
-      border-radius: 0 12px 12px 0;
       mask-image: linear-gradient(to left, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0) 100%);
       -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0) 100%);
     }
@@ -383,6 +394,29 @@ export const ModelSelectDisplay = styled.div<{ coverImage?: string | null; isVid
     z-index: 1;
   }
   
+  /* 图片元素不应该显示，因为使用 CSS 背景图 */
+  .cover-image {
+    display: none !important;
+  }
+  
+  /* 视频元素需要显示，因为 CSS background-image 不支持视频 */
+  .cover-video {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 40%;
+    max-width: 40%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center right;
+    z-index: 0;
+    border-radius: 0 8px 8px 0;
+    mask-image: linear-gradient(to left, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0) 100%);
+    -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0) 100%);
+    pointer-events: none;
+  }
+  
   .model-display-header {
     display: flex;
     align-items: center;
@@ -404,15 +438,6 @@ export const ModelSelectDisplay = styled.div<{ coverImage?: string | null; isVid
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-  }
-  
-  @keyframes gradient-shift {
-    0%, 100% {
-      background-position: 0% center;
-    }
-    50% {
-      background-position: 100% center;
-    }
   }
   
   .model-display-code {
@@ -452,21 +477,37 @@ export const ModelSelectDisplay = styled.div<{ coverImage?: string | null; isVid
     color: #bfbfbf;
     margin-left: 2px;
   }
+  
+  .model-display-free {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: ${(props) =>
+      props.theme.mode === 'dark'
+        ? 'rgba(24, 144, 255, 0.1)'
+        : 'rgba(24, 144, 255, 0.06)'};
+    font-weight: 600;
+    font-size: 12px;
+    color: #1890ff;
+    line-height: 1.2;
+    flex-shrink: 0;
+  }
 `;
 
-export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVideo?: boolean }>`
+export const ModelOptionWrapper = styled.div<{ coverImage?: string | null }>`
   display: flex;
   flex-direction: column;
   gap: 4px;
   position: relative;
   overflow: hidden;
   border-radius: 8px;
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
   min-height: 80px;
   height: 100%;
   padding: 12px;
+  width: 100%;
   
   /* 背景图样式：从右到左渐变透明，显示右边部分 */
   ${(props) =>
@@ -479,9 +520,10 @@ export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVid
       right: 0;
       bottom: 0;
       width: 45%;
+      max-width: 45%;
       background-image: url(${props.coverImage});
-      background-size: auto 100%;
-      background-position: right center;
+      background-size: cover;
+      background-position: center right;
       background-repeat: no-repeat;
       z-index: 0;
       mask-image: linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0) 100%);
@@ -517,6 +559,29 @@ export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVid
   > * {
     position: relative;
     z-index: 1;
+  }
+  
+  /* 图片元素不应该显示，因为使用 CSS 背景图 */
+  .cover-image {
+    display: none !important;
+  }
+  
+  /* 视频元素需要显示，因为 CSS background-image 不支持视频 */
+  .cover-video {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 45%;
+    max-width: 45%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center right;
+    z-index: 0;
+    border-radius: 0 8px 8px 0;
+    mask-image: linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0) 100%);
+    -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0) 100%);
+    pointer-events: none;
   }
   
   .model-header {
@@ -600,7 +665,6 @@ export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVid
     justify-content: space-between;
     margin-top: 8px;
     gap: 8px;
-    padding-left: 26px;
   }
 
   .model-aspect-ratios {

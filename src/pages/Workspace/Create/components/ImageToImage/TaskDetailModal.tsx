@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Modal, Typography, Tag, Spin, message, Button, Tooltip, Space, Divider } from 'antd';
+import { Modal, Typography, Tag, Spin, message, Button, Tooltip, Image } from 'antd';
 import {
   CloseOutlined,
   ClockCircleOutlined,
@@ -8,19 +8,18 @@ import {
   CheckCircleFilled,
   CloseCircleFilled,
   SyncOutlined,
-  InfoCircleOutlined,
-  PlayCircleFilled,
   ThunderboltFilled,
   CodeFilled,
   CalendarOutlined,
   FileImageOutlined,
-  VideoCameraOutlined,
   HeartOutlined,
   HeartFilled,
   StarOutlined,
   StarFilled,
   ShareAltOutlined,
   LoadingOutlined,
+  DoubleRightOutlined,
+  EyeOutlined
 } from '@ant-design/icons';
 import styled, { css, keyframes } from 'styled-components';
 import { useIntl } from 'react-intl';
@@ -36,7 +35,7 @@ import {
 } from 'api/modelInteraction';
 
 // ==========================================
-// 1. 样式系统
+// 1. 动画定义
 // ==========================================
 
 // 背景流动动画
@@ -52,6 +51,17 @@ const shine = keyframes`
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 `;
+
+// 中间连接符流动动画
+const flowAnim = keyframes`
+  0% { transform: translateX(-5px); opacity: 0.3; }
+  50% { transform: translateX(5px); opacity: 1; }
+  100% { transform: translateX(-5px); opacity: 0.3; }
+`;
+
+// ==========================================
+// 2. 样式组件系统
+// ==========================================
 
 const StyledModal = styled(Modal)`
   .ant-modal-content {
@@ -93,8 +103,8 @@ const StyledModal = styled(Modal)`
   .ant-modal-body::-webkit-scrollbar-thumb { background: rgba(100, 100, 100, 0.3); border-radius: 3px; }
 `;
 
-// 1. 纯氛围头部
-// 修复 TS 报错：允许 $bg 为可选字符串
+// --- Hero 头部区域 ---
+
 const HeroSection = styled.div<{ $bg?: string }>`
   position: relative;
   width: 100%;
@@ -104,29 +114,24 @@ const HeroSection = styled.div<{ $bg?: string }>`
   justify-content: flex-end;
   flex-shrink: 0;
   overflow: hidden;
-  
-  /* 核心逻辑：如果没有背景图，显示高级动态渐变 */
-  background: #0f172a; /* 默认底色 */
+  background: #0f172a;
   
   ${props => props.$bg ? css`
-    /* 有图片时显示图片 */
     background-image: url(${props.$bg});
     background-size: cover;
     background-position: center;
   ` : css`
-    /* 无图片/视频时的酷炫兜底：极光渐变 */
     background: linear-gradient(
       -45deg,
       #0f172a,
-      #312e81, /* Indigo */
-      #581c87, /* Purple */
+      #312e81,
+      #581c87,
       #0f172a
     );
     background-size: 400% 400%;
     animation: ${gradientBG} 15s ease infinite;
   `}
   
-  /* 底部遮罩，保证文字清晰 */
   &::after {
     content: '';
     position: absolute;
@@ -140,18 +145,6 @@ const HeroSection = styled.div<{ $bg?: string }>`
     pointer-events: none;
     z-index: 2;
   }
-`;
-
-const HeroVideoBg = styled.video`
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0; /* 位于遮罩之下，背景之上 */
-  opacity: 0.8;
-  transition: opacity 0.5s;
 `;
 
 const HeroContent = styled.div`
@@ -172,18 +165,6 @@ const HeroContent = styled.div`
 
 const TitleArea = styled.div`
   flex: 1;
-  
-  h1 {
-    font-size: 28px;
-    font-weight: 700;
-    color: #fff;
-    margin: 0 0 8px 0;
-    text-shadow: 0 4px 8px rgba(0,0,0,0.5);
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  
   .meta-row {
     display: flex;
     gap: 16px;
@@ -192,12 +173,10 @@ const TitleArea = styled.div`
     font-size: 13px;
     flex-wrap: wrap;
     font-family: 'SF Mono', monospace;
-    
     span { display: flex; align-items: center; gap: 6px; }
   }
 `;
 
-// 炫彩标题样式
 const GradientTitle = styled.h1`
   font-size: 32px;
   font-weight: 800;
@@ -225,12 +204,10 @@ const GradientTitle = styled.h1`
   flex-wrap: wrap;
 `;
 
-// 模型介绍容器
 const ModelDescriptionBox = styled.div`
   margin-top: 12px;
   max-height: 100px;
   overflow: hidden;
-  
   .description-text {
     font-size: 14px;
     line-height: 1.6;
@@ -270,49 +247,147 @@ const GlassButton = styled.button<{ $primary?: boolean }>`
   }
 `;
 
-// 2. 生成结果区
+// --- 新增结果区样式 (酷炫版) ---
+
 const ResultSection = styled.div`
   background: ${props => props.theme.mode === 'dark' ? '#0a0a0a' : '#f0f2f5'};
-  padding: 32px;
+  padding: 40px 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
   border-bottom: 1px solid ${props => props.theme.mode === 'dark' ? '#222' : '#e8e8e8'};
 `;
 
-const SectionLabel = styled.div`
-  width: 100%;
-  max-width: 800px;
-  margin-bottom: 12px;
-  font-size: 14px;
-  font-weight: 700;
-  color: ${props => props.theme.mode === 'dark' ? '#fff' : '#333'};
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const VideoPlayerBox = styled.div`
-  width: 100%;
-  max-width: 800px;
-  background: #000;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+const ResultGroup = styled.div`
   display: flex;
   justify-content: center;
-  align-items: center;
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : '#ddd'};
-  min-height: 300px;
+  align-items: stretch;
+  gap: 24px;
+  width: 100%;
+  max-width: 1000px;
+  margin: 0 auto;
+  position: relative;
 
-  video {
-    width: 100%;
-    max-height: 450px;
-    outline: none;
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: center;
   }
 `;
 
-// 3. 详情网格
+const MediaCard = styled.div<{ $isOutput?: boolean }>`
+  flex: 1;
+  width: 100%;
+  min-width: 300px;
+  max-width: 500px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(30,30,30,0.6)' : 'rgba(255,255,255,0.6)'};
+  border-radius: 20px;
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+  backdrop-filter: blur(20px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+
+  /* 输出卡片发光特效 */
+  ${props => props.$isOutput && css`
+    border-color: rgba(82, 196, 26, 0.3);
+    box-shadow: 0 0 30px rgba(82, 196, 26, 0.05);
+  `}
+
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    border-color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'};
+    
+    ${props => props.$isOutput && css`
+      box-shadow: 0 20px 50px rgba(82, 196, 26, 0.15);
+      border-color: rgba(82, 196, 26, 0.6);
+    `}
+  }
+`;
+
+const MediaHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: ${props => props.theme.mode === 'dark' ? '#e5e5e5' : '#1f1f1f'};
+  
+  .icon-box {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    &.input { background: rgba(255,255,255,0.1); color: #1890ff; }
+    &.output { background: rgba(82, 196, 26, 0.1); color: #52c41a; }
+  }
+`;
+
+const ImageWrapper = styled.div`
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  background: #000;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};
+
+  /* 棋盘格透明背景 */
+  background-image: 
+    linear-gradient(45deg, #1a1a1a 25%, transparent 25%), 
+    linear-gradient(-45deg, #1a1a1a 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, #1a1a1a 75%), 
+    linear-gradient(-45deg, transparent 75%, #1a1a1a 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  
+  .ant-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .ant-image-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    transition: transform 0.5s ease;
+  }
+
+  &:hover .ant-image-img {
+    transform: scale(1.05);
+  }
+`;
+
+const FlowConnector = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'};
+  font-size: 24px;
+  .arrow {
+    animation: ${flowAnim} 2s infinite ease-in-out;
+  }
+  @media (max-width: 768px) {
+    transform: rotate(90deg);
+    margin: 10px 0;
+  }
+`;
+
+// --- 详情网格区域 ---
+
 const ContentGrid = styled.div<{ $hasPrompt: boolean }>`
   display: grid;
   grid-template-columns: ${props => props.$hasPrompt ? '1.8fr 1fr' : '1fr'};
@@ -394,14 +469,14 @@ const normalizeUrl = (url: string) => {
   return `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-const isVideo = (url: string) => {
+const isImage = (url: string) => {
   if (!url) return false;
   const ext = url.split('.').pop()?.toLowerCase();
-  return ['mp4', 'webm', 'mov', 'mkv'].includes(ext || '') || url.startsWith('data:video');
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext || '') || url.startsWith('data:image');
 };
 
 // ==========================================
-// 主组件
+// 主组件 Logic
 // ==========================================
 
 interface TaskDetailModalProps {
@@ -415,7 +490,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
   const [loading, setLoading] = useState(false);
   const [task, setTask] = useState<any | null>(null);
   
-  // 点赞收藏状态
+  // 交互状态
   const [isLiked, setIsLiked] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
@@ -423,7 +498,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
   const [likeLoading, setLikeLoading] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
 
-  // 获取模型交互状态
   const fetchInteractionStatus = useCallback(async (modelId: number) => {
     try {
       const response = await getInteractionStatus(modelId);
@@ -432,7 +506,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
       setLikesCount(response.likesCount);
       setFavoritesCount(response.favoritesCount);
     } catch (error) {
-      // 未登录或其他错误，使用默认值
       setIsLiked(false);
       setIsFavorited(false);
     }
@@ -444,7 +517,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
     }
   }, [open, taskId]);
 
-  // 当任务加载完成后获取模型交互状态
   useEffect(() => {
     if (task?.model?.id) {
       fetchInteractionStatus(task.model.id);
@@ -518,9 +590,10 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
   const handleDownload = () => {
     if (!task?.outputFiles?.[0]?.fileUrl) return;
     const url = normalizeUrl(task.outputFiles[0].fileUrl);
+    const ext = url.split('.').pop()?.toLowerCase() || 'png';
     const a = document.createElement('a');
     a.href = url;
-    a.download = `task_${taskId}_${Date.now()}.mp4`;
+    a.download = `task_${taskId}_${Date.now()}.${ext}`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -543,16 +616,14 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
   if (!task && loading) return <Modal open={open} footer={null} width={900}><div style={{padding: 40, textAlign:'center'}}><Spin /></div></Modal>;
   if (!task) return null;
 
-  // 数据处理
+  // 数据计算
   const coverUrl = normalizeUrl(task.coverImage || task.model?.coverImage || '');
-  const videoUrl = task.outputFiles?.[0]?.fileUrl ? normalizeUrl(task.outputFiles[0].fileUrl) : null;
-  const hasOutputVideo = videoUrl && isVideo(videoUrl);
-  const isCoverVideo = isVideo(coverUrl);
+  const inputImageUrl = task.inputFiles?.[0]?.fileUrl ? normalizeUrl(task.inputFiles[0].fileUrl) : null;
+  const outputImageUrl = task.outputFiles?.[0]?.fileUrl ? normalizeUrl(task.outputFiles[0].fileUrl) : null;
+  const hasInputImage = inputImageUrl && isImage(inputImageUrl);
+  const hasOutputImage = outputImageUrl && isImage(outputImageUrl);
   
   const getDuration = () => {
-    if (task.durationMs) {
-      return (task.durationMs / 1000).toFixed(1);
-    }
     if (task.endTime && task.createTime) {
       const start = dayjs(task.createTime);
       const end = dayjs(task.endTime);
@@ -561,13 +632,11 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
     return 'N/A';
   };
   const durationStr = getDuration();
-  const aspectRatio = task.model?.imageAspectRatios || '16:9';
+  const aspectRatio = task.model?.imageAspectRatios || '1:1';
   const hasPrompt = task.prompt && task.prompt.trim().length > 0;
-
-  // 逻辑核心：决定 Hero 背景显示什么
-  // 1. 如果是视频封面 -> bg传空串 (依靠 Video 标签), 否则传 url
-  // 2. 如果 URL 都不存在 -> 传空串 (触发 CSS 默认极光动画)
-  const heroBgImage = isCoverVideo ? '' : (coverUrl || '');
+  
+  // 背景逻辑
+  const heroBgImage = outputImageUrl || inputImageUrl || coverUrl || '';
 
   return (
     <StyledModal
@@ -579,23 +648,9 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
       destroyOnClose
       closeIcon={<CloseOutlined style={{ fontSize: 16 }} />}
     >
-      {/* 1. 头部区域 */}
+      {/* 1. Hero Header */}
       <HeroSection $bg={heroBgImage}>
-        
-        {/* 动态视频背景：如果是视频封面，自动播放作为背景 */}
-        {isCoverVideo && (
-          <HeroVideoBg 
-            src={coverUrl} 
-            autoPlay 
-            loop 
-            muted 
-            playsInline 
-            onError={(e: any) => e.target.style.display = 'none'} // 如果加载失败，隐藏视频，显示底下的极光
-          />
-        )}
-
-        {/* 如果既没有图片也没有视频，显示一个装饰性纹理叠加在极光上 */}
-        {!isCoverVideo && !coverUrl && (
+        {!hasOutputImage && !hasInputImage && !coverUrl && (
            <div style={{
              position: 'absolute', inset: 0, zIndex: 0, opacity: 0.2,
              backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 1px, transparent 1px)',
@@ -613,7 +668,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
               <span><CalendarOutlined /> {dayjs(task.createTime).format('YYYY-MM-DD HH:mm')}</span>
               <span><ClockCircleOutlined /> {intl.formatMessage({ id: 'create.taskDetail.durationLabel', defaultMessage: '耗时' })} {durationStr}s</span>
             </div>
-            {/* 模型介绍 */}
             {task.model?.description && (
               <ModelDescriptionBox>
                 <div className="description-text">
@@ -624,7 +678,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
           </TitleArea>
 
           <ActionArea>
-            {/* 点赞 */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
               <Tooltip title={intl.formatMessage({ id: 'create.model.like', defaultMessage: '喜欢' })}>
                 <GlassButton onClick={handleLike} disabled={likeLoading} style={isLiked ? { background: 'rgba(255,77,79,0.3)', borderColor: '#ff4d4f' } : {}}>
@@ -633,7 +686,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
               </Tooltip>
               {likesCount > 0 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{likesCount}</span>}
             </div>
-            {/* 收藏 */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
               <Tooltip title={intl.formatMessage({ id: 'create.model.favorite', defaultMessage: '收藏' })}>
                 <GlassButton onClick={handleFavorite} disabled={favoriteLoading} style={isFavorited ? { background: 'rgba(250,173,20,0.3)', borderColor: '#faad14' } : {}}>
@@ -642,14 +694,12 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
               </Tooltip>
               {favoritesCount > 0 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{favoritesCount}</span>}
             </div>
-            {/* 分享 */}
             <Tooltip title={intl.formatMessage({ id: 'create.model.share', defaultMessage: '分享' })}>
               <GlassButton onClick={handleShare}>
                 <ShareAltOutlined />
               </GlassButton>
             </Tooltip>
-            {/* 下载 */}
-            {hasOutputVideo && (
+            {hasOutputImage && (
               <GlassButton $primary onClick={handleDownload}>
                 <DownloadOutlined /> {intl.formatMessage({ id: 'create.taskDetail.download', defaultMessage: '下载' })}
               </GlassButton>
@@ -658,25 +708,67 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
         </HeroContent>
       </HeroSection>
 
-      {/* 2. 独立影院区 */}
-      {hasOutputVideo && (
-        <ResultSection id="result-video-section">
-          <SectionLabel>
-            <PlayCircleFilled style={{color: '#2997ff'}}/> {intl.formatMessage({ id: 'create.taskDetail.result', defaultMessage: '生成结果' })}
-          </SectionLabel>
-          <VideoPlayerBox>
-            <video 
-              src={videoUrl} 
-              controls 
-              autoPlay 
-              loop 
-              controlsList="nodownload"
-            />
-          </VideoPlayerBox>
+      {/* 2. 酷炫的输入/输出结果区域 (新) */}
+      {(hasInputImage || hasOutputImage) && (
+        <ResultSection id="result-image-section">
+          <ResultGroup>
+            
+            {/* 左侧：输入卡片 */}
+            {hasInputImage && (
+              <MediaCard>
+                <MediaHeader>
+                  <div className="icon-box input"><FileImageOutlined /></div>
+                  {intl.formatMessage({ id: 'create.taskDetail.inputImage', defaultMessage: '输入参考' })}
+                </MediaHeader>
+                <ImageWrapper>
+                  <Image
+                    src={inputImageUrl || ''}
+                    alt="Input"
+                    placeholder={<Spin />}
+                    fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+                  />
+                </ImageWrapper>
+              </MediaCard>
+            )}
+
+            {/* 中间：连接动画 */}
+            {hasInputImage && hasOutputImage && (
+              <FlowConnector>
+                <DoubleRightOutlined className="arrow" />
+              </FlowConnector>
+            )}
+
+            {/* 右侧：输出卡片 */}
+            {hasOutputImage && (
+              <MediaCard $isOutput={true} style={!hasInputImage ? { maxWidth: 600 } : {}}>
+                <MediaHeader>
+                  <div className="icon-box output"><ThunderboltFilled /></div>
+                  <span style={{ color: '#52c41a' }}>
+                    {intl.formatMessage({ id: 'create.taskDetail.result', defaultMessage: '生成结果' })}
+                  </span>
+                </MediaHeader>
+                <ImageWrapper>
+                  <Image
+                    src={outputImageUrl || ''}
+                    alt="Output"
+                    placeholder={<Spin />}
+                    preview={{
+                      mask: (
+                        <div style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <EyeOutlined /> {intl.formatMessage({ id: 'common.preview', defaultMessage: '预览' })}
+                        </div>
+                      ),
+                    }}
+                  />
+                </ImageWrapper>
+              </MediaCard>
+            )}
+
+          </ResultGroup>
         </ResultSection>
       )}
 
-      {/* 3. 详情信息网格 */}
+      {/* 3. 任务详情网格 */}
       <ContentGrid $hasPrompt={hasPrompt}>
         {hasPrompt && (
           <div>
@@ -725,7 +817,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
           </InfoList>
         </div>
       </ContentGrid>
-
     </StyledModal>
   );
 };
