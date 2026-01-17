@@ -13,6 +13,7 @@ import {
   HistoryOutlined,
   CloudServerOutlined,
   EditOutlined,
+  FileImageOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage } from 'react-intl';
 import FeedbackModalEntry from 'components/modals/FeedbackModalEntry';
@@ -169,6 +170,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
       key: 'decrypt',
       icon: <LockOutlined style={{ color: '#8b5cf6' }} />,
       label: <FormattedMessage id="sidebar.decrypt" />
+    },
+    {
+      key: 'mediaTools',
+      icon: <FileImageOutlined style={{ color: '#10b981' }} />,
+      label: <FormattedMessage id="sidebar.mediaTools" defaultMessage="媒体工具" />
     }
   ];
 
@@ -193,6 +199,14 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
   const handleMenuSelect = ({ key }: { key: string }) => {
     if (key === 'decrypt') {
       navigate('/decrypt');
+      if (isMobile) {
+        onCollapse(true);
+      }
+      return;
+    }
+
+    if (key === 'mediaTools') {
+      navigate('/workspace/media-tools');
       if (isMobile) {
         onCollapse(true);
       }

@@ -1,442 +1,488 @@
-import React, { useState } from 'react';
-import { Typography } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Typography, Steps, Tag } from 'antd';
 import { FormattedMessage, useIntl } from 'react-intl';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { 
-  BulbOutlined,
-  RobotOutlined,
-  BlockOutlined,
-  PrinterOutlined,
-  ArrowRightOutlined,
-  CheckCircleOutlined
+  BulbFilled,
+  RobotFilled,
+  CodeSandboxOutlined,
+  PrinterFilled,
+  CaretRightOutlined,
+  CopyOutlined,
+  CheckCircleFilled,
+  LoadingOutlined
 } from '@ant-design/icons';
 
 const { Title, Text } = Typography;
+
+// --- 动画定义 ---
 
 const fadeInUp = keyframes`
   from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
 `;
 
-const pulse = keyframes`
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.8; transform: scale(1.1); }
+const pulseGlow = keyframes`
+  0% { box-shadow: 0 0 0 0 rgba(131, 56, 236, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(131, 56, 236, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(131, 56, 236, 0); }
 `;
 
+const lineFlow = keyframes`
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+`;
+
+const textType = keyframes`
+  from { width: 0; }
+  to { width: 100%; }
+`;
+
+// --- 容器样式 ---
+
 const SectionContainer = styled.div`
-  margin-top: 80px;
-  margin-bottom: 80px;
+  margin: 100px auto;
   padding: 0 40px;
   max-width: 1400px;
-  margin-left: auto;
-  margin-right: auto;
   animation: ${fadeInUp} 0.8s ease-out;
 
   @media (max-width: 768px) {
     padding: 0 24px;
-    margin-top: 48px;
-    margin-bottom: 48px;
+    margin: 60px auto;
   }
 `;
 
 const HeaderWrapper = styled.div`
   text-align: center;
-  margin-bottom: 56px;
+  margin-bottom: 60px;
 `;
 
-const SectionTitle = styled(Title)`
+const StyledTitle = styled(Title)`
   &.ant-typography {
     font-size: 42px;
-    font-weight: 700;
-    margin-bottom: 12px !important;
-    color: ${props => props.theme.mode === 'dark' ? '#e8eaed' : '#202124'};
-    
-    @media (max-width: 768px) {
-      font-size: 32px;
-    }
+    font-weight: 800;
+    margin-bottom: 12px;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, ${props => props.theme.mode === 'dark' ? '#fff 0%, #aaa 100%' : '#333 0%, #666 100%'});
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 `;
 
-const SectionSubtitle = styled(Text)`
-  &.ant-typography {
-    font-size: 18px;
-    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'};
-    max-width: 600px;
-    display: inline-block;
-    line-height: 1.6;
-  }
-`;
+// --- 顶部：生产管线 (Pipeline) ---
 
-// 时间轴容器 - 类似地铁线路图
-const TimelineContainer = styled.div`
-  position: relative;
-  padding: 60px 0;
-  overflow-x: auto;
-  overflow-y: visible;
-
-  /* 隐藏滚动条但保持滚动功能 */
-  &::-webkit-scrollbar {
-    height: 8px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#f5f5f5'};
-    border-radius: 4px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.mode === 'dark' ? '#3c4043' : '#d9d9d9'};
-    border-radius: 4px;
-    
-    &:hover {
-      background: ${props => props.theme.mode === 'dark' ? '#5f6368' : '#bfbfbf'};
-    }
-  }
-
-  @media (max-width: 768px) {
-    padding: 40px 0;
-  }
-`;
-
-// 时间轴轨道（连接线）
-const TimelineTrack = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 4px;
-  background: ${props => props.theme.mode === 'dark' 
-    ? 'linear-gradient(90deg, #8338ec 0%, #3a86ff 50%, #06ffa5 100%)'
-    : 'linear-gradient(90deg, #e1bee7 0%, #bbdefb 50%, #c8e6c9 100%)'};
-  transform: translateY(-50%);
-  border-radius: 2px;
-  z-index: 0;
-`;
-
-// 时间轴节点容器（横向布局）
-const TimelineNodes = styled.div`
-  position: relative;
+const PipelineWrapper = styled.div`
   display: flex;
-  gap: 80px;
-  padding: 0 40px;
-  min-width: fit-content;
-  z-index: 1;
-
-  @media (max-width: 1024px) {
-    gap: 60px;
-    padding: 0 20px;
-  }
-
-  @media (max-width: 768px) {
-    gap: 40px;
-    padding: 0 10px;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-`;
-
-// 连接箭头（仅在横向时显示）
-const ConnectionArrow = styled.div`
-  position: absolute;
-  top: 50%;
-  left: calc(100% + 20px);
-  transform: translateY(-50%);
-  color: ${props => props.theme.mode === 'dark' ? '#5f6368' : '#bfbfbf'};
-  font-size: 24px;
-  z-index: 2;
-
-  @media (max-width: 768px) {
-    display: none;
-  }
-`;
-
-// 节点卡片
-const NodeCard = styled.div`
+  justify-content: space-between;
+  align-items: center;
   position: relative;
-  width: 280px;
-  min-width: 280px;
-  padding: 32px;
-  border-radius: 24px;
-  background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#ffffff'};
-  border: 2px solid ${props => props.$active 
-    ? (props.theme.mode === 'dark' ? '#8338ec' : '#8338ec')
-    : (props.theme.mode === 'dark' ? '#3c4043' : '#dadce0')};
-  box-shadow: ${props => props.$active 
-    ? '0 8px 32px rgba(131, 56, 236, 0.3)'
-    : '0 4px 12px rgba(0, 0, 0, 0.08)'};
+  margin-bottom: 50px;
+  padding: 0 40px;
+
+  // 连线背景
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 60px;
+    right: 60px;
+    height: 4px;
+    background: ${props => props.theme.mode === 'dark' ? '#333' : '#e0e0e0'};
+    transform: translateY(-50%);
+    z-index: 0;
+    border-radius: 4px;
+  }
+
+  // 激活的连线 (进度条)
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 60px;
+    height: 4px;
+    // 计算宽度：(当前索引 / (总数-1)) * 100%
+    width: calc(${props => (props.$activeIndex / (props.$total - 1)) * 100}% - 120px); 
+    background: linear-gradient(90deg, #8338ec, #3a86ff, #06ffa5);
+    background-size: 200% 100%;
+    animation: ${lineFlow} 2s linear infinite;
+    transform: translateY(-50%);
+    z-index: 0;
+    transition: width 0.5s ease;
+    border-radius: 4px;
+    opacity: ${props => props.$activeIndex === 0 ? 0 : 1};
+  }
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    gap: 40px;
+    padding: 0;
+    
+    &::before, &::after {
+      width: 4px;
+      height: calc(100% - 80px);
+      left: 50%;
+      top: 40px;
+      transform: translateX(-50%);
+    }
+    
+    &::after {
+      height: calc(${props => (props.$activeIndex / (props.$total - 1)) * 100}% - 80px);
+      width: 4px;
+    }
+  }
+`;
+
+const StepNode = styled.div`
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   cursor: pointer;
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-  z-index: ${props => props.$active ? 10 : 2};
+  width: 120px;
+  transition: transform 0.3s ease;
 
   &:hover {
-    transform: translateY(-8px) scale(1.02);
-    border-color: ${props => props.theme.mode === 'dark' ? '#8338ec' : '#8338ec'};
-    box-shadow: 0 12px 48px ${props => props.theme.mode === 'dark' 
-      ? 'rgba(131, 56, 236, 0.4)' 
-      : 'rgba(131, 56, 236, 0.2)'};
-    z-index: 10;
-  }
-
-  @media (max-width: 768px) {
-    width: 100%;
-    min-width: 100%;
-    padding: 24px;
+    transform: translateY(-5px);
   }
 `;
 
-// 节点图标容器
-const NodeIcon = styled.div`
-  position: absolute;
-  top: -32px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 64px;
-  height: 64px;
+const NodeCircle = styled.div`
+  width: 72px;
+  height: 72px;
   border-radius: 50%;
-  background: ${props => props.$active 
-    ? 'linear-gradient(135deg, #8338ec 0%, #3a86ff 100%)'
-    : (props.theme.mode === 'dark' ? '#292a2d' : '#f5f5f5')};
-  border: 4px solid ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#ffffff'};
+  background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#fff'};
+  border: 3px solid ${props => props.$active 
+    ? (props.theme.mode === 'dark' ? '#06ffa5' : '#8338ec') 
+    : (props.theme.mode === 'dark' ? '#333' : '#e0e0e0')};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
-  color: ${props => props.$active ? '#fff' : (props.theme.mode === 'dark' ? '#9aa0a6' : '#5f6368')};
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  z-index: 5;
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  font-size: 28px;
+  color: ${props => props.$active ? (props.theme.mode === 'dark' ? '#06ffa5' : '#8338ec') : '#999'};
+  box-shadow: ${props => props.$active ? '0 0 20px rgba(131, 56, 236, 0.4)' : 'none'};
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  margin-bottom: 16px;
 
-  ${NodeCard}:hover & {
-    animation: ${pulse} 2s ease-in-out infinite;
-    transform: translateX(-50%) scale(1.1);
-  }
-
-  @media (max-width: 768px) {
-    top: 24px;
-    left: 24px;
-    transform: none;
-    width: 48px;
-    height: 48px;
-    font-size: 24px;
-  }
+  ${props => props.$active && css`
+    animation: ${pulseGlow} 2s infinite;
+    background: ${props.theme.mode === 'dark' ? '#2a2a2a' : '#f0f7ff'};
+  `}
 `;
 
-const NodeContent = styled.div`
-  margin-top: 24px;
-  color: ${props => props.theme.mode === 'dark' ? '#e8eaed' : '#202124'};
-
-  @media (max-width: 768px) {
-    margin-top: 16px;
-    padding-left: 72px;
-  }
-`;
-
-const NodeTitle = styled.div`
-  font-size: 20px;
+const NodeLabel = styled.div`
   font-weight: 700;
-  margin-bottom: 12px;
-  color: ${props => props.theme.mode === 'dark' ? '#e8eaed' : '#202124'};
-  
-  @media (max-width: 768px) {
-    font-size: 18px;
-    margin-bottom: 8px;
+  font-size: 16px;
+  color: ${props => props.$active 
+    ? (props.theme.mode === 'dark' ? '#fff' : '#000') 
+    : (props.theme.mode === 'dark' ? '#666' : '#999')};
+  transition: color 0.3s;
+`;
+
+const NodeSubLabel = styled.div`
+  font-size: 12px;
+  color: ${props => props.$active ? '#8338ec' : 'transparent'};
+  font-weight: 600;
+  margin-top: 4px;
+  text-transform: uppercase;
+  transition: color 0.3s;
+`;
+
+// --- 底部：数据终端 (Data Console) ---
+
+const ConsoleContainer = styled.div`
+  background: ${props => props.theme.mode === 'dark' ? '#111' : '#1e1e2e'}; // 始终保持深色底，更有极客感
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  min-height: 400px;
+
+  @media (max-width: 900px) {
+    flex-direction: column;
   }
 `;
 
-const NodeDescription = styled.div`
+// 终端左侧：说明区
+const ConsoleSidebar = styled.div`
+  width: 35%;
+  padding: 40px;
+  background: rgba(255,255,255,0.03);
+  border-right: 1px solid rgba(255,255,255,0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+
+  @media (max-width: 900px) {
+    width: 100%;
+    padding: 30px;
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+`;
+
+const StepTitle = styled.h3`
+  font-size: 28px;
+  color: #fff;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  .icon-glow {
+    filter: drop-shadow(0 0 8px rgba(255,255,255,0.5));
+  }
+`;
+
+const StepDesc = styled.p`
+  color: #aaa;
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 32px;
+`;
+
+const StatusBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: rgba(6, 255, 165, 0.1);
+  color: #06ffa5;
+  border: 1px solid rgba(6, 255, 165, 0.3);
+  font-family: 'SF Mono', monospace;
+  font-size: 12px;
+  align-self: flex-start;
+`;
+
+// 终端右侧：代码/参数区
+const ConsoleCodeArea = styled.div`
+  width: 65%;
+  padding: 40px;
+  position: relative;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+
+  @media (max-width: 900px) {
+    width: 100%;
+    padding: 30px;
+  }
+`;
+
+const CodeWindow = styled.div`
+  background: #000;
+  border-radius: 12px;
+  padding: 24px;
+  border: 1px solid #333;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: 'TERMINAL_OUTPUT';
+    position: absolute;
+    top: 10px;
+    right: 16px;
+    font-size: 10px;
+    color: #444;
+    letter-spacing: 2px;
+  }
+`;
+
+const CodeLine = styled.div`
+  display: flex;
+  margin-bottom: 8px;
   font-size: 14px;
   line-height: 1.6;
-  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)'};
-  margin-bottom: 16px;
+  
+  .line-num {
+    color: #444;
+    margin-right: 16px;
+    user-select: none;
+    min-width: 24px;
+    text-align: right;
+  }
+
+  .content {
+    color: #a5f3fc;
+    
+    &.key { color: #c4b5fd; }
+    &.string { color: #86efac; }
+    &.comment { color: #6b7280; font-style: italic; }
+  }
 `;
 
-// 详情展开区域
-const NodeDetails = styled.div`
-  max-height: ${props => props.$expanded ? '500px' : '0'};
-  overflow: hidden;
-  transition: max-height 0.4s ease;
-  margin-top: ${props => props.$expanded ? '16px' : '0'};
-  opacity: ${props => props.$expanded ? 1 : 0};
+const BlinkingCursor = styled.span`
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: #06ffa5;
+  margin-left: 4px;
+  animation: ${pulseGlow} 1s infinite;
+  vertical-align: middle;
 `;
 
-const DetailItem = styled.div`
-  padding: 12px;
-  background: ${props => props.theme.mode === 'dark' ? '#292a2d' : '#f5f5f5'};
-  border-radius: 12px;
-  margin-bottom: 8px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.8)' : 'rgba(0,0,0,0.8)'};
-`;
+// --- 数据 ---
 
-const DetailLabel = styled.div`
-  font-weight: 600;
-  margin-bottom: 4px;
-  color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1f1f1f'};
-`;
-
-const DetailValue = styled.div`
-  font-family: 'Monaco', 'Courier New', monospace;
-  word-break: break-all;
-  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)'};
-`;
-
-// 步骤序号标签
-const StepBadge = styled.div`
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: ${props => props.$active 
-    ? 'linear-gradient(135deg, #8338ec 0%, #3a86ff 100%)'
-    : (props.theme.mode === 'dark' ? '#3c4043' : '#e8e8e8')};
-  color: ${props => props.$active ? '#fff' : (props.theme.mode === 'dark' ? '#9aa0a6' : '#5f6368')};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  font-weight: 700;
-  transition: all 0.3s ease;
-`;
-
-const timelineSteps = [
+const STEPS = [
   {
     id: 1,
-    title: 'Prompt 创意',
-    icon: <BulbOutlined />,
-    description: '输入你的创意想法，描述你想要生成的内容',
-    details: {
-      prompt: 'A futuristic minimalist lamp with organic curves, translucent resin material, soft warm light, modern interior design',
-      tools: 'ChatGPT / Claude'
-    }
+    key: 'prompt',
+    title: 'Prompt Engineering',
+    icon: <BulbFilled style={{ color: '#ffd700' }} />,
+    desc: 'Define the concept using natural language. Our LLM parses your intent into structured generation parameters.',
+    status: 'PARSING_COMPLETE',
+    code: [
+      { type: 'comment', text: '// User Input' },
+      { type: 'key', text: 'Prompt:', val: '"Futuristic lamp, organic shape"' },
+      { type: 'key', text: 'Style:', val: '"Minimalist, transluscent"' },
+      { type: 'key', text: 'Material:', val: '"Resin, Bio-plastic"' },
+      { type: 'comment', text: '// System Optimization' },
+      { type: 'key', text: 'Enrichment:', val: 'Enabled (v4.2)' },
+    ]
   },
   {
     id: 2,
-    title: 'AI 工具生成',
-    icon: <RobotOutlined />,
-    description: '使用 Midjourney 或 Stable Diffusion 生成概念图',
-    details: {
-      tool: 'Midjourney v6',
-      parameters: '--ar 16:9 --v 6 --style raw',
-      model: 'SDXL 1.0'
-    }
+    key: 'gen2d',
+    title: '2D Visualization',
+    icon: <RobotFilled style={{ color: '#ff006e' }} />,
+    desc: 'High-fidelity multi-view rendering generated by diffusion models to serve as the blueprint.',
+    status: 'RENDER_SUCCESS',
+    code: [
+      { type: 'key', text: 'Model:', val: 'Midjourney v6.0' },
+      { type: 'key', text: 'Aspect Ratio:', val: '--ar 16:9' },
+      { type: 'key', text: 'Chaos:', val: '--c 10' },
+      { type: 'key', text: 'Seed:', val: '293847102' },
+      { type: 'key', text: 'Views:', val: '[Front, Top, Iso]' },
+    ]
   },
   {
     id: 3,
-    title: '3D 转换',
-    icon: <BlockOutlined />,
-    description: '使用 Tripo AI 或 CSM 将 2D 图像转换为 3D 模型',
-    details: {
-      tool: 'Tripo AI',
-      format: 'OBJ / STL',
-      resolution: 'High (2048x2048)'
-    }
+    key: 'gen3d',
+    title: '3D Synthesis',
+    icon: <CodeSandboxOutlined style={{ color: '#3a86ff' }} />,
+    desc: 'LGM (Large Gaussian Model) converts the 2D reference into a textured, watertight 3D mesh.',
+    status: 'MESH_GENERATED',
+    code: [
+      { type: 'key', text: 'Engine:', val: 'TripoSR / CSM' },
+      { type: 'key', text: 'Format:', val: '.OBJ + .MTL' },
+      { type: 'key', text: 'Poly Count:', val: '250,000 tris' },
+      { type: 'key', text: 'UV Map:', val: '4096 x 4096' },
+      { type: 'key', text: 'Topology:', val: 'Quad-remeshed' },
+    ]
   },
   {
     id: 4,
-    title: '实物制造',
-    icon: <PrinterOutlined />,
-    description: '3D 打印或 CNC 加工，将数字模型变为真实物体',
-    details: {
-      method: '3D Printing',
-      material: 'PLA Resin',
-      duration: '12 hours',
-      dimensions: '25cm × 15cm × 30cm'
-    }
+    key: 'fab',
+    title: 'Fabrication',
+    icon: <PrinterFilled style={{ color: '#06ffa5' }} />,
+    desc: 'Automated slicing and G-code generation for additive manufacturing or CNC machining.',
+    status: 'READY_TO_PRINT',
+    code: [
+      { type: 'key', text: 'Device:', val: 'Bambu Lab X1C' },
+      { type: 'key', text: 'Material:', val: 'PLA-CF (Carbon)' },
+      { type: 'key', text: 'Infill:', val: '15% Gyroid' },
+      { type: 'key', text: 'Layer Height:', val: '0.12mm' },
+      { type: 'key', text: 'Est. Time:', val: '14h 32m' },
+    ]
   },
 ];
 
 const RecipeTimeline = () => {
-  const intl = useIntl();
-  const [activeNode, setActiveNode] = useState(null);
-  const [expandedNode, setExpandedNode] = useState(null);
+  const [activeStep, setActiveStep] = useState(0);
+  const [typingIndex, setTypingIndex] = useState(0);
 
-  const handleNodeClick = (nodeId) => {
-    if (expandedNode === nodeId) {
-      setExpandedNode(null);
-    } else {
-      setExpandedNode(nodeId);
-    }
-    setActiveNode(nodeId);
-  };
+  // 简单的自动播放逻辑 (可选，或者仅用户点击)
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setActiveStep(prev => (prev + 1) % STEPS.length);
+  //   }, 5000);
+  //   return () => clearInterval(interval);
+  // }, []);
 
-  const handleNodeHover = (nodeId) => {
-    setActiveNode(nodeId);
-  };
+  // 重置打字效果
+  useEffect(() => {
+    setTypingIndex(0);
+    const interval = setInterval(() => {
+      setTypingIndex(prev => prev + 1);
+    }, 100); // 打字速度
+    return () => clearInterval(interval);
+  }, [activeStep]);
 
-  const handleNodeLeave = () => {
-    if (!expandedNode) {
-      setActiveNode(null);
-    }
-  };
+  const currentStepData = STEPS[activeStep];
 
   return (
     <SectionContainer>
       <HeaderWrapper>
-        <SectionTitle level={2}>
-          <FormattedMessage 
-            id="recipe.timeline.title" 
-            defaultMessage="Recipe Timeline" 
-          />
-        </SectionTitle>
-        <SectionSubtitle>
-          <FormattedMessage 
-            id="recipe.timeline.subtitle" 
-            defaultMessage="从灵感到实物的完整工作流，点击节点查看详细参数和提示词" 
-          />
-        </SectionSubtitle>
+        <StyledTitle level={2}>
+          <FormattedMessage id="workflow.title" defaultMessage="The Creation Workflow" />
+        </StyledTitle>
+        <Typography.Text type="secondary" style={{ fontSize: 18 }}>
+          Trace the journey of a single idea transforming into physical reality.
+        </Typography.Text>
       </HeaderWrapper>
 
-      <TimelineContainer>
-        <TimelineTrack />
-        <TimelineNodes>
-          {timelineSteps.map((step, index) => (
-            <React.Fragment key={step.id}>
-              <NodeCard
-                $active={activeNode === step.id || expandedNode === step.id}
-                onClick={() => handleNodeClick(step.id)}
-                onMouseEnter={() => handleNodeHover(step.id)}
-                onMouseLeave={handleNodeLeave}
-              >
-                <StepBadge $active={activeNode === step.id || expandedNode === step.id}>
-                  {step.id}
-                </StepBadge>
-                
-                <NodeIcon $active={activeNode === step.id || expandedNode === step.id}>
-                  {step.icon}
-                </NodeIcon>
+      {/* 1. 上半部分：可视化管线 */}
+      <PipelineWrapper $activeIndex={activeStep} $total={STEPS.length}>
+        {STEPS.map((step, index) => (
+          <StepNode 
+            key={step.id} 
+            onClick={() => setActiveStep(index)}
+          >
+            <NodeCircle $active={activeStep === index}>
+              {step.icon}
+            </NodeCircle>
+            <NodeLabel $active={activeStep === index}>
+              {step.title}
+            </NodeLabel>
+            <NodeSubLabel $active={activeStep === index}>
+              Step 0{index + 1}
+            </NodeSubLabel>
+          </StepNode>
+        ))}
+      </PipelineWrapper>
 
-                <NodeContent>
-                  <NodeTitle>{step.title}</NodeTitle>
-                  <NodeDescription>{step.description}</NodeDescription>
-                  
-                  <NodeDetails $expanded={expandedNode === step.id}>
-                    {Object.entries(step.details).map(([key, value]) => (
-                      <DetailItem key={key}>
-                        <DetailLabel>
-                          {key.charAt(0).toUpperCase() + key.slice(1)}:
-                        </DetailLabel>
-                        <DetailValue>{value}</DetailValue>
-                      </DetailItem>
-                    ))}
-                  </NodeDetails>
-                </NodeContent>
-              </NodeCard>
-              
-              {index < timelineSteps.length - 1 && (
-                <ConnectionArrow>
-                  <ArrowRightOutlined />
-                </ConnectionArrow>
-              )}
-            </React.Fragment>
-          ))}
-        </TimelineNodes>
-      </TimelineContainer>
+      {/* 2. 下半部分：数据终端 */}
+      <ConsoleContainer>
+        <ConsoleSidebar>
+          <StatusBadge>
+             <LoadingOutlined spin style={{marginRight: 6}} /> 
+             {currentStepData.status}
+          </StatusBadge>
+          <div style={{ height: 24 }} />
+          <StepTitle>
+            <span className="icon-glow">{currentStepData.icon}</span>
+            {currentStepData.title}
+          </StepTitle>
+          <StepDesc>
+            {currentStepData.desc}
+          </StepDesc>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Tag color="#333" style={{ border: '1px solid #555', color: '#aaa' }}>v 2.4.0</Tag>
+            <Tag color="#333" style={{ border: '1px solid #555', color: '#aaa' }}>Secure</Tag>
+          </div>
+        </ConsoleSidebar>
+
+        <ConsoleCodeArea>
+          <CodeWindow>
+            {currentStepData.code.map((line, idx) => (
+              <CodeLine key={idx} style={{ opacity: idx < typingIndex ? 1 : 0.3, transition: 'opacity 0.2s' }}>
+                <span className="line-num">{idx + 1}</span>
+                <span className={`content ${line.type}`}>
+                  {line.text} <span className={line.type === 'key' ? 'string' : ''}>{line.val}</span>
+                </span>
+              </CodeLine>
+            ))}
+            <div style={{ marginTop: 16 }}>
+              <span className="line-num" style={{ opacity: 0 }}>00</span>
+              <span style={{ color: '#06ffa5' }}>root@ai2obj:~$</span> <BlinkingCursor />
+            </div>
+          </CodeWindow>
+        </ConsoleCodeArea>
+      </ConsoleContainer>
+
     </SectionContainer>
   );
 };
 
 export default RecipeTimeline;
-

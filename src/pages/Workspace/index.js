@@ -4,7 +4,7 @@ import SimpleHeader from "components/headers/simple";
 import { message } from 'antd';
 import { Helmet } from 'react-helmet';
 import { FormattedMessage, useIntl } from 'react-intl';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import SideMenu from './components/SideMenu';
 import AllFiles from './AllFiles';
 import Starred from './Starred';
@@ -12,10 +12,12 @@ import Folders from './Folders';
 import Trash from './Trash';
 import StorageNodes from './StorageNodes';
 import Create from './Create';
+import MediaTools from './MediaTools';
 
 const { Content, Sider } = Layout;
 
 const CloudDrivePage = () => {
+  const location = useLocation();
   const [selectedKeys, setSelectedKeys] = useState(['create']);
   const [userInfo, setUserInfo] = useState(null);
   const navigate = useNavigate();
@@ -45,6 +47,18 @@ const CloudDrivePage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // 根据 URL 路径设置菜单选中状态
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === '/workspace/media-tools') {
+      setSelectedKeys(['mediaTools']);
+    } else if (path === '/workspace/storage-nodes') {
+      setSelectedKeys(['storageNodes']);
+    } else if (path === '/workspace') {
+      setSelectedKeys(['create']);
+    }
+  }, [location.pathname]);
+
   const handleMenuSelect = (key) => {
     setSelectedKeys([key]);
   };
@@ -64,6 +78,8 @@ const CloudDrivePage = () => {
         return <Trash />;
       case 'storageNodes':
         return <StorageNodes />;
+      case 'mediaTools':
+        return <MediaTools />;
       default:
         return <Create />;
     }

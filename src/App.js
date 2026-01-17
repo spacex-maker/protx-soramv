@@ -45,6 +45,7 @@ import ChannelDetailPage from './pages/Community/ChannelDetail';
 import PostDetailPage from './pages/Community/PostDetail';
 import ChallengeDetailPage from './pages/Community/ChallengeDetailPage';
 import ResumePage from './pages/Resume';
+import ImageCompress from './pages/Workspace/MediaTools/components/ImageCompress';
 
 // 语言配置映射
 const localeMap = {
@@ -340,6 +341,14 @@ export default function App() {
                   </PrivateRoute>
                 }
               />
+              <Route
+                path="/workspace/media-tools"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
               {/* 社区相关路由 */}
               <Route path="/community" element={
                 <PrivateRoute>
@@ -359,6 +368,12 @@ export default function App() {
               <Route path="/community/post/:postId" element={
                 <PrivateRoute>
                   <PostDetailPage />
+                </PrivateRoute>
+              } />
+              {/* 媒体工具路由 */}
+              <Route path="/workspace/media-tools/image-compress" element={
+                <PrivateRoute>
+                  <ImageCompress />
                 </PrivateRoute>
               } />
               {/* 404 路由 - 捕获所有未匹配的路由 */}

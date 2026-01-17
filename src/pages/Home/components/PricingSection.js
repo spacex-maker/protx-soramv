@@ -23,6 +23,10 @@ import {
   BranchesOutlined
 } from '@ant-design/icons';
 import { Section, ContentWrapper, SectionTitle } from '../styles';
+// 导入本地图片
+import basicBgImageSrc from '../../../images/home/compressed_f1c9bce0-28da-473c-be4a-822caf0f9484.jpeg';
+import proBgImageSrc from '../../../images/home/compressed_e096709f-a8ef-4f19-a580-03db1aa0654e.jpg';
+import teamBgImageSrc from '../../../images/home/compressed_5258249b-df9d-4a81-9770-8d7b0fcd6b8d.jpg';
 
 // ==========================================
 // 1. 动效定义
@@ -714,66 +718,12 @@ const PricingSection = () => {
   const intl = useIntl();
   const { locale } = useLocale();
   const [activeIndex, setActiveIndex] = useState(1); // 默认选中专业版
-  const [basicBgImage, setBasicBgImage] = useState('https://files.catbox.moe/ulw0qz.png');
-  const [proBgImage, setProBgImage] = useState('https://files.catbox.moe/9gf9og.png');
-  const [teamBgImage, setTeamBgImage] = useState('https://files.catbox.moe/im5il2.png');
+  const [basicBgImage, setBasicBgImage] = useState(basicBgImageSrc);
+  const [proBgImage, setProBgImage] = useState(proBgImageSrc);
+  const [teamBgImage, setTeamBgImage] = useState(teamBgImageSrc);
   
   // 判断是否为中文
   const isChinese = locale === 'zh';
-
-  // 预加载BASIC版背景图片，失败时使用备用链接
-  useEffect(() => {
-    const img = new Image();
-    const primaryUrl = 'https://files.catbox.moe/ulw0qz.png';
-    const fallbackUrl = 'https://public-1258150206.cos.ap-nanjing.myqcloud.com/home/f1c9bce0-28da-473c-be4a-822caf0f9484.png';
-    
-    img.onload = () => {
-      setBasicBgImage(primaryUrl);
-    };
-    
-    img.onerror = () => {
-      console.log('BASIC plan background image failed to load, using fallback');
-      setBasicBgImage(fallbackUrl);
-    };
-    
-    img.src = primaryUrl;
-  }, []);
-
-  // 预加载PRO版背景图片，失败时使用备用链接
-  useEffect(() => {
-    const img = new Image();
-    const primaryUrl = 'https://files.catbox.moe/9gf9og.png';
-    const fallbackUrl = 'https://public-1258150206.cos.ap-nanjing.myqcloud.com/home/e096709f-a8ef-4f19-a580-03db1aa0654e.png';
-    
-    img.onload = () => {
-      setProBgImage(primaryUrl);
-    };
-    
-    img.onerror = () => {
-      console.log('PRO plan background image failed to load, using fallback');
-      setProBgImage(fallbackUrl);
-    };
-    
-    img.src = primaryUrl;
-  }, []);
-
-  // 预加载TEAM版背景图片，失败时使用备用链接
-  useEffect(() => {
-    const img = new Image();
-    const primaryUrl = 'https://files.catbox.moe/im5il2.png';
-    const fallbackUrl = 'https://public-1258150206.cos.ap-nanjing.myqcloud.com/home/5258249b-df9d-4a81-9770-8d7b0fcd6b8d.png';
-    
-    img.onload = () => {
-      setTeamBgImage(primaryUrl);
-    };
-    
-    img.onerror = () => {
-      console.log('TEAM plan background image failed to load, using fallback');
-      setTeamBgImage(fallbackUrl);
-    };
-    
-    img.src = primaryUrl;
-  }, []);
 
   // 使用国际化生成套餐数据
   const plans = [
