@@ -278,7 +278,7 @@ const DEMO_DATA = {
   // 左侧：看起来像 3D 渲染、抽象、发光的图片
   aiImage: 'https://usa-1258150206.cos.na-siliconvalley.myqcloud.com/wzdhfn/e914658e-a364-41d7-97b4-ac299608c21e.png', 
   // 右侧：看起来像真实室内摄影的台灯图片
-  physicalImage: 'https://usa-1258150206.cos.na-siliconvalley.myqcloud.com/wzdhfn/7d99d573-4f82-4976-bbbf-9fc6321e3c37.png',
+  physicalImage: 'https://usa-1258150206.cos.na-siliconvalley.myqcloud.com/TestAdmin/f1ed8863-6859-4222-b69f-3362ce0c7340.png',
   title: '参数化菌丝台灯',
   desc: '由 Midjourney 生成有机形态，经算法优化结构，最终使用生物降解 PLA 材料 3D 打印而成。',
   specs: [
