@@ -197,8 +197,32 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
   ];
 
   const handleMenuSelect = ({ key }: { key: string }) => {
+    if (key === 'create') {
+      navigate('/workspace/create');
+      if (isMobile) {
+        onCollapse(true);
+      }
+      return;
+    }
+
+    if (key === 'all') {
+      navigate('/workspace/all');
+      if (isMobile) {
+        onCollapse(true);
+      }
+      return;
+    }
+
+    if (key === 'trash') {
+      navigate('/workspace/trash');
+      if (isMobile) {
+        onCollapse(true);
+      }
+      return;
+    }
+
     if (key === 'decrypt') {
-      navigate('/decrypt');
+      navigate('/workspace/decrypt');
       if (isMobile) {
         onCollapse(true);
       }

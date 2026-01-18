@@ -5,6 +5,8 @@
   "dependencies": {
     "@ant-design/icons": "^5.5.2",
     "@babel/runtime": "^7.26.0",
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@hocuspocus/provider": "^3.4.0",
     "@popperjs/core": "^2.11.8",
     "@react-three/drei": "^9.114.3",

@@ -13,6 +13,7 @@ import Trash from './Trash';
 import StorageNodes from './StorageNodes';
 import Create from './Create';
 import MediaTools from './MediaTools';
+import FileDecryptPage from '../FileDecrypt';
 
 const { Content, Sider } = Layout;
 
@@ -50,7 +51,15 @@ const CloudDrivePage = () => {
   // 根据 URL 路径设置菜单选中状态
   useEffect(() => {
     const path = location.pathname;
-    if (path === '/workspace/media-tools') {
+    if (path === '/workspace/create') {
+      setSelectedKeys(['create']);
+    } else if (path === '/workspace/all') {
+      setSelectedKeys(['all']);
+    } else if (path === '/workspace/trash') {
+      setSelectedKeys(['trash']);
+    } else if (path === '/workspace/decrypt') {
+      setSelectedKeys(['decrypt']);
+    } else if (path === '/workspace/media-tools') {
       setSelectedKeys(['mediaTools']);
     } else if (path === '/workspace/storage-nodes') {
       setSelectedKeys(['storageNodes']);
@@ -76,6 +85,8 @@ const CloudDrivePage = () => {
         return <Folders />;
       case 'trash':
         return <Trash />;
+      case 'decrypt':
+        return <FileDecryptPage />;
       case 'storageNodes':
         return <StorageNodes />;
       case 'mediaTools':

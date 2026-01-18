@@ -3,6 +3,8 @@ import styled, { ThemeContext, keyframes, css } from 'styled-components';
 import { Section, ContentWrapper, SectionTitle, SectionSubtitle, BentoCard } from '../styles';
 import { PlayCircleFilled, ThunderboltFilled, AppstoreFilled, BulbOutlined } from '@ant-design/icons';
 import { useIntl } from 'react-intl';
+// 导入本地图片
+import qualityBgImageSrc from '../../../images/function/compressed_ea498956-92c2-4afc-98f4-53136fbcf47c (1).jpg';
 
 // 网格布局
 const Grid = styled.div`
@@ -370,26 +372,8 @@ const AIPromptDemo = () => {
 const FeaturesSection = () => {
   const theme = useContext(ThemeContext);
   const intl = useIntl();
-  const [bgImage, setBgImage] = useState('https://thumbs2.imgbox.com/75/53/9nbhQkxZ_t.png');
+  const [bgImage, setBgImage] = useState(qualityBgImageSrc);
   const [videoUrl, setVideoUrl] = useState('https://files.catbox.moe/z4w7ez.mp4');
-
-  useEffect(() => {
-    // 预加载图片，如果失败则使用备用链接
-    const img = new Image();
-    const primaryUrl = 'https://thumbs2.imgbox.com/75/53/9nbhQkxZ_t.png';
-    const fallbackUrl = 'https://t.tutu.to/md/nCtI4';
-    
-    img.onload = () => {
-      setBgImage(primaryUrl);
-    };
-    
-    img.onerror = () => {
-      console.log('Primary image failed to load, using fallback');
-      setBgImage(fallbackUrl);
-    };
-    
-    img.src = primaryUrl;
-  }, []);
 
   // 视频加载失败时的处理
   const handleVideoError = () => {

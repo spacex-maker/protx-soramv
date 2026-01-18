@@ -9,6 +9,8 @@ import {
 import { FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
 import ImageCompress from './components/ImageCompress';
+import VideoCompress from './components/VideoCompress';
+import AudioCompress from './components/AudioCompress';
 
 const { Content } = Layout;
 
@@ -137,27 +139,26 @@ const MediaTools: React.FC = () => {
       ),
       children: <ImageCompress />
     },
-    // 预留其他工具的位置
-    // {
-    //   key: 'videoCompress',
-    //   label: (
-    //     <Space>
-    //       <VideoCameraOutlined />
-    //       <FormattedMessage id="mediaTools.tab.videoCompress" defaultMessage="视频压缩" />
-    //     </Space>
-    //   ),
-    //   children: <VideoCompress />
-    // },
-    // {
-    //   key: 'audioCompress',
-    //   label: (
-    //     <Space>
-    //       <SoundOutlined />
-    //       <FormattedMessage id="mediaTools.tab.audioCompress" defaultMessage="音频压缩" />
-    //     </Space>
-    //   ),
-    //   children: <AudioCompress />
-    // },
+    {
+      key: 'videoCompress',
+      label: (
+        <Space>
+          <VideoCameraOutlined />
+          <FormattedMessage id="mediaTools.tab.videoCompress" defaultMessage="视频压缩" />
+        </Space>
+      ),
+      children: <VideoCompress />
+    },
+    {
+      key: 'audioCompress',
+      label: (
+        <Space>
+          <SoundOutlined />
+          <FormattedMessage id="mediaTools.tab.audioCompress" defaultMessage="音频压缩" />
+        </Space>
+      ),
+      children: <AudioCompress />
+    },
     // {
     //   key: 'formatConvert',
     //   label: (
@@ -183,6 +184,7 @@ const MediaTools: React.FC = () => {
         activeKey={activeTab}
         onChange={setActiveTab}
         items={tabItems}
+        destroyInactiveTabPane={true}
         style={{ 
           flex: 1,
           display: 'flex',

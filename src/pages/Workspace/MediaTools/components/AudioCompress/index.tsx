@@ -1,9 +1,9 @@
 import React from 'react';
 import { Typography } from 'antd';
-import { CompressOutlined } from '@ant-design/icons';
-import { FormattedMessage, useIntl } from 'react-intl';
+import { SoundOutlined } from '@ant-design/icons';
+import { FormattedMessage } from 'react-intl';
 import styled, { keyframes } from 'styled-components';
-import BatchImageCompress from './BatchImageCompress';
+import BatchAudioCompress from './BatchAudioCompress';
 
 const { Title, Text } = Typography;
 
@@ -35,22 +35,23 @@ const Header = styled.div`
 `;
 
 // --- 主组件 ---
-const ImageCompress: React.FC = () => {
+const AudioCompress: React.FC = () => {
   return (
     <PageContainer>
       <Header>
         <Title level={2} style={{ marginBottom: 8 }}>
-          <CompressOutlined style={{ marginRight: 12, color: '#8338ec' }} />
-          <FormattedMessage id="imageCompress.title" defaultMessage="专业图片压缩工具" />
+          <SoundOutlined style={{ marginRight: 12, color: '#8338ec' }} />
+          <FormattedMessage id="audioCompress.title" defaultMessage="专业音频压缩工具" />
         </Title>
         <Text type="secondary">
-          <FormattedMessage id="imageCompress.subtitle" defaultMessage="智能压缩，专业品质" />
+          <FormattedMessage id="audioCompress.subtitle" defaultMessage="智能压缩，保持音质" />
         </Text>
       </Header>
 
-      <BatchImageCompress />
+      <BatchAudioCompress />
     </PageContainer>
   );
 };
 
-export default ImageCompress;
+export default AudioCompress;
+

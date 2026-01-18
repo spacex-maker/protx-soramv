@@ -46,6 +46,7 @@ import PostDetailPage from './pages/Community/PostDetail';
 import ChallengeDetailPage from './pages/Community/ChallengeDetailPage';
 import ResumePage from './pages/Resume';
 import ImageCompress from './pages/Workspace/MediaTools/components/ImageCompress';
+import MediaToolsPage from './pages/MediaToolsPage';
 
 // 语言配置映射
 const localeMap = {
@@ -262,15 +263,13 @@ export default function App() {
           <Router>
             <Routes>
               <Route path="/" element={<RootRoute />} />
+              <Route path="/media-tools" element={<MediaToolsPage />} />
+              <Route path="/tools" element={<MediaToolsPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/auth/google/callback" element={<GoogleCallback />} />
-              <Route path="/workspace" element={
-                <PrivateRoute>
-                  <CloudDrivePage />
-                </PrivateRoute>
-              } />
+              <Route path="/workspace" element={<Navigate to="/workspace/create" replace />} />
               <Route path="/profile" element={
                 <PrivateRoute>
                   <ProfilePage />
@@ -328,16 +327,37 @@ export default function App() {
                   <WorksPage />
                 </PrivateRoute>
               } />
-              <Route path="/decrypt" element={<FileDecryptPage />} />
               <Route path="/test-crypto" element={<TestCrypto />} />
               <Route path="/resume" element={<ResumePage />} />
               <Route
-                path="/workspace/storage-nodes"
+                path="/workspace/create"
                 element={
                   <PrivateRoute>
-                    <CloudDrivePage>
-                      <StorageNodes />
-                    </CloudDrivePage>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/workspace/all"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/workspace/trash"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/workspace/decrypt"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
                   </PrivateRoute>
                 }
               />
@@ -346,6 +366,16 @@ export default function App() {
                 element={
                   <PrivateRoute>
                     <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/workspace/storage-nodes"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage>
+                      <StorageNodes />
+                    </CloudDrivePage>
                   </PrivateRoute>
                 }
               />
