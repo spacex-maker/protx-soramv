@@ -183,3 +183,38 @@ export const getChallengeCoverUrl = (challenge) => {
   return generateDefaultChallengeBackground(challenge?.id);
 };
 
+/**
+ * 为腾讯云图片URL添加压缩参数
+ * @param {string} url - 原始图片URL
+ * @param {object} options - 压缩选项
+ * @returns {string} - 添加了压缩参数的URL
+ */
+export const addTencentImageCompression = (url, options = {}) => {
+  if (!url) return '';
+  
+  // 默认压缩参数
+  const {
+    format = 'webp',      // 图片格式：webp, jpg, png
+    quality = 20,         // 图片质量：1-100
+    width = null,         // 限制宽度
+    height = null,        // 限制高度
+  } = options;
+  
+  // 检查是否已经包含压缩参数
+  if (url.includes('imageMogr2') || url.includes('imageView2')) {
+    return url;
+  }
+  
+  // 构建压缩参数
+  let params = `imageMogr2/format/${format}/quality/${quality}`;
+  
+  if (width) params += `/thumbnail/${width}x`;
+  if (height && !width) params += `/thumbnail/x${height}`;
+  if (width && height) params += `/thumbnail/${width}x${height}`;
+  
+  // 判断URL是否已有查询参数
+  const separator = url.includes('?') ? '&' : '?';
+  
+  return `${url}${separator}${params}`;
+};
+

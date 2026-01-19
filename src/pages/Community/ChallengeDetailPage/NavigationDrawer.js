@@ -27,12 +27,19 @@ import {
   ActiveIndicator,
   EmptyState
 } from './styled';
-import { getStatusInfo, calculateTotalPrize, getChallengeCoverUrl, generateDefaultChallengeBackground } from './utils';
+import { getStatusInfo, calculateTotalPrize, getChallengeCoverUrl, generateDefaultChallengeBackground, addTencentImageCompression } from './utils';
 
 // 挑战图片组件，处理加载失败
 const ChallengeImage = ({ challenge }) => {
   const [imageError, setImageError] = useState(false);
-  const [imageSrc, setImageSrc] = useState(() => getChallengeCoverUrl(challenge));
+  const coverUrl = getChallengeCoverUrl(challenge);
+  const [imageSrc, setImageSrc] = useState(() => {
+    // 如果是真实图片URL则压缩，如果是SVG则直接使用
+    if (coverUrl.startsWith('data:image/svg')) {
+      return coverUrl;
+    }
+    return addTencentImageCompression(coverUrl, { quality: 5 });
+  });
   
   const handleImageError = () => {
     if (!imageError) {

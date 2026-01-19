@@ -30,6 +30,7 @@ const ChallengeDetailPage = () => {
   const [allChallenges, setAllChallenges] = useState([]);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [challengesLoading, setChallengesLoading] = useState(false);
   
   // 提交作品模态框状态
   const [submitModalVisible, setSubmitModalVisible] = useState(false);
@@ -95,6 +96,22 @@ const ChallengeDetailPage = () => {
         })
         .catch(console.error)
         .finally(() => setPostsLoading(false));
+    }
+  };
+
+  const handleRefreshChallenges = async () => {
+    setChallengesLoading(true);
+    try {
+      const challenges = await listAllChallenges(50);
+      const cleanedChallenges = Array.isArray(challenges) 
+        ? challenges.map(cleanChallengeData) 
+        : [];
+      setAllChallenges(cleanedChallenges);
+      message.success(intl.formatMessage({ id: 'common.refreshSuccess', defaultMessage: 'Refreshed successfully' }));
+    } catch (error) {
+      message.error(intl.formatMessage({ id: 'common.refreshFailed', defaultMessage: 'Refresh failed' }));
+    } finally {
+      setChallengesLoading(false);
     }
   };
 

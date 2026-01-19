@@ -13,6 +13,7 @@ import styled from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
 import { getPostDetail, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus, followUser, unfollowUser, getRelationStatus } from 'api/community';
 import UserProfileModal from 'components/community/UserProfileModal';
+import { addTencentImageCompression } from './ChallengeDetailPage/utils';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -521,12 +522,13 @@ const PostDetailPage = () => {
               <Col key={index} xs={24} sm={12}>
                 <ImageContainer>
                   <Image
-                    src={url}
+                    src={addTencentImageCompression(url, { quality: 30 })}
                     alt={`Creation ${index + 1}`}
                     loading="lazy"
                     style={{ width: '100%', height: 'auto' }}
                     preview={{
-                      mask: <div style={{ padding: '8px', color: '#fff', fontSize: '14px' }}>预览</div>
+                      src: url,
+                      mask: <div style={{ padding: '8px', color: '#fff', fontSize: '14px' }}>查看原图</div>
                     }}
                   />
                 </ImageContainer>

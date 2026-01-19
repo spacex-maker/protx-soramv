@@ -4,6 +4,7 @@ import { Avatar, Spin, Empty } from 'antd';
 import { FormattedMessage } from 'react-intl';
 import { HeartFilled } from '@ant-design/icons';
 import { MasonryGrid, ArtCard } from './styled';
+import { addTencentImageCompression } from './utils';
 
 const SubmissionGrid = ({ posts, loading }) => {
   const navigate = useNavigate();
@@ -24,7 +25,7 @@ const SubmissionGrid = ({ posts, loading }) => {
         
         return (
           <ArtCard key={post.id} onClick={() => navigate(`/community/post/${post.id}`)}>
-            {imageUrl && <img src={imageUrl} loading="lazy" alt={post.title || ''} />}
+            {imageUrl && <img src={addTencentImageCompression(imageUrl, { quality: 20 })} loading="lazy" alt={post.title || ''} />}
             <div className="stats">
               <HeartFilled /> {likeCount}
             </div>
