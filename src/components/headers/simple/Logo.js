@@ -163,8 +163,8 @@ const Logo = () => {
       <LogoLink to="/">
         <BrandContainer>
           <BrandText>
-            <span className="full-name" data-text="Sora MV">Sora MV</span>
-            <span className="short-name" data-text="SM">SM</span>
+            <span className="full-name" data-text="AI2OBJ">AI2OBJ</span>
+            <span className="short-name" data-text="AI2OBJ">AI2OBJ</span>
           </BrandText>
         </BrandContainer>
       </LogoLink>
