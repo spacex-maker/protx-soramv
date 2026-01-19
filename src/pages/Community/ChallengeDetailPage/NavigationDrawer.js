@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Drawer, Input, Empty, Badge } from 'antd';
+import { Drawer, Input, Empty, Badge, Spin } from 'antd';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { 
   SearchOutlined, 
@@ -58,7 +58,7 @@ const ChallengeImage = ({ challenge }) => {
   );
 };
 
-const NavigationDrawer = ({ visible, onClose, challenges, currentChallengeId, searchTerm, onSearchChange }) => {
+const NavigationDrawer = ({ visible, onClose, challenges, currentChallengeId, searchTerm, onSearchChange, onRefresh, loading }) => {
   const navigate = useNavigate();
   const intl = useIntl();
 
@@ -103,9 +103,18 @@ const NavigationDrawer = ({ visible, onClose, challenges, currentChallengeId, se
               <TrophyFilled style={{ color: '#faad14', marginRight: 8 }} />
               <FormattedMessage id="challenge.allChallenges" defaultMessage="All Challenges" />
             </h2>
-            <button className="close-btn" onClick={onClose}>
-              <CloseOutlined />
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button 
+                className="close-btn" 
+                onClick={onRefresh} 
+                title={intl.formatMessage({ id: 'common.refresh', defaultMessage: 'Refresh' })}
+              >
+                <ReloadOutlined />
+              </button>
+              <button className="close-btn" onClick={onClose}>
+                <CloseOutlined />
+              </button>
+            </div>
           </div>
           
           <DrawerSearchWrapper>
@@ -151,7 +160,14 @@ const NavigationDrawer = ({ visible, onClose, challenges, currentChallengeId, se
         </DrawerHeader>
 
         <DrawerContent>
-          {filteredChallenges.length > 0 ? (
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '60px 40px' }}>
+              <Spin size="large" />
+              <div style={{ marginTop: 16, color: '#999' }}>
+                <FormattedMessage id="common.loading" defaultMessage="Loading..." />
+              </div>
+            </div>
+          ) : filteredChallenges.length > 0 ? (
             filteredChallenges.map((item, index) => {
               const statusInfo = getStatusInfo(item.status, intl);
               const totalPrize = calculateTotalPrize(item.rewardsConfig);

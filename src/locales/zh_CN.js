@@ -1413,9 +1413,9 @@ export default {
   'invite.copyLink': '复制链接',
   'invite.copy.success': '复制成功',
   // 首页 Hero 区域
-  'home.hero.title': 'Sora MV',
-  'home.hero.subtitle': 'AI 驱动的视频生成平台',
-  'home.hero.description': '使用 Sora 技术，将您的创意文字和图片转化为惊艳的视频作品。不仅仅是工具，更是您创意的延伸。',
+  'home.hero.title': 'AI2OBJ',
+  'home.hero.subtitle': 'AI创造万物的魔法平台',
+  'home.hero.description': '从概念到实体，从想象到现实。用AI设计并生成一切——文字成画、画面成片、创意成真。你的每一个想法，都能在这里化为可见、可触的作品。',
   'home.hero.cta.signup': '免费开始创作',
   'home.hero.cta.login': '立即登录',
   'home.hero.cta.workspace': '进入工作台',

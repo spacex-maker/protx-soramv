@@ -1251,9 +1251,9 @@ export default {
   'invite.copyLink': '링크 복사',
   'invite.copy.success': '복사 완료',
   // 홈 히어로 섹션
-  'home.hero.title': 'Sora MV',
-  'home.hero.subtitle': 'AI 기반 비디오 생성 플랫폼',
-  'home.hero.description': 'Sora 기술을 사용하여 창의적인 텍스트와 이미지를 놀라운 비디오 콘텐츠로 변환하세요. 단순한 도구가 아닌, 당신의 창의성의 확장입니다.',
+  'home.hero.title': 'AI2OBJ',
+  'home.hero.subtitle': 'AI가 모든 것을 창조하는 마법의 플랫폼',
+  'home.hero.description': '개념에서 실체로, 상상에서 현실로. AI로 모든 것을 디자인하고 생성하세요 — 텍스트에서 이미지로, 이미지에서 비디오로, 아이디어를 현실로. 당신의 모든 생각이 여기서 눈에 보이는 작품이 됩니다.',
   'home.hero.cta.signup': '무료로 창작 시작',
   'home.hero.cta.login': '로그인',
   'home.hero.cta.workspace': '작업 공간으로 이동',

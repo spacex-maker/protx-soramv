@@ -230,6 +230,8 @@ const ChallengeDetailPage = () => {
         currentChallengeId={challenge.id}
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
+        onRefresh={handleRefreshChallenges}
+        loading={challengesLoading}
       />
 
       {/* 提交作品模态框 */}

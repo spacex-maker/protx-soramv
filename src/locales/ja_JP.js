@@ -1271,9 +1271,9 @@ export default {
   'invite.copyLink': 'リンクをコピー',
   'invite.copy.success': 'コピーしました',
   // ホームヒーローセクション
-  'home.hero.title': 'Sora MV',
-  'home.hero.subtitle': 'AI駆動の動画生成プラットフォーム',
-  'home.hero.description': 'Sora技術を使用して、あなたのクリエイティブなテキストと画像を驚くべき動画作品に変換します。単なるツールではなく、あなたの創造性の延長です。',
+  'home.hero.title': 'AI2OBJ',
+  'home.hero.subtitle': 'AIがすべてを創造する魔法のプラットフォーム',
+  'home.hero.description': 'コンセプトから実体へ、想像から現実へ。AIであらゆるものをデザインし生成——テキストから画像、画像から動画、アイデアを現実に。あなたのすべての思考が、ここで目に見える作品になります。',
   'home.hero.cta.signup': '無料で創作を始める',
   'home.hero.cta.login': 'ログイン',
   'home.hero.cta.workspace': 'ワークスペースへ',

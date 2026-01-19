@@ -1146,9 +1146,9 @@ export default {
   'invite.copyLink': 'Copia link',
   'invite.copy.success': 'Copiato con successo',
   // Sezione Hero homepage
-  'home.hero.title': 'Sora MV',
-  'home.hero.subtitle': 'Piattaforma di generazione video basata su IA',
-  'home.hero.description': 'Usa la tecnologia Sora per trasformare i tuoi testi e immagini creativi in contenuti video straordinari. Più di uno strumento, è un\'estensione della tua creatività.',
+  'home.hero.title': 'AI2OBJ',
+  'home.hero.subtitle': 'Dove l\'IA Crea Tutto',
+  'home.hero.description': 'Dal concetto alla creazione, dall\'immaginazione alla realtà. Progetta e genera qualsiasi cosa con l\'IA — testo in immagine, immagine in video, idee in vita. Ogni pensiero può diventare arte tangibile.',
   'home.hero.cta.signup': 'Inizia gratis',
   'home.hero.cta.login': 'Accedi',
   'home.hero.cta.workspace': 'Vai all\'area di lavoro',

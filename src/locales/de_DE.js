@@ -1197,9 +1197,9 @@ export default {
   'invite.copyLink': 'Link kopieren',
   'invite.copy.success': 'Erfolgreich kopiert',
   // Homepage Hero-Bereich
-  'home.hero.title': 'Sora MV',
-  'home.hero.subtitle': 'KI-gestützte Videogenerierungsplattform',
-  'home.hero.description': 'Nutzen Sie Sora-Technologie, um Ihre kreativen Texte und Bilder in beeindruckende Videoinhalte zu verwandeln. Mehr als nur ein Werkzeug – eine Erweiterung Ihrer Kreativität.',
+  'home.hero.title': 'AI2OBJ',
+  'home.hero.subtitle': 'Wo KI Alles Erschafft',
+  'home.hero.description': 'Vom Konzept zur Kreation, von der Vorstellung zur Realität. Entwerfen und generieren Sie alles mit KI — Text zu Bild, Bild zu Video, Ideen zum Leben. Jeder Gedanke kann zu greifbarer Kunst werden.',
   'home.hero.cta.signup': 'Kostenlos loslegen',
   'home.hero.cta.login': 'Anmelden',
   'home.hero.cta.workspace': 'Zum Arbeitsbereich',

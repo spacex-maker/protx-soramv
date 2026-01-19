@@ -1334,9 +1334,9 @@ export default {
   'invite.copyLink': 'Copy Link',
   'invite.copy.success': 'Copied successfully',
   // Home Hero Section
-  'home.hero.title': 'Sora MV',
-  'home.hero.subtitle': 'AI-Powered Video Generation Platform',
-  'home.hero.description': 'Use Sora technology to transform your creative text and images into stunning video content. More than just a tool, it\'s an extension of your creativity.',
+  'home.hero.title': 'AI2OBJ',
+  'home.hero.subtitle': 'Where AI Creates Everything',
+  'home.hero.description': 'From concept to creation, from imagination to reality. Design and generate anything with AI — text to image, image to video, ideas to life. Every thought you have can become tangible art.',
   'home.hero.cta.signup': 'Start Creating for Free',
   'home.hero.cta.login': 'Sign In',
   'home.hero.cta.workspace': 'Go to Workspace',

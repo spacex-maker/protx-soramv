@@ -19,6 +19,7 @@ import { useIntl } from 'react-intl';
 import styled, { css } from 'styled-components';
 import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
+import { addTencentImageCompression } from 'pages/Community/ChallengeDetailPage/utils';
 
 // ==========================================
 // 1. 样式系统 (Styled System)
@@ -506,7 +507,7 @@ const HistorySection: React.FC<HistorySectionProps> = ({
     return (
       <MediaWrapper className="media-content">
         <img 
-          src={mediaUrl} 
+          src={addTencentImageCompression(mediaUrl, { quality: 60, width: 400 })} 
           alt={task.modelName} 
           loading="lazy"
           onError={(e) => {
