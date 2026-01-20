@@ -423,6 +423,7 @@ const COIN_TYPE_MAP = {
   'USDT_ERC20': 'USDT',
   'CNY': 'CNY',
   'USD': 'USD',
+  'TOKEN': 'TOKEN',
 };
 
 const BillingContent = () => {
@@ -783,6 +784,7 @@ const BillingContent = () => {
                 { value: 'all', label: intl.formatMessage({ id: 'billing.coin.all' }) },
                 { value: 'USDT_ERC20', label: intl.formatMessage({ id: 'billing.coin.usdt' }) },
                 { value: 'CNY', label: intl.formatMessage({ id: 'billing.coin.cny' }) },
+                { value: 'TOKEN', label: intl.formatMessage({ id: 'billing.coin.token' }) },
               ]}
             />
             <Input
@@ -888,12 +890,13 @@ const BillingContent = () => {
           <DrawerSection $token={token}>
             <h3>{intl.formatMessage({ id: 'billing.filter.coinType' })}</h3>
             <ChipGrid>
-              {['all', 'USDT_ERC20', 'CNY'].map(coin => {
+              {['all', 'USDT_ERC20', 'CNY', 'TOKEN'].map(coin => {
                 const getLabel = (c) => {
                   const labelMap = {
                     all: intl.formatMessage({ id: 'billing.coin.all' }),
                     USDT_ERC20: intl.formatMessage({ id: 'billing.coin.usdt' }),
-                    CNY: intl.formatMessage({ id: 'billing.coin.cny' })
+                    CNY: intl.formatMessage({ id: 'billing.coin.cny' }),
+                    TOKEN: intl.formatMessage({ id: 'billing.coin.token' })
                   };
                   return labelMap[c];
                 };

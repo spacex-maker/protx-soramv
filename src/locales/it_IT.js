@@ -1191,6 +1191,7 @@ export default {
   'billing.coin.usdt': 'USDT',
   'billing.coin.cny': 'CNY',
   'billing.coin.usd': 'USD',
+  'billing.coin.token': 'TOKEN',
   'billing.table.type': 'Tipo',
   'billing.table.coinType': 'Valuta',
   'billing.table.time': 'Ora',

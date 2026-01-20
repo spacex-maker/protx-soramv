@@ -21,18 +21,18 @@ const AboutModal = ({ open, onClose }) => {
       ),
       children: (
         <Space direction="vertical" size="middle" style={{ width: '100%', padding: '16px 0' }}>
-          <Title level={4}>Sora MV AI 视频生成平台</Title>
+          <Title level={4}>AI2OBJ AI 3D 模型生成平台</Title>
           <Paragraph>
-            Sora MV 是一款基于 Sora 技术的 AI 视频生成平台，为用户提供文本生成视频、图片生成视频等功能。
-            我们致力于提供高质量的 AI 视频生成服务，让创作更加便捷。
+            AI2OBJ 是一款基于 AI 技术的 3D 模型生成平台，为用户提供文本生成 3D 模型、图片生成 3D 模型等功能。
+            我们致力于提供高质量的 AI 3D 建模服务，让创作更加便捷。
           </Paragraph>
           <List
             size="small"
             bordered
             dataSource={[
-              'AI 视频生成',
+              'AI 3D 模型生成',
               '多种 AI 模型选择',
-              '高质量视频输出',
+              '高质量模型输出',
               '快速生成速度'
             ]}
             renderItem={(item) => <List.Item>{item}</List.Item>}
@@ -56,16 +56,16 @@ const AboutModal = ({ open, onClose }) => {
             bordered
             dataSource={[
               {
-                title: 'Sora 技术',
-                description: '基于先进的 Sora AI 模型，生成高质量视频内容'
+                title: 'AI 3D 技术',
+                description: '基于先进的 AI 模型，生成高质量 3D 模型内容'
               },
               {
                 title: '多种生成模式',
-                description: '支持文本生成视频、图片生成视频等多种模式'
+                description: '支持文本生成 3D 模型、图片生成 3D 模型等多种模式'
               },
               {
                 title: '快速生成',
-                description: '优化的 AI 模型和强大的计算资源，快速完成视频生成'
+                description: '优化的 AI 模型和强大的计算资源，快速完成 3D 建模'
               },
               {
                 title: '高质量输出',

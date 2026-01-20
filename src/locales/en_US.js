@@ -1385,6 +1385,7 @@ export default {
   'billing.coin.usdt': 'USDT',
   'billing.coin.cny': 'CNY',
   'billing.coin.usd': 'USD',
+  'billing.coin.token': 'TOKEN',
   
   // Table
   'billing.table.type': 'Type',

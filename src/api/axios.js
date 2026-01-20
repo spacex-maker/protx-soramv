@@ -80,28 +80,10 @@ const handle401Error = () => {
 instance.interceptors.response.use(
   response => response,
   error => {
-    const { response, code, message: errorMessage } = error;
+    const { response } = error;
     
-    // 判断是否为401
-    // 1. 正常情况：response.status === 401
-    // 2. CORS拦截情况：response 为 undefined 但错误信息包含 401 或网络错误
-    const is401 = response?.status === 401 || 
-                  (code === 'ERR_NETWORK' && errorMessage?.includes('401')) ||
-                  (code === 'ERR_NETWORK' && !response && errorMessage === 'Network Error');
-    
-    // 如果是网络错误且没有响应，可能是 CORS 拦截的 401
-    // 检查是否有 token，如果没有 token 很可能是 401
-    if (code === 'ERR_NETWORK' && !response) {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        // 没有 token 且网络错误，很可能是 401 被 CORS 拦截
-        handle401Error();
-        return Promise.reject(error);
-      }
-    }
-    
-    if (is401) {
-      // 显示弹框提示
+    // 只有在明确收到 401 或 403 状态码时才提示登录过期
+    if (response?.status === 401 || response?.status === 403) {
       handle401Error();
     }
     

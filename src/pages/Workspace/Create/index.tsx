@@ -10,6 +10,7 @@ import {
   ApartmentOutlined
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { base } from '../../../api/base';
 import TextToImage from './components/TextToImage';
@@ -17,6 +18,24 @@ import TextToVideo from './components/TextToVideo';
 import ImageToImage from './components/ImageToImage';
 import ImageToVideo from './components/ImageToVideo';
 import Workflow from './components/Workflow';
+
+// 路由路径到 Tab key 的映射
+const pathToTabKey: Record<string, string> = {
+  '/workspace/create/text-to-image': 'textToImage',
+  '/workspace/create/text-to-video': 'textToVideo',
+  '/workspace/create/image-to-image': 'imageToImage',
+  '/workspace/create/image-to-video': 'imageToVideo',
+  '/workspace/create/workflow': 'workflow',
+};
+
+// Tab key 到路由路径的映射
+const tabKeyToPath: Record<string, string> = {
+  'textToImage': '/workspace/create/text-to-image',
+  'textToVideo': '/workspace/create/text-to-video',
+  'imageToImage': '/workspace/create/image-to-image',
+  'imageToVideo': '/workspace/create/image-to-video',
+  'workflow': '/workspace/create/workflow',
+};
 
 const { Content } = Layout;
 
@@ -110,11 +129,15 @@ const StyledTabs = styled(Tabs)`
 
 const Create: React.FC = () => {
   const intl = useIntl();
-  const [activeTab, setActiveTab] = useState<string>('textToImage');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(['textToImage', 'textToVideo', 'imageToImage', 'imageToVideo', 'workflow']));
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
+  
+  // 根据当前路由获取 activeTab
+  const activeTab = pathToTabKey[location.pathname] || 'textToImage';
   
   useEffect(() => {
     const handleResize = () => {
@@ -123,6 +146,14 @@ const Create: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // 切换 Tab 时更新路由
+  const handleTabChange = (key: string) => {
+    const path = tabKeyToPath[key];
+    if (path) {
+      navigate(path);
+    }
+  };
 
   // 获取创作类型设置
   const fetchCreationTypeSettings = async () => {
@@ -138,15 +169,13 @@ const Create: React.FC = () => {
         );
         setEnabledTypes(enabled);
         
-        // 如果当前选中的 tab 被禁用，则选中第一个启用的 tab
-        if (enabled.size > 0) {
-          setActiveTab(prevTab => {
-            if (!enabled.has(prevTab)) {
-              const firstEnabled = settings.find(s => s.enabled);
-              return firstEnabled ? firstEnabled.key : prevTab;
-            }
-            return prevTab;
-          });
+        // 如果当前选中的 tab 被禁用，则导航到第一个启用的 tab
+        const currentTab = pathToTabKey[location.pathname] || 'textToImage';
+        if (enabled.size > 0 && !enabled.has(currentTab)) {
+          const firstEnabled = settings.find(s => s.enabled);
+          if (firstEnabled && tabKeyToPath[firstEnabled.key]) {
+            navigate(tabKeyToPath[firstEnabled.key], { replace: true });
+          }
         }
       } else {
         // 如果返回的数据格式不正确，显示错误
@@ -162,7 +191,7 @@ const Create: React.FC = () => {
 
   useEffect(() => {
     fetchCreationTypeSettings();
-  }, [intl]);
+  }, [intl, location.pathname]);
 
   // 所有可用的 tab 定义
   const allTabItems = [
@@ -313,7 +342,7 @@ const Create: React.FC = () => {
     }}>
       <StyledTabs
         activeKey={activeTab}
-        onChange={setActiveTab}
+        onChange={handleTabChange}
         items={tabItems}
         style={{ 
           flex: 1,

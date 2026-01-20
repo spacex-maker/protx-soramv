@@ -205,3 +205,19 @@ export const uploadImageToServer = async (file: File): Promise<string> => {
   }
 };
 
+/**
+ * 获取图片的原始尺寸 (宽/高)
+ * @param src 图片地址
+ */
+export const getImageDimensions = (src: string): Promise<{ width: number; height: number }> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    };
+    img.onerror = (err) => {
+      reject(err);
+    };
+    img.src = src;
+  });
+};

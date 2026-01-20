@@ -262,7 +262,7 @@ const FooterSectionComponent = () => {
           <Col xs={24} sm={12} md={6}>
             <BrandSection theme={theme}>
               <BrandHeader theme={theme}>
-                <h3>Sora MV</h3>
+                <h3>AI2OBJ</h3>
                 <JoinUsButton 
                   theme={theme}
                   onClick={() => navigate('/join-us')}
@@ -273,7 +273,7 @@ const FooterSectionComponent = () => {
                 </JoinUsButton>
               </BrandHeader>
               <p>
-                {intl.formatMessage({ id: 'footer.brand.description', defaultMessage: 'AI 驱动的视频生成平台，使用 Sora 技术将您的创意转化为惊艳的视频作品。' })}
+                {intl.formatMessage({ id: 'footer.brand.description', defaultMessage: 'AI 驱动的 3D 模型生成平台，将您的创意转化为专业的 3D 模型。' })}
               </p>
               <SocialLinks theme={theme}>
                 <a href="https://github.com/spacex-maker" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
@@ -288,7 +288,7 @@ const FooterSectionComponent = () => {
                 <a href="https://discord.gg/phZj6KWe" target="_blank" rel="noopener noreferrer" aria-label="Discord">
                   <DiscordIcon style={{ width: '18px', height: '18px' }} />
                 </a>
-                <a href="mailto:support@soramv.com" aria-label="Email">
+                <a href="mailto:support@ai2obj.com" aria-label="Email">
                   <MailOutlined />
                 </a>
               </SocialLinks>
@@ -350,7 +350,7 @@ const FooterSectionComponent = () => {
                   </a>
                 </li>
                 <li>
-                  <a href="mailto:support@soramv.com">
+                  <a href="mailto:support@ai2obj.com">
                     {intl.formatMessage({ id: 'footer.support.contact', defaultMessage: '联系我们' })}
                   </a>
                 </li>
@@ -410,13 +410,13 @@ const FooterSectionComponent = () => {
         <Copyright theme={theme}>
           <p>
             {intl.formatMessage(
-              { id: 'footer.copyright', defaultMessage: '© {year} Sora MV. 保留所有权利。' },
+              { id: 'footer.copyright', defaultMessage: '© {year} AI2OBJ. 保留所有权利。' },
               { year: currentYear }
             )}
           </p>
           <p style={{ marginTop: 8 }}>
             <Text type="secondary" style={{ fontSize: 12 }}>
-              {intl.formatMessage({ id: 'footer.description', defaultMessage: '本平台使用 Sora 技术提供 AI 视频生成服务' })}
+              {intl.formatMessage({ id: 'footer.description', defaultMessage: '本平台提供 AI 3D 模型生成服务' })}
             </Text>
           </p>
         </Copyright>

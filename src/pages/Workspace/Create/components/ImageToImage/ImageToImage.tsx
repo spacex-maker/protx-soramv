@@ -271,8 +271,9 @@ const ImageToImage: React.FC = () => {
     const supportedRatios = getModelAspectRatios(model);
     if (supportedRatios.length > 0) {
       const currentRatio = form.getFieldValue('aspectRatio');
-      if (!supportedRatios.includes(currentRatio)) {
-        updates.aspectRatio = supportedRatios[0];
+      // 'auto' 始终有效，不需要重置
+      if (currentRatio !== 'auto' && !supportedRatios.includes(currentRatio)) {
+        updates.aspectRatio = 'auto';
       }
     }
 
@@ -1064,7 +1065,7 @@ const ImageToImage: React.FC = () => {
                   console.log('表单验证失败:', errorInfo);
                 }}
                 initialValues={{
-                  aspectRatio: undefined,
+                  aspectRatio: 'auto',
                   resolution: undefined,
                   outputFormat: undefined,
                   seed: undefined,

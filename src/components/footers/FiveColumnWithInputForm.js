@@ -188,9 +188,9 @@ export default () => {
         <ThreeColRow>
           <LogoContainer>
             <LogoImg src={LogoImage} />
-            <LogoText>Treact</LogoText>
+            <LogoText>AI2OBJ</LogoText>
           </LogoContainer>
-          <CopywrightNotice>&copy; 2024 Treact Inc. All Rights Reserved.</CopywrightNotice>
+          <CopywrightNotice>&copy; 2024 AI2OBJ Inc. All Rights Reserved.</CopywrightNotice>
           <SocialLinksContainer>
             {defaultLinks.map((link, index) => (
               <SocialLink key={index} href={link.url} target="_blank" rel="noopener noreferrer">

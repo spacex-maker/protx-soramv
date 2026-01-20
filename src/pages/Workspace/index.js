@@ -51,7 +51,7 @@ const CloudDrivePage = () => {
   // 根据 URL 路径设置菜单选中状态
   useEffect(() => {
     const path = location.pathname;
-    if (path === '/workspace/create') {
+    if (path.startsWith('/workspace/create')) {
       setSelectedKeys(['create']);
     } else if (path === '/workspace/all') {
       setSelectedKeys(['all']);

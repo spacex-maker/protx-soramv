@@ -1187,6 +1187,7 @@ export default {
   'billing.coin.usdt': 'USDT',
   'billing.coin.cny': 'CNY',
   'billing.coin.usd': 'USD',
+  'billing.coin.token': 'TOKEN',
   'billing.table.type': 'النوع',
   'billing.table.coinType': 'العملة',
   'billing.table.time': 'الوقت',

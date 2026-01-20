@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Modal, Typography, Tag, Spin, message, Button, Tooltip, Image } from 'antd';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Modal, Tag, Spin, message, Button, Tooltip, Image, Badge } from 'antd';
 import {
   CloseOutlined,
   ClockCircleOutlined,
@@ -18,10 +18,15 @@ import {
   StarFilled,
   ShareAltOutlined,
   LoadingOutlined,
-  DoubleRightOutlined,
-  EyeOutlined
+  EyeOutlined,
+  InfoCircleOutlined,
+  NumberOutlined,
+  ExperimentOutlined,
+  FileJpgOutlined,
+  PictureOutlined,
+  CompressOutlined
 } from '@ant-design/icons';
-import styled, { css, keyframes } from 'styled-components';
+import styled, { css } from 'styled-components';
 import { useIntl } from 'react-intl';
 import instance from 'api/axios';
 import dayjs from 'dayjs';
@@ -35,32 +40,7 @@ import {
 } from 'api/modelInteraction';
 
 // ==========================================
-// 1. 动画定义
-// ==========================================
-
-// 背景流动动画
-const gradientBG = keyframes`
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-`;
-
-// 炫彩标题动画
-const shine = keyframes`
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-`;
-
-// 中间连接符流动动画
-const flowAnim = keyframes`
-  0% { transform: translateX(-5px); opacity: 0.3; }
-  50% { transform: translateX(5px); opacity: 1; }
-  100% { transform: translateX(-5px); opacity: 0.3; }
-`;
-
-// ==========================================
-// 2. 样式组件系统
+// 1. 样式组件系统
 // ==========================================
 
 const StyledModal = styled(Modal)`
@@ -68,411 +48,401 @@ const StyledModal = styled(Modal)`
     padding: 0;
     border-radius: 16px;
     overflow: hidden;
-    background: ${props => props.theme.mode === 'dark' ? '#000' : '#fff'};
+    background: ${props => props.theme.mode === 'dark' ? '#141414' : '#ffffff'};
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   }
   .ant-modal-body {
     padding: 0;
+    height: 85vh; /* 稍微增加高度以容纳缩略图 */
+    max-height: 900px;
     display: flex;
-    flex-direction: column;
-    max-height: 90vh; 
-    overflow-y: auto;
+    overflow: hidden;
   }
   .ant-modal-close {
     top: 16px;
     right: 16px;
-    color: rgba(255,255,255,0.8);
-    background: rgba(0,0,0,0.3);
-    border-radius: 50%;
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.45)'};
+    z-index: 100;
     width: 32px;
     height: 32px;
     display: flex;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(4px);
+    border-radius: 50%;
     transition: all 0.2s;
-    z-index: 100;
     
     &:hover {
-      background: rgba(0,0,0,0.6);
-      color: #fff;
+      color: ${props => props.theme.mode === 'dark' ? '#fff' : '#000'};
+      background: rgba(0,0,0,0.1);
     }
   }
-  /* 滚动条美化 */
-  .ant-modal-body::-webkit-scrollbar { width: 6px; }
-  .ant-modal-body::-webkit-scrollbar-thumb { background: rgba(100, 100, 100, 0.3); border-radius: 3px; }
-`;
 
-// --- Hero 头部区域 ---
-
-const HeroSection = styled.div<{ $bg?: string }>`
-  position: relative;
-  width: 100%;
-  min-height: 300px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  flex-shrink: 0;
-  overflow: hidden;
-  background: #0f172a;
-  
-  ${props => props.$bg ? css`
-    background-image: url(${props.$bg});
-    background-size: cover;
-    background-position: center;
-  ` : css`
-    background: linear-gradient(
-      -45deg,
-      #0f172a,
-      #312e81,
-      #581c87,
-      #0f172a
-    );
-    background-size: 400% 400%;
-    animation: ${gradientBG} 15s ease infinite;
-  `}
-  
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      to bottom,
-      rgba(0,0,0,0.1) 0%,
-      rgba(0,0,0,0.4) 60%,
-      rgba(0,0,0,0.95) 100%
-    );
-    pointer-events: none;
-    z-index: 2;
+  @media (max-width: 768px) {
+    .ant-modal-body {
+      flex-direction: column;
+      height: auto;
+      max-height: 95vh;
+      overflow-y: auto;
+    }
   }
 `;
 
-const HeroContent = styled.div`
+const SplitLayout = styled.div`
+  display: flex;
+  width: 100%;
+  height: 100%;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+  }
+`;
+
+// --- 左侧：视觉展示区 ---
+
+const VisualSide = styled.div`
+  flex: 1;
+  background: ${props => props.theme.mode === 'dark' ? '#000000' : '#f0f2f5'};
+  position: relative;
+  display: flex;
+  flex-direction: column; /* 改为纵向布局，为了放缩略图 */
+  overflow: hidden;
+  min-width: 0;
+  
+  /* 棋盘格背景 */
+  background-image: 
+    linear-gradient(45deg, ${props => props.theme.mode === 'dark' ? '#1a1a1a' : '#e6e6e6'} 25%, transparent 25%), 
+    linear-gradient(-45deg, ${props => props.theme.mode === 'dark' ? '#1a1a1a' : '#e6e6e6'} 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, ${props => props.theme.mode === 'dark' ? '#1a1a1a' : '#e6e6e6'} 75%), 
+    linear-gradient(-45deg, transparent 75%, ${props => props.theme.mode === 'dark' ? '#1a1a1a' : '#e6e6e6'} 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+
+  @media (max-width: 768px) {
+    min-height: 400px;
+    flex: none;
+  }
+`;
+
+const MainViewArea = styled.div`
+  flex: 1;
+  width: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 24px;
+`;
+
+// --- 缩略图栏 ---
+const ThumbnailStrip = styled.div`
+  height: 90px;
+  width: 100%;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(20,20,20,0.8)' : 'rgba(255,255,255,0.8)'};
+  backdrop-filter: blur(10px);
+  border-top: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 24px;
+  overflow-x: auto;
+  z-index: 20;
+
+  &::-webkit-scrollbar { height: 4px; }
+  &::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.3); border-radius: 2px; }
+`;
+
+const ThumbnailItem = styled.div<{ $active: boolean }>`
+  width: 60px;
+  height: 60px;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid ${props => props.$active ? '#1890ff' : 'transparent'};
+  opacity: ${props => props.$active ? 1 : 0.6};
+  transition: all 0.2s;
+  flex-shrink: 0;
+  position: relative;
+
+  &:hover {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+// --- 右侧：信息详情区 ---
+
+const InfoSide = styled.div`
+  width: 420px;
+  flex-shrink: 0;
+  background: ${props => props.theme.mode === 'dark' ? '#141414' : '#ffffff'};
+  border-left: 1px solid ${props => props.theme.mode === 'dark' ? '#303030' : '#f0f0f0'};
+  display: flex;
+  flex-direction: column;
   position: relative;
   z-index: 10;
-  padding: 24px 32px;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid ${props => props.theme.mode === 'dark' ? '#303030' : '#f0f0f0'};
+  }
+`;
+
+const InfoScrollArea = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-thumb { background: rgba(100, 100, 100, 0.2); border-radius: 2px; }
+`;
+
+const InfoFooter = styled.div`
+  padding: 16px 24px;
+  border-top: 1px solid ${props => props.theme.mode === 'dark' ? '#303030' : '#f0f0f0'};
+  background: ${props => props.theme.mode === 'dark' ? '#141414' : '#ffffff'};
   display: flex;
+  gap: 12px;
   justify-content: space-between;
-  align-items: flex-end;
-  gap: 24px;
-  
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 24px;
-  }
-`;
-
-const TitleArea = styled.div`
-  flex: 1;
-  .meta-row {
-    display: flex;
-    gap: 16px;
-    align-items: center;
-    color: rgba(255,255,255,0.7);
-    font-size: 13px;
-    flex-wrap: wrap;
-    font-family: 'SF Mono', monospace;
-    span { display: flex; align-items: center; gap: 6px; }
-  }
-`;
-
-const GradientTitle = styled.h1`
-  font-size: 32px;
-  font-weight: 800;
-  margin: 0 0 12px 0;
-  line-height: 1.2;
-  letter-spacing: -0.5px;
-  background: linear-gradient(
-    90deg,
-    #ffffff 0%,
-    #a5f3fc 20%,
-    #c4b5fd 40%,
-    #fbcfe8 60%,
-    #a5f3fc 80%,
-    #ffffff 100%
-  );
-  background-size: 200% auto;
-  color: transparent;
-  -webkit-background-clip: text;
-  background-clip: text;
-  animation: ${shine} 8s linear infinite;
-  text-shadow: 0 10px 30px rgba(0,0,0,0.3);
-  display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
 `;
 
-const ModelDescriptionBox = styled.div`
-  margin-top: 12px;
-  max-height: 100px;
-  overflow: hidden;
-  .description-text {
-    font-size: 14px;
-    line-height: 1.6;
-    color: rgba(255,255,255,0.85);
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-`;
+// --- 基础元素样式 ---
 
-const ActionArea = styled.div`
-  display: flex;
-  gap: 12px;
-`;
-
-const GlassButton = styled.button<{ $primary?: boolean }>`
-  height: 36px;
-  padding: 0 16px;
-  border-radius: 18px;
-  border: 1px solid ${props => props.$primary ? 'transparent' : 'rgba(255,255,255,0.3)'};
-  background: ${props => props.$primary ? '#fff' : 'rgba(255,255,255,0.1)'};
-  color: ${props => props.$primary ? '#000' : '#fff'};
-  font-weight: 600;
-  font-size: 13px;
-  backdrop-filter: blur(10px);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
-  
-  &:hover {
-    transform: translateY(-1px);
-    background: ${props => props.$primary ? '#e6e6e6' : 'rgba(255,255,255,0.2)'};
-  }
-`;
-
-// --- 新增结果区样式 (酷炫版) ---
-
-const ResultSection = styled.div`
-  background: ${props => props.theme.mode === 'dark' ? '#0a0a0a' : '#f0f2f5'};
-  padding: 40px 32px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  border-bottom: 1px solid ${props => props.theme.mode === 'dark' ? '#222' : '#e8e8e8'};
-`;
-
-const ResultGroup = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: stretch;
-  gap: 24px;
-  width: 100%;
-  max-width: 1000px;
-  margin: 0 auto;
-  position: relative;
-
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: center;
-  }
-`;
-
-const MediaCard = styled.div<{ $isOutput?: boolean }>`
-  flex: 1;
-  width: 100%;
-  min-width: 300px;
-  max-width: 500px;
-  background: ${props => props.theme.mode === 'dark' ? 'rgba(30,30,30,0.6)' : 'rgba(255,255,255,0.6)'};
-  border-radius: 20px;
-  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'};
-  backdrop-filter: blur(20px);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-
-  /* 输出卡片发光特效 */
-  ${props => props.$isOutput && css`
-    border-color: rgba(82, 196, 26, 0.3);
-    box-shadow: 0 0 30px rgba(82, 196, 26, 0.05);
-  `}
-
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-    border-color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'};
-    
-    ${props => props.$isOutput && css`
-      box-shadow: 0 20px 50px rgba(82, 196, 26, 0.15);
-      border-color: rgba(82, 196, 26, 0.6);
-    `}
-  }
-`;
-
-const MediaHeader = styled.div`
+const HeaderTitle = styled.h2`
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  line-height: 1.4;
+  color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1f1f1f'};
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
-  font-size: 14px;
-  font-weight: 700;
-  color: ${props => props.theme.mode === 'dark' ? '#e5e5e5' : '#1f1f1f'};
-  
-  .icon-box {
-    width: 28px;
-    height: 28px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    &.input { background: rgba(255,255,255,0.1); color: #1890ff; }
-    &.output { background: rgba(82, 196, 26, 0.1); color: #52c41a; }
-  }
+  flex-wrap: wrap;
 `;
 
-const ImageWrapper = styled.div`
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  background: #000;
+const MetaRow = styled.div`
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)'};
+  font-size: 12px;
+  margin-bottom: 20px;
+  font-family: 'SF Mono', monospace;
+  span { display: flex; align-items: center; gap: 4px; }
+`;
+
+const SectionTitle = styled.h3`
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 600;
+  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : '#9ca3af'};
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+`;
+
+// --- 属性列表样式 (Props List Style) ---
+
+const ParamSection = styled.div`
+  margin-bottom: 24px;
+`;
+
+const PropsGroup = styled.div`
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.02)' : '#fff'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? '#303030' : '#e2e8f0'};
   border-radius: 12px;
   overflow: hidden;
-  position: relative;
+  display: flex;
+  flex-direction: column;
+`;
+
+const PropRow = styled.div<{ $highlight?: boolean }>`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 12px 16px;
+  border-bottom: 1px solid ${props => props.theme.mode === 'dark' ? '#303030' : '#f1f5f9'};
+  background: ${props => props.$highlight ? (props.theme.mode === 'dark' ? 'rgba(250, 173, 20, 0.05)' : '#fffbe6') : 'transparent'};
+  
+  &:last-child { border-bottom: none; }
+  &:hover { background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc'}; }
+`;
+
+const PropLabel = styled.div`
+  flex-shrink: 0;
+  width: 110px;
+  margin-right: 16px;
+  font-size: 13px;
+  color: ${props => props.theme.mode === 'dark' ? '#888' : '#64748b'};
   display: flex;
   align-items: center;
-  justify-content: center;
-  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};
-
-  /* 棋盘格透明背景 */
-  background-image: 
-    linear-gradient(45deg, #1a1a1a 25%, transparent 25%), 
-    linear-gradient(-45deg, #1a1a1a 25%, transparent 25%), 
-    linear-gradient(45deg, transparent 75%, #1a1a1a 75%), 
-    linear-gradient(-45deg, transparent 75%, #1a1a1a 75%);
-  background-size: 20px 20px;
-  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
-  
-  .ant-image {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-  
-  .ant-image-img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    transition: transform 0.5s ease;
-  }
-
-  &:hover .ant-image-img {
-    transform: scale(1.05);
-  }
+  gap: 8px;
+  padding-top: 2px;
 `;
 
-const FlowConnector = styled.div`
+const PropValue = styled.div`
+  flex: 1;
+  font-family: 'SF Mono', 'Menlo', monospace;
+  font-size: 13px;
+  color: ${props => props.theme.mode === 'dark' ? '#e5e5e5' : '#1e293b'};
+  text-align: right;
+  word-break: break-all;
+  line-height: 1.5;
   display: flex;
+  justify-content: flex-end;
   align-items: center;
-  justify-content: center;
-  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'};
-  font-size: 24px;
-  .arrow {
-    animation: ${flowAnim} 2s infinite ease-in-out;
+  flex-wrap: wrap;
+  gap: 6px;
+
+  .copy-icon {
+    cursor: pointer;
+    color: #1890ff;
+    opacity: 0;
+    transition: opacity 0.2s;
+    margin-left: 4px;
   }
-  @media (max-width: 768px) {
-    transform: rotate(90deg);
-    margin: 10px 0;
-  }
+  &:hover .copy-icon { opacity: 1; }
 `;
 
-// --- 详情网格区域 ---
-
-const ContentGrid = styled.div<{ $hasPrompt: boolean }>`
-  display: grid;
-  grid-template-columns: ${props => props.$hasPrompt ? '1.8fr 1fr' : '1fr'};
-  gap: 32px;
-  padding: 32px;
-  background: ${props => props.theme.mode === 'dark' ? '#141414' : '#fff'};
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    padding: 24px;
-  }
-`;
+// --- Prompt 区域 ---
 
 const PromptBox = styled.div`
+  position: relative;
   background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#f8fafc'};
   border: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : '#e2e8f0'};
   border-radius: 12px;
-  padding: 20px;
-  position: relative;
-  
-  h3 {
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 12px;
-    color: ${props => props.theme.mode === 'dark' ? '#888' : '#64748b'};
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  
-  .prompt-text {
+  padding: 16px;
+  margin-bottom: 24px;
+
+  .text {
     font-family: 'SF Mono', 'Menlo', monospace;
-    font-size: 14px;
-    line-height: 1.7;
-    color: ${props => props.theme.mode === 'dark' ? '#e5e5e5' : '#334155'};
+    font-size: 13px;
+    line-height: 1.6;
+    color: ${props => props.theme.mode === 'dark' ? '#d1d5db' : '#334155'};
     white-space: pre-wrap;
+    max-height: 150px;
+    overflow-y: auto;
+    
+    &::-webkit-scrollbar { width: 4px; }
+    &::-webkit-scrollbar-thumb { background: rgba(100, 100, 100, 0.2); border-radius: 2px; }
+  }
+
+  .copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    opacity: 0.6;
+    &:hover { opacity: 1; }
   }
 `;
 
-const InfoList = styled.div`
+// --- 图片对比组件 (复用) ---
+const CompareWrapper = styled.div`
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  
-  .info-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-bottom: 10px;
-    border-bottom: 1px dashed ${props => props.theme.mode === 'dark' ? '#333' : '#e2e8f0'};
-    
-    &:last-child { border-bottom: none; }
-    
-    label {
-      color: ${props => props.theme.mode === 'dark' ? '#666' : '#94a3b8'};
-      font-size: 13px;
-    }
-    
-    .val {
-      font-weight: 500;
-      color: ${props => props.theme.mode === 'dark' ? '#fff' : '#0f172a'};
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+  align-items: center;
+  justify-content: center;
+`;
+const CompareContainer = styled.div`
+  position: relative;
+  max-width: 100%;
+  max-height: 100%;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+  user-select: none;
+  border-radius: 12px;
+  overflow: hidden;
+  img { max-width: 100%; max-height: 100%; display: block; object-fit: contain; }
+`;
+const CompareHandle = styled.div<{ $left: number }>`
+  position: absolute; top: 0; bottom: 0; left: ${props => props.$left}%;
+  width: 2px; background: #fff; cursor: ew-resize; z-index: 20;
+  box-shadow: 0 0 10px rgba(0,0,0,0.5);
+  &::after {
+    content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 32px; height: 32px; background: #fff; border-radius: 50%;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    display: flex; alignItems: center; justifyContent: center;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' width='16' height='16'%3E%3Cpath fill='none' d='M0 0h24v24H0z'/%3E%3Cpath d='M12 2l-5.5 9h11L12 2zm0 20l5.5-9h-11L12 22z' transform='rotate(90 12 12)'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: center;
   }
+`;
+const OverlayImage = styled.div<{ $width: number; $height: number; $clip: number }>`
+  position: absolute; top: 0; left: 0; width: ${props => props.$width}px; height: ${props => props.$height}px;
+  overflow: hidden; clip-path: inset(0 ${props => 100 - props.$clip}% 0 0); pointer-events: none; border-right: 2px solid rgba(255,255,255,0.8);
+  img { width: 100%; height: 100%; object-fit: fill; }
+`;
+const CompareLabel = styled.div<{ $type: 'input' | 'output' }>`
+  position: absolute; top: 16px; ${props => props.$type === 'input' ? 'left: 16px;' : 'right: 16px;'}
+  padding: 6px 12px; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: #fff;
+  border-radius: 6px; font-size: 12px; font-weight: 600; z-index: 10; pointer-events: none;
+  display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,0.15);
 `;
 
 // ==========================================
 // 工具函数
 // ==========================================
-
 const normalizeUrl = (url: string) => {
   if (!url) return '';
   if (url.startsWith('http') || url.startsWith('data:')) return url;
   return `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-const isImage = (url: string) => {
-  if (!url) return false;
-  const ext = url.split('.').pop()?.toLowerCase();
-  return ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'].includes(ext || '') || url.startsWith('data:image');
+const addImageCompressSuffix = (url: string, width = 1200) => {
+  if (!url) return '';
+  if (url.includes('imageMogr2') || url.startsWith('data:')) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}imageMogr2/format/webp/quality/80/thumbnail/${width}x`;
+};
+
+// ==========================================
+// Image Compare Component
+// ==========================================
+const ImageCompareSection: React.FC<{ inputUrl: string; outputUrl: string; intl: any }> = ({ inputUrl, outputUrl, intl }) => {
+  const [sliderPos, setSliderPos] = useState(50);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [dim, setDim] = useState({ w: 0, h: 0 });
+
+  const updateDim = useCallback(() => {
+    if (imgRef.current) {
+      setDim({ w: imgRef.current.clientWidth, h: imgRef.current.clientHeight });
+    }
+  }, []);
+
+  useEffect(() => { window.addEventListener('resize', updateDim); return () => window.removeEventListener('resize', updateDim); }, [updateDim]);
+  useEffect(() => { if (imgRef.current && imgRef.current.complete) updateDim(); }, [outputUrl, updateDim]);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    setSliderPos((Math.max(0, Math.min(e.clientX - rect.left, rect.width)) / rect.width) * 100);
+  };
+
+  return (
+    <CompareWrapper>
+      <CompareContainer ref={containerRef} onMouseMove={(e) => e.buttons === 1 && handleMouseMove(e)} onClick={handleMouseMove}>
+        <CompareLabel $type="input"><FileImageOutlined /> Input</CompareLabel>
+        <CompareLabel $type="output"><ThunderboltFilled /> Result</CompareLabel>
+        <img ref={imgRef} src={addImageCompressSuffix(outputUrl)} alt="Out" onLoad={updateDim} style={{maxHeight: '75vh'}} />
+        <OverlayImage $width={dim.w} $height={dim.h} $clip={sliderPos}>
+          <img src={addImageCompressSuffix(inputUrl)} alt="In" />
+        </OverlayImage>
+        <CompareHandle $left={sliderPos} />
+      </CompareContainer>
+    </CompareWrapper>
+  );
 };
 
 // ==========================================
@@ -489,12 +459,11 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
   const intl = useIntl();
   const [loading, setLoading] = useState(false);
   const [task, setTask] = useState<any | null>(null);
+  const [selectedOutputIndex, setSelectedOutputIndex] = useState(0); // 新增：选中图片的索引
   
   // 交互状态
   const [isLiked, setIsLiked] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
-  const [favoritesCount, setFavoritesCount] = useState(0);
   const [likeLoading, setLikeLoading] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
 
@@ -503,72 +472,8 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
       const response = await getInteractionStatus(modelId);
       setIsLiked(response.isLiked);
       setIsFavorited(response.isFavorited);
-      setLikesCount(response.likesCount);
-      setFavoritesCount(response.favoritesCount);
-    } catch (error) {
-      setIsLiked(false);
-      setIsFavorited(false);
-    }
+    } catch (error) { setIsLiked(false); setIsFavorited(false); }
   }, []);
-
-  useEffect(() => {
-    if (open && taskId) {
-      fetchDetail();
-    }
-  }, [open, taskId]);
-
-  useEffect(() => {
-    if (task?.model?.id) {
-      fetchInteractionStatus(task.model.id);
-    }
-  }, [task?.model?.id, fetchInteractionStatus]);
-
-  const handleLike = async () => {
-    if (!task?.model?.id || likeLoading) return;
-    setLikeLoading(true);
-    try {
-      let response: ModelInteractionResponse;
-      if (isLiked) {
-        response = await unlikeModel(task.model.id);
-        message.success(intl.formatMessage({ id: 'create.model.unliked', defaultMessage: '已取消喜欢' }));
-      } else {
-        response = await likeModel(task.model.id);
-        message.success(intl.formatMessage({ id: 'create.model.liked', defaultMessage: '已喜欢' }));
-      }
-      setIsLiked(response.isLiked);
-      setLikesCount(response.likesCount);
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '操作失败' }));
-    } finally {
-      setLikeLoading(false);
-    }
-  };
-
-  const handleFavorite = async () => {
-    if (!task?.model?.id || favoriteLoading) return;
-    setFavoriteLoading(true);
-    try {
-      let response: ModelInteractionResponse;
-      if (isFavorited) {
-        response = await unfavoriteModel(task.model.id);
-        message.success(intl.formatMessage({ id: 'create.model.unfavorited', defaultMessage: '已取消收藏' }));
-      } else {
-        response = await favoriteModel(task.model.id);
-        message.success(intl.formatMessage({ id: 'create.model.favorited', defaultMessage: '已收藏' }));
-      }
-      setIsFavorited(response.isFavorited);
-      setFavoritesCount(response.favoritesCount);
-    } catch (error: any) {
-      message.error(error?.response?.data?.message || intl.formatMessage({ id: 'common.error', defaultMessage: '操作失败' }));
-    } finally {
-      setFavoriteLoading(false);
-    }
-  };
-
-  const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
-    message.success(intl.formatMessage({ id: 'create.model.linkCopied', defaultMessage: '链接已复制' }));
-  };
 
   const fetchDetail = async () => {
     if (!taskId) return;
@@ -577,246 +482,282 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
       const res = await instance.get(`/productx/sa-ai-gen-task/${taskId}/detail`);
       if (res.data.success) {
         setTask(res.data.data);
-      } else {
-        message.error(res.data.message);
-      }
-    } catch (err) {
-      message.error(intl.formatMessage({ id: 'create.taskDetail.loadFailed', defaultMessage: '加载失败' }));
-    } finally {
-      setLoading(false);
+        setSelectedOutputIndex(0); // 重置选择
+      } else { message.error(res.data.message); }
+    } catch (err) { message.error('Load Failed'); } 
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => {
+    if (open && taskId) {
+      setTask(null);
+      fetchDetail();
     }
+  }, [open, taskId]);
+
+  useEffect(() => {
+    if (task?.model?.id) fetchInteractionStatus(task.model.id);
+  }, [task?.model?.id, fetchInteractionStatus]);
+
+  // Handle Actions
+  const handleLike = async () => {
+    if (!task?.model?.id) return;
+    setLikeLoading(true);
+    try {
+      const res = isLiked ? await unlikeModel(task.model.id) : await likeModel(task.model.id);
+      setIsLiked(res.isLiked);
+      message.success(isLiked ? 'Unliked' : 'Liked');
+    } catch(e) { message.error('Failed'); } finally { setLikeLoading(false); }
+  };
+
+  const handleFavorite = async () => {
+    if (!task?.model?.id) return;
+    setFavoriteLoading(true);
+    try {
+      const res = isFavorited ? await unfavoriteModel(task.model.id) : await favoriteModel(task.model.id);
+      setIsFavorited(res.isFavorited);
+      message.success(isFavorited ? 'Unfavorited' : 'Favorited');
+    } catch(e) { message.error('Failed'); } finally { setFavoriteLoading(false); }
   };
 
   const handleDownload = () => {
-    if (!task?.outputFiles?.[0]?.fileUrl) return;
-    const url = normalizeUrl(task.outputFiles[0].fileUrl);
-    const ext = url.split('.').pop()?.toLowerCase() || 'png';
+    // 下载当前选中的图片
+    const currentFile = task?.outputFiles?.[selectedOutputIndex];
+    if (!currentFile?.fileUrl) return;
+    const url = normalizeUrl(currentFile.fileUrl);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `task_${taskId}_${Date.now()}.${ext}`;
+    a.download = `gen_task_${taskId}_${selectedOutputIndex + 1}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
   };
 
-  const renderStatus = (status: number) => {
-    const config = {
-      1: { color: '#1890ff', icon: <SyncOutlined spin />, text: intl.formatMessage({ id: 'create.taskDetail.status.generating', defaultMessage: '生成中' }) },
-      2: { color: '#52c41a', icon: <CheckCircleFilled />, text: intl.formatMessage({ id: 'create.taskDetail.status.success', defaultMessage: '成功' }) },
-      3: { color: '#ff4d4f', icon: <CloseCircleFilled />, text: intl.formatMessage({ id: 'create.taskDetail.status.failed', defaultMessage: '失败' }) },
-    }[status as 1 | 2 | 3] || { color: '#faad14', icon: <ClockCircleOutlined />, text: intl.formatMessage({ id: 'create.taskDetail.status.queued', defaultMessage: '排队中' }) };
-
-    return (
-      <Tag color={config.color} style={{ border: 'none', padding: '2px 8px', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4, borderRadius: 100, lineHeight: '20px' }}>
-        {config.icon} {config.text}
-      </Tag>
-    );
-  };
-
-  if (!task && loading) return <Modal open={open} footer={null} width={900}><div style={{padding: 40, textAlign:'center'}}><Spin /></div></Modal>;
+  if (!task && loading) return <Modal open={open} footer={null} centered width={600}><div style={{padding: 60, textAlign:'center'}}><Spin size="large" /></div></Modal>;
   if (!task) return null;
 
-  // 数据计算
-  const coverUrl = normalizeUrl(task.coverImage || task.model?.coverImage || '');
+  // 数据解析
   const inputImageUrl = task.inputFiles?.[0]?.fileUrl ? normalizeUrl(task.inputFiles[0].fileUrl) : null;
-  const outputImageUrl = task.outputFiles?.[0]?.fileUrl ? normalizeUrl(task.outputFiles[0].fileUrl) : null;
-  const hasInputImage = inputImageUrl && isImage(inputImageUrl);
-  const hasOutputImage = outputImageUrl && isImage(outputImageUrl);
+  const outputFiles = task.outputFiles || [];
+  const currentOutputUrl = outputFiles[selectedOutputIndex]?.fileUrl ? normalizeUrl(outputFiles[selectedOutputIndex].fileUrl) : null;
   
-  const getDuration = () => {
-    if (task.endTime && task.createTime) {
-      const start = dayjs(task.createTime);
-      const end = dayjs(task.endTime);
-      return end.diff(start, 'second').toFixed(1);
-    }
-    return 'N/A';
+  const hasInput = !!inputImageUrl && task.taskType === 'i2i'; // 只有 i2i 且有图才开启对比
+  const hasMultipleOutputs = outputFiles.length > 1;
+
+  // 计算耗时
+  const durationStr = task.durationMs 
+    ? (task.durationMs / 1000).toFixed(1) + 's' 
+    : (task.endTime && task.createTime ? dayjs(task.endTime).diff(dayjs(task.createTime), 'second') + 's' : '-');
+
+  const renderStatus = (status: number) => {
+    const map: any = { 2: { c: '#52c41a', i: <CheckCircleFilled />, t: 'Success' }, 3: { c: '#ff4d4f', i: <CloseCircleFilled />, t: 'Failed' } };
+    const conf = map[status] || { c: '#faad14', i: <SyncOutlined spin />, t: 'Processing' };
+    return <Tag color={conf.c} style={{border:'none', marginLeft: 8, display:'flex', alignItems:'center', gap:4}}>{conf.i} {conf.t}</Tag>;
   };
-  const durationStr = getDuration();
-  const aspectRatio = task.model?.imageAspectRatios || '1:1';
-  const hasPrompt = task.prompt && task.prompt.trim().length > 0;
-  
-  // 背景逻辑
-  const heroBgImage = outputImageUrl || inputImageUrl || coverUrl || '';
 
   return (
     <StyledModal
       open={open}
       onCancel={onClose}
       footer={null}
-      width={900}
+      width={1200}
       centered
       destroyOnClose
       closeIcon={<CloseOutlined style={{ fontSize: 16 }} />}
     >
-      {/* 1. Hero Header */}
-      <HeroSection $bg={heroBgImage}>
-        {!hasOutputImage && !hasInputImage && !coverUrl && (
-           <div style={{
-             position: 'absolute', inset: 0, zIndex: 0, opacity: 0.2,
-             backgroundImage: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.1) 1px, transparent 1px)',
-             backgroundSize: '20px 20px'
-           }}/>
-        )}
-
-        <HeroContent>
-          <TitleArea>
-            <GradientTitle>
-              {task.modelName || intl.formatMessage({ id: 'create.taskDetail.unnamedTask', defaultMessage: '未命名任务' })}
-              {renderStatus(task.status)}
-            </GradientTitle>
-            <div className="meta-row">
-              <span><CalendarOutlined /> {dayjs(task.createTime).format('YYYY-MM-DD HH:mm')}</span>
-              <span><ClockCircleOutlined /> {intl.formatMessage({ id: 'create.taskDetail.durationLabel', defaultMessage: '耗时' })} {durationStr}s</span>
-            </div>
-            {task.model?.description && (
-              <ModelDescriptionBox>
-                <div className="description-text">
-                  {task.model.description}
+      <SplitLayout>
+        {/* ================= 左侧：视觉区 ================= */}
+        <VisualSide>
+          <MainViewArea>
+            {currentOutputUrl ? (
+              hasInput ? (
+                <ImageCompareSection 
+                  inputUrl={inputImageUrl} 
+                  outputUrl={currentOutputUrl} 
+                  intl={intl} 
+                />
+              ) : (
+                <div style={{height:'100%', display:'flex', alignItems:'center', justifyContent:'center'}}>
+                   <Image 
+                     src={addImageCompressSuffix(currentOutputUrl)} 
+                     style={{maxHeight: '75vh', borderRadius: 8, objectFit:'contain', maxWidth:'100%'}}
+                     placeholder={<Spin />}
+                   />
                 </div>
-              </ModelDescriptionBox>
+              )
+            ) : (
+              <div style={{color: '#999', textAlign:'center'}}><LoadingOutlined style={{fontSize: 24, marginBottom:10}}/><br/>Processing...</div>
             )}
-          </TitleArea>
+          </MainViewArea>
 
-          <ActionArea>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-              <Tooltip title={intl.formatMessage({ id: 'create.model.like', defaultMessage: '喜欢' })}>
-                <GlassButton onClick={handleLike} disabled={likeLoading} style={isLiked ? { background: 'rgba(255,77,79,0.3)', borderColor: '#ff4d4f' } : {}}>
-                  {likeLoading ? <LoadingOutlined /> : (isLiked ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />)}
-                </GlassButton>
-              </Tooltip>
-              {likesCount > 0 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{likesCount}</span>}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-              <Tooltip title={intl.formatMessage({ id: 'create.model.favorite', defaultMessage: '收藏' })}>
-                <GlassButton onClick={handleFavorite} disabled={favoriteLoading} style={isFavorited ? { background: 'rgba(250,173,20,0.3)', borderColor: '#faad14' } : {}}>
-                  {favoriteLoading ? <LoadingOutlined /> : (isFavorited ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />)}
-                </GlassButton>
-              </Tooltip>
-              {favoritesCount > 0 && <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)' }}>{favoritesCount}</span>}
-            </div>
-            <Tooltip title={intl.formatMessage({ id: 'create.model.share', defaultMessage: '分享' })}>
-              <GlassButton onClick={handleShare}>
-                <ShareAltOutlined />
-              </GlassButton>
-            </Tooltip>
-            {hasOutputImage && (
-              <GlassButton $primary onClick={handleDownload}>
-                <DownloadOutlined /> {intl.formatMessage({ id: 'create.taskDetail.download', defaultMessage: '下载' })}
-              </GlassButton>
-            )}
-          </ActionArea>
-        </HeroContent>
-      </HeroSection>
-
-      {/* 2. 酷炫的输入/输出结果区域 (新) */}
-      {(hasInputImage || hasOutputImage) && (
-        <ResultSection id="result-image-section">
-          <ResultGroup>
-            
-            {/* 左侧：输入卡片 */}
-            {hasInputImage && (
-              <MediaCard>
-                <MediaHeader>
-                  <div className="icon-box input"><FileImageOutlined /></div>
-                  {intl.formatMessage({ id: 'create.taskDetail.inputImage', defaultMessage: '输入参考' })}
-                </MediaHeader>
-                <ImageWrapper>
-                  <Image
-                    src={inputImageUrl || ''}
-                    alt="Input"
-                    placeholder={<Spin />}
-                    fallback="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-                  />
-                </ImageWrapper>
-              </MediaCard>
-            )}
-
-            {/* 中间：连接动画 */}
-            {hasInputImage && hasOutputImage && (
-              <FlowConnector>
-                <DoubleRightOutlined className="arrow" />
-              </FlowConnector>
-            )}
-
-            {/* 右侧：输出卡片 */}
-            {hasOutputImage && (
-              <MediaCard $isOutput={true} style={!hasInputImage ? { maxWidth: 600 } : {}}>
-                <MediaHeader>
-                  <div className="icon-box output"><ThunderboltFilled /></div>
-                  <span style={{ color: '#52c41a' }}>
-                    {intl.formatMessage({ id: 'create.taskDetail.result', defaultMessage: '生成结果' })}
-                  </span>
-                </MediaHeader>
-                <ImageWrapper>
-                  <Image
-                    src={outputImageUrl || ''}
-                    alt="Output"
-                    placeholder={<Spin />}
-                    preview={{
-                      mask: (
-                        <div style={{ fontSize: 14, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <EyeOutlined /> {intl.formatMessage({ id: 'common.preview', defaultMessage: '预览' })}
-                        </div>
-                      ),
-                    }}
-                  />
-                </ImageWrapper>
-              </MediaCard>
-            )}
-
-          </ResultGroup>
-        </ResultSection>
-      )}
-
-      {/* 3. 任务详情网格 */}
-      <ContentGrid $hasPrompt={hasPrompt}>
-        {hasPrompt && (
-          <div>
-            <PromptBox>
-              <h3><ThunderboltFilled /> {intl.formatMessage({ id: 'create.taskDetail.prompt.title', defaultMessage: 'Prompt / 提示词' })}</h3>
-              <div className="prompt-text">
-                {task.prompt}
-              </div>
-              <div style={{marginTop: 16, textAlign: 'right'}}>
-                <Button 
-                  size="small" 
-                  icon={<CopyOutlined />} 
-                  onClick={() => {
-                    navigator.clipboard.writeText(task.prompt || '');
-                    message.success(intl.formatMessage({ id: 'create.taskDetail.prompt.copied', defaultMessage: '已复制提示词' }));
-                  }}
+          {/* 缩略图栏 (仅当有多张图时显示) */}
+          {hasMultipleOutputs && (
+            <ThumbnailStrip>
+              {outputFiles.map((file: any, idx: number) => (
+                <ThumbnailItem 
+                  key={file.id} 
+                  $active={selectedOutputIndex === idx}
+                  onClick={() => setSelectedOutputIndex(idx)}
                 >
-                  {intl.formatMessage({ id: 'create.taskDetail.copyPrompt', defaultMessage: '复制提示词' })}
-                </Button>
-              </div>
-            </PromptBox>
-          </div>
-        )}
+                  <img src={addImageCompressSuffix(normalizeUrl(file.fileUrl), 200)} alt={`Var ${idx}`} />
+                </ThumbnailItem>
+              ))}
+            </ThumbnailStrip>
+          )}
+        </VisualSide>
 
-        <div>
-          <h3 style={{ marginBottom: 16, fontSize: 15, fontWeight: 600 }}>{intl.formatMessage({ id: 'create.taskDetail.taskParams', defaultMessage: '任务参数' })}</h3>
-          <InfoList>
-            <div className="info-item">
-              <label>{intl.formatMessage({ id: 'create.taskDetail.tokenCost', defaultMessage: 'Token消耗' })}</label>
-              <div className="val" style={{ color: '#faad14' }}>
-                <ThunderboltFilled /> {task.creditsCost || 0} Token
-              </div>
+        {/* ================= 右侧：信息区 ================= */}
+        <InfoSide>
+          <InfoScrollArea>
+            {/* 1. 标题与状态 */}
+            <div style={{marginBottom: 24}}>
+              <HeaderTitle>
+                {task.modelName || 'Untitled Task'}
+                {renderStatus(task.status)}
+              </HeaderTitle>
+              <MetaRow>
+                <span><CalendarOutlined /> {dayjs(task.createTime).format('YYYY-MM-DD HH:mm')}</span>
+                <span><ExperimentOutlined /> ID: {task.id}</span>
+              </MetaRow>
+
+              {/* 模型描述 */}
+              {task.model?.description && (
+                 <div style={{fontSize: 13, color: '#888', background: 'rgba(0,0,0,0.03)', padding: 10, borderRadius: 6}}>
+                    {task.model.description}
+                 </div>
+              )}
             </div>
-            <div className="info-item">
-              <label>{intl.formatMessage({ id: 'create.taskDetail.aspectRatio', defaultMessage: '画面比例' })}</label>
-              <div className="val">{aspectRatio}</div>
-            </div>
-            <div className="info-item">
-              <label>{intl.formatMessage({ id: 'create.taskDetail.inputType', defaultMessage: '输入类型' })}</label>
-              <div className="val"><CodeFilled /> {task.inputType}</div>
-            </div>
-            <div className="info-item">
-              <label>{intl.formatMessage({ id: 'create.taskDetail.modelCode', defaultMessage: '模型代号' })}</label>
-              <div className="val" style={{fontFamily: 'monospace', fontSize: 12}}>{task.modelCode}</div>
-            </div>
-          </InfoList>
-        </div>
-      </ContentGrid>
+
+            {/* 2. 详细参数列表 (Property List Layout) */}
+            <ParamSection>
+              <SectionTitle>
+                <InfoCircleOutlined /> {intl.formatMessage({ id: 'create.taskDetail.taskParams', defaultMessage: 'Configuration' })}
+              </SectionTitle>
+              
+              <PropsGroup>
+                {/* Cost */}
+                <PropRow $highlight>
+                  <PropLabel><ThunderboltFilled style={{ color: '#faad14' }} /> Cost</PropLabel>
+                  <PropValue style={{ color: '#faad14', fontWeight: 600 }}>
+                    {task.creditsCost || 0} Credits
+                  </PropValue>
+                </PropRow>
+
+                {/* Model ID */}
+                <PropRow>
+                  <PropLabel><StarOutlined /> Model</PropLabel>
+                  <PropValue>
+                    <span title={task.modelName}>{task.modelCode || 'Unknown'}</span>
+                    <Badge count={task.model?.modelLevel ? `Lv.${task.model.modelLevel}` : 0} style={{backgroundColor: '#52c41a', marginLeft: 8}} />
+                    <CopyOutlined 
+                      className="copy-icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.writeText(task.modelCode || '');
+                        message.success('Copied');
+                      }}
+                    />
+                  </PropValue>
+                </PropRow>
+
+                {/* Task Type & Input Type */}
+                <PropRow>
+                  <PropLabel><CodeFilled /> Type</PropLabel>
+                  <PropValue>
+                    <Tag>{task.taskType || 't2i'}</Tag>
+                    {task.inputType && <Tag color="blue">{task.inputType}</Tag>}
+                  </PropValue>
+                </PropRow>
+
+                 {/* Resolution Support */}
+                 <PropRow>
+                  <PropLabel><CompressOutlined /> Res Max</PropLabel>
+                  <PropValue>
+                    {task.model?.imageMaxResolution?.split(',').map((res: string) => (
+                       <Tag key={res} bordered={false} style={{marginRight:4}}>{res}</Tag>
+                    )) || '-'}
+                  </PropValue>
+                </PropRow>
+
+                {/* Supported Formats */}
+                <PropRow>
+                  <PropLabel><FileJpgOutlined /> Format</PropLabel>
+                  <PropValue>
+                    {task.model?.imageFormats?.toUpperCase() || 'PNG'}
+                  </PropValue>
+                </PropRow>
+
+                {/* Aspect Ratio (标签化长文本) */}
+                <PropRow>
+                  <PropLabel><PictureOutlined /> Ratios</PropLabel>
+                  <PropValue>
+                    {task.model?.imageAspectRatios?.split(',').map((ratio: string) => (
+                         <span key={ratio} style={{
+                             display: 'inline-block', 
+                             background: 'rgba(0,0,0,0.04)', 
+                             padding: '2px 6px', 
+                             borderRadius: 4, 
+                             margin: '0 4px 4px 0',
+                             fontSize: 12,
+                             border: '1px solid rgba(0,0,0,0.05)'
+                         }}>
+                             {ratio}
+                         </span>
+                    )) || '1:1'}
+                  </PropValue>
+                </PropRow>
+
+                {/* Duration */}
+                <PropRow>
+                   <PropLabel><ClockCircleOutlined /> Time</PropLabel>
+                   <PropValue>{durationStr}</PropValue>
+                </PropRow>
+              </PropsGroup>
+            </ParamSection>
+
+            {/* 3. Prompt */}
+            {task.prompt && (
+              <>
+                <SectionTitle><ThunderboltFilled /> Prompt</SectionTitle>
+                <PromptBox>
+                  <Tooltip title="Copy Prompt">
+                    <Button 
+                      type="text" 
+                      size="small" 
+                      className="copy-btn"
+                      icon={<CopyOutlined />} 
+                      onClick={() => {
+                        navigator.clipboard.writeText(task.prompt);
+                        message.success('Copied');
+                      }} 
+                    />
+                  </Tooltip>
+                  <div className="text">{task.prompt}</div>
+                </PromptBox>
+              </>
+            )}
+          </InfoScrollArea>
+
+          {/* 4. Action Footer */}
+          <InfoFooter>
+             <div style={{ display: 'flex', gap: 8 }}>
+                <Tooltip title={isLiked ? "Unlike" : "Like"}>
+                  <Button shape="circle" icon={isLiked ? <HeartFilled style={{ color: '#ff4d4f' }} /> : <HeartOutlined />} onClick={handleLike} loading={likeLoading}/>
+                </Tooltip>
+                <Tooltip title={isFavorited ? "Unfavorite" : "Favorite"}>
+                  <Button shape="circle" icon={isFavorited ? <StarFilled style={{ color: '#faad14' }} /> : <StarOutlined />} onClick={handleFavorite} loading={favoriteLoading}/>
+                </Tooltip>
+                <Button shape="circle" icon={<ShareAltOutlined />} onClick={() => { navigator.clipboard.writeText(window.location.href); message.success('Link Copied'); }} />
+             </div>
+             
+             {currentOutputUrl && (
+                <Button type="primary" shape="round" icon={<DownloadOutlined />} onClick={handleDownload} style={{padding: '0 24px'}}>
+                  Download
+                </Button>
+             )}
+          </InfoFooter>
+        </InfoSide>
+      </SplitLayout>
     </StyledModal>
   );
 };

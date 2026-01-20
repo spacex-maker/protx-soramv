@@ -1296,6 +1296,7 @@ export default {
   'billing.coin.usdt': 'USDT',
   'billing.coin.cny': 'CNY',
   'billing.coin.usd': 'USD',
+  'billing.coin.token': 'TOKEN',
   'billing.table.type': '유형',
   'billing.table.coinType': '통화',
   'billing.table.time': '시간',

@@ -247,8 +247,8 @@ export default function App() {
   return (
     <LocaleProvider>
       <Helmet>
-        <meta name="application-name" content="Sora MV" />
-        <meta name="apple-mobile-web-app-title" content="Sora MV" />
+        <meta name="application-name" content="AI2OBJ" />
+        <meta name="apple-mobile-web-app-title" content="AI2OBJ" />
       </Helmet>
       <ThemeProvider theme={{ 
         mode: isDark ? 'dark' : 'light',
@@ -268,7 +268,7 @@ export default function App() {
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/auth/google/callback" element={<GoogleCallback />} />
-              <Route path="/workspace" element={<Navigate to="/workspace/create" replace />} />
+              <Route path="/workspace" element={<Navigate to="/workspace/create/text-to-image" replace />} />
               <Route path="/profile" element={
                 <PrivateRoute>
                   <ProfilePage />
@@ -328,8 +328,41 @@ export default function App() {
               } />
               <Route path="/test-crypto" element={<TestCrypto />} />
               <Route path="/resume" element={<ResumePage />} />
+              <Route path="/workspace/create" element={<Navigate to="/workspace/create/text-to-image" replace />} />
               <Route
-                path="/workspace/create"
+                path="/workspace/create/text-to-image"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/workspace/create/text-to-video"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/workspace/create/image-to-image"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/workspace/create/image-to-video"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/workspace/create/workflow"
                 element={
                   <PrivateRoute>
                     <CloudDrivePage />

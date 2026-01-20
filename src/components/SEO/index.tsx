@@ -14,18 +14,18 @@ interface SEOProps {
   children?: React.ReactNode;
 }
 
-const DEFAULT_TITLE = 'Sora MV - AI 视频生成平台';
-const DEFAULT_DESCRIPTION = 'Sora MV 是领先的 AI 视频生成平台，基于 Sora、Kling、Grok 等顶尖 AI 模型，提供文本生成视频、图片生成视频等功能。';
-const DEFAULT_IMAGE = 'https://soramv.cn/landing.png';
-const SITE_URL = 'https://soramv.cn';
+const DEFAULT_TITLE = 'AI2OBJ - AI 3D 模型生成平台';
+const DEFAULT_DESCRIPTION = 'AI2OBJ 是领先的 AI 3D 模型生成平台，提供文本生成 3D 模型、图片生成 3D 模型等功能，让您的创意轻松变为现实。';
+const DEFAULT_IMAGE = 'https://ai2obj.com/landing.png';
+const SITE_URL = 'https://ai2obj.com';
 
 /**
  * SEO 组件 - 用于各页面动态设置 SEO 相关的 meta 标签
  * 
  * @example
  * <SEO 
- *   title="文生视频 - Sora MV"
- *   description="使用 AI 将文本描述转换为高质量视频"
+ *   title="文生 3D 模型 - AI2OBJ"
+ *   description="使用 AI 将文本描述转换为高质量 3D 模型"
  *   url="/workspace?tab=t2v"
  * />
  */
@@ -41,7 +41,7 @@ const SEO: React.FC<SEOProps> = ({
   structuredData,
   children,
 }) => {
-  const fullTitle = title ? `${title} | Sora MV` : DEFAULT_TITLE;
+  const fullTitle = title ? `${title} | AI2OBJ` : DEFAULT_TITLE;
   const fullUrl = url.startsWith('http') ? url : `${SITE_URL}${url}`;
   const fullImage = image.startsWith('http') ? image : `${SITE_URL}${image}`;
 
@@ -95,38 +95,38 @@ const SEO: React.FC<SEOProps> = ({
 export const SEOConfigs = {
   home: {
     title: undefined, // 使用默认标题
-    description: 'Sora MV 是领先的 AI 视频生成平台，基于 Sora、Kling、Grok 等顶尖 AI 模型。支持文本生成视频、图片生成视频，让您的创意轻松变为现实。',
-    keywords: 'Sora MV, AI视频生成, 文生视频, 图生视频, Sora, Kling, Grok, AI创作, 视频制作',
+    description: 'AI2OBJ 是领先的 AI 3D 模型生成平台，提供文本生成 3D 模型、图片生成 3D 模型等功能，让您的创意轻松变为现实。',
+    keywords: 'AI2OBJ, AI 3D模型生成, 文生3D, 图生3D, 3D建模, AI创作, 3D模型制作',
     url: '/',
   },
   
   login: {
     title: '登录',
-    description: '登录 Sora MV 账户，开始您的 AI 视频创作之旅。支持多种登录方式，安全便捷。',
-    keywords: '登录, Sora MV登录, AI视频平台登录',
+    description: '登录 AI2OBJ 账户，开始您的 AI 3D 建模之旅。支持多种登录方式，安全便捷。',
+    keywords: '登录, AI2OBJ登录, AI 3D平台登录',
     url: '/login',
     noindex: true,
   },
   
   signup: {
     title: '注册',
-    description: '注册 Sora MV 账户，免费体验 AI 视频生成功能。文生视频、图生视频，开启创意之门。',
-    keywords: '注册, Sora MV注册, AI视频平台注册, 免费注册',
+    description: '注册 AI2OBJ 账户，免费体验 AI 3D 模型生成功能。文生3D、图生3D，开启创意之门。',
+    keywords: '注册, AI2OBJ注册, AI 3D平台注册, 免费注册',
     url: '/signup',
   },
   
   workspace: {
     title: '工作台',
-    description: 'Sora MV AI 视频生成工作台，支持文本生成视频、图片生成视频、AI 图像生成等多种功能。',
-    keywords: 'AI工作台, 视频生成, 文生视频, 图生视频, AI创作工具',
+    description: 'AI2OBJ AI 3D 模型生成工作台，支持文本生成 3D 模型、图片生成 3D 模型等多种功能。',
+    keywords: 'AI工作台, 3D模型生成, 文生3D, 图生3D, AI创作工具',
     url: '/workspace',
     noindex: true,
   },
   
   textToVideo: {
-    title: '文生视频',
-    description: '使用 AI 将文本描述转换为高质量视频。支持 Sora、Kling、Grok 等多种模型，一键生成专业视频。',
-    keywords: '文生视频, text to video, AI视频生成, 文本转视频, Sora视频生成',
+    title: '文生 3D 模型',
+    description: '使用 AI 将文本描述转换为高质量 3D 模型。一键生成专业 3D 模型作品。',
+    keywords: '文生3D, text to 3D, AI 3D模型生成, 文本转3D模型',
     url: '/workspace?tab=t2v',
     noindex: true,
   },
