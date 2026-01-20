@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   Typography, 
   Button, 
@@ -7,7 +7,6 @@ import {
   Empty,
   Spin,
   Image,
-  message
 } from 'antd';
 import { 
   DownloadOutlined,
@@ -15,13 +14,12 @@ import {
   CheckCircleOutlined,
   ColumnWidthOutlined,
   SplitCellsOutlined,
-  WarningOutlined
 } from '@ant-design/icons';
 import { FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
 import { ImageResult, WaitingTask } from './types';
 import { ResultArea } from './styles'; 
-import { getImageDimensions, normalizeUrl } from './utils';
+import { normalizeUrl } from './utils';
 
 const { Title, Text } = Typography;
 
@@ -37,11 +35,11 @@ const CompareContainer = styled.div`
   overflow: hidden;
 `;
 
-const SliderWrapper = styled.div<{ width: number; height: number }>`
+const SliderWrapper = styled.div`
   position: relative;
+  width: 100%;
   max-height: 600px;
-  /* 这里的 aspect-ratio 由生成图决定，确保容器被撑开 */
-  aspect-ratio: ${props => props.width / props.height};
+  aspect-ratio: 16/9;
   user-select: none;
   cursor: ew-resize;
 
@@ -49,7 +47,7 @@ const SliderWrapper = styled.div<{ width: number; height: number }>`
     display: block;
     width: 100%;
     height: 100%;
-    object-fit: fill; /* 强制填充，因为我们已经确保了比例一致，fill 能保证像素对齐 */
+    object-fit: cover;
   }
 `;
 
@@ -90,7 +88,7 @@ const OverlayImage = styled.div<{ position: number }>`
   width: ${props => props.position}%;
   overflow: hidden;
   border-right: 1px solid rgba(255,255,255,0.8);
-  background: #fff; /* 防止透明图透视 */
+  background: #fff;
 `;
 
 const SideBySideWrapper = styled.div`
@@ -134,81 +132,10 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
   originalImageUrl,
   isDark,
 }) => {
-  // --- 状态管理 ---
-  const [isSameRatio, setIsSameRatio] = useState<boolean>(false);
-  const [checkingRatio, setCheckingRatio] = useState<boolean>(false);
+  const [useSliderView, setUseSliderView] = useState<boolean>(false);
   const [sliderPosition, setSliderPosition] = useState(50);
   const sliderRef = useRef<HTMLDivElement>(null);
-  const [imgDim, setImgDim] = useState({ width: 1, height: 1 });
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // --- 核心修复：比例检测逻辑 ---
-  useEffect(() => {
-    let isMounted = true;
-
-    const checkDimensions = async () => {
-      // 1. 只要图片变化，先重置状态为“不一致”，防止UI闪烁或残留
-      setIsSameRatio(false);
-      setErrorMsg(null);
-
-      if (originalImageUrl && generatedImage?.url) {
-        setCheckingRatio(true);
-        try {
-          // 并行获取两张图片的尺寸
-          const [originalSize, generatedSize] = await Promise.all([
-            getImageDimensions(originalImageUrl),
-            getImageDimensions(normalizeUrl(generatedImage.url))
-          ]);
-
-          if (!isMounted) return;
-
-          const w1 = originalSize.width;
-          const h1 = originalSize.height;
-          const w2 = generatedSize.width;
-          const h2 = generatedSize.height;
-
-          const r1 = w1 / h1;
-          const r2 = w2 / h2;
-
-          // 调试日志：如果发现不对劲，可以看控制台
-          console.log(`[ImageCompare] Original: ${w1}x${h1} (Ratio: ${r1.toFixed(3)})`);
-          console.log(`[ImageCompare] Generated: ${w2}x${h2} (Ratio: ${r2.toFixed(3)})`);
-          
-          setImgDim(generatedSize);
-
-          // 核心判断：允许 0.01 的浮点数误差
-          const isRatioMatch = Math.abs(r1 - r2) < 0.01;
-
-          if (isRatioMatch) {
-            console.log('[ImageCompare] Ratios match. Using Slider.');
-            setIsSameRatio(true);
-          } else {
-            console.log('[ImageCompare] Ratios mismatch. Using Side-by-Side.');
-            setIsSameRatio(false);
-          }
-        } catch (error) {
-          console.error("[ImageCompare] Failed to load image dimensions:", error);
-          if (isMounted) {
-            setIsSameRatio(false); // 出错则降级为并列显示
-            setErrorMsg("无法读取图片尺寸，已切换为并列视图");
-          }
-        } finally {
-          if (isMounted) setCheckingRatio(false);
-        }
-      } else {
-        if (isMounted) {
-          setIsSameRatio(false);
-          setCheckingRatio(false);
-        }
-      }
-    };
-
-    checkDimensions();
-
-    return () => { isMounted = false; };
-  }, [originalImageUrl, generatedImage]); // 依赖项变化时重新执行
-
-  // 滑块交互
   const handleMouseMove = (e: React.MouseEvent) => {
     if (sliderRef.current) {
       const rect = sliderRef.current.getBoundingClientRect();
@@ -217,11 +144,8 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
     }
   };
 
-  // --- 渲染部分 ---
-
   const renderContent = () => {
-    // 1. 如果正在计算尺寸或加载任务，显示 Loading
-    if (loading || checkingRatio) {
+    if (loading) {
       return (
         <Space direction="vertical" align="center" style={{ width: '100%', padding: '60px 0' }}>
           <Spin size="large" />
@@ -236,7 +160,6 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
       );
     }
 
-    // 2. 如果没有生成结果，显示 Empty
     if (!generatedImage) {
       return (
         <Empty
@@ -250,10 +173,8 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
       );
     }
 
-    // 3. 有结果，开始渲染对比界面
     return (
       <div style={{ width: '100%' }}>
-        {/* Header Title & Actions */}
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <Title level={4} style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
             <CheckCircleOutlined style={{ color: '#52c41a' }} />
@@ -261,16 +182,17 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
           </Title>
           
           <Space>
-            {errorMsg && <Text type="warning" style={{fontSize: 12}}><WarningOutlined /> {errorMsg}</Text>}
-            
-            {/* 只有在比例一致且有原图时，才允许切换视图 */}
-            {isSameRatio && originalImageUrl && (
+            {originalImageUrl && (
               <Button 
                 type="text" 
-                icon={isSameRatio ? <ColumnWidthOutlined /> : <SplitCellsOutlined />}
-                onClick={() => setIsSameRatio(!isSameRatio)}
+                icon={useSliderView ? <SplitCellsOutlined /> : <ColumnWidthOutlined />}
+                onClick={() => setUseSliderView(!useSliderView)}
               >
-                 <FormattedMessage id="view.switch" defaultMessage="切换视图" />
+                 {useSliderView ? (
+                   <FormattedMessage id="view.switch.sidebyside" defaultMessage="并列对比" />
+                 ) : (
+                   <FormattedMessage id="view.switch.slider" defaultMessage="滑块对比" />
+                 )}
               </Button>
             )}
             
@@ -280,24 +202,16 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
           </Space>
         </div>
 
-        {/* 核心判断：只有 isSameRatio 为 true 且有原图时，才显示 Slider */}
-        {isSameRatio && originalImageUrl ? (
-          
-          /* === 方案 A: 滑块对比 (Slider) === */
+        {useSliderView && originalImageUrl ? (
           <CompareContainer>
             <SliderWrapper 
-              width={imgDim.width} 
-              height={imgDim.height}
               ref={sliderRef}
               onMouseMove={(e) => e.buttons === 1 && handleMouseMove(e)}
               onClick={handleMouseMove}
             >
-              {/* 底图: 结果 (确保 object-fit: fill) */}
               <img src={normalizeUrl(generatedImage.url)} alt="Result" draggable={false} />
               
-              {/* 顶图: 原图 (带遮罩) */}
               <OverlayImage position={sliderPosition}>
-                {/* 关键：强制设置宽高与容器一致，配合 object-fit: fill 确保完美重叠 */}
                 <img 
                   src={originalImageUrl} 
                   alt="Original" 
@@ -305,14 +219,13 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
                   style={{ 
                     width: sliderRef.current?.offsetWidth || '100%', 
                     height: sliderRef.current?.offsetHeight || '100%',
-                    objectFit: 'fill'
+                    objectFit: 'cover'
                   }} 
                 />
               </OverlayImage>
               
               <SliderHandle position={sliderPosition} />
 
-              {/* 浮动标签 */}
               <div style={{ position: 'absolute', top: 12, left: 12, background: 'rgba(0,0,0,0.6)', color: '#fff', padding: '2px 8px', borderRadius: 4, fontSize: 12, pointerEvents:'none' }}>
                 <FormattedMessage id="create.i2i.original" defaultMessage="原图" />
               </div>
@@ -321,12 +234,8 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
               </div>
             </SliderWrapper>
           </CompareContainer>
-
         ) : (
-
-          /* === 方案 B: 左右并列 (Side by Side) === */
           <SideBySideWrapper>
-            {/* 原图 */}
             {originalImageUrl && (
               <div className="image-box">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, color: isDark ? '#aaa' : '#666' }}>
@@ -337,7 +246,6 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
                 </div>
               </div>
             )}
-            {/* 结果图 */}
             <div className="image-box">
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500, color: '#1890ff' }}>
                 <CheckCircleOutlined /> <FormattedMessage id="create.image.result" defaultMessage="生成结果" />
@@ -349,7 +257,6 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
           </SideBySideWrapper>
         )}
 
-        {/* 底部信息栏 */}
         <div style={{ 
           display: 'flex', 
           justifyContent: 'center', 
@@ -358,14 +265,17 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
           borderTop: isDark ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.06)'
         }}>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            <FormattedMessage 
-              id="create.image.info" 
-              defaultMessage="比例: {ratio} | 分辨率: {res}" 
-              values={{ 
-                ratio: generatedImage.aspectRatio || 'auto',
-                res: generatedImage.resolution || `${imgDim.width}x${imgDim.height}`
-              }} 
-            />
+            {generatedImage.aspectRatio && (
+              <>
+                <FormattedMessage id="create.image.ratio.label" defaultMessage="比例" />: {generatedImage.aspectRatio}
+                {generatedImage.resolution && ' | '}
+              </>
+            )}
+            {generatedImage.resolution && (
+              <>
+                <FormattedMessage id="create.image.resolution.label" defaultMessage="分辨率" />: {generatedImage.resolution}
+              </>
+            )}
           </Text>
         </div>
       </div>

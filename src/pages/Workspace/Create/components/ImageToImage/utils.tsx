@@ -207,11 +207,47 @@ export const uploadImageToServer = async (file: File): Promise<string> => {
 
 /**
  * 获取图片的原始尺寸 (宽/高)
+ * 优先使用腾讯云COS的imageInfo接口，失败则降级为加载图片获取
  * @param src 图片地址
  */
 export const getImageDimensions = (src: string): Promise<{ width: number; height: number }> => {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
+    // 如果是base64图片，直接加载获取尺寸
+    if (src.startsWith('data:')) {
+      const img = new Image();
+      img.onload = () => {
+        resolve({ width: img.naturalWidth, height: img.naturalHeight });
+      };
+      img.onerror = (err) => {
+        reject(err);
+      };
+      img.src = src;
+      return;
+    }
+
+    // 如果是腾讯云COS图片，尝试使用imageInfo接口
+    if (src.includes('myqcloud.com') || src.includes('cos.')) {
+      try {
+        // 移除已有的查询参数中的imageInfo/imageMogr2等
+        const baseUrl = src.split('?')[0];
+        const infoUrl = `${baseUrl}?imageInfo`;
+        
+        const response = await fetch(infoUrl);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.width && data.height) {
+            resolve({ width: data.width, height: data.height });
+            return;
+          }
+        }
+      } catch (error) {
+        console.warn('[getImageDimensions] 使用imageInfo获取尺寸失败，降级为加载图片:', error);
+      }
+    }
+
+    // 降级方案：直接加载图片获取尺寸
     const img = new Image();
+    img.crossOrigin = 'anonymous'; // 处理跨域问题
     img.onload = () => {
       resolve({ width: img.naturalWidth, height: img.naturalHeight });
     };

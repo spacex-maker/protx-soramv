@@ -46,8 +46,7 @@ import {
   getModelOutputFormats,
   getBase64,
 } from './utils';
-import HistorySection from './HistorySection';
-import TaskDetailModal from './TaskDetailModal';
+import { HistorySection, TaskDetailModal } from './History';
 import WaitingTaskQueue from './WaitingTaskQueue';
 import ModelDetailModal from './ModelDetailModal';
 import ImageResultDisplay from './ImageResultDisplay';
