@@ -1,790 +1,485 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import styled, { keyframes, css } from 'styled-components';
-import { Typography, Tag, Button, theme } from 'antd';
-import { motion } from 'framer-motion';
-import { useIntl } from 'react-intl';
-import {
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  ExperimentOutlined, 
+  DeploymentUnitOutlined, 
+  GoldOutlined, 
+  RocketOutlined, 
+  PieChartOutlined, 
   ThunderboltFilled,
-  DeploymentUnitOutlined,
-  SettingFilled,
-  PlayCircleFilled,
-  DatabaseFilled,
-  SafetyCertificateFilled,
-  BgColorsOutlined,
-  CloudSyncOutlined
+  SyncOutlined,
+  CheckCircleOutlined
 } from '@ant-design/icons';
-import { Section } from '../styles';
 
 // ==========================================
-// 1. 动效定义
+// 1. 动效定义 (Keyframes)
 // ==========================================
 
-const flowAnimation = keyframes`
-  to { stroke-dashoffset: 0; }
+const spin = keyframes`
+  0% { transform: rotateX(0deg) rotateY(0deg); }
+  100% { transform: rotateX(360deg) rotateY(360deg); }
+`;
+
+const scanLaser = keyframes`
+  0% { transform: translateY(-100px); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: translateY(400px); opacity: 0; }
+`;
+
+const gridScroll = keyframes`
+  0% { background-position: 0 0; }
+  100% { background-position: 50px 50px; }
+`;
+
+const blink = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 `;
 
 // ==========================================
-// 2. 样式组件集合
+// 2. 容器与环境
 // ==========================================
 
-const TechContainer = styled(Section)`
-  background-color: #050507;
-  padding: 0;
-  position: relative;
-  overflow: hidden;
-  color: #e5e5e5;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
-`;
-
-const SectionHeader = styled(motion.div)`
-  text-align: center;
-  max-width: 900px;
-  margin: 0 auto 80px;
-  padding-top: 140px;
-  position: relative;
-  z-index: 2;
-
-  h2 {
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: clamp(36px, 5vw, 64px);
-    font-weight: 700;
-    background: linear-gradient(180deg, #fff 0%, #666 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 24px;
-  }
-
-  p {
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    font-size: 18px;
-    color: #86868b;
-    line-height: 1.6;
-  }
-`;
-
-// --- A. 节点引擎样式 (EngineWorkspace) ---
-const EngineWorkspace = styled.div`
+const Container = styled.div`
   width: 100%;
-  height: 90vh;
-  min-height: 700px;
-  background: #08080a;
+  height: 100vh;
+  min-height: 800px;
+  background: #0b0c10;
+  color: #c5c6c7;
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
   position: relative;
   overflow: hidden;
-  border-top: 1px solid #222;
-  border-bottom: 1px solid #222;
-  
-  /* 点阵背景 */
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: radial-gradient(#333 1px, transparent 1px);
-    background-size: 30px 30px;
-    opacity: 0.3;
-  }
-`;
-
-const NodeCard = styled(motion.div)`
-  position: absolute;
-  width: 260px;
-  background: rgba(25, 25, 28, 0.95);
-  backdrop-filter: blur(12px);
-  border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.1);
   display: flex;
-  flex-direction: column;
-  z-index: 10;
-  cursor: grab;
-  
-  &:active { cursor: grabbing; z-index: 100; }
-
-  ${props => props.$active && css`
-    box-shadow: 0 0 0 2px #2997ff, 0 0 30px rgba(41, 151, 255, 0.2);
-  `}
-
-  .node-header {
-    height: 36px;
-    background: ${props => props.$color || '#333'};
-    border-radius: 12px 12px 0 0;
-    padding: 0 12px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 13px;
-    font-weight: 600;
-    color: #fff;
-    border-bottom: 1px solid rgba(255,255,255,0.1);
-  }
-
-  .node-body {
-    padding: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .io-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    height: 20px;
-    position: relative;
-  }
-
-  .socket {
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: #555;
-    border: 2px solid #1e1e1e;
-    position: absolute;
-    transition: background 0.2s;
-    
-    &.input { left: -21px; }
-    &.output { right: -21px; }
-    &.connected { background: ${props => props.$color || '#2997ff'}; border-color: #fff; }
-  }
-
-  .control-input {
-    background: #111;
-    border: 1px solid #333;
-    border-radius: 6px;
-    color: #aaa;
-    font-size: 12px;
-    padding: 6px 10px;
-    width: 100%;
-    font-family: 'SF Mono', monospace;
-    
-    &:focus { outline: none; border-color: #2997ff; color: #fff; }
-  }
 `;
 
-const SvgLayer = styled.svg`
+const BlueprintBg = styled.div`
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 5;
-  
-  path {
-    fill: none;
-    stroke-width: 2;
-    stroke-linecap: round;
-  }
-  
-  .wire-base { stroke: #333; stroke-width: 3px; }
-  .wire-active {
-    stroke: #2997ff;
-    stroke-width: 3px;
-    stroke-dasharray: 15;
-    stroke-dashoffset: 300;
-    animation: ${flowAnimation} 1s linear infinite;
-    opacity: 0;
-    transition: opacity 0.2s;
-    &.running { opacity: 1; }
-  }
-`;
-
-const HUDPanel = styled.div`
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  width: 280px;
-  background: rgba(10, 10, 12, 0.8);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 16px;
-  padding: 20px;
-  z-index: 50;
-
-  .stat-row {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    font-size: 13px;
-    color: #888;
-    .val { color: #fff; font-weight: 600; font-family: 'SF Mono'; }
-  }
-  
-  .bar-track {
-    height: 4px;
-    background: #333;
-    border-radius: 2px;
-    margin-top: 12px;
-    overflow: hidden;
-    .bar-fill { height: 100%; background: #2997ff; transition: width 0.2s; }
-  }
-`;
-
-const TerminalWindow = styled.div`
-  position: absolute;
-  bottom: 24px;
-  left: 24px;
-  width: 420px;
-  height: 240px;
-  background: rgba(5, 5, 5, 0.9);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 12px;
-  z-index: 50;
-  overflow: hidden;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-  
-  .term-header {
-    height: 32px;
-    background: #1a1a1a;
-    display: flex;
-    align-items: center;
-    padding: 0 12px;
-    border-bottom: 1px solid #333;
-    .dots { display: flex; gap: 6px; span { width: 10px; height: 10px; border-radius: 50%; background: #333; } }
-  }
-
-  .term-body {
-    padding: 16px;
-    color: #888;
-    height: calc(100% - 32px);
-    overflow-y: auto;
-    /* 隐藏滚动条但保留功能 */
-    &::-webkit-scrollbar { width: 0px; }
-    
-    .line {
-      margin-bottom: 6px;
-      &.info { color: #60a5fa; }
-      &.success { color: #4ade80; }
-      &.warn { color: #facc15; }
-    }
-  }
-`;
-
-const FloatingRunBtn = styled(motion.button)`
-  position: absolute;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: #fff;
-  color: #000;
-  border: none;
-  padding: 14px 40px;
-  border-radius: 100px;
-  font-size: 16px;
-  font-weight: 700;
-  box-shadow: 0 0 40px rgba(255, 255, 255, 0.2);
-  cursor: pointer;
-  z-index: 60;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  transition: all 0.2s;
-
-  &:hover { transform: translateX(-50%) scale(1.05); background: #f0f0f0; }
-  &:active { transform: translateX(-50%) scale(0.95); }
-  
-  &.running {
-    background: #333;
-    color: #666;
-    box-shadow: none;
-    cursor: default;
-  }
-`;
-
-// --- B. 性能仪表盘样式 ---
-const BenchmarkSection = styled.div`
-  padding: 160px 20px;
-  background: #0b0c0e;
-`;
-
-const ChartGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 80px;
-  max-width: 1200px;
-  margin: 0 auto;
-  @media (max-width: 900px) { grid-template-columns: 1fr; gap: 40px; }
-`;
-
-const ChartCard = styled(motion.div)`
-  background: #111;
-  border-radius: 32px;
-  padding: 48px;
-  border: 1px solid #222;
-
-  h3 {
-    font-size: 24px;
-    color: #fff;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .sub { color: #666; margin-bottom: 40px; font-size: 15px; }
-`;
-
-const BarRow = styled.div`
-  margin-bottom: 28px;
-  .label {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 10px;
-    color: #888;
-    font-size: 14px;
-    font-weight: 500;
-  }
-  .bar-bg {
-    width: 100%;
-    height: 12px;
-    background: #222;
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .bar-fill {
-    height: 100%;
-    background: ${props => props.$color || '#2997ff'};
-    border-radius: 6px;
-    width: 0;
-  }
-`;
-
-// --- C. 3D 模型矩阵 (全新设计) ---
-const GalaxyContainer = styled.div`
-  padding: 160px 0 200px;
-  background: radial-gradient(circle at center, #111 0%, #000 100%);
-  overflow: hidden;
-  perspective: 1000px; /* 3D 透视 */
-`;
-
-const GalaxyGrid = styled(motion.div)`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 30px;
-  width: 1400px;
-  margin: 0 auto;
-  /* 3D 倾斜 */
-  transform: rotateX(20deg) rotateY(0deg) rotateZ(0deg);
-  transform-style: preserve-3d;
-`;
-
-const Model3DCard = styled(motion.div)`
-  height: 400px;
-  background-image: url(${props => props.$bg});
-  background-size: cover;
-  background-position: center;
-  border-radius: 20px;
-  position: relative;
-  border: 1px solid rgba(255,255,255,0.15);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
-  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(102, 252, 241, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(102, 252, 241, 0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: ${gridScroll} 30s linear infinite;
+  z-index: 0;
   
   &::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, #000 0%, transparent 60%);
-    border-radius: 20px;
-  }
-
-  &:hover {
-    transform: translateZ(40px) scale(1.05); /* 悬停时浮起 */
-    box-shadow: 0 40px 80px rgba(0,0,0,0.8);
-    border-color: #2997ff;
-    z-index: 10;
-    
-    .meta { transform: translateY(0); opacity: 1; }
-  }
-
-  .meta {
-    position: absolute;
-    bottom: 24px;
-    left: 24px;
-    z-index: 2;
-    transform: translateY(10px);
-    opacity: 0.8;
-    transition: all 0.3s;
-
-    h4 { color: #fff; font-size: 18px; margin: 0 0 4px 0; font-weight: 700; }
-    span { 
-      color: #2997ff; 
-      font-size: 12px; 
-      background: rgba(41,151,255,0.1); 
-      padding: 4px 8px; 
-      border-radius: 4px; 
-      border: 1px solid rgba(41,151,255,0.3);
-    }
+    background: radial-gradient(circle at center, transparent 0%, #0b0c10 80%);
   }
 `;
 
 // ==========================================
-// 3. 逻辑组件
+// 3. 核心视觉：工业级 CSS 3D 渲染
 // ==========================================
 
-const TechnologySection = () => {
-  const { token } = theme.useToken();
-  const intl = useIntl();
-  const [detailedEyeBg, setDetailedEyeBg] = useState('https://files.catbox.moe/q41csa.png');
-  const [dreamShaperBg, setDreamShaperBg] = useState('https://files.catbox.moe/azjt7u.png');
-  
-  // 预加载 Detailed Eye 背景图片，失败时使用备用链接
-  useEffect(() => {
-    const img = new Image();
-    const primaryUrl = 'https://files.catbox.moe/q41csa.png';
-    const fallbackUrl = 'https://public-1258150206.cos.ap-nanjing.myqcloud.com/home/8ea584d2-9dbb-4cbb-8f3f-c4b1f031ec2f.png';
-    
-    img.onload = () => {
-      setDetailedEyeBg(primaryUrl);
-    };
-    
-    img.onerror = () => {
-      console.log('Detailed Eye background image failed to load, using fallback');
-      setDetailedEyeBg(fallbackUrl);
-    };
-    
-    img.src = primaryUrl;
-  }, []);
+const Scene3D = styled.div`
+  width: 320px;
+  height: 320px;
+  position: relative;
+  perspective: 1200px;
+  transform-style: preserve-3d;
+`;
 
-  // 预加载 DreamShaper 背景图片，失败时使用备用链接
-  useEffect(() => {
-    const img = new Image();
-    const primaryUrl = 'https://files.catbox.moe/azjt7u.png';
-    const fallbackUrl = 'https://public-1258150206.cos.ap-nanjing.myqcloud.com/home/909fb8b7-4be4-4b98-9a7d-dd0059e150f1.png';
-    
-    img.onload = () => {
-      setDreamShaperBg(primaryUrl);
-    };
-    
-    img.onerror = () => {
-      console.log('DreamShaper background image failed to load, using fallback');
-      setDreamShaperBg(fallbackUrl);
-    };
-    
-    img.src = primaryUrl;
-  }, []);
-  
-  // --- 引擎节点数据 ---
-  const getNodeTitle = (key) => intl.formatMessage({ id: key });
-  const [nodes, setNodes] = useState([
-    { id: 'n1', x: 50, y: 200, titleKey: 'technology.node.checkpointLoader', color: '#7c3aed', inputs: [], outputs: ['MODEL', 'CLIP', 'VAE'] },
-    { id: 'n2', x: 400, y: 80, titleKey: 'technology.node.clipTextPositive', color: '#10b981', inputs: ['CLIP'], outputs: ['COND'], value: 'cyberpunk city, neon' },
-    { id: 'n3', x: 400, y: 320, titleKey: 'technology.node.clipTextNegative', color: '#ef4444', inputs: ['CLIP'], outputs: ['COND'], value: 'blur, low quality' },
-    { id: 'n4', x: 750, y: 200, titleKey: 'technology.node.ksamplerAdvanced', color: '#2997ff', inputs: ['MODEL', 'POS', 'NEG', 'LATENT'], outputs: ['LATENT'] },
-    { id: 'n5', x: 1100, y: 200, titleKey: 'technology.node.vaeDecode', color: '#f59e0b', inputs: ['VAE', 'LATENT'], outputs: ['IMAGE'] },
-    { id: 'n6', x: 1400, y: 150, titleKey: 'technology.node.previewImage', color: '#333', inputs: ['IMAGE'], outputs: [], isPreview: true }
-  ]);
+const WireframeObject = styled(motion.div)`
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  transform-style: preserve-3d;
+  animation: ${spin} 20s linear infinite;
 
-  // 连线关系 (纯数据，用于计算)
-  const connections = [
-    { from: 'n1', to: 'n4', fromPort: 0, toPort: 0 },
-    { from: 'n1', to: 'n2', fromPort: 1, toPort: 0 },
-    { from: 'n1', to: 'n3', fromPort: 1, toPort: 0 },
-    { from: 'n1', to: 'n5', fromPort: 2, toPort: 0 },
-    { from: 'n2', to: 'n4', fromPort: 0, toPort: 1 },
-    { from: 'n3', to: 'n4', fromPort: 0, toPort: 2 },
-    { from: 'n4', to: 'n5', fromPort: 0, toPort: 1 },
-    { from: 'n5', to: 'n6', fromPort: 0, toPort: 0 },
+  .face {
+    position: absolute;
+    width: 200px;
+    height: 200px;
+    left: 60px;
+    top: 60px;
+    border: 1px solid #45a29e;
+    background: rgba(69, 162, 158, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+    color: #66fcf1;
+    box-shadow: inset 0 0 20px rgba(102, 252, 241, 0.1);
+    transition: all 0.5s ease;
+  }
+
+  .front  { transform: translateZ(100px); }
+  .back   { transform: rotateY(180deg) translateZ(100px); }
+  .right  { transform: rotateY(90deg) translateZ(100px); }
+  .left   { transform: rotateY(-90deg) translateZ(100px); }
+  .top    { transform: rotateX(90deg) translateZ(100px); }
+  .bottom { transform: rotateX(-90deg) translateZ(100px); }
+
+  ${props => props.$shape === 'analysis' && css`
+    .face { 
+      border-radius: 50%; 
+      border: 1px dashed #fab1a0; 
+      background: rgba(250, 177, 160, 0.1); 
+      color: #fab1a0;
+    }
+  `}
+  
+  ${props => props.$shape === 'structure' && css`
+    .face { 
+      border: 2px solid #66fcf1; 
+      clip-path: polygon(0% 0%, 100% 0%, 100% 75%, 75% 100%, 0% 100%);
+      background: rgba(102, 252, 241, 0.15);
+    }
+  `}
+
+  ${props => props.$shape === 'network' && css`
+    .face {
+      border: 1px dotted #ffeaa7;
+      background: transparent;
+      &::after {
+        content: ''; position: absolute; inset: 20px; 
+        border: 1px solid #ffeaa7; opacity: 0.5;
+      }
+    }
+  `}
+`;
+
+const ScannerLine = styled.div`
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: #66fcf1;
+  box-shadow: 0 0 15px #66fcf1, 0 0 30px #45a29e;
+  animation: ${scanLaser} 3s ease-in-out infinite;
+  z-index: 10;
+`;
+
+// ==========================================
+// 4. 左侧导航
+// ==========================================
+
+const Sidebar = styled.div`
+  width: 340px;
+  height: 100%;
+  background: rgba(11, 12, 16, 0.95);
+  border-right: 1px solid #1f2833;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  padding: 40px 0;
+  backdrop-filter: blur(10px);
+`;
+
+const NavItem = styled.div`
+  position: relative;
+  padding: 24px 32px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: ${props => props.$active ? '#fff' : '#888'};
+  background: ${props => props.$active ? 'linear-gradient(90deg, rgba(102, 252, 241, 0.1), transparent)' : 'transparent'};
+  transition: all 0.3s;
+  border-left: 3px solid ${props => props.$active ? props.$color : 'transparent'};
+
+  &:hover { background: rgba(255,255,255,0.02); }
+
+  .step-num {
+    font-size: 10px;
+    color: #45a29e;
+    position: absolute;
+    top: 10px;
+    right: 20px;
+  }
+`;
+
+// ==========================================
+// 5. 右侧面板与光标修复
+// ==========================================
+
+const InfoPanel = styled.div`
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  z-index: 10;
+`;
+
+const DataCard = styled(motion.div)`
+  background: rgba(11, 12, 16, 0.9);
+  border: 1px solid #1f2833;
+  padding: 20px;
+  position: relative;
+  
+  &::before { content: ''; position: absolute; top: -1px; left: -1px; width: 10px; height: 10px; border-top: 2px solid #66fcf1; border-left: 2px solid #66fcf1; }
+  &::after { content: ''; position: absolute; bottom: -1px; right: -1px; width: 10px; height: 10px; border-bottom: 2px solid #66fcf1; border-right: 2px solid #66fcf1; }
+
+  h3 {
+    margin: 0 0 12px 0;
+    font-size: 12px;
+    color: #45a29e;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: space-between;
+  }
+`;
+
+const MetricRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 13px;
+  
+  .label { color: #888; }
+  .value { color: #fff; font-weight: bold; font-family: 'Courier New', monospace; }
+`;
+
+const LogTerminal = styled.div`
+  font-size: 10px;
+  color: #45a29e;
+  height: 80px;
+  overflow: hidden;
+  opacity: 0.7;
+  line-height: 1.5;
+  mask-image: linear-gradient(to bottom, black 50%, transparent 100%);
+`;
+
+// ！！！修复的核心：将动画放在 Styled Component 内部 ！！！
+const TerminalCursor = styled.span`
+  display: inline-block;
+  width: 6px;
+  height: 10px;
+  background: #66fcf1;
+  margin-left: 4px;
+  animation: ${blink} 1s step-end infinite;
+  vertical-align: middle;
+`;
+
+// ==========================================
+// 6. 主逻辑
+// ==========================================
+
+const AI2OBJPage = () => {
+  const [activeStep, setActiveStep] = useState(0);
+
+  const steps = [
+    {
+      id: 0,
+      title: "MARKET INTELLIGENCE",
+      subtitle: "Demand & Spec Definition",
+      color: "#fab1a0",
+      icon: <PieChartOutlined />,
+      shape: "analysis", 
+      metrics: [
+        { label: "TREND MATCH", value: "98.4%" },
+        { label: "TARGET PRICE", value: "$129.00" },
+        { label: "GAP ANALYSIS", value: "HIGH DEMAND" }
+      ],
+      logs: [
+        "> Scanning global search trends...",
+        "> Competitor specs analyzed.",
+        "> PRD (Product Req Doc) generated."
+      ]
+    },
+    {
+      id: 1,
+      title: "GENERATIVE ENGINEERING",
+      subtitle: "Topology & CAD Optimization",
+      color: "#66fcf1",
+      icon: <DeploymentUnitOutlined />,
+      shape: "structure",
+      metrics: [
+        { label: "WEIGHT REDUCTION", value: "-24%" },
+        { label: "MATERIAL", value: "AL-6061" },
+        { label: "POLY COUNT", value: "2.4M" }
+      ],
+      logs: [
+        "> Generating 3D mesh...",
+        "> Running topology optimization...",
+        "> Structural integrity verified."
+      ]
+    },
+    {
+      id: 2,
+      title: "DIGITAL TWIN SIM",
+      subtitle: "FEA & Physics Validation",
+      color: "#ff7675",
+      icon: <ExperimentOutlined />,
+      shape: "analysis",
+      metrics: [
+        { label: "STRESS LOAD", value: "4500 N" },
+        { label: "THERMAL MAX", value: "85°C" },
+        { label: "DRAG COEFF", value: "0.24 Cd" }
+      ],
+      logs: [
+        "> Initializing Finite Element Analysis...",
+        "> Simulating wind tunnel test...",
+        "> Thermal dissipation grid active."
+      ]
+    },
+    {
+      id: 3,
+      title: "SMART SUPPLY CHAIN",
+      subtitle: "BOM & Sourcing Network",
+      color: "#ffeaa7",
+      icon: <GoldOutlined />,
+      shape: "network",
+      metrics: [
+        { label: "SUPPLIERS", value: "14 ACTIVE" },
+        { label: "LEAD TIME", value: "12 DAYS" },
+        { label: "EST. COST", value: "$45.20" }
+      ],
+      logs: [
+        "> Bill of Materials (BOM) compiled.",
+        "> Querying global component db...",
+        "> Logistics route optimized."
+      ]
+    },
+    {
+      id: 4,
+      title: "CYBER MFG & LAUNCH",
+      subtitle: "CAM & G-Code Generation",
+      color: "#55efc4",
+      icon: <RocketOutlined />,
+      shape: "structure",
+      metrics: [
+        { label: "PRODUCTION", value: "READY" },
+        { label: "TOLERANCE", value: "±0.01mm" },
+        { label: "SKU ID", value: "AI-X-2026" }
+      ],
+      logs: [
+        "> Compiling 5-axis CNC G-Code...",
+        "> Quality control vision system online.",
+        "> Digital twin synchronized."
+      ]
+    }
   ];
 
-  // 运行状态
-  const [activeNode, setActiveNode] = useState(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [logs, setLogs] = useState([]);
-  
-  // 初始化日志
-  useEffect(() => {
-    setLogs([
-      { msg: intl.formatMessage({ id: 'technology.log.systemInitialized' }), type: 'info', time: new Date().toLocaleTimeString() },
-      { msg: intl.formatMessage({ id: 'technology.log.waitingForInput' }), type: 'info', time: new Date().toLocaleTimeString() }
-    ]);
-  }, [intl]);
-  const [gpuLoad, setGpuLoad] = useState(12);
-  const terminalRef = useRef(null);
-  const workspaceRef = useRef(null);
-
-  // 修复3：自动滚动终端 (使用 scrollTop 而不是 scrollIntoView，避免页面跳动)
-  useEffect(() => {
-    if (terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }
-  }, [logs]);
-
-  // 修复2：拖拽处理
-  // 使用 onDragEnd 而不是 onDrag，避免在拖拽过程中持续更新状态导致无限循环
-  const handleDragEnd = (id, event, info) => {
-    setNodes(prev => prev.map(n => {
-      if (n.id === id) {
-        // 获取元素当前的位置（包括 transform）
-        const element = event.target;
-        const rect = element.getBoundingClientRect();
-        
-        // 获取父容器（EngineWorkspace）的位置
-        if (workspaceRef.current) {
-          const parentRect = workspaceRef.current.getBoundingClientRect();
-          return { 
-            ...n, 
-            x: rect.left - parentRect.left, 
-            y: rect.top - parentRect.top 
-          };
-        }
-        // 如果找不到父容器，使用当前状态位置加上拖拽增量
-        return { ...n, x: n.x + info.delta.x, y: n.y + info.delta.y };
-      }
-      return n;
-    }));
-  };
-
-  // 计算连线路径 (三次贝塞尔曲线)
-  const getPath = (conn) => {
-    const from = nodes.find(n => n.id === conn.from);
-    const to = nodes.find(n => n.id === conn.to);
-    if (!from || !to) return '';
-
-    // 端口坐标偏移量
-    const startX = from.x + 260; // 卡片宽度
-    const startY = from.y + 50 + (conn.fromPort * 24);
-    const endX = to.x;
-    const endY = to.y + 50 + (conn.toPort * 24);
-
-    const controlOffset = Math.abs(endX - startX) * 0.5;
-    return `M ${startX} ${startY} C ${startX + controlOffset} ${startY}, ${endX - controlOffset} ${endY}, ${endX} ${endY}`;
-  };
-
-  // 模拟运行
-  const runWorkflow = async () => {
-    if (isRunning) return;
-    setIsRunning(true);
-    setLogs([]);
-    const addLog = (msg, type) => setLogs(p => [...p, { msg, type, time: new Date().toLocaleTimeString() }]);
-
-    const sequence = ['n1', 'n2', 'n3', 'n4', 'n5', 'n6'];
-    
-    for (const nodeId of sequence) {
-      setActiveNode(nodeId);
-      
-      // 模拟 GPU 负载
-      if (nodeId === 'n4') setGpuLoad(99); 
-      else if (nodeId === 'n5') setGpuLoad(75);
-      else setGpuLoad(35);
-
-      // 模拟日志
-      if (nodeId === 'n1') addLog(intl.formatMessage({ id: 'technology.log.loadingCheckpoint' }), 'warn');
-      if (nodeId === 'n2') addLog(intl.formatMessage({ id: 'technology.log.tokenizingPrompt' }), 'info');
-      if (nodeId === 'n4') addLog(intl.formatMessage({ id: 'technology.log.ksamplerSteps' }), 'success');
-
-      await new Promise(r => setTimeout(r, nodeId === 'n4' ? 1500 : 600));
-    }
-
-    setActiveNode(null);
-    setIsRunning(false);
-    setGpuLoad(12);
-    addLog(intl.formatMessage({ id: 'technology.log.generationComplete' }), 'success');
-  };
+  const currentStep = steps[activeStep];
 
   return (
-    <TechContainer>
-      {/* 1. 节点引擎部分 */}
-      <SectionHeader>
-        <div style={{ color: '#2997ff', marginBottom: 16, fontSize: 12, letterSpacing: 2 }}>{intl.formatMessage({ id: 'technology.coreArchitecture' })}</div>
-        <h2>{intl.formatMessage({ id: 'technology.workflowEngine.title' })}</h2>
-        <p>{intl.formatMessage({ id: 'technology.workflowEngine.description' })}</p>
-      </SectionHeader>
+    <Container>
+      <BlueprintBg />
+      
+      {/* Sidebar */}
+      <Sidebar>
+        <div style={{padding:'0 32px 40px'}}>
+          <div style={{fontSize:24, fontWeight:800, color:'#fff', letterSpacing:1}}>GENESIS<span style={{color:'#45a29e'}}>ENGINE</span></div>
+          <div style={{fontSize:10, color:'#666', marginTop:4}}>AI-DRIVEN PRODUCT LIFECYCLE</div>
+        </div>
 
-      <EngineWorkspace ref={workspaceRef}>
-        {/* 连线层 */}
-        <SvgLayer>
-          {connections.map((conn, i) => {
-            const isActive = isRunning && activeNode === conn.from;
-            return (
-              <React.Fragment key={i}>
-                <path d={getPath(conn)} className="wire-base" stroke="#333" />
-                <path d={getPath(conn)} className={`wire-active ${isActive ? 'running' : ''}`} stroke={nodes.find(n=>n.id===conn.from)?.color} />
-              </React.Fragment>
-            );
-          })}
-        </SvgLayer>
-
-        {/* 节点层 */}
-        {nodes.map(node => (
-          <NodeCard
-            key={node.id}
-            // 关键修复：使用 initial 和 animate 来同步位置，避免无限循环
-            initial={{ x: node.x, y: node.y }}
-            animate={{ x: node.x, y: node.y }}
-            transition={{ duration: 0 }} // 禁用动画，立即更新位置
-            drag
-            dragMomentum={false} // 禁用惯性，更像专业软件
-            onDragEnd={(e, info) => handleDragEnd(node.id, e, info)}
-            $color={node.color}
-            $active={activeNode === node.id}
+        {steps.map((step, idx) => (
+          <NavItem 
+            key={idx} 
+            $active={activeStep === idx}
+            $color={step.color}
+            onClick={() => setActiveStep(idx)}
           >
-            <div className="node-header">
-              <span>{intl.formatMessage({ id: node.titleKey })}</span>
-              <SettingFilled />
+            <span className="step-num">0{idx + 1}</span>
+            <div style={{fontSize:20, color: activeStep === idx ? step.color : '#444'}}>
+              {step.icon}
             </div>
-            <div className="node-body">
-              {node.inputs?.map((inp, i) => (
-                <div key={i} className="io-row" style={{justifyContent:'flex-start'}}>
-                  <div className="socket input connected"/>
-                  <span className="label" style={{marginLeft:8}}>{inp}</span>
-                </div>
-              ))}
-              
-              {node.value && (
-                <textarea className="control-input" rows={2} defaultValue={node.value} onMouseDown={e=>e.stopPropagation()}/>
-              )}
-
-              {node.type === 'sampler' && (
-                 <div style={{fontSize:10, color:'#666'}}>steps: 30 | cfg: 7.0 | seed: -1</div>
-              )}
-
-              {node.isPreview && (
-                <div style={{width:'100%', height:120, background:'#000', borderRadius:4, overflow:'hidden'}}>
-                  <img 
-                    src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&q=80" 
-                    style={{width:'100%', height:'100%', objectFit:'cover', opacity: activeNode === 'n6' ? 1 : 0.3, transition:'opacity 0.5s'}}
-                    alt=""
-                  />
-                </div>
-              )}
-
-              {node.outputs?.map((out, i) => (
-                <div key={i} className="io-row" style={{justifyContent:'flex-end'}}>
-                  <span className="label" style={{marginRight:8}}>{out}</span>
-                  <div className="socket output connected"/>
-                </div>
-              ))}
+            <div>
+              <div style={{fontWeight:700, fontSize:13, letterSpacing:0.5}}>{step.title}</div>
+              <div style={{fontSize:10, color:'#666', marginTop:2}}>{step.subtitle}</div>
             </div>
-          </NodeCard>
+          </NavItem>
         ))}
 
-        {/* HUD */}
-        <HUDPanel>
-          <div className="hud-header">{intl.formatMessage({ id: 'technology.hud.systemResourceMonitor' })}</div>
-          <div className="stat-row">
-            <span>{intl.formatMessage({ id: 'technology.hud.gpuVram' })}</span>
-            <span className="val">{gpuLoad}%</span>
+        <div style={{marginTop:'auto', padding:'32px', borderTop:'1px solid #1f2833'}}>
+          <div style={{display:'flex', gap:10, fontSize:11, color:'#45a29e'}}>
+            <SyncOutlined spin /> 
+            <span>LIVE CONNECTION</span>
           </div>
-          <div className="progress-bar">
-            <div className="fill" style={{ width: `${gpuLoad}%`, background: gpuLoad > 90 ? '#ff4d4f' : '#2997ff' }}></div>
-          </div>
-        </HUDPanel>
+          <div style={{fontSize:10, color:'#444', marginTop:4}}>LATENCY: 14ms | SERVER: US-EAST</div>
+        </div>
+      </Sidebar>
 
-        {/* Terminal */}
-        <TerminalWindow>
-          <div className="term-header">
-            <div className="dots"><span></span><span></span><span></span></div>
-            <span>{intl.formatMessage({ id: 'technology.terminal.console' })}</span>
-          </div>
-          <div className="term-body" ref={terminalRef}>
-            {logs.map((log, i) => (
-              <div key={i} className={`line ${log.type}`}>
-                <span style={{opacity:0.5, marginRight:8}}>[{log.time}]</span>
-                {log.msg}
-              </div>
+      {/* Main View */}
+      <div style={{flex:1, position:'relative', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center'}}>
+        
+        <div style={{position:'absolute', top:40, textAlign:'center', zIndex:5}}>
+           <h2 style={{fontSize:32, margin:0, color:'#fff', textShadow:'0 0 20px rgba(102, 252, 241, 0.3)'}}>
+             {currentStep.title}
+           </h2>
+           <div style={{marginTop:8, display:'inline-block', padding:'4px 12px', background:'rgba(69, 162, 158, 0.2)', borderRadius:4, color:'#66fcf1', fontSize:11, letterSpacing:2}}>
+             SYSTEM STATUS: ACTIVE
+           </div>
+        </div>
+
+        <Scene3D>
+          <ScannerLine />
+          <AnimatePresence mode='wait'>
+            <WireframeObject 
+              key={activeStep}
+              $shape={currentStep.shape}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.2 }}
+              transition={{ duration: 0.5 }}
+            >
+              <div className="face front">{currentStep.icon}</div>
+              <div className="face back">{currentStep.icon}</div>
+              <div className="face right"><CheckCircleOutlined /></div>
+              <div className="face left"><SyncOutlined spin={activeStep===4} /></div>
+              <div className="face top">AI</div>
+              <div className="face bottom">OBJ</div>
+            </WireframeObject>
+          </AnimatePresence>
+          
+          <div style={{
+            position:'absolute', bottom:-50, left:0, width:'100%', height:20, 
+            background:'radial-gradient(ellipse at center, rgba(102, 252, 241, 0.3), transparent 70%)',
+            filter:'blur(10px)', transform:'rotateX(90deg)'
+          }} />
+        </Scene3D>
+
+      </div>
+
+      {/* Info Panel */}
+      <InfoPanel>
+        <AnimatePresence mode='wait'>
+          <DataCard
+            key={activeStep}
+            initial={{ x: 50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            exit={{ x: 50, opacity: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <h3><ThunderboltFilled /> Core Metrics</h3>
+            {currentStep.metrics.map((m, i) => (
+               <MetricRow key={i}>
+                 <span className="label">{m.label}</span>
+                 <span className="value" style={{color: currentStep.color}}>{m.value}</span>
+               </MetricRow>
             ))}
-          </div>
-        </TerminalWindow>
+          </DataCard>
 
-        <FloatingRunBtn onClick={runWorkflow} disabled={isRunning} className={isRunning ? 'running' : ''}>
-          {isRunning ? intl.formatMessage({ id: 'technology.button.running' }) : intl.formatMessage({ id: 'technology.button.runWorkflow' })}
-        </FloatingRunBtn>
-      </EngineWorkspace>
-
-      {/* 2. 性能压测 */}
-      <BenchmarkSection>
-        <SectionHeader>
-          <h2>{intl.formatMessage({ id: 'technology.benchmark.title' })}</h2>
-          <p>{intl.formatMessage({ id: 'technology.benchmark.description' })}</p>
-        </SectionHeader>
-        <ChartGrid>
-          <ChartCard
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
+          <DataCard
+            key={`log-${activeStep}`}
+            initial={{ x: 50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            style={{marginTop: 16}}
           >
-            <h3><ThunderboltFilled style={{color: '#eab308'}} /> {intl.formatMessage({ id: 'technology.benchmark.fps.title' })}</h3>
-            <div className="sub">{intl.formatMessage({ id: 'technology.benchmark.fps.subtitle' })}</div>
-            <BarRow $color="#2997ff">
-              <div className="label"><span>{intl.formatMessage({ id: 'technology.benchmark.productX' })}</span> <span>24 fps</span></div>
-              <div className="bar-bg"><motion.div className="bar-fill" initial={{width: 0}} whileInView={{width: '90%'}} transition={{duration: 1.5}} /></div>
-            </BarRow>
-            <BarRow $color="#444">
-              <div className="label"><span>{intl.formatMessage({ id: 'technology.benchmark.others' })}</span> <span>8 fps</span></div>
-              <div className="bar-bg"><motion.div className="bar-fill" initial={{width: 0}} whileInView={{width: '30%'}} transition={{duration: 1.5}} /></div>
-            </BarRow>
-          </ChartCard>
-          <ChartCard
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            <h3><DatabaseFilled style={{color: '#10b981'}} /> {intl.formatMessage({ id: 'technology.benchmark.vram.title' })}</h3>
-            <div className="sub">{intl.formatMessage({ id: 'technology.benchmark.vram.subtitle' })}</div>
-            <BarRow $color="#10b981">
-              <div className="label"><span>{intl.formatMessage({ id: 'technology.benchmark.productX' })}</span> <span>8 GB</span></div>
-              <div className="bar-bg"><motion.div className="bar-fill" initial={{width: 0}} whileInView={{width: '30%'}} transition={{duration: 1.5}} /></div>
-            </BarRow>
-            <BarRow $color="#444">
-              <div className="label"><span>{intl.formatMessage({ id: 'technology.benchmark.standard' })}</span> <span>24 GB</span></div>
-              <div className="bar-bg"><motion.div className="bar-fill" initial={{width: 0}} whileInView={{width: '90%'}} transition={{duration: 1.5}} /></div>
-            </BarRow>
-          </ChartCard>
-        </ChartGrid>
-      </BenchmarkSection>
+             <h3>System Logs</h3>
+             <LogTerminal>
+               {currentStep.logs.map((log, i) => (
+                 <div key={i} style={{marginBottom:4}}>{log}</div>
+               ))}
+               <TerminalCursor /> {/* 修复：使用组件代替内联样式 */}
+             </LogTerminal>
+          </DataCard>
+        </AnimatePresence>
+      </InfoPanel>
 
-      {/* 3. 无限模型宇宙 (重构：3D 视差墙) */}
-      <SectionHeader style={{marginBottom: 60}}>
-        <Tag color="purple" style={{background:'transparent', border:'1px solid #a855f7', marginBottom:16}}>{intl.formatMessage({ id: 'technology.galaxy.openEcology' })}</Tag>
-        <h2>{intl.formatMessage({ id: 'technology.galaxy.title' })}</h2>
-        <p>{intl.formatMessage({ id: 'technology.galaxy.description' })}</p>
-      </SectionHeader>
-
-      <GalaxyContainer>
-        <GalaxyGrid
-          animate={{ 
-            rotateX: [20, 25, 20], // 3D 呼吸动效
-            translateY: [0, -20, 0]
-          }}
-          transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-        >
-          {/* 第一排：Checkpoint */}
-          {[
-            { name: 'CyberRealistic', type: 'CHECKPOINT', bg: 'https://models-online-persist.shakker.cloud/img/a862947dc75d4a70b42c7dc08331b1b0/665a89a9d43f90a8013ad4fdccf2600853a865b4497b2d2512e8ff4f95f39efc.png?x-oss-process=image/resize,w_640,m_lfit/format,webp' },
-            { name: 'DreamShaper', type: 'CHECKPOINT', bg: dreamShaperBg },
-            { name: 'Realistic Vision', type: 'CHECKPOINT', bg: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=600&q=80' },
-            { name: 'Deliberate', type: 'CHECKPOINT', bg: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&q=80' }
-          ].map((item, i) => (
-            <Model3DCard key={i} $bg={item.bg} style={{marginTop: i % 2 * 40}}>
-              <div className="meta">
-                <h4>{item.name}</h4>
-                <span>{item.type}</span>
-              </div>
-            </Model3DCard>
-          ))}
-
-          {/* 第二排：LoRA */}
-          {[
-            { name: 'Ghibli Style', type: 'LORA', bg: 'https://models-online-persist.shakker.cloud/community-img/c605cfb7fab6255fc54bb72a0f9ec1304905b414acf9f0b0bf16515bbbe9c609.png?x-oss-process=image/resize,w_640,m_lfit/format,webp' },
-            { name: 'Mecha Suit', type: 'LORA', bg: 'https://models-online-persist.shakker.cloud/img/56b1ac35f152453f80448e104cac53a8/c267cdd767d976cfb4224ab18a1ef0f41a004a0e4d4c01e10c06043ccc9bbf91.png?x-oss-process=image/resize,w_640,m_lfit/format,webp' },
-            { name: 'Detailed Eye', type: 'LORA', bg: detailedEyeBg },
-            { name: 'Add Detail', type: 'LORA', bg: 'https://models-online-persist.shakker.cloud/img/036c4f69b4b94e0b87160f469655f4be/ae6c3263af7207baa2ad1afc0fde7532889a3642f5bb040c1a17a6d1fc4f8475.jpg?x-oss-process=image/resize,w_764,m_lfit/format,webp' }
-          ].map((item, i) => (
-            <Model3DCard key={i+4} $bg={item.bg} style={{marginTop: (i+1) % 2 * 40}}>
-              <div className="meta">
-                <div style={{display:'flex', gap:6, marginBottom:4}}>
-                  <CloudSyncOutlined style={{color:'#2997ff'}}/>
-                  <span style={{border:'none', padding:0, background:'transparent', color:'#fff'}}>{intl.formatMessage({ id: 'technology.galaxy.autoSync' })}</span>
-                </div>
-                <h4>{item.name}</h4>
-                <span style={{borderColor:'#a855f7', color:'#a855f7', background:'rgba(168,85,247,0.1)'}}>{item.type}</span>
-              </div>
-            </Model3DCard>
-          ))}
-        </GalaxyGrid>
-      </GalaxyContainer>
-
-    </TechContainer>
+    </Container>
   );
 };
 
-export default TechnologySection;
+export default AI2OBJPage;

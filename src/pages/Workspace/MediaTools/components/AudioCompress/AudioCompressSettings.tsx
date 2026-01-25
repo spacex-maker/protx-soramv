@@ -112,25 +112,25 @@ export interface AudioCompressSettingsProps {
   audioInfo?: { duration: number; sampleRate: number };
 }
 
-// 预设比特率
-const PRESET_BITRATES = [
-  { label: 'Auto', value: undefined },
-  { label: '320 kbps (最高质量)', value: 320 },
-  { label: '256 kbps (高质量)', value: 256 },
-  { label: '192 kbps (标准质量)', value: 192 },
-  { label: '128 kbps (中等质量)', value: 128 },
-  { label: '96 kbps (低质量)', value: 96 },
-  { label: '64 kbps (最低质量)', value: 64 },
+// 预设比特率（将在组件中使用 intl 动态生成）
+const PRESET_BITRATE_VALUES = [
+  { key: 'auto', value: undefined },
+  { key: '320', value: 320 },
+  { key: '256', value: 256 },
+  { key: '192', value: 192 },
+  { key: '128', value: 128 },
+  { key: '96', value: 96 },
+  { key: '64', value: 64 },
 ];
 
-// 预设采样率
-const PRESET_SAMPLE_RATES = [
-  { label: 'Auto', value: undefined },
-  { label: '48000 Hz', value: 48000 },
-  { label: '44100 Hz (CD质量)', value: 44100 },
-  { label: '32000 Hz', value: 32000 },
-  { label: '22050 Hz', value: 22050 },
-  { label: '16000 Hz', value: 16000 },
+// 预设采样率（将在组件中使用 intl 动态生成）
+const PRESET_SAMPLE_RATE_VALUES = [
+  { key: 'auto', value: undefined },
+  { key: '48000', value: 48000 },
+  { key: '44100', value: 44100 },
+  { key: '32000', value: 32000 },
+  { key: '22050', value: 22050 },
+  { key: '16000', value: 16000 },
 ];
 
 const AudioCompressSettings: React.FC<AudioCompressSettingsProps> = ({
@@ -154,6 +154,28 @@ const AudioCompressSettings: React.FC<AudioCompressSettingsProps> = ({
   audioInfo
 }) => {
   const intl = useIntl();
+
+  // 动态生成比特率选项
+  const PRESET_BITRATES = PRESET_BITRATE_VALUES.map(item => ({
+    label: item.key === 'auto' 
+      ? 'Auto'
+      : intl.formatMessage({ 
+          id: `audioCompress.bitrate.${item.key}`, 
+          defaultMessage: `${item.value} kbps` 
+        }),
+    value: item.value
+  }));
+
+  // 动态生成采样率选项
+  const PRESET_SAMPLE_RATES = PRESET_SAMPLE_RATE_VALUES.map(item => ({
+    label: item.key === 'auto'
+      ? 'Auto'
+      : intl.formatMessage({ 
+          id: `audioCompress.sampleRate.${item.key}`, 
+          defaultMessage: `${item.value} Hz` 
+        }),
+    value: item.value
+  }));
 
   return (
     <ControlPanel>
@@ -257,10 +279,34 @@ const AudioCompressSettings: React.FC<AudioCompressSettingsProps> = ({
             <Select
               value={format} onChange={setFormat} style={{ width: '100%' }}
               options={[
-                { value: 'mp3', label: 'MP3 (推荐)' },
-                { value: 'ogg', label: 'OGG' },
-                { value: 'aac', label: 'AAC' },
-                { value: 'wav', label: 'WAV' },
+                { 
+                  value: 'mp3', 
+                  label: intl.formatMessage({ 
+                    id: 'audioCompress.format.mp3', 
+                    defaultMessage: 'MP3 (推荐)' 
+                  }) 
+                },
+                { 
+                  value: 'ogg', 
+                  label: intl.formatMessage({ 
+                    id: 'audioCompress.format.ogg', 
+                    defaultMessage: 'OGG' 
+                  }) 
+                },
+                { 
+                  value: 'aac', 
+                  label: intl.formatMessage({ 
+                    id: 'audioCompress.format.aac', 
+                    defaultMessage: 'AAC' 
+                  }) 
+                },
+                { 
+                  value: 'wav', 
+                  label: intl.formatMessage({ 
+                    id: 'audioCompress.format.wav', 
+                    defaultMessage: 'WAV' 
+                  }) 
+                },
               ]}
             />
           </div>

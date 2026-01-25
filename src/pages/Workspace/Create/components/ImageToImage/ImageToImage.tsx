@@ -439,6 +439,8 @@ const ImageToImage: React.FC = () => {
 
   // 已完成任务的ID集合，用于防止重复处理
   const completedTasksRef = useRef<Set<string>>(new Set());
+  // 正在请求中的任务ID集合，用于防止并发请求
+  const pollingInProgressRef = useRef<Set<string>>(new Set());
 
   // 轮询任务状态 - 使用任务详情接口作为备选方案
   const pollTaskStatus = async (taskId: string, aspectRatio: string) => {
@@ -446,15 +448,29 @@ const ImageToImage: React.FC = () => {
       return;
     }
     
+    // 如果该任务正在请求中，跳过本次轮询
+    if (pollingInProgressRef.current.has(taskId)) {
+      console.log(`任务 ${taskId} 正在请求中，跳过本次轮询`);
+      return;
+    }
+    
+    // 标记该任务开始请求
+    pollingInProgressRef.current.add(taskId);
+    
     try {
       // 优先尝试图片任务状态查询接口（如果后端实现了）
       let response;
       try {
-        response = await instance.get(`/productx/sa-ai-models/image/task/${taskId}/status`);
+        // 设置较长的超时时间（60秒），方便后端调试
+        response = await instance.get(`/productx/sa-ai-models/image/task/${taskId}/status`, {
+          timeout: 60000
+        });
       } catch (error: any) {
         // 如果图片任务状态接口不存在，使用任务详情接口作为备选
         if (error.response?.status === 404) {
-          response = await instance.get(`/productx/sa-ai-gen-task/${taskId}/detail`);
+          response = await instance.get(`/productx/sa-ai-gen-task/${taskId}/detail`, {
+            timeout: 60000
+          });
           // 转换任务详情格式为标准格式
           if (response.data.success && response.data.data) {
             const task = response.data.data;
@@ -505,7 +521,7 @@ const ImageToImage: React.FC = () => {
           }
         } 
         // 如果任务失败
-        else if (status === 'failed' || status === 'error') {
+        else if (status === 'failed' || status === 'error' || status === 'fail') {
           completedTasksRef.current.add(taskId);
           stopTaskPolling(taskId);
           setLoading(false);
@@ -529,6 +545,9 @@ const ImageToImage: React.FC = () => {
       }
       
       console.error('查询任务状态失败:', error);
+    } finally {
+      // 请求完成后，移除标记
+      pollingInProgressRef.current.delete(taskId);
     }
   };
 

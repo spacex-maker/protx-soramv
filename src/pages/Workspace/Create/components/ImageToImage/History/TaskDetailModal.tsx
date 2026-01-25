@@ -54,7 +54,10 @@ const normalizeUrl = (url: string) => {
 
 const addImageCompressSuffix = (url: string, width = 1200) => {
   if (!url) return '';
+  // 如果已经包含压缩参数或是base64图片，直接返回
   if (url.includes('imageMogr2') || url.startsWith('data:')) return url;
+  // 如果是 webp 格式，不添加压缩参数（webp 本身已经是压缩格式）
+  if (url.toLowerCase().endsWith('.webp') || url.toLowerCase().includes('.webp?')) return url;
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}imageMogr2/format/webp/quality/80/thumbnail/${width}x`;
 };
