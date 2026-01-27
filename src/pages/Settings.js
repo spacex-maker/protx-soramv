@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import styled, { keyframes, css } from "styled-components";
+import React, { useState, useEffect, useRef, useCallback, useContext } from "react";
+import styled, { keyframes, css, ThemeContext } from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
@@ -551,6 +551,7 @@ const SettingsContent = () => {
   
   const [saving, setSaving] = useState(false);
   const saveTimeoutRef = React.useRef(null);
+  const themeContext = useContext(ThemeContext);
   
   // 自动保存函数（防抖）
   const autoSave = React.useCallback(async (settingsToSave) => {
@@ -591,6 +592,19 @@ const SettingsContent = () => {
     };
     
     setSettings(newSettings);
+    
+    // 如果更新的是主题设置，同步更新全局主题
+    if (category === 'interface' && key === 'theme' && themeContext?.setTheme) {
+      if (value === 'light') {
+        themeContext.setTheme(false);
+      } else if (value === 'dark') {
+        themeContext.setTheme(true);
+      } else if (value === 'auto') {
+        // 自动模式：根据系统偏好设置
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        themeContext.setTheme(prefersDark);
+      }
+    }
     
     // 清除之前的定时器
     if (saveTimeoutRef.current) {
@@ -708,6 +722,19 @@ const SettingsContent = () => {
             
             // 同步更新 localStorage
             localStorage.setItem('userSettings', JSON.stringify(frontendSettings));
+            
+            // 同步更新全局主题（默认是 auto 模式）
+            if (themeContext?.setTheme) {
+              const themeMode = frontendSettings.interface?.theme || 'auto';
+              if (themeMode === 'light') {
+                themeContext.setTheme(false);
+              } else if (themeMode === 'dark') {
+                themeContext.setTheme(true);
+              } else if (themeMode === 'auto') {
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                themeContext.setTheme(prefersDark);
+              }
+            }
             
             setHasChanges(false);
             message.success(intl.formatMessage({ id: 'settings.message.resetSuccess', defaultMessage: '已恢复默认设置' }));
@@ -1480,102 +1507,100 @@ const SettingsContent = () => {
               </div>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0' }}>
-              <SettingItem $token={token}>
-                <div className="item-info">
-                  <div className="label">
-                    <DesktopOutlined />
-                    {intl.formatMessage({ id: 'settings.performance.hardware', defaultMessage: '硬件加速' })}
-                  </div>
-                  <div className="description">
-                    {intl.formatMessage({ id: 'settings.performance.hardwareDesc', defaultMessage: '使用 GPU 加速渲染' })}
-                  </div>
+            <SettingItem $token={token}>
+              <div className="item-info">
+                <div className="label">
+                  <DesktopOutlined />
+                  {intl.formatMessage({ id: 'settings.performance.hardware', defaultMessage: '硬件加速' })}
                 </div>
-                <div className="item-control">
-                  <Switch 
-                    checked={settings.performance.hardwareAcceleration}
-                    onChange={(checked) => updateSetting('performance', 'hardwareAcceleration', checked)}
-                  />
+                <div className="description">
+                  {intl.formatMessage({ id: 'settings.performance.hardwareDesc', defaultMessage: '使用 GPU 加速渲染' })}
                 </div>
-              </SettingItem>
-              
-              <SettingItem $token={token}>
-                <div className="item-info">
-                  <div className="label">
-                    {intl.formatMessage({ id: 'settings.performance.preview', defaultMessage: '预览质量' })}
-                  </div>
-                  <div className="description">
-                    {intl.formatMessage({ id: 'settings.performance.previewDesc', defaultMessage: '预览图像的质量级别' })}
-                  </div>
+              </div>
+              <div className="item-control">
+                <Switch 
+                  checked={settings.performance.hardwareAcceleration}
+                  onChange={(checked) => updateSetting('performance', 'hardwareAcceleration', checked)}
+                />
+              </div>
+            </SettingItem>
+            
+            <SettingItem $token={token}>
+              <div className="item-info">
+                <div className="label">
+                  {intl.formatMessage({ id: 'settings.performance.preview', defaultMessage: '预览质量' })}
                 </div>
-                <div className="item-control">
-                  <Select
-                    value={settings.performance.previewQuality}
-                    onChange={(value) => updateSetting('performance', 'previewQuality', value)}
-                    style={{ width: 100 }}
-                    options={[
-                      { value: 'low', label: intl.formatMessage({ id: 'settings.preview.low', defaultMessage: '低' }) },
-                      { value: 'medium', label: intl.formatMessage({ id: 'settings.preview.medium', defaultMessage: '中' }) },
-                      { value: 'high', label: intl.formatMessage({ id: 'settings.preview.high', defaultMessage: '高' }) },
-                    ]}
-                  />
+                <div className="description">
+                  {intl.formatMessage({ id: 'settings.performance.previewDesc', defaultMessage: '预览图像的质量级别' })}
                 </div>
-              </SettingItem>
-              
-              <SettingItem $token={token}>
-                <div className="item-info">
-                  <div className="label">
-                    {intl.formatMessage({ id: 'settings.performance.autoClean', defaultMessage: '自动清理缓存' })}
-                    <FeatureBadge $token={token} $type="beta">
-                      BETA
-                    </FeatureBadge>
-                  </div>
-                  <div className="description">
-                    {intl.formatMessage({ id: 'settings.performance.autoCleanDesc', defaultMessage: '定期清理临时文件' })}
-                  </div>
+              </div>
+              <div className="item-control">
+                <Select
+                  value={settings.performance.previewQuality}
+                  onChange={(value) => updateSetting('performance', 'previewQuality', value)}
+                  style={{ width: 100 }}
+                  options={[
+                    { value: 'low', label: intl.formatMessage({ id: 'settings.preview.low', defaultMessage: '低' }) },
+                    { value: 'medium', label: intl.formatMessage({ id: 'settings.preview.medium', defaultMessage: '中' }) },
+                    { value: 'high', label: intl.formatMessage({ id: 'settings.preview.high', defaultMessage: '高' }) },
+                  ]}
+                />
+              </div>
+            </SettingItem>
+            
+            <SettingItem $token={token}>
+              <div className="item-info">
+                <div className="label">
+                  {intl.formatMessage({ id: 'settings.performance.autoClean', defaultMessage: '自动清理缓存' })}
+                  <FeatureBadge $token={token} $type="beta">
+                    BETA
+                  </FeatureBadge>
                 </div>
-                <div className="item-control">
-                  <Switch 
-                    checked={settings.performance.autoCleanCache}
-                    onChange={(checked) => updateSetting('performance', 'autoCleanCache', checked)}
-                  />
+                <div className="description">
+                  {intl.formatMessage({ id: 'settings.performance.autoCleanDesc', defaultMessage: '定期清理临时文件' })}
                 </div>
-              </SettingItem>
-              
-              <SettingItem $token={token}>
-                <div className="item-info">
-                  <div className="label">
-                    {intl.formatMessage({ id: 'settings.performance.imageCompression', defaultMessage: '图片压缩' })}
-                  </div>
-                  <div className="description">
-                    {intl.formatMessage({ id: 'settings.performance.imageCompressionDesc', defaultMessage: '自动压缩上传的图片' })}
-                  </div>
+              </div>
+              <div className="item-control">
+                <Switch 
+                  checked={settings.performance.autoCleanCache}
+                  onChange={(checked) => updateSetting('performance', 'autoCleanCache', checked)}
+                />
+              </div>
+            </SettingItem>
+            
+            <SettingItem $token={token}>
+              <div className="item-info">
+                <div className="label">
+                  {intl.formatMessage({ id: 'settings.performance.imageCompression', defaultMessage: '图片压缩' })}
                 </div>
-                <div className="item-control">
-                  <Switch 
-                    checked={settings.performance.imageCompression}
-                    onChange={(checked) => updateSetting('performance', 'imageCompression', checked)}
-                  />
+                <div className="description">
+                  {intl.formatMessage({ id: 'settings.performance.imageCompressionDesc', defaultMessage: '自动压缩上传的图片' })}
                 </div>
-              </SettingItem>
-              
-              <SettingItem $token={token}>
-                <div className="item-info">
-                  <div className="label">
-                    {intl.formatMessage({ id: 'settings.performance.lazyLoading', defaultMessage: '懒加载' })}
-                  </div>
-                  <div className="description">
-                    {intl.formatMessage({ id: 'settings.performance.lazyLoadingDesc', defaultMessage: '延迟加载页面内容' })}
-                  </div>
+              </div>
+              <div className="item-control">
+                <Switch 
+                  checked={settings.performance.imageCompression}
+                  onChange={(checked) => updateSetting('performance', 'imageCompression', checked)}
+                />
+              </div>
+            </SettingItem>
+            
+            <SettingItem $token={token}>
+              <div className="item-info">
+                <div className="label">
+                  {intl.formatMessage({ id: 'settings.performance.lazyLoading', defaultMessage: '懒加载' })}
                 </div>
-                <div className="item-control">
-                  <Switch 
-                    checked={settings.performance.lazyLoading}
-                    onChange={(checked) => updateSetting('performance', 'lazyLoading', checked)}
-                  />
+                <div className="description">
+                  {intl.formatMessage({ id: 'settings.performance.lazyLoadingDesc', defaultMessage: '延迟加载页面内容' })}
                 </div>
-              </SettingItem>
-            </div>
+              </div>
+              <div className="item-control">
+                <Switch 
+                  checked={settings.performance.lazyLoading}
+                  onChange={(checked) => updateSetting('performance', 'lazyLoading', checked)}
+                />
+              </div>
+            </SettingItem>
           </SettingCard>
           
           {/* 工作流设置 */}

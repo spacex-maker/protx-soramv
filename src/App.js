@@ -47,6 +47,7 @@ import ResumePage from './pages/Resume';
 import ImageCompress from './pages/Workspace/MediaTools/components/ImageCompress';
 import MediaToolsPage from './pages/MediaToolsPage';
 import SettingsPage from './pages/Settings';
+import { getUserSettings } from './api/settings';
 
 // 语言配置映射
 const localeMap = {
@@ -73,6 +74,8 @@ export default function App() {
     // 默认使用暗黑模式：如果有保存的主题则使用保存的，否则默认暗黑模式
     return savedTheme ? savedTheme === 'dark' : true;
   });
+  
+  const [isThemeLoaded, setIsThemeLoaded] = React.useState(false);
 
   const [locale, setLocale] = useState('zh_CN');
 
@@ -224,19 +227,68 @@ export default function App() {
     }
   }, []);
 
+  // 加载用户设置并初始化主题
   React.useEffect(() => {
-    handleThemeChange(isDark);
-    
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e) => {
-      if (!localStorage.getItem('theme')) {
-        handleThemeChange(e.matches);
+    const loadUserSettings = async () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const response = await getUserSettings();
+          if (response.data?.success && response.data?.data) {
+            const userSettings = response.data.data;
+            
+            // 从后端数据转换为前端格式
+            const themeMode = userSettings.interfaceTheme || 'auto';
+            
+            // 根据用户设置的主题模式设置主题
+            if (themeMode === 'light') {
+              handleThemeChange(false);
+            } else if (themeMode === 'dark') {
+              handleThemeChange(true);
+            } else if (themeMode === 'auto') {
+              // 自动模式：根据系统偏好
+              const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+              handleThemeChange(prefersDark);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to load user settings:', error);
+          // 如果加载失败，使用 localStorage 中的主题设置
+        }
       }
+      setIsThemeLoaded(true);
     };
+    
+    loadUserSettings();
+  }, [handleThemeChange]);
 
-    mediaQuery.addListener(handleChange);
-    return () => mediaQuery.removeListener(handleChange);
-  }, [handleThemeChange, isDark]);
+  React.useEffect(() => {
+    if (isThemeLoaded) {
+      handleThemeChange(isDark);
+      
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e) => {
+        const token = localStorage.getItem('token');
+        const savedSettings = localStorage.getItem('userSettings');
+        if (token && savedSettings) {
+          try {
+            const settings = JSON.parse(savedSettings);
+            // 只有在自动模式下才响应系统主题变化
+            if (settings.interface?.theme === 'auto') {
+              handleThemeChange(e.matches);
+            }
+          } catch (e) {
+            console.error('Failed to parse saved settings', e);
+          }
+        } else if (!localStorage.getItem('theme')) {
+          handleThemeChange(e.matches);
+        }
+      };
+
+      mediaQuery.addListener(handleChange);
+      return () => mediaQuery.removeListener(handleChange);
+    }
+  }, [handleThemeChange, isDark, isThemeLoaded]);
 
   // Manually set CSS variables
   React.useEffect(() => {

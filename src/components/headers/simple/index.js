@@ -25,7 +25,8 @@ const SimpleHeader = () => {
   const location = useLocation();
   const theme = React.useContext(ThemeContext);
   const intl = useIntl();
-  const [isDark, setIsDark] = useState(theme.mode === 'dark');
+  // 使用 theme.mode 而不是内部状态，确保与全局主题同步
+  const isDark = theme.mode === 'dark';
   // 先从 localStorage 加载旧的用户信息，避免页面刷新时闪烁
   const [userInfo, setUserInfo] = useState(() => {
     const token = localStorage.getItem('token');
@@ -90,7 +91,23 @@ const SimpleHeader = () => {
     
     const newIsDark = !isDark;
     theme.setTheme(newIsDark);
-    setIsDark(newIsDark);
+    
+    // 同时更新用户设置中的主题（如果用户已登录）
+    const token = localStorage.getItem('token');
+    if (token) {
+      const savedSettings = localStorage.getItem('userSettings');
+      if (savedSettings) {
+        try {
+          const settings = JSON.parse(savedSettings);
+          settings.interface = settings.interface || {};
+          // 手动切换时设置为对应的主题模式（而不是 auto）
+          settings.interface.theme = newIsDark ? 'dark' : 'light';
+          localStorage.setItem('userSettings', JSON.stringify(settings));
+        } catch (e) {
+          console.error('Failed to update settings', e);
+        }
+      }
+    }
   };
 
   const handleLogout = () => {
