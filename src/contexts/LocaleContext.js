@@ -105,19 +105,44 @@ export function LocaleProvider({ children }) {
       return LOCALES[urlLang];
     }
     
-    // 2. 其次从 localStorage 读取
+    // 2. 如果用户已登录，尝试从用户设置读取
+    const token = localStorage.getItem('token');
+    if (token) {
+      const userSettings = localStorage.getItem('userSettings');
+      if (userSettings) {
+        try {
+          const settings = JSON.parse(userSettings);
+          const userLang = settings.interface?.language;
+          if (userLang) {
+            // 转换格式: zh-CN -> zh 或直接使用
+            const langCode = userLang.split('-')[0].toLowerCase();
+            if (LOCALES[langCode]) {
+              return LOCALES[langCode];
+            }
+            // 也尝试直接匹配完整格式
+            if (messages[userLang]) {
+              return userLang;
+            }
+          }
+        } catch (e) {
+          console.error('Failed to parse user settings for locale', e);
+        }
+      }
+    }
+    
+    // 3. 其次从 localStorage 读取旧的 locale 设置
     const saved = localStorage.getItem('locale');
     if (saved && LOCALES[saved]) {
       return LOCALES[saved];
     }
     
-    // 3. 自动检测浏览器/系统语言
+    // 4. 自动检测浏览器/系统语言
     const detectedLang = detectBrowserLanguage();
     if (detectedLang) {
       return LOCALES[detectedLang];
     }
     
-    // 4. 默认中文
+    // 5. 默认中文
     return 'zh-CN';
   });
 
@@ -125,6 +150,22 @@ export function LocaleProvider({ children }) {
     const standardLocale = LOCALES[newLocale] || LOCALES['zh'];
     setLocale(standardLocale);
     localStorage.setItem('locale', newLocale);
+    
+    // 如果用户已登录，同步更新 userSettings
+    const token = localStorage.getItem('token');
+    if (token) {
+      const userSettings = localStorage.getItem('userSettings');
+      if (userSettings) {
+        try {
+          const settings = JSON.parse(userSettings);
+          settings.interface = settings.interface || {};
+          settings.interface.language = standardLocale;
+          localStorage.setItem('userSettings', JSON.stringify(settings));
+        } catch (e) {
+          console.error('Failed to update user settings locale', e);
+        }
+      }
+    }
   };
 
   return (

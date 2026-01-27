@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
 import { getUserSettings, saveUserSettings, resetUserSettings } from "api/settings";
+import { base } from "api/base";
+import { useLocale } from "contexts/LocaleContext";
 import { 
   ConfigProvider, 
   theme, 
@@ -453,6 +455,10 @@ const FeatureBadge = styled.span`
 const SettingsContent = () => {
   const { token } = theme.useToken();
   const intl = useIntl();
+  const { changeLocale } = useLocale();
+  
+  // 语言列表状态
+  const [languages, setLanguages] = useState([]);
   
   // 设置状态
   const [settings, setSettings] = useState({
@@ -606,6 +612,13 @@ const SettingsContent = () => {
       }
     }
     
+    // 如果更新的是语言设置，同步更新全局语言
+    if (category === 'interface' && key === 'language' && changeLocale) {
+      // 转换格式: zh-CN -> zh
+      const langCode = value.split('-')[0].toLowerCase();
+      changeLocale(langCode);
+    }
+    
     // 清除之前的定时器
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
@@ -736,6 +749,13 @@ const SettingsContent = () => {
               }
             }
             
+            // 同步更新全局语言（默认是 zh-CN）
+            if (changeLocale) {
+              const language = frontendSettings.interface?.language || 'zh-CN';
+              const langCode = language.split('-')[0].toLowerCase();
+              changeLocale(langCode);
+            }
+            
             setHasChanges(false);
             message.success(intl.formatMessage({ id: 'settings.message.resetSuccess', defaultMessage: '已恢复默认设置' }));
           } else {
@@ -748,6 +768,22 @@ const SettingsContent = () => {
       }
     });
   };
+  
+  // 获取支持的语言列表
+  useEffect(() => {
+    const fetchLanguages = async () => {
+      try {
+        const result = await base.getEnabledLanguages();
+        if (result.success) {
+          const sortedLanguages = result.data.sort((a, b) => b.usageCount - a.usageCount);
+          setLanguages(sortedLanguages);
+        }
+      } catch (error) {
+        console.error('获取语言列表失败:', error);
+      }
+    };
+    fetchLanguages();
+  }, []);
   
   // 加载保存的设置
   useEffect(() => {
@@ -1168,13 +1204,12 @@ const SettingsContent = () => {
                 <Select
                   value={settings.interface.language}
                   onChange={(value) => updateSetting('interface', 'language', value)}
-                  style={{ width: 120 }}
-                  options={[
-                    { value: 'zh-CN', label: '简体中文' },
-                    { value: 'en-US', label: 'English' },
-                    { value: 'ja-JP', label: '日本語' },
-                    { value: 'ko-KR', label: '한국어' },
-                  ]}
+                  style={{ width: 150 }}
+                  options={languages.map(lang => ({
+                    value: lang.languageCode,
+                    label: lang.languageNameNative
+                  }))}
+                  placeholder={intl.formatMessage({ id: 'settings.interface.selectLanguage', defaultMessage: '选择语言' })}
                 />
               </div>
             </SettingItem>
