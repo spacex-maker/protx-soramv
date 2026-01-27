@@ -515,6 +515,8 @@ export default {
   'create.prompt.enhance.success': 'Prompt arricchito con successo!',
   'create.prompt.enhance.empty.result': 'Nessun prompt arricchito generato, riprova',
   'create.prompt.enhance.error': 'Arricchimento prompt fallito, riprova',
+  'create.prompt.version.history': 'Cronologia Versioni',
+  'create.prompt.version.history.tooltip': 'Visualizza cronologia versioni del prompt',
   // TaskDetailModal nuova internazionalizzazione
   'create.taskDetail.unnamedTask': 'Attività senza nome',
   'create.taskDetail.prompt.title': 'Prompt',
@@ -1841,4 +1843,9 @@ export default {
   'settings.confirm.resetContent': 'Ripristinare tutte le impostazioni ai valori predefiniti?',
   'settings.confirm.reset': 'Ripristina',
   'settings.confirm.cancel': 'Annulla',
+
+  // Prompt Version History
+  'prompt.version.label.prompt': 'Prompt',
+  'prompt.version.label.negativePrompt': 'Prompt Negativo',
+  'prompt.version.label.result': 'Risultato',
 }; 

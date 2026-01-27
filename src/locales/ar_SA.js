@@ -511,6 +511,8 @@ export default {
   'create.prompt.enhance.success': 'تم إثراء المطالبة بنجاح!',
   'create.prompt.enhance.empty.result': 'لم يتم إنشاء مطالبة مُثراة، يرجى المحاولة مرة أخرى',
   'create.prompt.enhance.error': 'فشل إثراء المطالبة، يرجى المحاولة مرة أخرى',
+  'create.prompt.version.history': 'سجل الإصدارات',
+  'create.prompt.version.history.tooltip': 'عرض سجل إصدارات المطالبة',
   // TaskDetailModal تدويل جديد
   'create.taskDetail.unnamedTask': 'مهمة بدون اسم',
   'create.taskDetail.prompt.title': 'المطالبة',
@@ -2099,4 +2101,9 @@ export default {
   'settings.confirm.resetContent': 'استعادة جميع الإعدادات إلى القيمة الافتراضية؟',
   'settings.confirm.reset': 'استعادة',
   'settings.confirm.cancel': 'إلغاء',
+
+  // Prompt Version History
+  'prompt.version.label.prompt': 'الأمر',
+  'prompt.version.label.negativePrompt': 'الأمر السلبي',
+  'prompt.version.label.result': 'النتيجة',
 }; 

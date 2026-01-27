@@ -580,6 +580,8 @@ export default {
   'create.prompt.enhance.success': 'Prompt enrichi avec succès !',
   'create.prompt.enhance.empty.result': 'Aucun prompt enrichi généré, veuillez réessayer',
   'create.prompt.enhance.error': 'Échec de l\'enrichissement du prompt, veuillez réessayer',
+  'create.prompt.version.history': 'Historique des Versions',
+  'create.prompt.version.history.tooltip': 'Voir l\'historique des versions du prompt',
   // TaskDetailModal nouvelle internationalisation
   'create.taskDetail.unnamedTask': 'Tâche sans nom',
   'create.taskDetail.prompt.title': 'Prompt',
@@ -1906,4 +1908,9 @@ export default {
   'settings.confirm.resetContent': 'Êtes-vous sûr de vouloir réinitialiser tous les paramètres aux valeurs par défaut ?',
   'settings.confirm.reset': 'Réinitialiser',
   'settings.confirm.cancel': 'Annuler',
+
+  // Prompt Version History
+  'prompt.version.label.prompt': 'Prompt',
+  'prompt.version.label.negativePrompt': 'Prompt Négatif',
+  'prompt.version.label.result': 'Résultat',
 }; 

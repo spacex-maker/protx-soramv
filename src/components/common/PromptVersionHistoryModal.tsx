@@ -238,9 +238,9 @@ const VersionPrompt = styled.div`
   border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)'};
   position: relative;
   
-  /* 提示词标签 */
+  /* 提示词标签 - 使用 data-label 属性 */
   &::before {
-    content: '提示词';
+    content: attr(data-label);
     position: absolute;
     top: -8px;
     left: 12px;
@@ -265,9 +265,9 @@ const VersionNegativePrompt = styled.div`
   border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.06)'};
   position: relative;
   
-  /* 反向提示词标签 */
+  /* 反向提示词标签 - 使用 data-label 属性 */
   &::before {
-    content: '反向提示词';
+    content: attr(data-label);
     position: absolute;
     top: -8px;
     left: 12px;
@@ -372,9 +372,9 @@ const ResultMessage = styled.div<{ status?: number }>`
     }
   }}
   
-  /* 结果消息标签 */
+  /* 结果消息标签 - 使用 data-label 属性 */
   &::before {
-    content: '执行结果';
+    content: attr(data-label);
     position: absolute;
     top: -8px;
     left: 12px;
@@ -811,9 +811,21 @@ const PromptVersionHistoryModal: React.FC<PromptVersionHistoryModalProps> = ({
                   </VersionActions>
                 </VersionHeader>
                 <PromptContent>
-                  <VersionPrompt>{version.prompt}</VersionPrompt>
+                  <VersionPrompt
+                    data-label={intl.formatMessage({
+                      id: 'prompt.version.label.prompt',
+                      defaultMessage: '提示词',
+                    })}
+                  >
+                    {version.prompt}
+                  </VersionPrompt>
                   {version.negativePrompt && (
-                    <VersionNegativePrompt>
+                    <VersionNegativePrompt
+                      data-label={intl.formatMessage({
+                        id: 'prompt.version.label.negativePrompt',
+                        defaultMessage: '反向提示词',
+                      })}
+                    >
                       {version.negativePrompt}
                     </VersionNegativePrompt>
                   )}
@@ -821,7 +833,13 @@ const PromptVersionHistoryModal: React.FC<PromptVersionHistoryModalProps> = ({
                 {(version.status !== undefined && version.status !== null) || version.resultMessage ? (
                   <StatusSection>
                     {version.resultMessage && (
-                      <ResultMessage status={version.status}>
+                      <ResultMessage
+                        status={version.status}
+                        data-label={intl.formatMessage({
+                          id: 'prompt.version.label.result',
+                          defaultMessage: '执行结果',
+                        })}
+                      >
                         {version.resultMessage}
                       </ResultMessage>
                     )}

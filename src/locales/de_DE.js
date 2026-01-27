@@ -566,6 +566,8 @@ export default {
   'create.prompt.enhance.success': 'Prompt erfolgreich angereichert!',
   'create.prompt.enhance.empty.result': 'Kein angereicherter Prompt generiert, bitte versuchen Sie es erneut',
   'create.prompt.enhance.error': 'Prompt-Anreicherung fehlgeschlagen, bitte versuchen Sie es erneut',
+  'create.prompt.version.history': 'Versionsverlauf',
+  'create.prompt.version.history.tooltip': 'Prompt-Versionsverlauf anzeigen',
   // TaskDetailModal neue Internationalisierung
   'create.taskDetail.unnamedTask': 'Unbenannte Aufgabe',
   'create.taskDetail.prompt.title': 'Prompt',
@@ -1892,4 +1894,9 @@ export default {
   'settings.confirm.resetContent': 'Alle Einstellungen auf Standard zurücksetzen?',
   'settings.confirm.reset': 'Zurücksetzen',
   'settings.confirm.cancel': 'Abbrechen',
+
+  // Prompt Version History
+  'prompt.version.label.prompt': 'Eingabeaufforderung',
+  'prompt.version.label.negativePrompt': 'Negative Eingabeaufforderung',
+  'prompt.version.label.result': 'Ergebnis',
 }; 

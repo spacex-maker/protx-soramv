@@ -653,6 +653,8 @@ export default {
   'create.prompt.enhance.success': '提示词丰富成功！',
   'create.prompt.enhance.empty.result': '未生成丰富后的提示词，请重试',
   'create.prompt.enhance.error': '提示词丰富失败，请重试',
+  'create.prompt.version.history': '版本历史',
+  'create.prompt.version.history.tooltip': '查看提示词版本历史',
   // TaskDetailModal 新增国际化
   'create.taskDetail.unnamedTask': '未命名任务',
   'create.taskDetail.prompt.title': 'Prompt / 提示词',
@@ -2187,4 +2189,9 @@ export default {
   'settings.confirm.resetContent': '确定要将所有设置恢复为默认值吗？',
   'settings.confirm.reset': '重置',
   'settings.confirm.cancel': '取消',
+
+  // Prompt Version History
+  'prompt.version.label.prompt': '提示词',
+  'prompt.version.label.negativePrompt': '反向提示词',
+  'prompt.version.label.result': '执行结果',
 }; 

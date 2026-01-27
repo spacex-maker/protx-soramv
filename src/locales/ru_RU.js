@@ -495,6 +495,8 @@ export default {
   'create.prompt.enhance.success': 'Промпт успешно обогащен!',
   'create.prompt.enhance.empty.result': 'Обогащенный промпт не сгенерирован, пожалуйста, попробуйте снова',
   'create.prompt.enhance.error': 'Ошибка обогащения промпта, пожалуйста, попробуйте снова',
+  'create.prompt.version.history': 'История Версий',
+  'create.prompt.version.history.tooltip': 'Просмотр истории версий промпта',
   // TaskDetailModal новая интернационализация
   'create.taskDetail.unnamedTask': 'Безымянная задача',
   'create.taskDetail.prompt.title': 'Промпт',
@@ -1821,4 +1823,9 @@ export default {
   'settings.confirm.resetContent': 'Сбросить все настройки по умолчанию?',
   'settings.confirm.reset': 'Сбросить',
   'settings.confirm.cancel': 'Отмена',
+
+  // Prompt Version History
+  'prompt.version.label.prompt': 'Промпт',
+  'prompt.version.label.negativePrompt': 'Негативный промпт',
+  'prompt.version.label.result': 'Результат',
 }; 

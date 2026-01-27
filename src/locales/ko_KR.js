@@ -565,6 +565,8 @@ export default {
   'create.prompt.enhance.success': '프롬프트 강화 성공!',
   'create.prompt.enhance.empty.result': '강화된 프롬프트가 생성되지 않았습니다. 다시 시도하세요',
   'create.prompt.enhance.error': '프롬프트 강화 실패, 다시 시도하세요',
+  'create.prompt.version.history': '버전 기록',
+  'create.prompt.version.history.tooltip': '프롬프트 버전 기록 보기',
   // TaskDetailModal 새 국제화
   'create.taskDetail.unnamedTask': '이름 없는 작업',
   'create.taskDetail.prompt.title': '프롬프트',
@@ -1946,4 +1948,9 @@ export default {
   'settings.confirm.resetContent': '모든 설정을 기본값으로 재설정하시겠습니까?',
   'settings.confirm.reset': '재설정',
   'settings.confirm.cancel': '취소',
+
+  // Prompt Version History
+  'prompt.version.label.prompt': '프롬프트',
+  'prompt.version.label.negativePrompt': '네거티브 프롬프트',
+  'prompt.version.label.result': '실행 결과',
 }; 

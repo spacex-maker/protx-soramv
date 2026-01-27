@@ -585,6 +585,8 @@ export default {
   'create.prompt.enhance.success': 'プロンプトの強化に成功しました！',
   'create.prompt.enhance.empty.result': '強化されたプロンプトが生成されませんでした。再試行してください',
   'create.prompt.enhance.error': 'プロンプトの強化に失敗しました。再試行してください',
+  'create.prompt.version.history': 'バージョン履歴',
+  'create.prompt.version.history.tooltip': 'プロンプトバージョン履歴を表示',
   // TaskDetailModal 新規国際化
   'create.taskDetail.unnamedTask': '名前のないタスク',
   'create.taskDetail.prompt.title': 'プロンプト',
@@ -1994,4 +1996,9 @@ export default {
   'settings.confirm.resetContent': 'すべての設定をデフォルト値にリセットしてもよろしいですか？',
   'settings.confirm.reset': 'リセット',
   'settings.confirm.cancel': 'キャンセル',
+
+  // Prompt Version History
+  'prompt.version.label.prompt': 'プロンプト',
+  'prompt.version.label.negativePrompt': 'ネガティブプロンプト',
+  'prompt.version.label.result': '実行結果',
 }; 
