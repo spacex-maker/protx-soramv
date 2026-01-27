@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import styled, { keyframes, css } from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
+import { getUserSettings, saveUserSettings, resetUserSettings } from "api/settings";
 import { 
   ConfigProvider, 
   theme, 
@@ -41,11 +42,10 @@ import {
   FilterOutlined,
   FileImageOutlined,
   TagOutlined,
-  CloudUploadOutlined,
+  CloudServerOutlined,
   MessageOutlined,
   UserAddOutlined,
   HeartOutlined,
-  ShieldOutlined,
   LoginOutlined
 } from "@ant-design/icons";
 
@@ -549,42 +549,58 @@ const SettingsContent = () => {
     }
   });
   
-  const [hasChanges, setHasChanges] = useState(false);
   const [saving, setSaving] = useState(false);
+  const saveTimeoutRef = React.useRef(null);
   
-  // 更新设置
+  // 自动保存函数（防抖）
+  const autoSave = React.useCallback(async (settingsToSave) => {
+    try {
+      // 转换前端数据格式为后端格式
+      const requestData = convertToBackendFormat(settingsToSave);
+      
+      // 调用后端 API
+      const response = await saveUserSettings(requestData);
+      
+      if (response.data.success) {
+        // 保存到 localStorage 作为本地缓存
+        localStorage.setItem('userSettings', JSON.stringify(settingsToSave));
+        
+        message.success({
+          content: intl.formatMessage({ id: 'settings.message.autoSaved', defaultMessage: '设置已自动保存' }),
+          icon: <CheckCircleFilled style={{ color: token.colorSuccess }} />,
+          duration: 1.5,
+        });
+      }
+    } catch (error) {
+      console.error('自动保存设置失败:', error);
+      message.error({
+        content: error.response?.data?.message || intl.formatMessage({ id: 'settings.message.saveFailed', defaultMessage: '保存失败，请重试' }),
+        duration: 2,
+      });
+    }
+  }, [intl, token]);
+  
+  // 更新设置（带自动保存）
   const updateSetting = (category, key, value) => {
-    setSettings(prev => ({
-      ...prev,
+    const newSettings = {
+      ...settings,
       [category]: {
-        ...prev[category],
+        ...settings[category],
         [key]: value
       }
-    }));
-    setHasChanges(true);
-  };
-  
-  // 保存设置
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      // 模拟 API 调用
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // 保存到 localStorage
-      localStorage.setItem('userSettings', JSON.stringify(settings));
-      
-      message.success({
-        content: intl.formatMessage({ id: 'settings.message.saveSuccess', defaultMessage: '设置已保存' }),
-        icon: <CheckCircleFilled style={{ color: token.colorSuccess }} />,
-      });
-      
-      setHasChanges(false);
-    } catch (error) {
-      message.error(intl.formatMessage({ id: 'settings.message.saveFailed', defaultMessage: '保存失败，请重试' }));
-    } finally {
-      setSaving(false);
+    };
+    
+    setSettings(newSettings);
+    
+    // 清除之前的定时器
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
     }
+    
+    // 设置新的定时器，800ms 后自动保存
+    saveTimeoutRef.current = setTimeout(() => {
+      autoSave(newSettings);
+    }, 800);
   };
   
   // 重置设置
@@ -595,7 +611,12 @@ const SettingsContent = () => {
       okText: intl.formatMessage({ id: 'settings.confirm.reset', defaultMessage: '重置' }),
       cancelText: intl.formatMessage({ id: 'settings.confirm.cancel', defaultMessage: '取消' }),
       okButtonProps: { danger: true },
-      onOk: () => {
+      onOk: async () => {
+        try {
+          // 调用后端 API 重置
+          const response = await resetUserSettings();
+          
+          if (response.data.success) {
         // 恢复默认设置
       const defaultSettings = {
         notifications: {
@@ -681,24 +702,245 @@ const SettingsContent = () => {
           deviceVerification: true,
         }
       };
-        setSettings(defaultSettings);
-        setHasChanges(true);
-        message.success(intl.formatMessage({ id: 'settings.message.resetSuccess', defaultMessage: '已恢复默认设置' }));
+            // 转换后端返回的数据为前端格式
+            const frontendSettings = convertToFrontendFormat(response.data.data);
+            setSettings(frontendSettings);
+            
+            // 同步更新 localStorage
+            localStorage.setItem('userSettings', JSON.stringify(frontendSettings));
+            
+            setHasChanges(false);
+            message.success(intl.formatMessage({ id: 'settings.message.resetSuccess', defaultMessage: '已恢复默认设置' }));
+          } else {
+            throw new Error(response.data.message || '重置失败');
+          }
+        } catch (error) {
+          console.error('重置设置失败:', error);
+          message.error(error.response?.data?.message || '重置失败，请重试');
+        }
       }
     });
   };
   
   // 加载保存的设置
   useEffect(() => {
-    const savedSettings = localStorage.getItem('userSettings');
-    if (savedSettings) {
+    const loadSettings = async () => {
       try {
-        setSettings(JSON.parse(savedSettings));
-      } catch (e) {
-        console.error('Failed to parse saved settings', e);
+        // 优先从后端加载设置
+        const response = await getUserSettings();
+        
+        if (response.data.success && response.data.data) {
+          const frontendSettings = convertToFrontendFormat(response.data.data);
+          setSettings(frontendSettings);
+          
+          // 同步到 localStorage
+          localStorage.setItem('userSettings', JSON.stringify(frontendSettings));
+        } else {
+          // 如果后端没有数据，尝试从 localStorage 加载
+          const savedSettings = localStorage.getItem('userSettings');
+          if (savedSettings) {
+            setSettings(JSON.parse(savedSettings));
+          }
+        }
+      } catch (error) {
+        console.error('加载设置失败:', error);
+        
+        // 失败时尝试从 localStorage 加载
+        const savedSettings = localStorage.getItem('userSettings');
+        if (savedSettings) {
+          try {
+            setSettings(JSON.parse(savedSettings));
+          } catch (e) {
+            console.error('Failed to parse saved settings', e);
+          }
+        }
       }
-    }
+    };
+    
+    loadSettings();
+    
+    // 清理定时器
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, []);
+  
+  // 转换前端格式到后端格式
+  const convertToBackendFormat = (frontendSettings) => {
+    return {
+      // 通知设置
+      notificationEmailEnabled: frontendSettings.notifications.email,
+      notificationPushEnabled: frontendSettings.notifications.push,
+      notificationDesktopEnabled: frontendSettings.notifications.desktop,
+      notificationSoundEnabled: frontendSettings.notifications.sound,
+      notificationTaskComplete: frontendSettings.notifications.taskComplete,
+      notificationSystemUpdate: frontendSettings.notifications.systemUpdate,
+      notificationCommunityActivity: frontendSettings.notifications.communityActivity,
+      notificationMarketing: frontendSettings.notifications.marketing,
+      notificationVolume: frontendSettings.notifications.volume,
+      
+      // 界面设置
+      interfaceTheme: frontendSettings.interface.theme,
+      interfaceLanguage: frontendSettings.interface.language,
+      interfaceFontSize: frontendSettings.interface.fontSize,
+      interfaceCompactMode: frontendSettings.interface.compactMode,
+      interfaceAnimationEnabled: frontendSettings.interface.animationEnabled,
+      interfaceSidebarCollapsed: frontendSettings.interface.sidebarCollapsed,
+      interfaceShowTips: frontendSettings.interface.showTips,
+      interfaceAccentColor: frontendSettings.interface.accentColor,
+      
+      // AI 设置
+      aiAutoOptimize: frontendSettings.ai.autoOptimize,
+      aiQualityPreset: frontendSettings.ai.qualityPreset,
+      aiAutoSave: frontendSettings.ai.autoSave,
+      aiCloudSync: frontendSettings.ai.cloudSync,
+      aiSafetyFilter: frontendSettings.ai.safetyFilter,
+      aiWatermarkEnabled: frontendSettings.ai.watermarkEnabled,
+      aiAutoEnhance: frontendSettings.ai.autoEnhance,
+      aiPromptSuggestions: frontendSettings.ai.promptSuggestions,
+      
+      // 隐私设置
+      privacyProfileVisible: frontendSettings.privacy.profileVisible,
+      privacyShowActivity: frontendSettings.privacy.showActivity,
+      privacyAllowAnalytics: frontendSettings.privacy.allowAnalytics,
+      privacyDataCollection: frontendSettings.privacy.dataCollection,
+      privacyShowWorks: frontendSettings.privacy.showWorks,
+      privacyAllowComments: frontendSettings.privacy.allowComments,
+      privacyAllowDownload: frontendSettings.privacy.allowDownload,
+      privacySearchIndexing: frontendSettings.privacy.searchIndexing,
+      
+      // 性能设置
+      performanceHardwareAcceleration: frontendSettings.performance.hardwareAcceleration,
+      performancePreviewQuality: frontendSettings.performance.previewQuality,
+      performanceCacheSize: frontendSettings.performance.cacheSize,
+      performanceAutoCleanCache: frontendSettings.performance.autoCleanCache,
+      performanceMaxConcurrentTasks: frontendSettings.performance.maxConcurrentTasks,
+      performanceImageCompression: frontendSettings.performance.imageCompression,
+      performanceLazyLoading: frontendSettings.performance.lazyLoading,
+      performanceAutoSaveInterval: frontendSettings.performance.autoSaveInterval,
+      
+      // 工作流设置
+      workflowDefaultResolution: frontendSettings.workflow.defaultResolution,
+      workflowDefaultSteps: frontendSettings.workflow.defaultSteps,
+      workflowDefaultGuidance: frontendSettings.workflow.defaultGuidance,
+      workflowSaveHistory: frontendSettings.workflow.saveHistory,
+      workflowAutoTag: frontendSettings.workflow.autoTag,
+      workflowTemplateEnabled: frontendSettings.workflow.templateEnabled,
+      
+      // 文件管理设置
+      fileAutoBackup: frontendSettings.fileManagement.autoBackup,
+      fileBackupFrequency: frontendSettings.fileManagement.backupFrequency,
+      fileMaxStorage: frontendSettings.fileManagement.maxStorage,
+      fileAutoOrganize: frontendSettings.fileManagement.autoOrganize,
+      fileTrashAutoCleanDays: frontendSettings.fileManagement.trashAutoCleanDays,
+      fileDefaultFormat: frontendSettings.fileManagement.defaultFormat,
+      
+      // 社交设置
+      socialAllowFollow: frontendSettings.social.allowFollow,
+      socialAllowMessage: frontendSettings.social.allowMessage,
+      socialShowFollowing: frontendSettings.social.showFollowing,
+      socialShowFollowers: frontendSettings.social.showFollowers,
+      socialAutoLikeNotify: frontendSettings.social.autoLikeNotify,
+      socialMentionNotify: frontendSettings.social.mentionNotify,
+      
+      // 安全设置
+      securityTwoFactorEnabled: frontendSettings.security.twoFactorEnabled,
+      securityLoginNotification: frontendSettings.security.loginNotification,
+      securitySessionTimeout: frontendSettings.security.sessionTimeout,
+      securityAutoLogoutIdle: frontendSettings.security.autoLogoutIdle,
+      securityDeviceVerification: frontendSettings.security.deviceVerification,
+    };
+  };
+  
+  // 转换后端格式到前端格式
+  const convertToFrontendFormat = (backendData) => {
+    return {
+      notifications: {
+        email: backendData.notificationEmailEnabled,
+        push: backendData.notificationPushEnabled,
+        desktop: backendData.notificationDesktopEnabled,
+        sound: backendData.notificationSoundEnabled,
+        taskComplete: backendData.notificationTaskComplete,
+        systemUpdate: backendData.notificationSystemUpdate,
+        communityActivity: backendData.notificationCommunityActivity,
+        marketing: backendData.notificationMarketing,
+        volume: backendData.notificationVolume,
+      },
+      interface: {
+        theme: backendData.interfaceTheme,
+        language: backendData.interfaceLanguage,
+        fontSize: backendData.interfaceFontSize,
+        compactMode: backendData.interfaceCompactMode,
+        animationEnabled: backendData.interfaceAnimationEnabled,
+        sidebarCollapsed: backendData.interfaceSidebarCollapsed,
+        showTips: backendData.interfaceShowTips,
+        accentColor: backendData.interfaceAccentColor,
+      },
+      ai: {
+        autoOptimize: backendData.aiAutoOptimize,
+        qualityPreset: backendData.aiQualityPreset,
+        autoSave: backendData.aiAutoSave,
+        cloudSync: backendData.aiCloudSync,
+        safetyFilter: backendData.aiSafetyFilter,
+        watermarkEnabled: backendData.aiWatermarkEnabled,
+        autoEnhance: backendData.aiAutoEnhance,
+        promptSuggestions: backendData.aiPromptSuggestions,
+      },
+      privacy: {
+        profileVisible: backendData.privacyProfileVisible,
+        showActivity: backendData.privacyShowActivity,
+        allowAnalytics: backendData.privacyAllowAnalytics,
+        dataCollection: backendData.privacyDataCollection,
+        showWorks: backendData.privacyShowWorks,
+        allowComments: backendData.privacyAllowComments,
+        allowDownload: backendData.privacyAllowDownload,
+        searchIndexing: backendData.privacySearchIndexing,
+      },
+      performance: {
+        hardwareAcceleration: backendData.performanceHardwareAcceleration,
+        previewQuality: backendData.performancePreviewQuality,
+        cacheSize: backendData.performanceCacheSize,
+        autoCleanCache: backendData.performanceAutoCleanCache,
+        maxConcurrentTasks: backendData.performanceMaxConcurrentTasks,
+        imageCompression: backendData.performanceImageCompression,
+        lazyLoading: backendData.performanceLazyLoading,
+        autoSaveInterval: backendData.performanceAutoSaveInterval,
+      },
+      workflow: {
+        defaultResolution: backendData.workflowDefaultResolution,
+        defaultSteps: backendData.workflowDefaultSteps,
+        defaultGuidance: backendData.workflowDefaultGuidance,
+        saveHistory: backendData.workflowSaveHistory,
+        autoTag: backendData.workflowAutoTag,
+        templateEnabled: backendData.workflowTemplateEnabled,
+      },
+      fileManagement: {
+        autoBackup: backendData.fileAutoBackup,
+        backupFrequency: backendData.fileBackupFrequency,
+        maxStorage: backendData.fileMaxStorage,
+        autoOrganize: backendData.fileAutoOrganize,
+        trashAutoCleanDays: backendData.fileTrashAutoCleanDays,
+        defaultFormat: backendData.fileDefaultFormat,
+      },
+      social: {
+        allowFollow: backendData.socialAllowFollow,
+        allowMessage: backendData.socialAllowMessage,
+        showFollowing: backendData.socialShowFollowing,
+        showFollowers: backendData.socialShowFollowers,
+        autoLikeNotify: backendData.socialAutoLikeNotify,
+        mentionNotify: backendData.socialMentionNotify,
+      },
+      security: {
+        twoFactorEnabled: backendData.securityTwoFactorEnabled,
+        loginNotification: backendData.securityLoginNotification,
+        sessionTimeout: backendData.securitySessionTimeout,
+        autoLogoutIdle: backendData.securityAutoLogoutIdle,
+        deviceVerification: backendData.securityDeviceVerification,
+      },
+    };
+  };
   
   return (
     <PageLayout $token={token}>
@@ -1453,7 +1695,7 @@ const SettingsContent = () => {
             <SettingItem $token={token}>
               <div className="item-info">
                 <div className="label">
-                  <CloudUploadOutlined />
+                  <CloudServerOutlined />
                   {intl.formatMessage({ id: 'settings.file.autoBackup', defaultMessage: '自动备份' })}
                   <FeatureBadge $token={token} $type="new">
                     NEW
@@ -1636,7 +1878,7 @@ const SettingsContent = () => {
           >
             <div className="card-header">
               <div className="icon-box">
-                <ShieldOutlined />
+                <SafetyOutlined />
               </div>
               <div className="title-group">
                 <h3>{intl.formatMessage({ id: 'settings.security.title', defaultMessage: '账户安全' })}</h3>
@@ -1721,18 +1963,6 @@ const SettingsContent = () => {
         
         {/* 操作按钮 */}
         <ActionBar $token={token}>
-          <SaveButton
-            $token={token}
-            type="primary"
-            size="large"
-            icon={<SaveOutlined />}
-            onClick={handleSave}
-            loading={saving}
-            disabled={!hasChanges}
-          >
-            {intl.formatMessage({ id: 'settings.button.save', defaultMessage: '保存设置' })}
-          </SaveButton>
-          
           <Button
             size="large"
             icon={<ReloadOutlined />}
@@ -1746,6 +1976,17 @@ const SettingsContent = () => {
           >
             {intl.formatMessage({ id: 'settings.button.reset', defaultMessage: '恢复默认' })}
           </Button>
+          
+          <div style={{ 
+            color: token.colorTextSecondary, 
+            fontSize: 14,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8
+          }}>
+            <CheckCircleFilled style={{ color: token.colorSuccess }} />
+            {intl.formatMessage({ id: 'settings.autoSaveHint', defaultMessage: '设置将自动保存' })}
+          </div>
         </ActionBar>
         
       </ContentContainer>

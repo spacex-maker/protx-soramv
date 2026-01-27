@@ -2179,8 +2179,10 @@ export default {
   'settings.badge.recommended': '推荐',
   // Messages
   'settings.message.saveSuccess': '设置已保存',
+  'settings.message.autoSaved': '设置已自动保存',
   'settings.message.saveFailed': '保存失败，请重试',
   'settings.message.resetSuccess': '已恢复默认设置',
+  'settings.autoSaveHint': '设置将自动保存',
   'settings.confirm.resetTitle': '确认重置',
   'settings.confirm.resetContent': '确定要将所有设置恢复为默认值吗？',
   'settings.confirm.reset': '重置',
