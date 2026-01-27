@@ -1234,6 +1234,27 @@ export default {
   'home.features.multimodal.title': 'Écosystème multimodal',
   'home.features.multimodal.description': 'Non seulement prend en charge la génération d\'images à partir de texte de Stable Diffusion, mais intègre également le transfert de style de Midjourney et la synthèse audio d\'ElevenLabs. Complétez toutes les créations dans un flux de travail.',
   
+  // Section communauté de la page d'accueil
+  'home.community.title': 'Explorez les communautés créatives IA',
+  'home.community.subtitle': 'Rejoignez des millions de créateurs, partagez vos chefs-d\'œuvre IA et obtenez inspiration et commentaires',
+  'home.community.hot': 'Populaire',
+  'home.community.explore': 'Explorer la communauté',
+  'home.community.stats.works': 'Œuvres',
+  'home.community.stats.creators': 'Créateurs',
+  'home.community.stats.views': 'Vues',
+  'home.community.image.title': 'Communauté d\'images IA',
+  'home.community.image.description': 'Découvrez et partagez de superbes images générées par IA, du photoréalisme à l\'art, des illustrations à la photographie',
+  'home.community.video.title': 'Communauté de vidéos IA',
+  'home.community.video.description': 'Explorez d\'incroyables vidéos générées par IA, apprenez des techniques créatives et échangez avec des créateurs de vidéos du monde entier',
+  'home.community.music.title': 'Communauté de musique IA',
+  'home.community.music.description': 'Écoutez de belles mélodies composées par IA, partagez vos œuvres musicales et trouvez des passionnés de musique partageant les mêmes idées',
+  'home.community.3d.title': 'Communauté de modèles 3D IA',
+  'home.community.3d.description': 'Explorez le monde des modèles 3D générés par IA, de l\'architecture aux personnages, des jeux au design industriel',
+  'home.community.voice.title': 'Communauté de voix IA',
+  'home.community.voice.description': 'Découvrez la synthèse vocale IA réaliste, doublage, livres audio, clonage vocal et donnez vie à vos créations',
+  'home.community.text.title': 'Communauté de texte IA',
+  'home.community.text.description': 'Partagez d\'excellents textes créés par IA, romans, poèmes, scénarios, textes publicitaires et inspirez votre créativité littéraire',
+  
   // Page de facturation
   'billing.page.title': 'Centre financier',
   'billing.page.description': 'Gérez vos transactions et détails de facturation',

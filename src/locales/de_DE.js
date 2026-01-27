@@ -1220,6 +1220,27 @@ export default {
   'home.features.multimodal.title': 'Multimodales Ökosystem',
   'home.features.multimodal.description': 'Unterstützt nicht nur Stable Diffusion Text-zu-Bild, sondern integriert auch Midjourney-Stilübertragung und ElevenLabs-Audiosynthese. Vervollständigen Sie alle Kreationen in einem Workflow.',
   
+  // Startseite Community-Bereich
+  'home.community.title': 'Entdecken Sie AI-Creative-Communities',
+  'home.community.subtitle': 'Schließen Sie sich Millionen von Kreativen an, teilen Sie Ihre AI-Meisterwerke und erhalten Sie Inspiration und Feedback',
+  'home.community.hot': 'Beliebt',
+  'home.community.explore': 'Community erkunden',
+  'home.community.stats.works': 'Werke',
+  'home.community.stats.creators': 'Kreative',
+  'home.community.stats.views': 'Aufrufe',
+  'home.community.image.title': 'AI-Bild-Community',
+  'home.community.image.description': 'Entdecken und teilen Sie beeindruckende AI-generierte Bilder, von fotorealistisch bis künstlerisch, von Illustrationen bis Fotografie',
+  'home.community.video.title': 'AI-Video-Community',
+  'home.community.video.description': 'Entdecken Sie erstaunliche AI-generierte Videos, lernen Sie kreative Techniken und tauschen Sie sich mit globalen Video-Kreativen aus',
+  'home.community.music.title': 'AI-Musik-Community',
+  'home.community.music.description': 'Hören Sie wunderschöne von AI komponierte Melodien, teilen Sie Ihre Musikwerke und finden Sie gleichgesinnte Musikliebhaber',
+  'home.community.3d.title': 'AI-3D-Modell-Community',
+  'home.community.3d.description': 'Erkunden Sie die Welt der AI-generierten 3D-Modelle, von Architektur bis Charaktere, von Spielen bis Industriedesign',
+  'home.community.voice.title': 'AI-Sprach-Community',
+  'home.community.voice.description': 'Erleben Sie realistische AI-Sprachsynthese, Synchronisation, Hörbücher, Stimmklonen und erwecken Sie Ihre Kreationen zum Leben',
+  'home.community.text.title': 'AI-Text-Community',
+  'home.community.text.description': 'Teilen Sie hervorragende AI-erstellte Texte, Romane, Gedichte, Drehbücher, Werbetexte und lassen Sie sich literarisch inspirieren',
+  
   // Abrechnungsseite
   'billing.page.title': 'Finanzzentrum',
   'billing.page.description': 'Verwalten Sie Ihre Transaktionen und Abrechnungsdetails',

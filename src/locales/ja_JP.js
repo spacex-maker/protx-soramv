@@ -1294,6 +1294,27 @@ export default {
   'home.features.multimodal.title': 'マルチモーダルエコシステム',
   'home.features.multimodal.description': 'Stable Diffusionのテキストから画像だけでなく、Midjourneyのスタイル転送とElevenLabsのオーディオ合成も統合。1つのワークフローですべての創作を完了。',
   
+  // ホームコミュニティセクション
+  'home.community.title': 'AIクリエイティブコミュニティを探索',
+  'home.community.subtitle': '数百万のクリエイターに参加し、AIの傑作を共有し、インスピレーションとフィードバックを得る',
+  'home.community.hot': '人気',
+  'home.community.explore': 'コミュニティを探索',
+  'home.community.stats.works': '作品',
+  'home.community.stats.creators': 'クリエイター',
+  'home.community.stats.views': '閲覧',
+  'home.community.image.title': 'AI画像コミュニティ',
+  'home.community.image.description': 'フォトリアリスティックからアーティスティック、イラストから写真まで、AIが生成した素晴らしい画像を発見して共有',
+  'home.community.video.title': 'AIビデオコミュニティ',
+  'home.community.video.description': 'AIが生成した素晴らしいビデオを探索し、クリエイティブなテクニックを学び、世界中のビデオクリエイターと交流',
+  'home.community.music.title': 'AI音楽コミュニティ',
+  'home.community.music.description': 'AIが作曲した美しいメロディーを聴き、音楽作品を共有し、同じ志を持つ音楽愛好家を見つける',
+  'home.community.3d.title': 'AI 3Dモデルコミュニティ',
+  'home.community.3d.description': '建築からキャラクター、ゲームから産業デザインまで、AIが生成した3Dモデルの世界を探索',
+  'home.community.voice.title': 'AI音声コミュニティ',
+  'home.community.voice.description': 'リアルなAI音声合成、吹き替え、オーディオブック、ボイスクローニングを体験し、創作に命を吹き込む',
+  'home.community.text.title': 'AIテキストコミュニティ',
+  'home.community.text.description': 'AIが作成した優れたテキスト、小説、詩、脚本、コピーライティングを共有し、文学的な創造性を刺激',
+  
   // 請求ページ
   'billing.page.title': '財務センター',
   'billing.page.description': '資金の出入りと請求明細を管理',

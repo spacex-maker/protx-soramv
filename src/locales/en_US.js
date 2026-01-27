@@ -1357,6 +1357,27 @@ export default {
   'home.features.multimodal.title': 'Multimodal Ecosystem',
   'home.features.multimodal.description': 'Not only supports Stable Diffusion text-to-image, but also integrates Midjourney style transfer and ElevenLabs audio synthesis. Complete all creations in one workflow.',
   
+  // Home Community Section
+  'home.community.title': 'Explore AI Creative Communities',
+  'home.community.subtitle': 'Join millions of creators, share your AI masterpieces, and get inspiration and feedback',
+  'home.community.hot': 'Hot',
+  'home.community.explore': 'Explore Community',
+  'home.community.stats.works': 'Works',
+  'home.community.stats.creators': 'Creators',
+  'home.community.stats.views': 'Views',
+  'home.community.image.title': 'AI Image Community',
+  'home.community.image.description': 'Discover and share stunning AI-generated images, from photorealistic to artistic, from illustrations to photography',
+  'home.community.video.title': 'AI Video Community',
+  'home.community.video.description': 'Explore amazing AI-generated videos, learn creative techniques, and exchange experiences with global video creators',
+  'home.community.music.title': 'AI Music Community',
+  'home.community.music.description': 'Listen to beautiful melodies composed by AI, share your music works, and find like-minded music enthusiasts',
+  'home.community.3d.title': 'AI 3D Model Community',
+  'home.community.3d.description': 'Explore the world of AI-generated 3D models, from architecture to characters, from games to industrial design',
+  'home.community.voice.title': 'AI Voice Community',
+  'home.community.voice.description': 'Experience realistic AI voice synthesis, dubbing, audiobooks, voice cloning, and bring your creations to life',
+  'home.community.text.title': 'AI Text Community',
+  'home.community.text.description': 'Share excellent AI-created texts, novels, poems, scripts, copywriting, and inspire your literary creativity',
+  
   // Billing Page
   'billing.page.title': 'Billing Center',
   'billing.page.description': 'Manage your transactions and billing details',

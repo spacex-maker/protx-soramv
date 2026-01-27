@@ -1212,6 +1212,27 @@ export default {
   'home.features.multimodal.title': 'Ecossistema multimodal',
   'home.features.multimodal.description': 'Não apenas suporta Stable Diffusion de texto para imagem, mas também integra transferência de estilo Midjourney e síntese de áudio ElevenLabs. Complete todas as criações em um fluxo de trabalho.',
   
+  // Seção de comunidade da página inicial
+  'home.community.title': 'Explore comunidades criativas de IA',
+  'home.community.subtitle': 'Junte-se a milhões de criadores, compartilhe suas obras-primas de IA e obtenha inspiração e feedback',
+  'home.community.hot': 'Popular',
+  'home.community.explore': 'Explorar comunidade',
+  'home.community.stats.works': 'Obras',
+  'home.community.stats.creators': 'Criadores',
+  'home.community.stats.views': 'Visualizações',
+  'home.community.image.title': 'Comunidade de imagens IA',
+  'home.community.image.description': 'Descubra e compartilhe imagens impressionantes geradas por IA, do fotorrealismo ao artístico, de ilustrações à fotografia',
+  'home.community.video.title': 'Comunidade de vídeos IA',
+  'home.community.video.description': 'Explore vídeos incríveis gerados por IA, aprenda técnicas criativas e troque experiências com criadores de vídeo globais',
+  'home.community.music.title': 'Comunidade de música IA',
+  'home.community.music.description': 'Ouça belas melodias compostas por IA, compartilhe suas obras musicais e encontre entusiastas da música com ideias semelhantes',
+  'home.community.3d.title': 'Comunidade de modelos 3D IA',
+  'home.community.3d.description': 'Explore o mundo dos modelos 3D gerados por IA, da arquitetura a personagens, de jogos ao design industrial',
+  'home.community.voice.title': 'Comunidade de voz IA',
+  'home.community.voice.description': 'Experimente síntese de voz IA realista, dublagem, audiolivros, clonagem de voz e dê vida às suas criações',
+  'home.community.text.title': 'Comunidade de texto IA',
+  'home.community.text.description': 'Compartilhe textos excelentes criados por IA, romances, poemas, roteiros, redação publicitária e inspire sua criatividade literária',
+  
   // Página de faturação
   'billing.page.title': 'Centro financeiro',
   'billing.page.description': 'Gerencie suas transações e detalhes de faturação',

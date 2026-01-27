@@ -1274,6 +1274,27 @@ export default {
   'home.features.multimodal.title': '멀티모달 생태계',
   'home.features.multimodal.description': 'Stable Diffusion 텍스트-이미지뿐만 아니라 Midjourney 스타일 전송 및 ElevenLabs 오디오 합성도 통합했습니다. 하나의 워크플로우에서 모든 창작을 완료하세요.',
   
+  // 홈 커뮤니티 섹션
+  'home.community.title': 'AI 크리에이티브 커뮤니티 탐색',
+  'home.community.subtitle': '수백만 명의 크리에이터와 함께하고, AI 걸작을 공유하며, 영감과 피드백을 얻으세요',
+  'home.community.hot': '인기',
+  'home.community.explore': '커뮤니티 탐색',
+  'home.community.stats.works': '작품',
+  'home.community.stats.creators': '크리에이터',
+  'home.community.stats.views': '조회수',
+  'home.community.image.title': 'AI 이미지 커뮤니티',
+  'home.community.image.description': '포토리얼리스틱부터 예술적, 일러스트부터 사진까지 AI가 생성한 놀라운 이미지를 발견하고 공유하세요',
+  'home.community.video.title': 'AI 비디오 커뮤니티',
+  'home.community.video.description': 'AI가 생성한 놀라운 비디오를 탐색하고, 창의적인 기술을 배우며, 전 세계 비디오 크리에이터와 경험을 교환하세요',
+  'home.community.music.title': 'AI 음악 커뮤니티',
+  'home.community.music.description': 'AI가 작곡한 아름다운 멜로디를 듣고, 음악 작품을 공유하며, 같은 생각을 가진 음악 애호가를 찾으세요',
+  'home.community.3d.title': 'AI 3D 모델 커뮤니티',
+  'home.community.3d.description': '건축부터 캐릭터, 게임부터 산업 디자인까지 AI가 생성한 3D 모델의 세계를 탐험하세요',
+  'home.community.voice.title': 'AI 음성 커뮤니티',
+  'home.community.voice.description': '사실적인 AI 음성 합성, 더빙, 오디오북, 음성 복제를 경험하고 창작에 생명을 불어넣으세요',
+  'home.community.text.title': 'AI 텍스트 커뮤니티',
+  'home.community.text.description': 'AI가 만든 우수한 텍스트, 소설, 시, 대본, 카피를 공유하고 문학적 창의성을 고취하세요',
+  
   // Billing 페이지
   'billing.page.title': '재무 센터',
   'billing.page.description': '자금 거래 및 청구 내역 관리',

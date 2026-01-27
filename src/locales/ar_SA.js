@@ -1165,6 +1165,27 @@ export default {
   'home.features.multimodal.title': 'نظام بيئي متعدد الوسائط',
   'home.features.multimodal.description': 'لا يدعم فقط Stable Diffusion من نص إلى صورة، بل يدمج أيضاً نقل أسلوب Midjourney وتركيب صوت ElevenLabs. أكمل جميع الإبداعات في سير عمل واحد.',
   
+  // قسم المجتمع في الصفحة الرئيسية
+  'home.community.title': 'استكشف مجتمعات الإبداع بالذكاء الاصطناعي',
+  'home.community.subtitle': 'انضم إلى الملايين من المبدعين، شارك تحفك الفنية بالذكاء الاصطناعي واحصل على الإلهام والتعليقات',
+  'home.community.hot': 'شائع',
+  'home.community.explore': 'استكشف المجتمع',
+  'home.community.stats.works': 'الأعمال',
+  'home.community.stats.creators': 'المبدعون',
+  'home.community.stats.views': 'المشاهدات',
+  'home.community.image.title': 'مجتمع صور الذكاء الاصطناعي',
+  'home.community.image.description': 'اكتشف وشارك صوراً مذهلة تم إنشاؤها بالذكاء الاصطناعي، من الواقعية الفوتوغرافية إلى الفنية، من الرسوم التوضيحية إلى التصوير الفوتوغرافي',
+  'home.community.video.title': 'مجتمع فيديو الذكاء الاصطناعي',
+  'home.community.video.description': 'استكشف مقاطع فيديو رائعة تم إنشاؤها بالذكاء الاصطناعي، تعلم تقنيات إبداعية وتبادل الخبرات مع صناع الفيديو العالميين',
+  'home.community.music.title': 'مجتمع موسيقى الذكاء الاصطناعي',
+  'home.community.music.description': 'استمع إلى ألحان جميلة مؤلفة بالذكاء الاصطناعي، شارك أعمالك الموسيقية وابحث عن عشاق الموسيقى ذوي التفكير المماثل',
+  'home.community.3d.title': 'مجتمع نماذج 3D بالذكاء الاصطناعي',
+  'home.community.3d.description': 'استكشف عالم النماذج ثلاثية الأبعاد المُنشأة بالذكاء الاصطناعي، من الهندسة المعمارية إلى الشخصيات، من الألعاب إلى التصميم الصناعي',
+  'home.community.voice.title': 'مجتمع الصوت بالذكاء الاصطناعي',
+  'home.community.voice.description': 'جرب تركيب الصوت الواقعي بالذكاء الاصطناعي، الدبلجة، الكتب الصوتية، استنساخ الصوت وأضف الحياة لإبداعاتك',
+  'home.community.text.title': 'مجتمع النص بالذكاء الاصطناعي',
+  'home.community.text.description': 'شارك نصوصاً ممتازة أنشأها الذكاء الاصطناعي، روايات، قصائد، سيناريوهات، كتابة إعلانية وألهم إبداعك الأدبي',
+  
   // صفحة الفواتير
   'billing.page.title': 'المركز المالي',
   'billing.page.description': 'إدارة معاملاتك وتفاصيل الفواتير',

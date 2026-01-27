@@ -1143,6 +1143,27 @@ export default {
   'home.features.multimodal.title': 'Ecosistema multimodal',
   'home.features.multimodal.description': 'No solo admite Stable Diffusion de texto a imagen, sino que también integra la transferencia de estilo de Midjourney y la síntesis de audio de ElevenLabs. Completa todas las creaciones en un flujo de trabajo.',
   
+  // Sección de comunidad de inicio
+  'home.community.title': 'Explora comunidades creativas de IA',
+  'home.community.subtitle': 'Únete a millones de creadores, comparte tus obras maestras de IA y obtén inspiración y comentarios',
+  'home.community.hot': 'Popular',
+  'home.community.explore': 'Explorar comunidad',
+  'home.community.stats.works': 'Obras',
+  'home.community.stats.creators': 'Creadores',
+  'home.community.stats.views': 'Vistas',
+  'home.community.image.title': 'Comunidad de imágenes IA',
+  'home.community.image.description': 'Descubre y comparte impresionantes imágenes generadas por IA, desde fotorrealistas hasta artísticas, desde ilustraciones hasta fotografía',
+  'home.community.video.title': 'Comunidad de videos IA',
+  'home.community.video.description': 'Explora increíbles videos generados por IA, aprende técnicas creativas e intercambia experiencias con creadores de video globales',
+  'home.community.music.title': 'Comunidad de música IA',
+  'home.community.music.description': 'Escucha hermosas melodías compuestas por IA, comparte tus obras musicales y encuentra entusiastas de la música afines',
+  'home.community.3d.title': 'Comunidad de modelos 3D IA',
+  'home.community.3d.description': 'Explora el mundo de los modelos 3D generados por IA, desde arquitectura hasta personajes, desde juegos hasta diseño industrial',
+  'home.community.voice.title': 'Comunidad de voz IA',
+  'home.community.voice.description': 'Experimenta síntesis de voz IA realista, doblaje, audiolibros, clonación de voz y da vida a tus creaciones',
+  'home.community.text.title': 'Comunidad de texto IA',
+  'home.community.text.description': 'Comparte excelentes textos creados por IA, novelas, poemas, guiones, textos publicitarios e inspira tu creatividad literaria',
+  
   // Página de facturación
   'billing.page.title': 'Centro financiero',
   'billing.page.description': 'Gestione sus transacciones y detalles de facturación',

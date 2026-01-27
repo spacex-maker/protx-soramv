@@ -1169,6 +1169,27 @@ export default {
   'home.features.multimodal.title': 'Ecosistema multimodale',
   'home.features.multimodal.description': 'Non solo supporta Stable Diffusion da testo a immagine, ma integra anche il trasferimento di stile di Midjourney e la sintesi audio di ElevenLabs. Completa tutte le creazioni in un flusso di lavoro.',
   
+  // Sezione community della home
+  'home.community.title': 'Esplora le comunità creative AI',
+  'home.community.subtitle': 'Unisciti a milioni di creatori, condividi i tuoi capolavori AI e ottieni ispirazione e feedback',
+  'home.community.hot': 'Popolare',
+  'home.community.explore': 'Esplora community',
+  'home.community.stats.works': 'Opere',
+  'home.community.stats.creators': 'Creatori',
+  'home.community.stats.views': 'Visualizzazioni',
+  'home.community.image.title': 'Community immagini AI',
+  'home.community.image.description': 'Scopri e condividi straordinarie immagini generate dall\'AI, dal fotorealismo all\'arte, dalle illustrazioni alla fotografia',
+  'home.community.video.title': 'Community video AI',
+  'home.community.video.description': 'Esplora fantastici video generati dall\'AI, impara tecniche creative e scambia esperienze con creatori di video globali',
+  'home.community.music.title': 'Community musica AI',
+  'home.community.music.description': 'Ascolta bellissime melodie composte dall\'AI, condividi le tue opere musicali e trova appassionati di musica affini',
+  'home.community.3d.title': 'Community modelli 3D AI',
+  'home.community.3d.description': 'Esplora il mondo dei modelli 3D generati dall\'AI, dall\'architettura ai personaggi, dai giochi al design industriale',
+  'home.community.voice.title': 'Community voce AI',
+  'home.community.voice.description': 'Sperimenta la sintesi vocale AI realistica, doppiaggio, audiolibri, clonazione vocale e dai vita alle tue creazioni',
+  'home.community.text.title': 'Community testo AI',
+  'home.community.text.description': 'Condividi eccellenti testi creati dall\'AI, romanzi, poesie, sceneggiature, copywriting e ispira la tua creatività letteraria',
+  
   // Pagina di fatturazione
   'billing.page.title': 'Centro finanziario',
   'billing.page.description': 'Gestisci le tue transazioni e i dettagli di fatturazione',

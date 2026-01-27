@@ -46,6 +46,7 @@ import ChallengeDetailPage from './pages/Community/ChallengeDetailPage';
 import ResumePage from './pages/Resume';
 import ImageCompress from './pages/Workspace/MediaTools/components/ImageCompress';
 import MediaToolsPage from './pages/MediaToolsPage';
+import SettingsPage from './pages/Settings';
 
 // 语言配置映射
 const localeMap = {
@@ -300,6 +301,11 @@ export default function App() {
               <Route path="/privacy-preferences" element={
                 <PrivateRoute>
                   <PrivacyPreferencesPage />
+                </PrivateRoute>
+              } />
+              <Route path="/settings" element={
+                <PrivateRoute>
+                  <SettingsPage />
                 </PrivateRoute>
               } />
               <Route path="/orders" element={
