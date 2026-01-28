@@ -756,7 +756,6 @@ const SettingsContent = () => {
               changeLocale(langCode);
             }
             
-            setHasChanges(false);
             message.success(intl.formatMessage({ id: 'settings.message.resetSuccess', defaultMessage: '已恢复默认设置' }));
           } else {
             throw new Error(response.data.message || '重置失败');
