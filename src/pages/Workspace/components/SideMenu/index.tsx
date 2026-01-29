@@ -139,11 +139,12 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
       icon: <EditOutlined style={{ color: '#3b82f6' }} />,
       label: <FormattedMessage id="sidebar.create" defaultMessage="创作" />
     },
-    {
-      key: 'all',
-      icon: <CloudOutlined style={{ color: '#3b82f6' }} />,
-      label: <FormattedMessage id="sidebar.allFiles" />
-    },
+    // 暂时隐藏全部文件
+    // {
+    //   key: 'all',
+    //   icon: <CloudOutlined style={{ color: '#3b82f6' }} />,
+    //   label: <FormattedMessage id="sidebar.allFiles" />
+    // },
     // 暂时隐藏收藏夹和文件夹
     // {
     //   key: 'starred',
@@ -155,22 +156,24 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
     //   icon: <FolderOutlined style={{ color: '#10b981' }} />,
     //   label: <FormattedMessage id="sidebar.folders" />
     // },
-    {
-      key: 'trash',
-      icon: <DeleteOutlined style={{ color: '#ef4444' }} />,
-      label: <FormattedMessage id="sidebar.trash" />
-    },
+    // 暂时隐藏垃圾桶
+    // {
+    //   key: 'trash',
+    //   icon: <DeleteOutlined style={{ color: '#ef4444' }} />,
+    //   label: <FormattedMessage id="sidebar.trash" />
+    // },
     // 暂时隐藏存储节点
     // {
     //   key: 'storageNodes',
     //   icon: <CloudServerOutlined style={{ color: '#8b5cf6' }} />,
     //   label: <FormattedMessage id="sidebar.storageNodes" defaultMessage="存储节点" />
     // },
-    {
-      key: 'decrypt',
-      icon: <LockOutlined style={{ color: '#8b5cf6' }} />,
-      label: <FormattedMessage id="sidebar.decrypt" />
-    },
+    // 暂时隐藏加密工具
+    // {
+    //   key: 'decrypt',
+    //   icon: <LockOutlined style={{ color: '#8b5cf6' }} />,
+    //   label: <FormattedMessage id="sidebar.decrypt" />
+    // },
     {
       key: 'mediaTools',
       icon: <FileImageOutlined style={{ color: '#10b981' }} />,
