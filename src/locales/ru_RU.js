@@ -533,6 +533,7 @@ export default {
   'create.model.linkCopied': 'Ссылка скопирована',
   'create.model.capabilities': 'Возможности',
   'create.model.free': 'Бесплатно',
+  'create.model.tokenCost.display': '{count} token',
   // Другие новые ключи
   'create.aspectRatio.portrait': 'Портрет',
   'create.aspectRatio.landscape': 'Альбом',

@@ -618,6 +618,7 @@ export default {
   'create.model.linkCopied': 'Lien copié',
   'create.model.capabilities': 'Capacités',
   'create.model.free': 'Gratuit',
+  'create.model.tokenCost.display': '{count} token',
   // Autres nouvelles clés
   'create.aspectRatio.portrait': 'Portrait',
   'create.aspectRatio.landscape': 'Paysage',

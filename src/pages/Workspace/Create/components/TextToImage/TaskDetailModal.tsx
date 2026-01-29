@@ -1004,7 +1004,9 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
                     <InfoRow>
                       <span className="label"><FormattedMessage id="create.taskDetail.creditsCost" /></span>
                       <span className="value" style={{ color: '#faad14' }}>
-                         {taskDetail.creditsCost ?? 0} {intl.formatMessage({ id: 'create.taskDetail.points' })}
+                         {(Number(taskDetail.creditsCost) || 0) === 0
+                           ? intl.formatMessage({ id: 'create.taskDetail.zeroToken', defaultMessage: '0 token' })
+                           : `${Number(taskDetail.creditsCost) || 0} ${intl.formatMessage({ id: 'create.taskDetail.points' })}`}
                       </span>
                     </InfoRow>
                     <InfoRow>

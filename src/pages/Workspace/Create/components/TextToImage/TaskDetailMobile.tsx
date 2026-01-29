@@ -420,7 +420,9 @@ const TaskDetailMobile: React.FC<TaskDetailMobileProps> = ({ open, onClose, task
                 </InfoItem>
                 <InfoItem>
                   <div className="label">Credits</div>
-                  <div className="value">{taskDetail.creditsCost ?? 0} pts</div>
+                  <div className="value">
+                    {(Number(taskDetail.creditsCost) || 0) === 0 ? '0 token' : `${Number(taskDetail.creditsCost) || 0} pts`}
+                  </div>
                 </InfoItem>
                 <InfoItem>
                   <div className="label">Resolution</div>

@@ -33,6 +33,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { useLocale } from 'contexts/LocaleContext';
 import instance from 'api/axios';
 import ModelDetailModal, { ModelDetail } from '../ModelDetailModal';
+import ModelSelectionModal from './ModelSelectionModal';
 import TaskDetailModal from './TaskDetailModal';
 import PromptVersionHistoryModal from 'components/common/PromptVersionHistoryModal';
 import HistorySection from './HistorySection';
@@ -54,6 +55,7 @@ import {
   AspectRatioTag,
   AspectRatioOption,
   TitleSection,
+  SelectLikeButton,
 } from './styles';
 
 const { Title, Text } = Typography;
@@ -106,6 +108,10 @@ const TextToImage: React.FC = () => {
   const [styleModelsLoading, setStyleModelsLoading] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailModel, setDetailModel] = useState<ModelDetail | null>(null);
+  
+  // 模型选择模态框相关状态
+  const [familyModalVisible, setFamilyModalVisible] = useState(false);
+  const [styleModalVisible, setStyleModalVisible] = useState(false);
   
   // 任务详情模态框相关状态
   const [taskDetailModalVisible, setTaskDetailModalVisible] = useState(false);
@@ -345,6 +351,8 @@ const TextToImage: React.FC = () => {
           supportReference: item.supportReference,
           currency: item.currency,
           outputPrice: item.outputPrice,
+          modelLevel: item.modelLevel,
+          tokenCost: item.tokenCost,
           coverImage: item.coverImage || null,
         }));
         setStyleModels(styleModelsList);
@@ -392,15 +400,12 @@ const TextToImage: React.FC = () => {
   };
 
   // 处理模型家族选择变化
-  const handleFamilyChange = (familyId: number) => {
-    const family = modelFamilies.find((f) => f.id === familyId);
-    if (family) {
-      setSelectedFamily(family);
-      form.setFieldsValue({ familyId: familyId });
-      // 获取该家族下的风格模型列表
-      if (family.modelCode) {
-        fetchStyleModels(family.modelCode, family);
-      }
+  const handleFamilyChange = (family: ModelFamily) => {
+    setSelectedFamily(family);
+    form.setFieldsValue({ familyId: family.id });
+    // 获取该家族下的风格模型列表
+    if (family.modelCode) {
+      fetchStyleModels(family.modelCode, family);
     }
   };
 
@@ -495,20 +500,18 @@ const TextToImage: React.FC = () => {
   };
 
   // 处理风格模型选择变化
-  const handleStyleModelChange = (modelId: number | null) => {
-    if (modelId === null || modelId === undefined) {
+  const handleStyleModelChange = (model: Model | ModelFamily) => {
+    // 判断是否是家族默认（通过检查是否是 ModelFamily 类型）
+    const isFamily = 'modelCode' in model && !styleModels.find(m => m.id === model.id);
+    
+    if (isFamily) {
       setSelectedModel(null);
       form.setFieldsValue({ styleModelId: null });
-      if (selectedFamily) {
-        updateFormByModel(selectedFamily);
-      }
+      updateFormByModel(model);
     } else {
-      const model = styleModels.find((m) => m.id === modelId);
-      if (model) {
-        setSelectedModel(model);
-        form.setFieldsValue({ styleModelId: modelId });
-        updateFormByModel(model);
-      }
+      setSelectedModel(model as Model);
+      form.setFieldsValue({ styleModelId: model.id });
+      updateFormByModel(model);
     }
   };
 
@@ -917,111 +920,30 @@ const TextToImage: React.FC = () => {
                   }
                   style={{ marginBottom: 20 }}
                 >
-                  <Select
-                    value={selectedFamily?.id}
-                    onChange={handleFamilyChange}
-                    placeholder={intl.formatMessage({
-                      id: 'create.model.family.select.placeholder',
-                      defaultMessage: '请选择模型家族',
-                    })}
-                    loading={familiesLoading}
-                    style={{ width: '100%' }}
-                    optionLabelProp="label"
-                    dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-                    dropdownClassName="model-select-dropdown"
-                    className="model-family-select"
-                  >
-                    {modelFamilies.map((family) => (
-                      <Select.Option
-                        key={family.id}
-                        value={family.id}
-                        label={
-                          <div style={{ width: '100%' }}>
-                            {renderFamilySelectDisplay(family)}
-                          </div>
-                        }
-                      >
-                        <ModelOptionWrapper coverImage={family.coverImage}>
-                          <div className="model-header">
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div className="model-name">
-                                {family.modelName}
-                              </div>
-                              {family.modelCode && (
-                                <div className="model-code">
-                                  {family.modelCode}
-                                </div>
-                              )}
-                            </div>
-                            {isFree(family.outputPrice, family.currency) ? (
-                              <div className="model-free">
-                                {intl.formatMessage({
-                                  id: 'create.model.free',
-                                  defaultMessage: '免费',
-                                })}
-                              </div>
-                            ) : (
-                              family.outputPrice !== null &&
-                              family.outputPrice !== undefined && (
-                                <div className="model-price">
-                                  <span className="model-price-amount">
-                                    {family.outputPrice}
-                                  </span>
-                                  <span className="model-price-currency">
-                                    {family.currency || 'USD'}
-                                  </span>
-                                  <span className="model-price-unit">
-                                    {intl.formatMessage({
-                                      id: 'create.model.price.perImage',
-                                      defaultMessage: '/张',
-                                    })}
-                                  </span>
-                                </div>
-                              )
-                            )}
-                          </div>
-                          {family.description && (
-                            <div className="model-description" style={{ marginTop: 6 }}>
-                              {family.description}
-                            </div>
-                          )}
-                          {/* 显示支持的比例和详情按钮 */}
-                          <div className="model-bottom-row">
-                            {family.imageAspectRatios && (
-                              <div className="model-aspect-ratios">
-                                {family.imageAspectRatios
-                                  .split(',')
-                                  .map((ratio, index) => {
-                                    const ratioStr = ratio.trim();
-                                    const ratioOption = getAspectRatioOption(
-                                      ratioStr,
-                                      intl
-                                    );
-                                    return (
-                                      <AspectRatioTag key={index}>
-                                        {ratioOption.icon}
-                                        <span>{ratioStr}</span>
-                                      </AspectRatioTag>
-                                    );
-                                  })}
-                              </div>
-                            )}
-                            <DetailButton
-                              className="model-detail-button"
-                              size="small"
-                              icon={<EyeOutlined />}
-                              onClick={(e) => handleShowDetail(e, family)}
-                            >
-                              <FormattedMessage
-                                id="create.model.detail"
-                                defaultMessage="详情"
-                              />
-                            </DetailButton>
-                          </div>
-                        </ModelOptionWrapper>
-                      </Select.Option>
-                    ))}
-                  </Select>
+                  <div onClick={() => !familiesLoading && setFamilyModalVisible(true)} style={{ cursor: familiesLoading ? 'not-allowed' : 'pointer' }}>
+                    <Select
+                      value={selectedFamily?.id}
+                      open={false}
+                      placeholder={intl.formatMessage({
+                        id: 'create.model.family.select.placeholder',
+                        defaultMessage: '请选择模型家族',
+                      })}
+                      loading={familiesLoading}
+                      style={{ width: '100%', pointerEvents: 'none' }}
+                      optionLabelProp="label"
+                      className="model-family-select"
+                    >
+                      {selectedFamily && (
+                        <Select.Option
+                          key={selectedFamily.id}
+                          value={selectedFamily.id}
+                          label={renderFamilySelectDisplay(selectedFamily)}
+                        >
+                          {selectedFamily.modelName}
+                        </Select.Option>
+                      )}
+                    </Select>
+                  </div>
                 </Form.Item>
 
                 {/* 提示词输入 */}
@@ -1393,190 +1315,47 @@ const TextToImage: React.FC = () => {
                       }
                       style={{ marginBottom: 0 }}
                     >
-                      <Select
-                        value={selectedModel?.id ?? null}
-                        onChange={handleStyleModelChange}
-                        placeholder={intl.formatMessage({
-                          id: 'create.style.select.placeholder',
-                          defaultMessage:
-                            '请选择艺术风格（可选，默认使用家族模型）',
-                        })}
-                        loading={styleModelsLoading}
-                        disabled={
-                          !selectedFamily ||
-                          styleModelsLoading ||
-                          styleModels.length === 0
-                        }
-                        allowClear
-                        optionLabelProp="label"
-                        dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-                        dropdownClassName="model-select-dropdown"
-                        className="model-style-select"
+                      <div 
+                        onClick={() => !styleModelsLoading && selectedFamily && setStyleModalVisible(true)}
+                        style={{ cursor: (!selectedFamily || styleModelsLoading) ? 'not-allowed' : 'pointer' }}
                       >
-                        {/* 添加一个选项，允许使用家族本身 */}
-                        {selectedFamily && (
-                          <Select.Option
-                            key={`family-${selectedFamily.id}`}
-                            value={null}
-                            label={
-                              <div style={{ width: '100%' }}>
-                                {renderStyleModelSelectDisplay(selectedFamily, true)}
-                              </div>
-                            }
-                          >
-                            <ModelOptionWrapper coverImage={selectedFamily.coverImage}>
-                              <div className="model-header">
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div className="model-name">
-                                    {selectedFamily.modelName} (默认)
-                                  </div>
-                                  {selectedFamily.modelCode && (
-                                    <div className="model-code">
-                                      {selectedFamily.modelCode}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                              {selectedFamily.description && (
-                                <div
-                                  className="model-description"
-                                  style={{ marginTop: 6 }}
-                                >
-                                  {selectedFamily.description}
-                                </div>
-                              )}
-                              {/* 显示支持的比例和详情按钮 */}
-                              <div className="model-bottom-row">
-                                {selectedFamily.imageAspectRatios && (
-                                  <div className="model-aspect-ratios">
-                                    {selectedFamily.imageAspectRatios
-                                      .split(',')
-                                      .map((ratio, index) => {
-                                        const ratioStr = ratio.trim();
-                                        const ratioOption = getAspectRatioOption(
-                                          ratioStr,
-                                          intl
-                                        );
-                                        return (
-                                          <AspectRatioTag key={index}>
-                                            {ratioOption.icon}
-                                            <span>{ratioStr}</span>
-                                          </AspectRatioTag>
-                                        );
-                                      })}
-                                  </div>
-                                )}
-                                <DetailButton
-                                  className="model-detail-button"
-                                  size="small"
-                                  icon={<EyeOutlined />}
-                                  onClick={(e) =>
-                                    handleShowDetail(e, selectedFamily)
-                                  }
-                                >
-                                  <FormattedMessage
-                                    id="create.model.detail"
-                                    defaultMessage="详情"
-                                  />
-                                </DetailButton>
-                              </div>
-                            </ModelOptionWrapper>
-                          </Select.Option>
-                        )}
-                        {styleModels.map((model) => (
-                          <Select.Option
-                            key={model.id}
-                            value={model.id}
-                            label={
-                              <div style={{ width: '100%' }}>
-                                {renderStyleModelSelectDisplay(model, false)}
-                              </div>
-                            }
-                          >
-                            <ModelOptionWrapper coverImage={model.coverImage}>
-                              <div className="model-header">
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div className="model-name">
-                                    {model.modelName}
-                                  </div>
-                                  {model.modelCode && (
-                                    <div className="model-code">
-                                      {model.modelCode}
-                                    </div>
-                                  )}
-                                </div>
-                                {isFree(model.outputPrice, model.currency) ? (
-                                  <div className="model-free">
-                                    {intl.formatMessage({
-                                      id: 'create.model.free',
-                                      defaultMessage: '免费',
-                                    })}
-                                  </div>
-                                ) : (
-                                  model.outputPrice !== null &&
-                                  model.outputPrice !== undefined && (
-                                    <div className="model-price">
-                                      <span className="model-price-amount">
-                                        {model.outputPrice}
-                                      </span>
-                                      <span className="model-price-currency">
-                                        {model.currency || 'USD'}
-                                      </span>
-                                      <span className="model-price-unit">
-                                        {intl.formatMessage({
-                                          id: 'create.model.price.perImage',
-                                          defaultMessage: '/张',
-                                        })}
-                                      </span>
-                                    </div>
-                                  )
-                                )}
-                              </div>
-                              {model.description && (
-                                <div
-                                  className="model-description"
-                                  style={{ marginTop: 6 }}
-                                >
-                                  {model.description}
-                                </div>
-                              )}
-                              {/* 显示支持的比例和详情按钮 */}
-                              <div className="model-bottom-row">
-                                {model.imageAspectRatios && (
-                                  <div className="model-aspect-ratios">
-                                    {model.imageAspectRatios
-                                      .split(',')
-                                      .map((ratio, index) => {
-                                        const ratioStr = ratio.trim();
-                                        const ratioOption = getAspectRatioOption(
-                                          ratioStr,
-                                          intl
-                                        );
-                                        return (
-                                          <AspectRatioTag key={index}>
-                                            {ratioOption.icon}
-                                            <span>{ratioStr}</span>
-                                          </AspectRatioTag>
-                                        );
-                                      })}
-                                  </div>
-                                )}
-                                <DetailButton
-                                  className="model-detail-button"
-                                  size="small"
-                                  icon={<EyeOutlined />}
-                                  onClick={(e) => handleShowDetail(e, model)}
-                                >
-                                  <FormattedMessage
-                                    id="create.model.detail"
-                                    defaultMessage="详情"
-                                  />
-                                </DetailButton>
-                              </div>
-                            </ModelOptionWrapper>
-                          </Select.Option>
-                        ))}
-                      </Select>
+                        <Select
+                          value={selectedModel?.id ?? null}
+                          open={false}
+                          placeholder={intl.formatMessage({
+                            id: 'create.style.select.placeholder',
+                            defaultMessage:
+                              '请选择艺术风格（可选，默认使用家族模型）',
+                          })}
+                          loading={styleModelsLoading}
+                          disabled={!selectedFamily || styleModelsLoading}
+                          allowClear={false}
+                          style={{ width: '100%', pointerEvents: 'none' }}
+                          optionLabelProp="label"
+                          className="model-style-select"
+                        >
+                          {(selectedModel || selectedFamily) && (
+                            <Select.Option
+                              key={selectedModel?.id || `family-${selectedFamily?.id}`}
+                              value={selectedModel?.id ?? null}
+                              label={
+                                selectedModel 
+                                  ? renderStyleModelSelectDisplay(selectedModel, false)
+                                  : selectedFamily 
+                                  ? renderStyleModelSelectDisplay(selectedFamily, true)
+                                  : null
+                              }
+                            >
+                              {selectedModel 
+                                ? selectedModel.modelName
+                                : selectedFamily 
+                                ? `${selectedFamily.modelName} (默认)`
+                                : ''
+                              }
+                            </Select.Option>
+                          )}
+                        </Select>
+                      </div>
                     </Form.Item>
                   </Col>
                 </Row>
@@ -1655,6 +1434,44 @@ const TextToImage: React.FC = () => {
           </Col>
         </Row>
       </StyledCard>
+
+      {/* 模型家族选择模态框 */}
+      <ModelSelectionModal
+        open={familyModalVisible}
+        onClose={() => setFamilyModalVisible(false)}
+        type="family"
+        title={intl.formatMessage({
+          id: 'create.model.family.select',
+          defaultMessage: '选择模型家族',
+        })}
+        models={modelFamilies}
+        selectedModel={selectedFamily}
+        onSelect={(model) => handleFamilyChange(model as ModelFamily)}
+        onShowDetail={(model) => {
+          setDetailModel(model as ModelDetail);
+          setDetailModalVisible(true);
+        }}
+        loading={familiesLoading}
+      />
+
+      {/* 艺术风格选择模态框 */}
+      <ModelSelectionModal
+        open={styleModalVisible}
+        onClose={() => setStyleModalVisible(false)}
+        type="style"
+        title={intl.formatMessage({
+          id: 'create.style',
+          defaultMessage: '艺术风格',
+        })}
+        models={selectedFamily ? [selectedFamily, ...styleModels] : styleModels}
+        selectedModel={selectedModel || selectedFamily}
+        onSelect={(model) => handleStyleModelChange(model)}
+        onShowDetail={(model) => {
+          setDetailModel(model as ModelDetail);
+          setDetailModalVisible(true);
+        }}
+        loading={styleModelsLoading}
+      />
 
       {/* 模型详情弹窗 */}
       <ModelDetailModal

@@ -41,6 +41,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { useLocale } from 'contexts/LocaleContext';
 import instance from 'api/axios';
 import ModelDetailModal, { ModelDetail } from '../../ModelDetailModal';
+import ModelSelectionModal from '../ModelSelectionModal';
 import { ModelFamily, Model, GenerationTask, GenerationTaskPageResponse } from '../types';
 import {
   isFree,
@@ -133,6 +134,10 @@ const TextToImageMobile: React.FC = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailModel, setDetailModel] = useState<ModelDetail | null>(null);
   const [settingsDrawerVisible, setSettingsDrawerVisible] = useState(false);
+  
+  // 模型选择模态框相关状态
+  const [familyModalVisible, setFamilyModalVisible] = useState(false);
+  const [styleModalVisible, setStyleModalVisible] = useState(false);
   
   // 生成记录相关状态
   const [historyTasks, setHistoryTasks] = useState<GenerationTask[]>([]);
@@ -414,32 +419,27 @@ const TextToImageMobile: React.FC = () => {
   };
 
   // 处理模型家族选择变化
-  const handleFamilyChange = (familyId: number) => {
-    const family = modelFamilies.find((f) => f.id === familyId);
-    if (family) {
-      setSelectedFamily(family);
-      form.setFieldsValue({ familyId: familyId });
-      if (family.modelCode) {
-        fetchStyleModels(family.modelCode, family);
-      }
+  const handleFamilyChange = (family: ModelFamily) => {
+    setSelectedFamily(family);
+    form.setFieldsValue({ familyId: family.id });
+    if (family.modelCode) {
+      fetchStyleModels(family.modelCode, family);
     }
   };
 
   // 处理风格模型选择变化
-  const handleStyleModelChange = (modelId: number | null) => {
-    if (modelId === null || modelId === undefined) {
+  const handleStyleModelChange = (model: Model | ModelFamily) => {
+    // 判断是否是家族默认（通过检查是否是 ModelFamily 类型）
+    const isFamily = 'modelCode' in model && !styleModels.find(m => m.id === model.id);
+    
+    if (isFamily) {
       setSelectedModel(null);
       form.setFieldsValue({ styleModelId: null });
-      if (selectedFamily) {
-        updateFormByModel(selectedFamily);
-      }
+      updateFormByModel(model);
     } else {
-      const model = styleModels.find((m) => m.id === modelId);
-      if (model) {
-        setSelectedModel(model);
-        form.setFieldsValue({ styleModelId: modelId });
-        updateFormByModel(model);
-      }
+      setSelectedModel(model as Model);
+      form.setFieldsValue({ styleModelId: model.id });
+      updateFormByModel(model);
     }
   };
 
@@ -847,7 +847,10 @@ const TextToImageMobile: React.FC = () => {
                   <Button
                     type="text"
                     icon={<SettingOutlined />}
-                    onClick={() => setSettingsDrawerVisible(true)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSettingsDrawerVisible(true);
+                    }}
                     style={{ 
                       padding: 0, 
                       height: 'auto',
@@ -860,41 +863,44 @@ const TextToImageMobile: React.FC = () => {
                 </div>
               }
             >
-              <Select
-                value={selectedFamily?.id}
-                onChange={handleFamilyChange}
-                placeholder={intl.formatMessage({
-                  id: 'create.model.family.select.placeholder',
-                  defaultMessage: '请选择模型家族',
-                })}
-                loading={familiesLoading}
-                size="large"
-              >
-                {modelFamilies.map((family) => (
-                  <Select.Option key={family.id} value={family.id}>
-                    <MobileModelOption>
-                      <div className="model-name">{family.modelName}</div>
-                      <div className="model-meta">
-                        {isFree(family.outputPrice, family.currency) ? (
-                          <span className="model-free">
-                            {intl.formatMessage({
-                              id: 'create.model.free',
-                              defaultMessage: '免费',
-                            })}
-                          </span>
-                        ) : (
-                          family.outputPrice !== null &&
-                          family.outputPrice !== undefined && (
-                            <span className="model-price">
-                              {family.outputPrice} {family.currency || 'USD'}
+              <div onClick={() => !familiesLoading && setFamilyModalVisible(true)} style={{ cursor: familiesLoading ? 'not-allowed' : 'pointer' }}>
+                <Select
+                  value={selectedFamily?.id}
+                  open={false}
+                  placeholder={intl.formatMessage({
+                    id: 'create.model.family.select.placeholder',
+                    defaultMessage: '请选择模型家族',
+                  })}
+                  loading={familiesLoading}
+                  size="large"
+                  style={{ width: '100%', pointerEvents: 'none' }}
+                >
+                  {selectedFamily && (
+                    <Select.Option key={selectedFamily.id} value={selectedFamily.id}>
+                      <MobileModelOption>
+                        <div className="model-name">{selectedFamily.modelName}</div>
+                        <div className="model-meta">
+                          {isFree(selectedFamily.outputPrice, selectedFamily.currency) ? (
+                            <span className="model-free">
+                              {intl.formatMessage({
+                                id: 'create.model.free',
+                                defaultMessage: '免费',
+                              })}
                             </span>
-                          )
-                        )}
-                      </div>
-                    </MobileModelOption>
-                  </Select.Option>
-                ))}
-              </Select>
+                          ) : (
+                            selectedFamily.outputPrice !== null &&
+                            selectedFamily.outputPrice !== undefined && (
+                              <span className="model-price">
+                                {selectedFamily.outputPrice} {selectedFamily.currency || 'USD'}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </MobileModelOption>
+                    </Select.Option>
+                  )}
+                </Select>
+              </div>
             </Form.Item>
 
             {/* 艺术风格（可选） */}
@@ -911,76 +917,75 @@ const TextToImageMobile: React.FC = () => {
                   </Space>
                 }
               >
-                <Select
-                  value={selectedModel?.id}
-                  onChange={handleStyleModelChange}
-                  placeholder={intl.formatMessage({
-                    id: 'create.style.select.placeholder',
-                    defaultMessage:
-                      '请选择艺术风格（可选，默认使用家族模型）',
-                  })}
-                  loading={styleModelsLoading}
-                  disabled={
-                    !selectedFamily ||
-                    styleModelsLoading ||
-                    styleModels.length === 0
-                  }
-                  allowClear
-                  size="large"
+                <div 
+                  onClick={() => !styleModelsLoading && setStyleModalVisible(true)}
+                  style={{ cursor: styleModelsLoading ? 'not-allowed' : 'pointer' }}
                 >
-                  {/* 添加一个选项，允许使用家族本身 */}
-                  <Select.Option
-                    key={`family-${selectedFamily.id}`}
-                    value={null}
+                  <Select
+                    value={selectedModel?.id ?? null}
+                    open={false}
+                    placeholder={intl.formatMessage({
+                      id: 'create.style.select.placeholder',
+                      defaultMessage:
+                        '请选择艺术风格（可选，默认使用家族模型）',
+                    })}
+                    loading={styleModelsLoading}
+                    disabled={styleModelsLoading}
+                    size="large"
+                    style={{ width: '100%', pointerEvents: 'none' }}
                   >
-                    <MobileModelOption>
-                      <div className="model-name">
-                        {selectedFamily.modelName} (默认)
-                      </div>
-                      <div className="model-meta">
-                        {isFree(selectedFamily.outputPrice, selectedFamily.currency) ? (
-                          <span className="model-free">
-                            {intl.formatMessage({
-                              id: 'create.model.free',
-                              defaultMessage: '免费',
-                            })}
-                          </span>
-                        ) : (
-                          selectedFamily.outputPrice !== null &&
-                          selectedFamily.outputPrice !== undefined && (
-                            <span className="model-price">
-                              {selectedFamily.outputPrice} {selectedFamily.currency || 'USD'}
-                            </span>
-                          )
-                        )}
-                      </div>
-                    </MobileModelOption>
-                  </Select.Option>
-                  {styleModels.map((model) => (
-                    <Select.Option key={model.id} value={model.id}>
-                      <MobileModelOption>
-                        <div className="model-name">{model.modelName}</div>
-                        <div className="model-meta">
-                          {isFree(model.outputPrice, model.currency) ? (
-                            <span className="model-free">
-                              {intl.formatMessage({
-                                id: 'create.model.free',
-                                defaultMessage: '免费',
-                              })}
-                            </span>
-                          ) : (
-                            model.outputPrice !== null &&
-                            model.outputPrice !== undefined && (
-                              <span className="model-price">
-                                {model.outputPrice} {model.currency || 'USD'}
-                              </span>
-                            )
-                          )}
-                        </div>
-                      </MobileModelOption>
-                    </Select.Option>
-                  ))}
-                </Select>
+                    {(selectedModel || selectedFamily) && (
+                      <Select.Option
+                        key={selectedModel?.id || `family-${selectedFamily?.id}`}
+                        value={selectedModel?.id ?? null}
+                      >
+                        {selectedModel ? (
+                          <MobileModelOption>
+                            <div className="model-name">{selectedModel.modelName}</div>
+                            <div className="model-meta">
+                              {isFree(selectedModel.outputPrice, selectedModel.currency) ? (
+                                <span className="model-free">
+                                  {intl.formatMessage({
+                                    id: 'create.model.free',
+                                    defaultMessage: '免费',
+                                  })}
+                                </span>
+                              ) : (
+                                selectedModel.outputPrice !== null &&
+                                selectedModel.outputPrice !== undefined && (
+                                  <span className="model-price">
+                                    {selectedModel.outputPrice} {selectedModel.currency || 'USD'}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </MobileModelOption>
+                        ) : selectedFamily ? (
+                          <MobileModelOption>
+                            <div className="model-name">{selectedFamily.modelName} (默认)</div>
+                            <div className="model-meta">
+                              {isFree(selectedFamily.outputPrice, selectedFamily.currency) ? (
+                                <span className="model-free">
+                                  {intl.formatMessage({
+                                    id: 'create.model.free',
+                                    defaultMessage: '免费',
+                                  })}
+                                </span>
+                              ) : (
+                                selectedFamily.outputPrice !== null &&
+                                selectedFamily.outputPrice !== undefined && (
+                                  <span className="model-price">
+                                    {selectedFamily.outputPrice} {selectedFamily.currency || 'USD'}
+                                  </span>
+                                )
+                              )}
+                            </div>
+                          </MobileModelOption>
+                        ) : null}
+                      </Select.Option>
+                    )}
+                  </Select>
+                </div>
               </Form.Item>
             )}
 
@@ -1628,6 +1633,44 @@ const TextToImageMobile: React.FC = () => {
           </Form>
         </MobileDrawerContent>
       </Drawer>
+
+      {/* 模型家族选择模态框 */}
+      <ModelSelectionModal
+        open={familyModalVisible}
+        onClose={() => setFamilyModalVisible(false)}
+        type="family"
+        title={intl.formatMessage({
+          id: 'create.model.family.select',
+          defaultMessage: '选择模型家族',
+        })}
+        models={modelFamilies}
+        selectedModel={selectedFamily}
+        onSelect={(model) => handleFamilyChange(model as ModelFamily)}
+        onShowDetail={(model) => {
+          setDetailModel(model as ModelDetail);
+          setDetailModalVisible(true);
+        }}
+        loading={familiesLoading}
+      />
+
+      {/* 艺术风格选择模态框 */}
+      <ModelSelectionModal
+        open={styleModalVisible}
+        onClose={() => setStyleModalVisible(false)}
+        type="style"
+        title={intl.formatMessage({
+          id: 'create.style',
+          defaultMessage: '艺术风格',
+        })}
+        models={selectedFamily ? [selectedFamily, ...styleModels] : styleModels}
+        selectedModel={selectedModel || selectedFamily}
+        onSelect={(model) => handleStyleModelChange(model)}
+        onShowDetail={(model) => {
+          setDetailModel(model as ModelDetail);
+          setDetailModalVisible(true);
+        }}
+        loading={styleModelsLoading}
+      />
 
       {/* 模型详情弹窗 */}
       <ModelDetailModal

@@ -603,6 +603,7 @@ export default {
   'create.model.linkCopied': '링크 복사됨',
   'create.model.capabilities': '기능',
   'create.model.free': '무료',
+  'create.model.tokenCost.display': '{count} token',
   // 기타 새 키
   'create.aspectRatio.portrait': '세로',
   'create.aspectRatio.landscape': '가로',

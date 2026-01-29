@@ -604,6 +604,7 @@ export default {
   'create.model.linkCopied': 'Link kopiert',
   'create.model.capabilities': 'Funktionen',
   'create.model.free': 'Kostenlos',
+  'create.model.tokenCost.display': '{count} token',
   // Weitere neue Schlüssel
   'create.aspectRatio.portrait': 'Hochformat',
   'create.aspectRatio.landscape': 'Querformat',

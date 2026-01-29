@@ -623,6 +623,7 @@ export default {
   'create.model.linkCopied': 'リンクをコピーしました',
   'create.model.capabilities': '機能',
   'create.model.free': '無料',
+  'create.model.tokenCost.display': '{count} token',
   // その他の新規キー
   'create.aspectRatio.portrait': '縦向き',
   'create.aspectRatio.landscape': '横向き',

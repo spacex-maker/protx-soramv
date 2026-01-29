@@ -137,6 +137,19 @@ const HeroWrapper = styled.div`
   position: relative;
   padding-top: 80px;
   margin-bottom: 60px;
+
+  @media (max-width: 768px) {
+    min-height: auto; // 移动端不强制高度，根据内容自适应
+    padding-top: 40px; // 减少顶部间距
+    padding-bottom: 40px; // 添加底部间距保持平衡
+    margin-bottom: 40px; // 减少与下一个模块的间距
+  }
+
+  @media (max-width: 480px) {
+    padding-top: 24px;
+    padding-bottom: 24px;
+    margin-bottom: 24px;
+  }
 `;
 
 // --- 顶部用户状态栏 ---

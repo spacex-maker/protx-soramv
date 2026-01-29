@@ -67,6 +67,20 @@ const UniverseContainer = styled.div`
   // 这里的边框光晕增加了层次感
   box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
   border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'};
+
+  @media (max-width: 768px) {
+    height: auto; // 移动端不强制高度
+    min-height: auto; // 移除最小高度
+    border-radius: 20px; // 减小圆角
+    margin-top: 16px;
+    padding: 40px 20px; // 添加内边距
+  }
+
+  @media (max-width: 480px) {
+    border-radius: 16px;
+    margin-top: 12px;
+    padding: 32px 16px;
+  }
 `;
 
 // 深邃背景层
@@ -124,6 +138,13 @@ const EnergyCore = styled.div`
     filter: blur(40px);
     animation: ${godRayPulse} 6s infinite ease-in-out;
   }
+
+  @media (max-width: 768px) {
+    width: 300px;
+    height: 300px;
+    filter: blur(60px);
+    opacity: 0.3;
+  }
 `;
 
 // 巨大的背景文字 (Atmospheric Text)
@@ -142,6 +163,11 @@ const BigBackgroundText = styled.div`
   font-family: 'Inter', sans-serif;
   letter-spacing: -0.05em;
   user-select: none;
+
+  @media (max-width: 768px) {
+    font-size: 20vw; // 移动端适当放大
+    -webkit-text-stroke: 1px ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'};
+  }
 `;
 
 // --- 3. 悬浮控制台 (HUD) ---
@@ -155,6 +181,16 @@ const ConsoleWrapper = styled.div`
   flex-direction: column;
   align-items: center;
   gap: 32px;
+
+  @media (max-width: 768px) {
+    gap: 20px;
+    padding: 0 16px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 16px;
+    padding: 0 8px;
+  }
 `;
 
 const ModeSwitcher = styled.div`
@@ -171,6 +207,26 @@ const ModeSwitcher = styled.div`
   &:hover {
     background: ${props => props.theme.mode === 'dark' ? 'rgba(0,0,0,0.6)' : 'rgba(255,255,255,0.6)'};
     box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  }
+
+  @media (max-width: 768px) {
+    gap: 8px;
+    padding: 6px;
+    width: 100%;
+    border-radius: 20px; // 减小圆角，适配移动端
+  }
+
+  @media (max-width: 560px) {
+    gap: 6px;
+    padding: 6px;
+    flex-wrap: wrap;
+    justify-content: space-between; // 改为两端对齐，让按钮分布更均匀
+    border-radius: 16px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 6px;
+    padding: 6px;
   }
 `;
 
@@ -195,6 +251,42 @@ const ModeBtn = styled.button`
   }
 
   svg { font-size: 16px; }
+
+  @media (max-width: 768px) {
+    padding: 8px 14px;
+    font-size: 13px;
+    gap: 5px;
+    justify-content: center;
+    
+    svg { font-size: 13px; }
+  }
+
+  @media (max-width: 560px) {
+    padding: 8px 12px;
+    font-size: 12px;
+    gap: 4px;
+    flex: 1 1 calc(50% - 3px); // 换行时每行两个，减小间隙
+    min-width: 0; // 移除最小宽度限制
+    max-width: calc(50% - 3px); // 确保不超过50%
+    
+    svg { font-size: 12px; }
+  }
+
+  @media (max-width: 480px) {
+    padding: 7px 10px;
+    font-size: 11px;
+    gap: 3px;
+    
+    svg { font-size: 11px; }
+  }
+
+  @media (max-width: 380px) {
+    padding: 6px 8px;
+    font-size: 10px;
+    gap: 3px;
+    
+    svg { font-size: 10px; }
+  }
 `;
 
 const MainInputBar = styled.div`
@@ -219,6 +311,22 @@ const MainInputBar = styled.div`
       0 30px 80px rgba(0,0,0,0.3),
       0 0 0 2px var(--theme-color) inset;
   }
+
+  @media (max-width: 768px) {
+    height: 60px;
+    border-radius: 16px;
+    padding: 0 8px 0 20px;
+    
+    &:focus-within {
+      transform: scale(1.01);
+    }
+  }
+
+  @media (max-width: 480px) {
+    height: 52px;
+    border-radius: 12px;
+    padding: 0 6px 0 16px;
+  }
 `;
 
 const StyledInput = styled.input`
@@ -234,6 +342,14 @@ const StyledInput = styled.input`
   &::placeholder {
     color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)'};
     font-weight: 400;
+  }
+
+  @media (max-width: 768px) {
+    font-size: 16px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 14px;
   }
 `;
 
@@ -262,12 +378,60 @@ const GenerateBtn = styled.button`
   &:active {
     transform: translateY(1px);
   }
+
+  @media (max-width: 768px) {
+    height: 44px;
+    padding: 0 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    gap: 6px;
+  }
+
+  @media (max-width: 480px) {
+    height: 40px;
+    padding: 0 20px;
+    border-radius: 10px;
+    font-size: 13px;
+    gap: 4px;
+  }
 `;
 
 const InspirationTags = styled.div`
   display: flex;
   gap: 12px;
   margin-top: -10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: 100%;
+
+  @media (max-width: 768px) {
+    gap: 8px;
+    margin-top: -5px;
+  }
+
+  @media (max-width: 480px) {
+    gap: 6px;
+    margin-top: 0;
+    
+    // 在非常小的屏幕上，可以考虑只显示部分标签或滚动
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding-bottom: 4px;
+    
+    // 隐藏滚动条但保持功能
+    &::-webkit-scrollbar {
+      height: 3px;
+    }
+    
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 3px;
+    }
+  }
 `;
 
 const TagPill = styled.button`
@@ -285,6 +449,18 @@ const TagPill = styled.button`
     background: var(--theme-glow);
     color: #fff;
     border-color: transparent;
+  }
+
+  @media (max-width: 768px) {
+    padding: 5px 12px;
+    font-size: 12px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 4px 10px;
+    font-size: 11px;
+    white-space: nowrap;
+    flex-shrink: 0; // 防止在横向滚动时被压缩
   }
 `;
 
@@ -311,7 +487,13 @@ const HeaderGroup = styled.div`
     text-shadow: 0 10px 40px rgba(0,0,0,0.1);
 
     @media (max-width: 768px) {
-      font-size: 42px;
+      font-size: 36px;
+      letter-spacing: -1px;
+    }
+
+    @media (max-width: 480px) {
+      font-size: 28px;
+      letter-spacing: -0.5px;
     }
   }
 
@@ -323,6 +505,25 @@ const HeaderGroup = styled.div`
     max-width: 600px;
     margin-left: auto;
     margin-right: auto;
+
+    @media (max-width: 768px) {
+      font-size: 16px;
+      max-width: 90%;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 480px) {
+      font-size: 14px;
+      margin-top: 6px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 480px) {
+    margin-bottom: 12px;
   }
 `;
 

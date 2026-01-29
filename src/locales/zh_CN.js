@@ -690,7 +690,8 @@ export default {
   'create.model.share': 'Share',
   'create.model.linkCopied': '链接已复制',
   'create.model.capabilities': 'Capabilities',
-  'create.model.free': 'Free',
+  'create.model.free': '免费',
+  'create.model.tokenCost.display': '{count} token',
   // Aspect Ratio 国际化
   'create.aspectRatio.portrait': 'Portrait (竖屏)',
   'create.aspectRatio.landscape': 'Landscape (横屏)',

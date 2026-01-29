@@ -549,6 +549,7 @@ export default {
   'create.model.linkCopied': 'تم نسخ الرابط',
   'create.model.capabilities': 'القدرات',
   'create.model.free': 'مجاني',
+  'create.model.tokenCost.display': '{count} token',
   // مفاتيح جديدة أخرى
   'create.aspectRatio.portrait': 'عمودي',
   'create.aspectRatio.landscape': 'أفقي',

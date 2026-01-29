@@ -596,6 +596,7 @@ export default {
   'create.model.linkCopied': 'Link copiado',
   'create.model.capabilities': 'Capacidades',
   'create.model.free': 'Grátis',
+  'create.model.tokenCost.display': '{count} token',
   // Outras novas chaves
   'create.aspectRatio.portrait': 'Retrato',
   'create.aspectRatio.landscape': 'Paisagem',

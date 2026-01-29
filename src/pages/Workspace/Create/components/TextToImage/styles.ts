@@ -9,6 +9,45 @@ export const TitleSection = styled.div`
   }
 `;
 
+// 模拟 Select 外观的按钮
+export const SelectLikeButton = styled.div<{ disabled?: boolean }>`
+  min-height: 65px;
+  padding: 0;
+  border: 1px solid #d9d9d9;
+  border-radius: 12px;
+  background: #fff;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.3s;
+  position: relative;
+  display: flex;
+  align-items: center;
+  opacity: ${props => props.disabled ? 0.5 : 1};
+
+  &:hover {
+    border-color: ${props => props.disabled ? '#d9d9d9' : '#40a9ff'};
+  }
+
+  .ant-select-arrow {
+    position: absolute;
+    right: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(0, 0, 0, 0.25);
+    font-size: 12px;
+  }
+
+  .select-content {
+    flex: 1;
+    padding-right: 30px;
+  }
+
+  .select-placeholder {
+    padding: 0 11px;
+    color: #bfbfbf;
+    line-height: 65px;
+  }
+`;
+
 // 全局下拉菜单样式
 export const GlobalSelectStyles = createGlobalStyle`
   /* 下拉框输入框圆角 */

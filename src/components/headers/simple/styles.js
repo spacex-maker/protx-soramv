@@ -148,6 +148,10 @@ export const PrimaryLink = styled(NavLink)`
     background: var(--ant-color-bg-container);
     border-color: var(--ant-color-primary);
   }
+
+  @media (max-width: 768px) {
+    display: none; // 移动端隐藏注册按钮
+  }
 `;
 
 export const DarkModeButton = styled.button`

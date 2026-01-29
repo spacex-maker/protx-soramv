@@ -553,6 +553,7 @@ export default {
   'create.model.linkCopied': 'Link copiato',
   'create.model.capabilities': 'Capacità',
   'create.model.free': 'Gratuito',
+  'create.model.tokenCost.display': '{count} token',
   // Altre nuove chiavi
   'create.aspectRatio.portrait': 'Verticale',
   'create.aspectRatio.landscape': 'Orizzontale',

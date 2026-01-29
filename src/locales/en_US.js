@@ -637,6 +637,7 @@ export default {
   'create.model.linkCopied': 'Link copied',
   'create.model.capabilities': 'Capabilities',
   'create.model.free': 'Free',
+  'create.model.tokenCost.display': '{count} token',
   // Aspect Ratio internationalization
   'create.aspectRatio.portrait': 'Portrait',
   'create.aspectRatio.landscape': 'Landscape',
