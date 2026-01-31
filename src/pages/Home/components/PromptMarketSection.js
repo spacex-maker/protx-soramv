@@ -1,0 +1,587 @@
+import React, { useContext } from 'react';
+import styled, { ThemeContext, keyframes, css } from 'styled-components';
+import { motion } from 'framer-motion';
+import { useIntl } from 'react-intl';
+import { useNavigate } from 'react-router-dom';
+import {
+  ThunderboltFilled,
+  SketchOutlined,
+  RocketFilled,
+  ArrowRightOutlined,
+  SafetyCertificateFilled,
+  ExperimentOutlined
+} from '@ant-design/icons';
+import { Section, ContentWrapper } from '../styles';
+
+// --- CSS Animations (持续性背景动画) ---
+
+// 漂浮背景
+const float = keyframes`
+  0% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.95); }
+  100% { transform: translate(0, 0) scale(1); }
+`;
+
+// 文字流光动画
+const textGradientFlow = keyframes`
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+`;
+
+// 按钮扫光
+const sheen = keyframes`
+  0% { transform: translateX(-100%) skewX(-15deg); }
+  100% { transform: translateX(200%) skewX(-15deg); }
+`;
+
+// --- Styled Components ---
+
+const HeroSection = styled(Section)`
+  position: relative;
+  overflow: hidden;
+  padding: 140px 24px;
+  background: ${(props) =>
+    props.theme.mode === 'dark' ? '#000000' : '#f5f5f7'};
+  min-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  perspective: 1000px; /* 开启 3D 视角 */
+
+  /* 动态光斑背景 1 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: -10%;
+    left: 10%;
+    width: 50vw;
+    height: 50vw;
+    background: radial-gradient(circle, ${(props) =>
+      props.theme.mode === 'dark'
+        ? 'rgba(41, 151, 255, 0.15)'
+        : 'rgba(0, 122, 255, 0.1)'} 0%, transparent 60%);
+    filter: blur(90px);
+    animation: ${float} 25s ease-in-out infinite;
+    z-index: 0;
+  }
+
+  /* 动态光斑背景 2 */
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -10%;
+    right: 5%;
+    width: 45vw;
+    height: 45vw;
+    background: radial-gradient(circle, ${(props) =>
+      props.theme.mode === 'dark'
+        ? 'rgba(175, 82, 222, 0.12)'
+        : 'rgba(175, 82, 222, 0.08)'} 0%, transparent 60%);
+    filter: blur(80px);
+    animation: ${float} 20s ease-in-out infinite reverse;
+    z-index: 0;
+  }
+`;
+
+const HeaderContainer = styled(motion.div)`
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto 100px;
+  position: relative;
+  z-index: 1;
+`;
+
+const Label = styled(motion.div)`
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #2997ff;
+  margin-bottom: 20px;
+  display: inline-block;
+  padding: 6px 16px;
+  background: rgba(41, 151, 255, 0.1);
+  border-radius: 20px;
+  backdrop-filter: blur(10px);
+`;
+
+const MainTitle = styled(motion.h2)`
+  font-size: clamp(48px, 6vw, 80px);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  margin-bottom: 32px;
+  color: ${(props) => (props.theme.mode === 'dark' ? '#f5f5f7' : '#1d1d1f')};
+  
+  .highlight {
+    background: linear-gradient(90deg, #2997ff, #af52de, #ff2d55, #2997ff);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: ${textGradientFlow} 8s linear infinite;
+    padding-right: 10px; /* 防止斜体或复杂字体被切 */
+  }
+`;
+
+const SubDescription = styled(motion.p)`
+  font-size: clamp(20px, 2.5vw, 26px);
+  line-height: 1.5;
+  font-weight: 400;
+  color: ${(props) => (props.theme.mode === 'dark' ? '#86868b' : '#6e6e73')};
+  max-width: 720px;
+  margin: 0 auto;
+`;
+
+// 提供商标签区
+const ProviderStrip = styled(motion.div)`
+  margin-top: 48px;
+  margin-bottom: 16px;
+  position: relative;
+  z-index: 1;
+  text-align: center;
+
+  .provider-label {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: ${(props) => (props.theme.mode === 'dark' ? '#86868b' : '#6e6e73')};
+    margin-bottom: 20px;
+  }
+
+  .provider-pills {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .pill {
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: ${(props) => (props.theme.mode === 'dark' ? 'rgba(255,255,255,0.75)' : 'rgba(0,0,0,0.7)')};
+    background: ${(props) =>
+      props.theme.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.06)'
+        : 'rgba(0, 0, 0, 0.04)'};
+    border: 1px solid ${(props) =>
+      props.theme.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.1)'
+        : 'rgba(0, 0, 0, 0.08)'};
+    border-radius: 100px;
+    transition: all 0.25s ease;
+  }
+
+  .pill:hover {
+    background: ${(props) =>
+      props.theme.mode === 'dark'
+        ? 'rgba(41, 151, 255, 0.12)'
+        : 'rgba(41, 151, 255, 0.08)'};
+    border-color: rgba(41, 151, 255, 0.35);
+    color: ${(props) => (props.theme.mode === 'dark' ? '#5ac8fa' : '#007aff')};
+  }
+
+  @media (max-width: 768px) {
+    margin-top: 32px;
+    margin-bottom: 8px;
+    .provider-pills { gap: 8px; }
+    .pill { padding: 6px 12px; font-size: 12px; }
+  }
+`;
+
+// Bento Grid
+const BentoGrid = styled(motion.div)`
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 24px;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+
+  @media (max-width: 900px) {
+    display: flex;
+    flex-direction: column;
+  }
+`;
+
+const GlassCard = styled(motion.div)`
+  grid-column: span ${(props) => props.$colSpan || 4};
+  background: ${(props) =>
+    props.theme.mode === 'dark'
+      ? 'rgba(28, 28, 30, 0.4)'
+      : 'rgba(255, 255, 255, 0.5)'};
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid ${(props) =>
+    props.theme.mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.08)'
+      : 'rgba(255, 255, 255, 0.6)'};
+  border-radius: 32px;
+  padding: 48px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.02);
+  
+  /* 悬停时的光晕效果 */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(800px circle at var(--mouse-x, 50%) var(--mouse-y, 50%), 
+      ${(props) => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)'}, 
+      transparent 40%);
+    opacity: 0;
+    transition: opacity 0.5s;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  &:hover::before {
+    opacity: 1;
+  }
+
+  @media (max-width: 900px) {
+    min-height: 320px;
+  }
+`;
+
+const CardContent = styled(motion.div)`
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+`;
+
+const CardIconWrapper = styled(motion.div)`
+  width: 72px;
+  height: 72px;
+  border-radius: 24px;
+  background: ${(props) => props.$bg || 'linear-gradient(135deg, #2997ff 0%, #007aff 100%)'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  color: #fff;
+  margin-bottom: 32px;
+  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.3);
+`;
+
+const CardTitle = styled.h3`
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: ${(props) => (props.theme.mode === 'dark' ? '#fff' : '#1d1d1f')};
+  letter-spacing: -0.01em;
+`;
+
+const CardText = styled.p`
+  font-size: 17px;
+  line-height: 1.6;
+  color: ${(props) => (props.theme.mode === 'dark' ? '#a1a1a6' : '#86868b')};
+  margin: 0;
+  flex-grow: 1;
+`;
+
+// 装饰性背景图标（大卡片里的虚影）
+const DecorIcon = styled(motion.div)`
+  position: absolute;
+  right: -20px;
+  bottom: -40px;
+  font-size: 240px;
+  opacity: 0.03;
+  color: ${(props) => (props.theme.mode === 'dark' ? '#fff' : '#000')};
+  pointer-events: none;
+  z-index: 0;
+  transform: rotate(-15deg);
+`;
+
+const ActionButton = styled(motion.button)`
+  margin-top: 80px;
+  padding: 20px 48px;
+  font-size: 19px;
+  font-weight: 600;
+  border-radius: 100px;
+  border: none;
+  cursor: pointer;
+  background: ${(props) => (props.theme.mode === 'dark' ? '#fff' : '#1d1d1f')};
+  color: ${(props) => (props.theme.mode === 'dark' ? '#000' : '#fff')};
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 20px 40px -10px rgba(0,0,0,0.3);
+
+  /* 扫光条 */
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 50%; height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    animation: ${sheen} 3s infinite;
+  }
+`;
+
+// --- Framer Motion Variants (核心动效配置) ---
+
+// 容器：控制子元素的交错播放
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2, // 子元素间隔 0.2s 出现
+      delayChildren: 0.1,
+    },
+  },
+};
+
+// 标题：模糊+向上浮动+透明度
+const blurTextVariant = {
+  hidden: { opacity: 0, filter: 'blur(12px)', y: 40 },
+  visible: {
+    opacity: 1,
+    filter: 'blur(0px)',
+    y: 0,
+    transition: { duration: 0.8, ease: [0.2, 0.65, 0.3, 0.9] },
+  },
+};
+
+// 卡片：弹性放大+模糊变清晰
+const cardVariant = {
+  hidden: { opacity: 0, scale: 0.9, filter: 'blur(10px)', y: 30 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    filter: 'blur(0px)',
+    y: 0,
+    transition: { 
+      type: 'spring', 
+      stiffness: 80, 
+      damping: 15,
+      mass: 1 
+    },
+  },
+};
+
+// 图标：在卡片出现后，再弹一下
+const iconPopVariant = {
+  hidden: { scale: 0, opacity: 0 },
+  visible: { 
+    scale: 1, 
+    opacity: 1,
+    transition: { type: 'spring', stiffness: 200, damping: 12, delay: 0.2 } 
+  }
+};
+
+// 兼容的 AI 提供商（品牌名保持英文）
+const PROVIDERS = [
+  'OpenAI', 'Google', 'Anthropic', 'ByteDance', 'Midjourney', 'Runway', 'Kling',
+  'Luma', 'Black Forest Labs', 'Suno', 'ElevenLabs', 'Ideogram', 'Recraft',
+  'Qwen', 'Hailuo', 'Veed', 'Topaz', 'Grok', 'Kie', 'Wan',
+];
+
+const PromptMarketSection = () => {
+  const theme = useContext(ThemeContext);
+  const intl = useIntl();
+  const navigate = useNavigate();
+
+  // 简单的鼠标移动效果处理（可选）
+  const handleMouseMove = (e) => {
+    const cards = document.querySelectorAll('.glass-card');
+    cards.forEach(card => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      card.style.setProperty('--mouse-x', `${x}px`);
+      card.style.setProperty('--mouse-y', `${y}px`);
+    });
+  };
+
+  return (
+    <HeroSection onMouseMove={handleMouseMove}>
+      <ContentWrapper style={{ width: '100%', maxWidth: '1400px' }}>
+        
+        {/* 头部区域 */}
+        <HeaderContainer
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={containerVariants}
+        >
+          <Label variants={blurTextVariant}>
+            {intl.formatMessage({ id: 'market.label', defaultMessage: 'PROMPT MARKETPLACE' })}
+          </Label>
+          
+          <MainTitle variants={blurTextVariant} theme={theme}>
+             {intl.formatMessage({ id: 'market.h1', defaultMessage: 'Unleash your' })} <br/>
+             <span className="highlight">
+               {intl.formatMessage({ id: 'market.h1.highlight', defaultMessage: 'Creative Intelligence.' })}
+             </span>
+          </MainTitle>
+          
+          <SubDescription variants={blurTextVariant} theme={theme}>
+            {intl.formatMessage({ id: 'market.sub', defaultMessage: 'The premium destination for AI prompts. Verified recipes for Midjourney, ChatGPT, and Sora. Stop guessing, start creating.' })}
+          </SubDescription>
+
+          <ProviderStrip
+            theme={theme}
+            variants={blurTextVariant}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+          >
+            <div className="provider-label">
+              {intl.formatMessage({ id: 'market.providers.title', defaultMessage: 'Works with leading models & platforms' })}
+            </div>
+            <div className="provider-pills">
+              {PROVIDERS.map((name) => (
+                <span key={name} className="pill">{name}</span>
+              ))}
+            </div>
+          </ProviderStrip>
+        </HeaderContainer>
+
+        {/* Bento Grid 布局 */}
+        <BentoGrid
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          variants={containerVariants}
+        >
+          {/* Card 1: 大卡片 (7列) */}
+          <GlassCard 
+            theme={theme} 
+            $colSpan={7} 
+            variants={cardVariant}
+            className="glass-card"
+            whileHover={{ scale: 1.02, transition: { duration: 0.3 } }}
+          >
+            <CardContent>
+              <CardIconWrapper variants={iconPopVariant}>
+                <ThunderboltFilled />
+              </CardIconWrapper>
+              <CardTitle theme={theme}>
+                {intl.formatMessage({ id: 'market.card1.title', defaultMessage: 'Instant Integration' })}
+              </CardTitle>
+              <CardText theme={theme} style={{ maxWidth: '85%' }}>
+                {intl.formatMessage({ id: 'market.card1.desc', defaultMessage: 'Skip the prompt engineering learning curve. Import battle-tested prompts directly into your workflow with one click.' })}
+              </CardText>
+            </CardContent>
+            <DecorIcon theme={theme} initial={{ rotate: -15 }} animate={{ rotate: 0, transition: { duration: 10, repeat: Infinity, repeatType: 'mirror' }}}>
+               <RocketFilled />
+            </DecorIcon>
+          </GlassCard>
+
+          {/* Card 2: 中卡片 (5列) */}
+          <GlassCard 
+            theme={theme} 
+            $colSpan={5} 
+            variants={cardVariant}
+            className="glass-card"
+            whileHover={{ scale: 1.02, transition: { duration: 0.3 } }}
+          >
+            <CardContent>
+              <CardIconWrapper variants={iconPopVariant} $bg="linear-gradient(135deg, #FF9500 0%, #FF3B30 100%)">
+                <SketchOutlined />
+              </CardIconWrapper>
+              <CardTitle theme={theme}>
+                {intl.formatMessage({ id: 'market.card2.title', defaultMessage: 'Monetize Creativity' })}
+              </CardTitle>
+              <CardText theme={theme}>
+                {intl.formatMessage({ id: 'market.card2.desc', defaultMessage: 'Turn your best prompts into passive income. Join thousands of creators earning from their AI expertise.' })}
+              </CardText>
+            </CardContent>
+          </GlassCard>
+
+          {/* Card 3: 中卡片 (5列) */}
+          <GlassCard 
+            theme={theme} 
+            $colSpan={5} 
+            variants={cardVariant}
+            className="glass-card"
+            whileHover={{ scale: 1.02, transition: { duration: 0.3 } }}
+          >
+            <CardContent>
+              <CardIconWrapper variants={iconPopVariant} $bg="linear-gradient(135deg, #30B0C7 0%, #5856D6 100%)">
+                <SafetyCertificateFilled />
+              </CardIconWrapper>
+              <CardTitle theme={theme}>
+                {intl.formatMessage({ id: 'market.card3.title', defaultMessage: 'Verified Quality' })}
+              </CardTitle>
+              <CardText theme={theme}>
+                {intl.formatMessage({ id: 'market.card3.desc', defaultMessage: 'Every listing is manually reviewed and tested. We guarantee consistent results across different models.' })}
+              </CardText>
+            </CardContent>
+          </GlassCard>
+
+          {/* Card 4: 大卡片 (7列) - 探索更多 */}
+          <GlassCard 
+            theme={theme} 
+            $colSpan={7} 
+            variants={cardVariant}
+            className="glass-card"
+            whileHover={{ scale: 1.02, transition: { duration: 0.3 } }}
+            style={{ cursor: 'pointer', background: theme.mode === 'dark' ? 'linear-gradient(120deg, #1c1c1e 0%, #2c2c2e 100%)' : '#fff' }}
+            onClick={() => navigate('/workspace/prompt-market')}
+          >
+             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', height: '100%' }}>
+                <div>
+                   <CardIconWrapper variants={iconPopVariant} $bg="linear-gradient(135deg, #32D74B 0%, #00C7BE 100%)" style={{ width: 56, height: 56, fontSize: 24, marginBottom: 20 }}>
+                      <ExperimentOutlined />
+                   </CardIconWrapper>
+                   <CardTitle theme={theme} style={{ fontSize: 32 }}>
+                     {intl.formatMessage({ id: 'market.card4.title', defaultMessage: 'Explore the Lab' })}
+                   </CardTitle>
+                   <CardText theme={theme}>
+                     {intl.formatMessage({ id: 'market.card4.desc', defaultMessage: 'Discover over 10,000+ assets generated by community.' })}
+                   </CardText>
+                </div>
+                <motion.div 
+                   whileHover={{ x: 10 }}
+                   style={{ 
+                      width: 80, height: 80, borderRadius: '50%', background: theme.mode === 'dark' ? '#fff' : '#000', color: theme.mode === 'dark' ? '#000' : '#fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32
+                   }}
+                >
+                   <ArrowRightOutlined />
+                </motion.div>
+             </div>
+          </GlassCard>
+        </BentoGrid>
+
+        {/* 底部 CTA 按钮 */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8, y: 40 }}
+          whileInView={{ opacity: 1, scale: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.8, type: 'spring', stiffness: 100 }}
+        >
+          <ActionButton 
+            theme={theme} 
+            onClick={() => navigate('/workspace/prompt-market')}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {intl.formatMessage({ id: 'market.cta', defaultMessage: 'Launch Prompt Market' })} <ArrowRightOutlined />
+          </ActionButton>
+        </motion.div>
+
+      </ContentWrapper>
+    </HeroSection>
+  );
+};
+
+export default PromptMarketSection;

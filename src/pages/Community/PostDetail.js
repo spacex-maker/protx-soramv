@@ -25,6 +25,12 @@ const PageLayout = styled.div`
   background: ${props => props.theme.mode === 'dark' ? '#0a0a0a' : '#ffffff'};
   color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1f1f1f'};
   padding-top: 60px;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding-top: 56px;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
 `;
 
 // 顶部导航栏，极简风格
@@ -37,7 +43,9 @@ const NavBar = styled.div`
   align-items: center;
 
   @media (max-width: 768px) {
-    padding: 16px 20px;
+    padding: 12px 16px;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
   }
 `;
 
@@ -54,6 +62,13 @@ const MainContainer = styled.div`
     padding: 0 20px 40px;
     gap: 30px;
   }
+
+  @media (max-width: 768px) {
+    padding: 0 16px 32px;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    gap: 20px;
+  }
 `;
 
 // 左侧：媒体展示区
@@ -64,11 +79,15 @@ const MediaSection = styled.div`
 
 const ImageContainer = styled.div`
   width: 100%;
-  border-radius: 24px; // 大圆角，更柔和
+  border-radius: 24px;
   overflow: hidden;
   background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#f8f8f8'};
   box-shadow: 0 4px 20px rgba(0,0,0,0.05);
   position: relative;
+
+  @media (max-width: 768px) {
+    border-radius: 16px;
+  }
   
   .ant-image {
     width: 100%;
@@ -121,6 +140,7 @@ const UserCard = styled.div`
   align-items: center;
   justify-content: space-between;
   margin-bottom: 32px;
+  gap: 12px;
 
   .user-info {
     display: flex;
@@ -128,25 +148,37 @@ const UserCard = styled.div`
     gap: 12px;
     cursor: pointer;
     transition: opacity 0.2s;
-    
+    min-width: 0;
+    flex: 1;
+
     &:hover {
       opacity: 0.8;
     }
-    
+
     .ant-avatar {
       cursor: pointer;
+      flex-shrink: 0;
     }
-    
+
     .name {
       font-size: 16px;
       font-weight: 700;
       color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1f1f1f'};
       cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .date {
       font-size: 12px;
       color: #888;
     }
+  }
+
+  @media (max-width: 768px) {
+    margin-bottom: 20px;
+    .user-info .name { font-size: 15px; }
+    .user-info .date { font-size: 11px; }
   }
 `;
 
@@ -159,7 +191,15 @@ const FollowButton = styled(Button)`
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
-  
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    min-width: 72px;
+    height: 36px;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+
   &.follow-btn-primary {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border: none;
@@ -225,7 +265,7 @@ const PromptBox = styled.div`
     justify-content: space-between;
     align-items: center;
     margin-bottom: 12px;
-    
+
     .label {
       font-size: 12px;
       font-weight: 700;
@@ -236,7 +276,7 @@ const PromptBox = styled.div`
   }
 
   .content {
-    font-family: 'JetBrains Mono', 'Menlo', monospace; // 编程字体
+    font-family: 'JetBrains Mono', 'Menlo', monospace;
     font-size: 14px;
     line-height: 1.6;
     color: ${props => props.theme.mode === 'dark' ? '#ccc' : '#444'};
@@ -245,9 +285,20 @@ const PromptBox = styled.div`
     overflow-wrap: break-word;
     max-height: 200px;
     overflow-y: auto;
-    overflow-x: hidden; // 防止水平滚动
+    overflow-x: hidden;
     width: 100%;
     box-sizing: border-box;
+  }
+
+  @media (max-width: 768px) {
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    border-radius: 12px;
+
+    .content {
+      font-size: 13px;
+      max-height: 160px;
+    }
   }
 `;
 
@@ -259,6 +310,7 @@ const ActionGroup = styled.div`
 
   .main-btn {
     flex: 2;
+    min-width: 0;
     height: 48px;
     font-size: 16px;
     font-weight: 600;
@@ -268,6 +320,7 @@ const ActionGroup = styled.div`
 
   .icon-btn {
     flex: 1;
+    min-width: 48px;
     height: 48px;
     border-radius: 24px;
     font-size: 18px;
@@ -278,15 +331,33 @@ const ActionGroup = styled.div`
     color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1f1f1f'};
     background: transparent;
     transition: all 0.2s;
+    cursor: pointer;
 
     &:hover {
       background: ${props => props.theme.mode === 'dark' ? '#333' : '#f0f0f0'};
       transform: translateY(-2px);
     }
-    
+
     &.active {
       border-color: transparent;
-      // 激活状态的特定颜色处理在 JSX 中完成
+    }
+  }
+
+  @media (max-width: 768px) {
+    gap: 8px;
+    margin-bottom: 24px;
+
+    .main-btn {
+      height: 44px;
+      font-size: 14px;
+      border-radius: 22px;
+    }
+
+    .icon-btn {
+      min-width: 44px;
+      height: 44px;
+      border-radius: 22px;
+      font-size: 16px;
     }
   }
 `;
@@ -296,7 +367,7 @@ const StyledTags = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  
+
   .ant-tag {
     margin: 0;
     padding: 6px 12px;
@@ -313,6 +384,30 @@ const StyledTags = styled.div`
       color: ${props => props.theme.mode === 'dark' ? '#fff' : '#000'};
     }
   }
+
+  @media (max-width: 768px) {
+    gap: 6px;
+    .ant-tag { padding: 5px 10px; font-size: 12px; }
+  }
+`;
+
+// 页面标题，移动端缩小字号
+const PageTitle = styled(Title)`
+  margin-bottom: 24px !important;
+  font-size: 28px !important;
+  line-height: 1.3 !important;
+  word-break: break-word;
+
+  @media (max-width: 768px) {
+    font-size: 20px !important;
+    margin-bottom: 16px !important;
+  }
+`;
+
+// 底部统计区，移动端换行
+const StatsRow = styled(Space)`
+  flex-wrap: wrap;
+  row-gap: 8px;
 `;
 
 // 炫光效果模型名称
@@ -500,17 +595,18 @@ const PostDetailPage = () => {
       
       {/* 顶部简易导航 / 面包屑 */}
       <NavBar>
-        <Button 
-          type="text" 
-          icon={<ArrowLeftOutlined />} 
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
           onClick={() => navigate(-1)}
-          style={{ fontSize: 16, paddingLeft: 0 }}
+          style={{ fontSize: 16, paddingLeft: 0, minHeight: 44, minWidth: 44 }}
+          className="nav-back-btn"
         >
           <FormattedMessage id="common.back" defaultMessage="返回" />
         </Button>
-        <div style={{ display: 'flex', gap: 12 }}>
-            <Button icon={<ShareAltOutlined />} shape="circle" />
-            <Button icon={<DownloadOutlined />} shape="circle" />
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <Button icon={<ShareAltOutlined />} shape="circle" style={{ minWidth: 44, minHeight: 44 }} />
+          <Button icon={<DownloadOutlined />} shape="circle" style={{ minWidth: 44, minHeight: 44 }} />
         </div>
       </NavBar>
 

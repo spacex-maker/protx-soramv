@@ -468,6 +468,22 @@ export default function App() {
                 }
               />
               <Route
+                path="/workspace/channels"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/workspace/recharge"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
                 path="/workspace/storage-nodes"
                 element={
                   <PrivateRoute>

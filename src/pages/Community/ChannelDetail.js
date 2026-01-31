@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Row, Col, Spin, message, Button, Typography, Empty, Select, Avatar, Tooltip, Tag } from 'antd';
 import { 
@@ -65,6 +65,25 @@ const pulse = keyframes`
   100% { transform: scale(1); }
 `;
 
+const shimmer = keyframes`
+  0% { transform: translateX(-100%) skewX(-15deg); }
+  100% { transform: translateX(200%) skewX(-15deg); }
+`;
+
+const gradientShift = keyframes`
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+`;
+
+const ringRotate = keyframes`
+  to { transform: rotate(360deg); }
+`;
+
+const dotBounce = keyframes`
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.5; }
+  40% { transform: scale(1.2); opacity: 1; }
+`;
+
 // --- Styled Components (Layout) ---
 
 const PageLayout = styled.div`
@@ -75,6 +94,12 @@ const PageLayout = styled.div`
   flex-direction: column;
   padding-top: 60px;
   position: relative;
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    padding-top: 56px;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
 `;
 
 const UserCardWrapper = styled.div`
@@ -142,7 +167,7 @@ const HeroSection = styled.div`
     content: '';
     position: absolute;
     inset: -20px;
-    background-image: url(${props => props.coverUrl});
+    background-image: ${props => props.coverUrl ? `url(${props.coverUrl})` : 'none'};
     background-size: cover;
     background-position: center;
     filter: blur(10px) brightness(0.8);
@@ -155,6 +180,11 @@ const HeroSection = styled.div`
     position: absolute;
     inset: 0;
     background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%);
+  }
+
+  @media (max-width: 768px) {
+    height: 200px;
+    margin-bottom: 24px;
   }
 `;
 
@@ -170,7 +200,7 @@ const HeroContent = styled.div`
   align-items: flex-end;
 
   @media (max-width: 768px) {
-    padding: 0 20px 40px;
+    padding: 0 max(16px, env(safe-area-inset-left)) 28px max(16px, env(safe-area-inset-right));
     flex-direction: column;
     align-items: flex-start;
   }
@@ -178,7 +208,7 @@ const HeroContent = styled.div`
 
 const TitleWrapper = styled.div`
   animation: ${fadeInUp} 0.6s ease-out;
-  
+
   h1 {
     margin: 0;
     font-size: 48px;
@@ -199,6 +229,22 @@ const TitleWrapper = styled.div`
     line-height: 1.6;
     font-weight: 400;
   }
+
+  @media (max-width: 768px) {
+    h1 {
+      font-size: 24px;
+      gap: 10px;
+    }
+    .desc {
+      margin-top: 8px;
+      font-size: 14px;
+      max-width: 100%;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  }
 `;
 
 const Container = styled.div`
@@ -207,9 +253,10 @@ const Container = styled.div`
   width: 100%;
   padding: 0 40px 60px;
   flex: 1;
+  box-sizing: border-box;
 
   @media (max-width: 768px) {
-    padding: 0 20px 40px;
+    padding: 0 max(16px, env(safe-area-inset-left)) 32px max(16px, env(safe-area-inset-right));
   }
 `;
 
@@ -222,17 +269,173 @@ const ToolBar = styled.div`
   padding: 16px 24px;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+
+  @media (max-width: 768px) {
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 12px 16px;
+    border-radius: 10px;
+  }
 `;
 
 const FilterGroup = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
-  
+
   .label {
     font-weight: 600;
     color: ${props => props.theme.mode === 'dark' ? '#aaa' : '#666'};
     margin-right: 8px;
+  }
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: space-between;
+    .label { font-size: 14px; margin-right: 0; }
+    .ant-select { min-width: 120px !important; }
+  }
+`;
+
+const ToolBarLeft = styled.div`
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    gap: 12px;
+    width: 100%;
+  }
+`;
+
+const GridWrap = styled.div`
+  @media (max-width: 768px) {
+    /* 瀑布流：两列，小间距 */
+    column-count: 2;
+    column-gap: 6px;
+    .ant-row {
+      display: contents;
+    }
+    .ant-row > .ant-col {
+      width: 100% !important;
+      max-width: none !important;
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin-bottom: 6px !important;
+      padding: 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      padding-bottom: 0 !important;
+    }
+  }
+`;
+
+const BlockSection = styled.div`
+  text-align: center;
+  padding: ${props => props.padding || '60px 0'};
+
+  @media (max-width: 768px) {
+    padding: ${props => props.mobilePadding || '32px 0'};
+  }
+`;
+
+// --- 酷炫加载态 ---
+const SkeletonGridWrap = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  width: 100%;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+`;
+
+const SkeletonCard = styled.div`
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background: ${props => props.theme.mode === 'dark' ? '#1a1a1a' : '#e8e8e8'};
+  padding-top: ${props => props.ratio || '100'}%;
+
+  @media (max-width: 768px) {
+    border-radius: 12px;
+    padding-top: ${props => props.mobileRatio || props.ratio || '100'}%;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.5)'} 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: ${shimmer} 1.8s ease-in-out infinite;
+    pointer-events: none;
+  }
+`;
+
+const LoadMoreLoaderWrap = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 0;
+  min-height: 60px;
+`;
+
+const GradientRing = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  position: relative;
+  background: conic-gradient(
+    from 0deg,
+    #667eea 0deg,
+    #764ba2 90deg,
+    #f093fb 180deg,
+    #4facfe 270deg,
+    #667eea 360deg
+  );
+  animation: ${ringRotate} 0.9s linear infinite;
+  box-shadow: 0 0 24px rgba(102, 126, 234, 0.35);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+    background: ${props => props.theme.mode === 'dark' ? '#0a0a0a' : '#f8f9fa'};
+  }
+`;
+
+const BounceDots = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  span {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    box-shadow: 0 0 12px rgba(102, 126, 234, 0.5);
+    animation: ${dotBounce} 0.8s ease-in-out infinite both;
+
+    &:nth-child(1) { animation-delay: 0s; }
+    &:nth-child(2) { animation-delay: 0.15s; }
+    &:nth-child(3) { animation-delay: 0.3s; }
   }
 `;
 
@@ -241,7 +444,7 @@ const FilterGroup = styled.div`
 const ModernCard = styled.div`
   position: relative;
   width: 100%;
-  padding-top: 100%; /* 1:1 Aspect Ratio (Square) - Adjust to 75% for 4:3 if preferred */
+  padding-top: 100%;
   border-radius: 16px;
   overflow: hidden;
   background: ${props => props.theme.mode === 'dark' ? '#222' : '#f0f2f5'};
@@ -249,18 +452,29 @@ const ModernCard = styled.div`
   transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   border: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : 'transparent'};
 
-  /* Clickable overlay */
   &::before {
     content: '';
     position: absolute;
     inset: 0;
-    z-index: 5; 
+    z-index: 5;
     cursor: pointer;
   }
 
   &:hover {
     transform: translateY(-6px);
     box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+  }
+
+  @media (max-width: 768px) {
+    border-radius: 12px;
+    padding-top: 0;
+    height: auto;
+    &:hover {
+      transform: translateY(-2px);
+    }
+    &:active {
+      transform: scale(0.98);
+    }
   }
 `;
 
@@ -282,6 +496,17 @@ const CardImageWrapper = styled.div`
   ${ModernCard}:hover & img {
     transform: scale(1.08);
   }
+
+  @media (max-width: 768px) {
+    position: relative;
+    height: auto;
+    img {
+      height: auto;
+      width: 100%;
+      display: block;
+      vertical-align: top;
+    }
+  }
 `;
 
 const FloatingActions = styled.div`
@@ -291,7 +516,7 @@ const FloatingActions = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
-  z-index: 20; 
+  z-index: 20;
   opacity: 0;
   transform: translateX(10px);
   transition: all 0.3s ease;
@@ -306,8 +531,9 @@ const FloatingActions = styled.div`
     transform: translateX(0);
     flex-direction: row;
     top: auto;
-    bottom: 70px; /* Adjust based on Glass Height */
-    right: 12px;
+    bottom: 56px;
+    right: 10px;
+    gap: 6px;
   }
 `;
 
@@ -325,15 +551,22 @@ const GlassBtn = styled.button`
   cursor: pointer;
   transition: all 0.2s;
   font-size: 16px;
-  
+
   &:hover {
     background: rgba(255, 255, 255, 0.9);
     color: ${props => props.activeColor || '#333'};
     transform: scale(1.1);
   }
-  
+
   svg {
-     animation: ${props => props.animating ? css`${pulse} 0.4s` : 'none'};
+    animation: ${props => props.animating ? css`${pulse} 0.4s` : 'none'};
+  }
+
+  @media (max-width: 768px) {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    -webkit-tap-highlight-color: transparent;
   }
 `;
 
@@ -344,25 +577,28 @@ const CardContent = styled.div`
   width: 100%;
   z-index: 10;
   padding: 12px 16px;
-  
-  /* Glassmorphism Logic */
-  background: ${props => props.theme.mode === 'dark' 
-    ? 'rgba(0, 0, 0, 0.65)' 
+
+  background: ${props => props.theme.mode === 'dark'
+    ? 'rgba(0, 0, 0, 0.65)'
     : 'rgba(255, 255, 255, 0.75)'};
-    
+
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  
-  border-top: 1px solid ${props => props.theme.mode === 'dark' 
-    ? 'rgba(255, 255, 255, 0.1)' 
+
+  border-top: 1px solid ${props => props.theme.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.1)'
     : 'rgba(255, 255, 255, 0.4)'};
-    
+
   transition: background 0.3s ease;
-  
+
   ${ModernCard}:hover & {
-    background: ${props => props.theme.mode === 'dark' 
-      ? 'rgba(0, 0, 0, 0.8)' 
+    background: ${props => props.theme.mode === 'dark'
+      ? 'rgba(0, 0, 0, 0.8)'
       : 'rgba(255, 255, 255, 0.9)'};
+  }
+
+  @media (max-width: 768px) {
+    padding: 10px 12px;
   }
 `;
 
@@ -374,21 +610,29 @@ const CardTitle = styled.h3`
   overflow: hidden;
   text-overflow: ellipsis;
   color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1f1f1f'};
-  /* Optional: Text shadow for better contrast */
   text-shadow: ${props => props.theme.mode === 'dark' ? '0 1px 2px rgba(0,0,0,0.5)' : 'none'};
+
+  @media (max-width: 768px) {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
 `;
 
 const MetaRow = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
+  min-width: 0;
 `;
 
 const UserInfo = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  
+  min-width: 0;
+  flex: 1;
+
   .name {
     font-size: 13px;
     color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.85)' : '#444'};
@@ -398,6 +642,10 @@ const UserInfo = styled.div`
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  @media (max-width: 768px) {
+    .name { max-width: 80px; font-size: 12px; }
+  }
 `;
 
 const StatsInfo = styled.div`
@@ -405,11 +653,17 @@ const StatsInfo = styled.div`
   gap: 12px;
   font-size: 12px;
   color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.7)' : '#666'};
+  flex-shrink: 0;
 
   span {
     display: flex;
     align-items: center;
     gap: 4px;
+  }
+
+  @media (max-width: 768px) {
+    gap: 8px;
+    font-size: 11px;
   }
 `;
 
@@ -431,6 +685,27 @@ const ChannelDetailPage = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [hasMoved, setHasMoved] = useState(false);
+
+  // 滚动到底部附近自动加载
+  const loadMoreRef = useRef(null);
+  const postsLoadingRef = useRef(postsLoading);
+  postsLoadingRef.current = postsLoading;
+
+  useEffect(() => {
+    if (!hasMore || postsLoading || posts.length === 0) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (!entries[0].isIntersecting) return;
+        if (postsLoadingRef.current) return;
+        setPage((p) => p + 1);
+      },
+      { root: null, rootMargin: '0px 0px 200px 0px', threshold: 0 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, postsLoading, posts.length]);
 
   useEffect(() => {
     if (channelKey) {
@@ -668,14 +943,14 @@ const ChannelDetailPage = () => {
       <Container>
         {/* Tool Bar */}
         <ToolBar>
-          <div style={{ display: 'flex', gap: 24, alignItems: 'center' }}>
-             <Tag color={channel.themeColor || "blue"} style={{ padding: '4px 12px', fontSize: 14 }}>
-               #{channelKey}
-             </Tag>
-             <Text type="secondary">
-               <FormattedMessage id="community.totalPosts" defaultMessage="{count} artworks" values={{ count: <b>{channel.postCount || 0}</b> }} />
-             </Text>
-          </div>
+          <ToolBarLeft>
+            <Tag color={channel.themeColor || "blue"} style={{ padding: '4px 12px', fontSize: 14 }}>
+              #{channelKey}
+            </Tag>
+            <Text type="secondary" style={{ fontSize: 'inherit' }}>
+              <FormattedMessage id="community.totalPosts" defaultMessage="{count} artworks" values={{ count: <b>{channel.postCount || 0}</b> }} />
+            </Text>
+          </ToolBarLeft>
 
           <FilterGroup>
             <span className="label">
@@ -696,13 +971,14 @@ const ChannelDetailPage = () => {
         </ToolBar>
 
         {/* --- Art Grid --- */}
+        <GridWrap>
         <Row gutter={[24, 24]}>
           {posts.map((post) => {
             const isLiked = post.isLiked || false;
             const isCollected = post.isCollected || false;
 
             return (
-              <Col xs={24} sm={12} md={8} lg={6} xl={6} key={post.id}>
+              <Col xs={12} sm={12} md={8} lg={6} xl={6} key={post.id}>
                 <ModernCard onClick={() => handlePostClick(post)}>
                   
                   {/* Background Image Layer */}
@@ -773,29 +1049,41 @@ const ChannelDetailPage = () => {
             );
           })}
         </Row>
+        </GridWrap>
 
-        {/* Loading & Empty States */}
-        {postsLoading && (
-          <div style={{ textAlign: 'center', padding: '60px 0' }}>
-            <Spin size="large" />
-          </div>
+        {/* 初次加载：骨架屏 + 流光动画 */}
+        {postsLoading && posts.length === 0 && (
+          <SkeletonGridWrap>
+            {[100, 85, 120, 95, 110, 90, 100, 80].map((ratio, i) => (
+              <SkeletonCard key={i} ratio={`${ratio}%`} mobileRatio={`${ratio < 100 ? ratio + 15 : ratio}%`} />
+            ))}
+          </SkeletonGridWrap>
         )}
 
-        {hasMore && !postsLoading && posts.length > 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <Button size="large" shape="round" onClick={() => setPage(p => p + 1)} style={{ padding: '0 40px' }}>
-              <FormattedMessage id="common.loadMore" defaultMessage="Explore More" />
-            </Button>
-          </div>
+        {hasMore && posts.length > 0 && (
+          <>
+            <div ref={loadMoreRef} style={{ height: 1, marginTop: -1 }} aria-hidden />
+            <BlockSection padding="40px 0" mobilePadding="24px 0">
+              {postsLoading ? (
+                <LoadMoreLoaderWrap>
+                  <GradientRing />
+                </LoadMoreLoaderWrap>
+              ) : (
+                <Button size="large" shape="round" onClick={() => setPage(p => p + 1)} style={{ padding: '0 40px', minHeight: 44 }}>
+                  <FormattedMessage id="common.loadMore" defaultMessage="Explore More" />
+                </Button>
+              )}
+            </BlockSection>
+          </>
         )}
 
         {posts.length === 0 && !postsLoading && (
-          <div style={{ padding: '60px 0' }}>
-            <Empty 
-              image={Empty.PRESENTED_IMAGE_SIMPLE} 
-              description={intl.formatMessage({ id: 'community.noPosts', defaultMessage: 'No masterpieces here yet. Be the first to create!' })} 
+          <BlockSection padding="60px 0" mobilePadding="40px 16px">
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={intl.formatMessage({ id: 'community.noPosts', defaultMessage: 'No masterpieces here yet. Be the first to create!' })}
             />
-          </div>
+          </BlockSection>
         )}
       </Container>
     </PageLayout>

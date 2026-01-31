@@ -27,3 +27,15 @@
   border-radius: 16px !important;
   overflow: hidden;
 }
+
+/* 费用设置：InputNumber + addon 全圆弧（药丸形） */
+.fee-input-pill .ant-input-number-group {
+  border-radius: 9999px !important;
+  overflow: hidden;
+}
+.fee-input-pill .ant-input-number-group .ant-input-number {
+  border-radius: 9999px 0 0 9999px !important;
+}
+.fee-input-pill .ant-input-number-group .ant-input-number-group-addon {
+  border-radius: 0 9999px 9999px 0 !important;
+}

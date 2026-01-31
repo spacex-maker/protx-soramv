@@ -10,13 +10,28 @@ import {
 } from '@ant-design/icons';
 import styled, { css } from 'styled-components';
 import { base } from 'api/base';
+import { useLocale } from 'contexts/LocaleContext';
 import PromptMarketListingCreateFormModel from './PromptMarketListingCreateFormModel';
+import PromptMarketDetailModal from './PromptMarketDetailModal';
+import PromptMarketDetailMobile from './PromptMarketDetailMobile';
 
 const { Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
 
-// --- Mock Data & Utils ---
-const MOCK_TAGS = ['全部', '二次元', '赛博朋克', '写实摄影', '3D渲染', 'Logo设计', 'UI界面', '古风', '机甲', '概念艺术', '电商海报'];
+/** 从 tagNameI18n JSON 解析显示名：中文环境用 zh，否则用 en */
+const parseTagLabel = (
+  tagNameI18n: string | Record<string, string> | undefined,
+  lang?: string
+): string => {
+  if (!tagNameI18n) return '';
+  try {
+    const o = typeof tagNameI18n === 'string' ? JSON.parse(tagNameI18n) : tagNameI18n;
+    const isZh = lang === 'zh';
+    return (isZh ? (o?.zh || o?.en || o?.label) : (o?.en || o?.zh || o?.label)) || '';
+  } catch {
+    return String(tagNameI18n);
+  }
+};
 
 const addImageCompressSuffix = (url: string | null | undefined, width = 600): string => {
   if (!url) return '';
@@ -247,14 +262,22 @@ const SortButton = styled(Button)<{ $active?: boolean }>`
 
 const PromptMarket: React.FC = () => {
   const { token } = theme.useToken();
+  const { locale } = useLocale();
   const [createModalVisible, setCreateModalVisible] = useState(false);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedListingId, setSelectedListingId] = useState<number | null>(null);
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 768);
   
   // Filters
   const [activeTab, setActiveTab] = useState('ALL');
   const [searchInput, setSearchInput] = useState('');
   const [keyword, setKeyword] = useState('');
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  /** 选中的标签 tagCode，null 表示「全部」 */
+  const [selectedTagCode, setSelectedTagCode] = useState<string | null>(null);
   const [sort, setSort] = useState('latest');
+  
+  // 热门标签（从后端获取，按当前语言显示）
+  const [hotTags, setHotTags] = useState<{ tagCode: string; label: string }[]>([]);
   
   // Data
   const [list, setList] = useState<any[]>([]);
@@ -262,6 +285,32 @@ const PromptMarket: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 12;
+
+  const lang = locale || 'zh';
+  const allLabel = lang === 'zh' ? '全部' : 'All';
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  // 页面加载时拉取热门标签，按当前语言显示
+  useEffect(() => {
+    const load = async () => {
+      const res = await base.getPromptTagLibraryRecommend();
+      if (res?.success && Array.isArray(res?.data)) {
+        const items = res.data
+          .map((item: { id?: number; tagCode?: string; tagNameI18n?: string }) => ({
+            tagCode: item.tagCode != null ? String(item.tagCode) : String(item.id ?? ''),
+            label: parseTagLabel(item.tagNameI18n, lang) || item.tagCode || String(item.id ?? ''),
+          }))
+          .filter((o: { tagCode: string; label: string }) => o.tagCode && o.label);
+        setHotTags(items);
+      }
+    };
+    load();
+  }, [lang]);
 
   const fetchList = useCallback(async () => {
     setLoading(true);
@@ -272,7 +321,7 @@ const PromptMarket: React.FC = () => {
     };
     if (activeTab && activeTab !== 'ALL') params.listingType = activeTab;
     if (keyword) params.title = keyword;
-    if (selectedTag && selectedTag !== '全部') params.tag = selectedTag;
+    if (selectedTagCode) params.tag = selectedTagCode;
     
     try {
       const res = await base.getPromptMarketListingList(params);
@@ -285,7 +334,7 @@ const PromptMarket: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, activeTab, keyword, selectedTag, sort]);
+  }, [currentPage, pageSize, activeTab, keyword, selectedTagCode, sort]);
 
   useEffect(() => {
     fetchList();
@@ -297,8 +346,25 @@ const PromptMarket: React.FC = () => {
   };
 
   const handleCreate = async (values: any) => {
-    // ... 保持原有逻辑
-    const payload = { ...values, originalTaskId: values.originalTaskId ? Number(values.originalTaskId) : undefined, tags: JSON.stringify(values.tags || []) };
+    const priceToken = Number(values.priceToken) ?? 0;
+    const isPromptHidden = priceToken === 0 ? false : (values.isPromptHidden !== false);
+    // 仅传后端 PromptMarketListingCreateRequest 支持的字段，避免 status/auditStatus/userId 等导致 JSON parse error
+    const payload = {
+      originalTaskId: values.originalTaskId ? Number(values.originalTaskId) : undefined,
+      listingType: values.listingType,
+      title: values.title,
+      description: values.description,
+      coverImageUrl: values.coverImageUrl,
+      previewImages: values.previewImages,
+      priceToken,
+      originalPriceToken: values.originalPriceToken != null ? Number(values.originalPriceToken) : undefined,
+      licenseType: values.licenseType,
+      parameterSnapshot: values.parameterSnapshot,
+      isPromptHidden: isPromptHidden ? 1 : 0,
+      modelType: values.modelType,
+      baseModelVersion: values.baseModelVersion,
+      tags: typeof values.tags === 'string' ? values.tags : JSON.stringify(values.tags || []),
+    };
     const res = await base.createPromptMarketListing(payload);
     if (res?.success) {
       message.success('上架成功');
@@ -365,13 +431,20 @@ const PromptMarket: React.FC = () => {
           </div>
 
           <TagList>
-            {MOCK_TAGS.map((tag) => (
-              <div 
-                key={tag} 
-                className={`tag-item ${selectedTag === tag || (selectedTag === null && tag === '全部') ? 'active' : ''}`}
-                onClick={() => { setSelectedTag(tag === '全部' ? null : tag); setCurrentPage(1); }}
+            <div
+              key="all"
+              className={`tag-item ${selectedTagCode === null ? 'active' : ''}`}
+              onClick={() => { setSelectedTagCode(null); setCurrentPage(1); }}
+            >
+              {allLabel}
+            </div>
+            {hotTags.map((t) => (
+              <div
+                key={t.tagCode}
+                className={`tag-item ${selectedTagCode === t.tagCode ? 'active' : ''}`}
+                onClick={() => { setSelectedTagCode(t.tagCode); setCurrentPage(1); }}
               >
-                {tag}
+                {t.label}
               </div>
             ))}
           </TagList>
@@ -389,7 +462,7 @@ const PromptMarket: React.FC = () => {
                 
                 return (
                   <Col xs={24} sm={12} md={8} lg={6} xl={6} key={item.id}>
-                    <MarketCard>
+                    <MarketCard onClick={() => { setSelectedListingId(item.id); setDetailModalVisible(true); }}>
                       <CoverArea>
                         <img className="cover-img" src={coverUrl} alt={item.title} loading="lazy" />
                         
@@ -399,10 +472,12 @@ const PromptMarket: React.FC = () => {
                         </TypeBadge>
                         
                         <PriceFloat $isFree={item.priceToken === 0}>
-                          {item.priceToken === 0 ? 'FREE' : (
+                          {item.priceToken === 0
+                            ? (lang === 'zh' ? '免费' : 'Free')
+                            : (
                             <>
                               <ThunderboltFilled style={{ color: '#faad14' }} />
-                              {item.priceToken}
+                              {item.priceToken} TOKEN
                             </>
                           )}
                         </PriceFloat>
@@ -452,6 +527,22 @@ const PromptMarket: React.FC = () => {
         onFinish={handleCreate}
         t={(s) => s}
       />
+
+      {isMobile ? (
+        <PromptMarketDetailMobile
+          visible={detailModalVisible}
+          onCancel={() => { setDetailModalVisible(false); setSelectedListingId(null); }}
+          listingId={selectedListingId}
+          locale={lang}
+        />
+      ) : (
+        <PromptMarketDetailModal
+          visible={detailModalVisible}
+          onCancel={() => { setDetailModalVisible(false); setSelectedListingId(null); }}
+          listingId={selectedListingId}
+          locale={lang}
+        />
+      )}
     </PageWrapper>
   );
 };

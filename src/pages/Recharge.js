@@ -45,7 +45,7 @@ import dayjs from "dayjs";
 // ==========================================
 
 const PageLayout = styled.div`
-  min-height: 100vh;
+  min-height: ${props => props.$embedded ? 'auto' : '100vh'};
   width: 100%;
   background-color: ${props => props.$token?.colorBgLayout};
   /* 高级噪点纹理背景 */
@@ -53,7 +53,7 @@ const PageLayout = styled.div`
     radial-gradient(at 0% 0%, ${props => props.$token?.colorPrimary}15 0px, transparent 50%),
     radial-gradient(at 100% 100%, ${props => props.$token?.colorSuccess}10 0px, transparent 50%);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  padding-top: 80px;
+  padding-top: ${props => props.$embedded ? '0' : '80px'};
   overflow-x: hidden;
   
   &::before {
@@ -715,7 +715,7 @@ const PAY_METHODS = [
 // 3. 逻辑组件
 // ==========================================
 
-const RechargeContent = () => {
+const RechargeContent = ({ embedded = false }) => {
   const { token } = theme.useToken();
   const navigate = useNavigate();
   const intl = useIntl();
@@ -1143,8 +1143,8 @@ const RechargeContent = () => {
   };
 
   return (
-    <PageLayout $token={token}>
-      <SimpleHeader />
+    <PageLayout $token={token} $embedded={embedded}>
+      {!embedded && <SimpleHeader />}
       
       <ContentContainer
         initial={{ opacity: 0, y: 20 }}
@@ -1153,8 +1153,8 @@ const RechargeContent = () => {
       >
         <HeaderArea $token={token}>
           <div className="left">
-            <div className="back-link" onClick={() => window.history.back()}>
-              <ArrowLeftOutlined /> {intl.formatMessage({ id: 'recharge.page.backLink' })}
+            <div className="back-link" onClick={() => embedded ? navigate('/workspace') : window.history.back()}>
+              <ArrowLeftOutlined /> {embedded ? (intl.formatMessage({ id: 'recharge.page.backToWorkspace', defaultMessage: '返回工作台' }) || '返回工作台') : intl.formatMessage({ id: 'recharge.page.backLink' })}
             </div>
             <h1>
               <span style={{ marginRight: 12 }}>⚡</span>
@@ -1526,7 +1526,7 @@ const RechargeContent = () => {
 // 4. 根组件
 // ==========================================
 
-const RechargePage = () => {
+const RechargePage = ({ embedded = false }) => {
   const customTheme = {
     token: {
       colorPrimary: '#0070f3',
@@ -1541,7 +1541,7 @@ const RechargePage = () => {
 
   return (
     <ConfigProvider theme={customTheme}>
-      <RechargeContent />
+      <RechargeContent embedded={embedded} />
     </ConfigProvider>
   );
 };

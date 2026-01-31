@@ -11,6 +11,26 @@ const ChannelGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
   gap: 32px;
   width: 100%;
+  padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  box-sizing: border-box;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right));
+  }
+`;
+
+const SkeletonWrapper = styled.div`
+  width: 100%;
+  height: 280px;
+  border-radius: 32px;
+  overflow: hidden;
+
+  @media (max-width: 768px) {
+    height: 200px;
+    border-radius: 20px;
+  }
 `;
 
 const StyledChannelCard = styled.div`
@@ -32,7 +52,7 @@ const StyledChannelCard = styled.div`
       transform: scale(1.1);
       opacity: 0.6;
     }
-    
+
     .content-blur {
       backdrop-filter: blur(0px);
       background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
@@ -111,6 +131,57 @@ const StyledChannelCard = styled.div`
     transition: all 0.3s ease;
     overflow: hidden;
   }
+
+  @media (max-width: 768px) {
+    height: 200px;
+    border-radius: 20px;
+
+    &:hover {
+      transform: translateY(-4px);
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+
+    .content-blur {
+      padding: 20px;
+    }
+
+    .meta-tag {
+      top: 16px;
+      right: 16px;
+      padding: 5px 10px;
+      font-size: 11px;
+    }
+
+    h3 {
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    p {
+      font-size: 13px;
+      max-width: 85%;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .arrow-btn {
+      bottom: 20px;
+      right: 20px;
+      width: 40px;
+      height: 40px;
+      font-size: 14px;
+    }
+
+    &:hover .arrow-btn {
+      width: 40px;
+      height: 40px;
+    }
+  }
 `;
 
 const ExploreChannels = () => {
@@ -153,7 +224,9 @@ const ExploreChannels = () => {
     <ChannelGrid>
       {loading ? (
         Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton.Node key={i} active style={{ width: '100%', height: 280, borderRadius: 32 }} />
+          <SkeletonWrapper key={i}>
+            <Skeleton.Node active style={{ width: '100%', height: '100%', borderRadius: 'inherit' }} />
+          </SkeletonWrapper>
         ))
       ) : (
         channels.map(channel => (

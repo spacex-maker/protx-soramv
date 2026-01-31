@@ -1460,7 +1460,23 @@ export default {
   'home.community.voice.description': '体验逼真的AI语音合成，配音、有声读物、语音克隆，让创作发声',
   'home.community.text.title': 'AI文本社区',
   'home.community.text.description': '分享AI创作的精彩文字，小说、诗歌、剧本、文案，激发你的文学灵感',
-  
+
+  // 提示词商城 (Prompt Market Section)
+  'market.label': '提示词商城',
+  'market.h1': '释放你的',
+  'market.h1.highlight': '无限创意。',
+  'market.sub': '一站式 AI 提示词平台：覆盖文生图、文生视频、文生音乐。经验证的顶流模型配方，兼容 OpenAI、Google、Midjourney、Runway、Kling、Luma、Suno、ElevenLabs 等主流生态。不再试错，直接创作。',
+  'market.providers.title': '兼容主流模型与平台',
+  'market.card1.title': '即装即用',
+  'market.card1.desc': '跳过漫长的提示词学习曲线。一键将久经考验的提示词导入你的工作流。',
+  'market.card2.title': '创意变现',
+  'market.card2.desc': '把最拿手的提示词变成被动收入。与万千创作者一起，用 AI 专长获得收益。',
+  'market.card3.title': '品质保障',
+  'market.card3.desc': '每一条上架内容均经人工审核与测试，确保在不同模型下输出稳定可靠。',
+  'market.card4.title': '探索实验室',
+  'market.card4.desc': '发现社区生成的 10,000+ 优质素材，灵感触手可及。',
+  'market.cta': '进入提示词商城',
+
   // Billing 页面
   'billing.page.title': '财务中心',
   'billing.page.description': '管理您的资金往来与账单明细',

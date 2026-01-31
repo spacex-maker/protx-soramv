@@ -398,6 +398,18 @@ export const base = {
       };
     }
   },
+  // 作品公开详情（关联任务、卖家信息，提示词按是否公开/是否收费脱敏）
+  getPromptMarketListingDetail: async (id) => {
+    try {
+      const { data } = await axios.get(`/productx/prompt-market-listing/detail/${id}`);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取详情失败'
+      };
+    }
+  },
   // 上架提示词（审核中状态）
   createPromptMarketListing: async (body) => {
     try {

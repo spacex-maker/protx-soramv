@@ -14,6 +14,8 @@ import StorageNodes from './StorageNodes';
 import Create from './Create';
 import MediaTools from './MediaTools';
 import PromptMarket from './PromptMarket';
+import Channels from './Channels';
+import Recharge from './Recharge';
 import FileDecryptPage from '../FileDecrypt';
 
 const { Content, Sider } = Layout;
@@ -66,6 +68,10 @@ const CloudDrivePage = () => {
       setSelectedKeys(['storageNodes']);
     } else if (path === '/workspace/prompt-market') {
       setSelectedKeys(['promptMarket']);
+    } else if (path === '/workspace/channels') {
+      setSelectedKeys(['channels']);
+    } else if (path === '/workspace/recharge') {
+      setSelectedKeys(['recharge']);
     } else if (path === '/workspace') {
       setSelectedKeys(['create']);
     }
@@ -96,6 +102,10 @@ const CloudDrivePage = () => {
         return <MediaTools />;
       case 'promptMarket':
         return <PromptMarket />;
+      case 'channels':
+        return <Channels />;
+      case 'recharge':
+        return <Recharge />;
       default:
         return <Create />;
     }

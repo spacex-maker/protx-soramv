@@ -4,10 +4,11 @@ import {
   Divider, Button, Space, Typography, theme, message, Tag, Popover,
 } from 'antd';
 import {
-  FileImageOutlined, DollarOutlined, RocketOutlined, CheckCircleOutlined,
+  FileImageOutlined, RocketOutlined, CheckCircleOutlined,
   PlusOutlined, DeleteOutlined, PictureOutlined, PlayCircleOutlined, InfoCircleOutlined, FileTextOutlined, QuestionCircleOutlined,
 } from '@ant-design/icons';
 import TaskSelectModal, { isVideoUrl } from './TaskSelectModal';
+import PromptMarketFeeRuleModal from './PromptMarketFeeRuleModal';
 import { base } from 'api/base';
 import { useLocale } from 'contexts/LocaleContext';
 import '../../../styles/modal-styles.css';
@@ -139,6 +140,7 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
   const { token } = theme.useToken();
   const { locale } = useLocale();
   const [form] = Form.useForm();
+  const priceToken = Form.useWatch('priceToken', form);
 
   const [taskSelectVisible, setTaskSelectVisible] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
@@ -185,6 +187,13 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
     };
     load();
   }, [isVisible, locale]);
+
+  // 费用为 0 时自动不隐藏提示词
+  useEffect(() => {
+    if (isVisible && (priceToken === 0 || priceToken === '0')) {
+      form.setFieldsValue({ isPromptHidden: false });
+    }
+  }, [isVisible, priceToken, form]);
 
   // 根据 taskType 得到 listingType（IMAGE / VIDEO）
   const getListingType = (taskType: string) => LISTING_TYPE_OPTIONS.find(o => o.taskType === taskType)?.listingType ?? 'IMAGE';
@@ -318,7 +327,7 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
           layout="vertical"
           initialValues={{ 
             licenseType: 1, 
-            priceToken: 10, 
+            priceToken: 0, 
             isPromptHidden: true,
             status: 1, // 默认上架
             auditStatus: 0 // 默认待审
@@ -470,7 +479,7 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
                         </div>
                     </Form.Item>
 
-                    <div style={{ background: token.colorFillQuaternary, padding: 12, borderRadius: ROUND_PANEL }}>
+                    <div className="fee-input-pill">
                         <Form.Item
                           label={
                             <Space size={4}>
@@ -490,22 +499,32 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
                                 max={9999} 
                                 style={{ width: '100%', borderRadius: ROUND_PILL }} 
                                 size="large"
-                                prefix={<DollarOutlined />}
+                                addonAfter="TOKEN"
+                                placeholder="0 即免费"
                             />
                         </Form.Item>
                     </div>
                 </Col>
              </Row>
 
-             {/* 隐私设置 */}
+             {/* 隐私设置：费用为 0 时无需隐藏提示词 */}
              <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: token.colorFillAlter, padding: '8px 16px', borderRadius: ROUND_PANEL }}>
-                <span style={{ fontSize: 13 }}>
-                    <span style={{ marginRight: 8 }}>🔒</span>
-                    未购买用户隐藏具体 Prompt
-                </span>
-                <Form.Item name="isPromptHidden" valuePropName="checked" noStyle>
-                    <Switch size="small" />
-                </Form.Item>
+                {(priceToken === 0 || priceToken === '0') ? (
+                  <span style={{ fontSize: 13, color: token.colorTextSecondary }}>
+                    <span style={{ marginRight: 8 }}>✓</span>
+                    免费作品无需隐藏提示词，所有人可直接查看
+                  </span>
+                ) : (
+                  <>
+                    <span style={{ fontSize: 13 }}>
+                      <span style={{ marginRight: 8 }}>🔒</span>
+                      未购买用户隐藏具体 Prompt
+                    </span>
+                    <Form.Item name="isPromptHidden" valuePropName="checked" noStyle>
+                      <Switch size="small" />
+                    </Form.Item>
+                  </>
+                )}
              </div>
 
              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: token.colorTextSecondary }}>
@@ -542,46 +561,10 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
         onSelect={handleTaskSelect}
       />
 
-      <Modal
-        title="提示词贡献分佣规则"
+      <PromptMarketFeeRuleModal
         open={feeRuleModalVisible}
-        onCancel={() => setFeeRuleModalVisible(false)}
-        footer={[<Button key="ok" type="primary" onClick={() => setFeeRuleModalVisible(false)}>知道了</Button>]}
-        width={520}
-        destroyOnClose
-      >
-        <div style={{ lineHeight: 1.8, color: token.colorText }}>
-          <p style={{ marginBottom: 12 }}><strong>费用说明</strong></p>
-          <p style={{ marginBottom: 12 }}>您设置的费用为其他用户购买该提示词作品时需支付的积分数量。平台按以下阶梯收取服务费，<strong>贡献越多，费率越低</strong>。</p>
-          <p style={{ marginBottom: 8 }}><strong>服务费阶梯</strong>（按累计上架并通过审核的作品数）</p>
-          <div style={{ marginBottom: 12, border: `1px solid ${token.colorBorder}`, borderRadius: 8, overflow: 'hidden' }}>
-            <div style={{ display: 'flex', padding: '10px 12px', background: token.colorFillQuaternary, fontWeight: 600, fontSize: 13 }}>
-              <span style={{ flex: '1 1 0' }}>档位</span>
-              <span style={{ flex: '1.2 1 0' }}>累计作品数</span>
-              <span style={{ flex: '0.8 1 0', textAlign: 'right' }}>服务费</span>
-            </div>
-            <div style={{ display: 'flex', padding: '8px 12px', borderTop: `1px solid ${token.colorBorder}` }}><span style={{ flex: '1 1 0' }}>新手上路</span><span style={{ flex: '1.2 1 0' }}>1～5 件</span><span style={{ flex: '0.8 1 0', textAlign: 'right', color: token.colorPrimary }}>12%</span></div>
-            <div style={{ display: 'flex', padding: '8px 12px', borderTop: `1px solid ${token.colorBorder}` }}><span style={{ flex: '1 1 0' }}>成长达人</span><span style={{ flex: '1.2 1 0' }}>6～20 件</span><span style={{ flex: '0.8 1 0', textAlign: 'right', color: token.colorPrimary }}>8%</span></div>
-            <div style={{ display: 'flex', padding: '8px 12px', borderTop: `1px solid ${token.colorBorder}` }}><span style={{ flex: '1 1 0' }}>优质创作者</span><span style={{ flex: '1.2 1 0' }}>21～50 件</span><span style={{ flex: '0.8 1 0', textAlign: 'right', color: token.colorPrimary }}>5%</span></div>
-            <div style={{ display: 'flex', padding: '8px 12px', borderTop: `1px solid ${token.colorBorder}` }}><span style={{ flex: '1 1 0' }}>金牌贡献者</span><span style={{ flex: '1.2 1 0' }}>51 件及以上</span><span style={{ flex: '0.8 1 0', textAlign: 'right', color: token.colorSuccess, fontWeight: 600 }}>3%</span></div>
-          </div>
-          <ul style={{ marginBottom: 12, paddingLeft: 20 }}>
-            <li>作品审核通过后，其他用户购买即可为您带来积分收益。</li>
-            <li>积分可用于平台内消费或按规则提现（如有开通）。</li>
-          </ul>
-          <p style={{ marginBottom: 8 }}><strong>建议</strong></p>
-          <p style={{ marginBottom: 12 }}>根据作品质量、稀缺度与市场需求合理定价，多分享优质作品还可享受更低费率。</p>
-          <p style={{ marginBottom: 8 }}><strong>更多玩法</strong></p>
-          <ul style={{ marginBottom: 0, paddingLeft: 20 }}>
-            <li><strong>新人福利</strong>：首件作品上架成功，首单免服务费。</li>
-            <li><strong>成就徽章</strong>：首次成交、累计销量达标等解锁徽章，提升曝光与信任。</li>
-            <li><strong>限时活动</strong>：大促期间费率减免、双倍积分等，以活动公告为准。</li>
-            <li><strong>邀请有礼</strong>：邀请好友成为创作者，双方可获得费率优惠或积分奖励。</li>
-            <li><strong>榜单曝光</strong>：周榜/月榜「热门创作者」可获得首页或专题推荐位。</li>
-            <li><strong>高等级权益</strong>：金牌贡献者等可享专属标识、优先审核、专属客服等。</li>
-          </ul>
-        </div>
-      </Modal>
+        onClose={() => setFeeRuleModalVisible(false)}
+      />
     </>
   );
 };
