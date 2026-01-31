@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Modal, Tag, Spin, message, Button, Tooltip, Image, Badge } from 'antd';
+import { Modal, Tag, Spin, message, Button, Tooltip, Image, Badge, Radio } from 'antd';
 import {
   CloseOutlined,
   ClockCircleOutlined,
@@ -26,7 +26,7 @@ import {
   SplitCellsOutlined,
   NumberOutlined,
   ToolOutlined,
-  LinkOutlined
+  LinkOutlined,
 } from '@ant-design/icons';
 import styled from 'styled-components';
 import { useIntl } from 'react-intl';
@@ -54,9 +54,7 @@ const normalizeUrl = (url: string) => {
 
 const addImageCompressSuffix = (url: string, width = 1200) => {
   if (!url) return '';
-  // 如果已经包含压缩参数或是base64图片，直接返回
   if (url.includes('imageMogr2') || url.startsWith('data:')) return url;
-  // 如果是 webp 格式，不添加压缩参数（webp 本身已经是压缩格式）
   if (url.toLowerCase().endsWith('.webp') || url.toLowerCase().includes('.webp?')) return url;
   const separator = url.includes('?') ? '&' : '?';
   return `${url}${separator}imageMogr2/format/webp/quality/80/thumbnail/${width}x`;
@@ -135,7 +133,6 @@ const VisualSide = styled.div`
   overflow: hidden;
   min-width: 0;
   
-  /* 棋盘格背景 */
   background-image: 
     linear-gradient(45deg, ${props => props.theme.mode === 'dark' ? '#1a1a1a' : '#e6e6e6'} 25%, transparent 25%), 
     linear-gradient(-45deg, ${props => props.theme.mode === 'dark' ? '#1a1a1a' : '#e6e6e6'} 25%, transparent 25%), 
@@ -154,6 +151,7 @@ const MainViewArea = styled.div`
   justify-content: center;
   overflow: hidden;
   padding: 24px;
+  flex-direction: column;
 `;
 
 // --- 并列对比容器 ---
@@ -197,40 +195,74 @@ const SideBySideContainer = styled.div`
   }
 `;
 
-// --- 滑动对比组件样式 (修复版) ---
+// ==========================================
+// 3. 滑动对比组件 (定高 + 居中 + 保持比例)
+// ==========================================
+
 const CompareWrapper = styled.div`
   width: 100%;
   height: 100%;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  position: relative;
 `;
 
+// 容器：定高 65vh，宽度 100%，居中显示
 const CompareContainer = styled.div`
   position: relative;
-  max-width: 100%; 
-  max-height: 100%;
+  width: 100%; 
+  height: 65vh; /* 核心：锁死高度 */
+  
   box-shadow: 0 20px 50px rgba(0,0,0,0.3);
   user-select: none;
   border-radius: 12px;
   overflow: hidden;
   cursor: ew-resize;
-  
-  /* 底部图片决定容器尺寸 */
-  & > img { 
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(0,0,0,0.02); /* 留白区域的背景色 */
+
+  /* 通用图片样式：绝对定位，铺满容器，但是用 contain 居中 */
+  img {
     display: block;
-    max-height: 75vh; 
-    object-fit: contain;
-    width: auto;
-    max-width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    
+    /* 核心逻辑：保持比例，居中显示 */
+    /* 无论图片比例如何，都缩放适应这个 100% x 65vh 的框 */
+    object-fit: contain; 
+    object-position: center center;
+    
+    pointer-events: none;
+  }
+
+  /* 底层图：结果图 */
+  .img-bottom { 
+    z-index: 1;
+  }
+
+  /* 顶层图：原图 */
+  /* 使用 clip-path 裁剪 */
+  .img-top {
+    z-index: 2;
+    will-change: clip-path;
   }
 `;
 
-const CompareHandle = styled.div<{ $left: number }>`
-  position: absolute; top: 0; bottom: 0; left: ${props => props.$left}%;
+const CompareHandle = styled.div.attrs<{ $left: number }>(props => ({
+  style: {
+    left: `${props.$left}%`
+  }
+}))<{ $left: number }>`
+  position: absolute; top: 0; bottom: 0;
   width: 2px; background: #fff; z-index: 20;
   box-shadow: 0 0 10px rgba(0,0,0,0.5);
-  pointer-events: none; /* 确保鼠标事件穿透到容器 */
+  pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
   
   &::after {
     content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -242,31 +274,93 @@ const CompareHandle = styled.div<{ $left: number }>`
   }
 `;
 
-// 修复后的 OverlayImage：全宽 + clip-path，确保内部图片不形变
-const OverlayImage = styled.div<{ $clip: number }>`
-  position: absolute; 
-  top: 0; 
-  left: 0; 
-  width: 100%; 
-  height: 100%;
-  overflow: hidden; 
-  clip-path: inset(0 ${props => 100 - props.$clip}% 0 0); 
-  pointer-events: none; 
-  
-  img { 
-    display: block;
-    width: 100%; 
-    height: 100%; 
-    object-fit: fill; /* 强制填满，因比例一致所以不会形变 */
-  } 
-`;
-
 const CompareLabel = styled.div<{ $type: 'input' | 'output' }>`
   position: absolute; top: 16px; ${props => props.$type === 'input' ? 'left: 16px;' : 'right: 16px;'}
   padding: 6px 12px; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); color: #fff;
-  border-radius: 6px; font-size: 12px; font-weight: 600; z-index: 10; pointer-events: none;
+  border-radius: 6px; font-size: 12px; font-weight: 600; z-index: 30; pointer-events: none;
   display: flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,0.15);
 `;
+
+// --- ImageCompareSection 组件 ---
+
+const ImageCompareSection: React.FC<{ inputUrl: string; outputUrl: string; intl: any }> = ({ inputUrl, outputUrl, intl }) => {
+  const [sliderPos, setSliderPos] = useState(50);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const safeInputUrl = addImageCompressSuffix(inputUrl);
+  const safeOutputUrl = addImageCompressSuffix(outputUrl);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+    setSliderPos((x / rect.width) * 100);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = Math.max(0, Math.min(touch.clientX - rect.left, rect.width));
+    setSliderPos((x / rect.width) * 100);
+  };
+
+  return (
+    <CompareWrapper>
+      <CompareContainer 
+        ref={containerRef} 
+        onMouseMove={(e) => e.buttons === 1 && handleMouseMove(e)} 
+        onClick={handleMouseMove}
+        onTouchMove={handleTouchMove}
+      >
+        <CompareLabel $type="input"><FileImageOutlined /> Input</CompareLabel>
+        <CompareLabel $type="output"><ThunderboltFilled /> Result</CompareLabel>
+        
+        {/* 1. 底层：Result */}
+        <img 
+          className="img-bottom"
+          src={safeOutputUrl} 
+          alt="Result" 
+          draggable={false}
+        />
+        
+        {/* 2. 顶层：Input */}
+        {/* CSS 中已经统一了 object-fit: contain 和 object-position: center */}
+        {/* 所以它们一定会在容器正中间对齐，不会变形，不会错开 */}
+        <img 
+          className="img-top"
+          src={safeInputUrl} 
+          alt="Input" 
+          draggable={false}
+          style={{
+            // clip-path 裁剪的是容器区域，因为图片是 contain 居中的，所以视觉效果也是对的
+            clipPath: `inset(0 ${100 - sliderPos}% 0 0)`
+          }}
+        />
+        
+        <CompareHandle $left={sliderPos} />
+      </CompareContainer>
+    </CompareWrapper>
+  );
+};
+
+// ==========================================
+// 4. 并列对比组件
+// ==========================================
+const SideBySideSection: React.FC<{ inputUrl: string; outputUrl: string; intl: any }> = ({ inputUrl, outputUrl, intl }) => {
+  return (
+    <SideBySideContainer>
+      <div className="image-wrapper">
+        <div className="label"><FileImageOutlined /> Input</div>
+        <Image src={inputUrl} />
+      </div>
+      <div className="image-wrapper">
+        <div className="label" style={{background: 'rgba(82, 196, 26, 0.8)'}}><ThunderboltFilled /> Result</div>
+        <Image src={outputUrl} />
+      </div>
+    </SideBySideContainer>
+  );
+};
 
 // --- 缩略图栏 ---
 const ThumbnailStrip = styled.div`
@@ -394,79 +488,6 @@ const MediaToolsModal = styled(Modal)`
 `;
 
 // ==========================================
-// 3. 滑动对比组件 (修复版)
-// ==========================================
-const ImageCompareSection: React.FC<{ inputUrl: string; outputUrl: string; intl: any }> = ({ inputUrl, outputUrl, intl }) => {
-  const [sliderPos, setSliderPos] = useState(50);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    setSliderPos((x / rect.width) * 100);
-  };
-
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const touch = e.touches[0];
-    const x = Math.max(0, Math.min(touch.clientX - rect.left, rect.width));
-    setSliderPos((x / rect.width) * 100);
-  };
-
-  return (
-    <CompareWrapper>
-      <CompareContainer 
-        ref={containerRef} 
-        onMouseMove={(e) => e.buttons === 1 && handleMouseMove(e)} 
-        onClick={handleMouseMove}
-        onTouchMove={handleTouchMove}
-      >
-        <CompareLabel $type="input"><FileImageOutlined /> Input</CompareLabel>
-        <CompareLabel $type="output"><ThunderboltFilled /> Result</CompareLabel>
-        
-        {/* 底层图片：决定容器大小 */}
-        <img 
-          src={addImageCompressSuffix(outputUrl)} 
-          alt="Out" 
-          draggable={false}
-        />
-        
-        {/* 上层图片：全尺寸覆盖，通过 clip-path 裁剪 */}
-        <OverlayImage $clip={sliderPos}>
-          <img 
-            src={addImageCompressSuffix(inputUrl)} 
-            alt="In" 
-            draggable={false}
-          />
-        </OverlayImage>
-        
-        <CompareHandle $left={sliderPos} />
-      </CompareContainer>
-    </CompareWrapper>
-  );
-};
-
-// ==========================================
-// 4. 并列对比组件
-// ==========================================
-const SideBySideSection: React.FC<{ inputUrl: string; outputUrl: string; intl: any }> = ({ inputUrl, outputUrl, intl }) => {
-  return (
-    <SideBySideContainer>
-      <div className="image-wrapper">
-        <div className="label"><FileImageOutlined /> Input</div>
-        <Image src={inputUrl} />
-      </div>
-      <div className="image-wrapper">
-        <div className="label" style={{background: 'rgba(82, 196, 26, 0.8)'}}><ThunderboltFilled /> Result</div>
-        <Image src={outputUrl} />
-      </div>
-    </SideBySideContainer>
-  );
-};
-
-// ==========================================
 // 5. 主组件 Logic
 // ==========================================
 
@@ -482,19 +503,12 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
   const [loading, setLoading] = useState(false);
   const [task, setTask] = useState<any | null>(null);
   const [selectedOutputIndex, setSelectedOutputIndex] = useState(0);
+  const [forceSideBySide, setForceSideBySide] = useState(false); 
   
-  // 智能对比状态
-  const [isSameRatio, setIsSameRatio] = useState(false);
-  const [checkingRatio, setCheckingRatio] = useState(false);
-  const [forceSideBySide, setForceSideBySide] = useState(false); // 用户手动切换
-  
-  // 交互状态
   const [isLiked, setIsLiked] = useState(false);
   const [isFavorited, setIsFavorited] = useState(false);
   const [likeLoading, setLikeLoading] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  
-  // 媒体工具模态框状态
   const [showMediaTools, setShowMediaTools] = useState(false);
 
   const fetchInteractionStatus = useCallback(async (modelId: number) => {
@@ -513,7 +527,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
       if (res.data.success) {
         setTask(res.data.data);
         setSelectedOutputIndex(0);
-        setForceSideBySide(false); // 重置视图模式
+        setForceSideBySide(false); 
       } else { message.error(res.data.message); }
     } catch (err) { message.error('Load Failed'); } 
     finally { setLoading(false); }
@@ -530,45 +544,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
     if (task?.model?.id) fetchInteractionStatus(task.model.id);
   }, [task?.model?.id, fetchInteractionStatus]);
 
-  // --- 核心：比例检测逻辑 ---
-  useEffect(() => {
-    const checkRatio = async () => {
-      const inputUrl = task?.inputFiles?.[0]?.fileUrl ? normalizeUrl(task.inputFiles[0].fileUrl) : null;
-      const outputUrl = task?.outputFiles?.[selectedOutputIndex]?.fileUrl ? normalizeUrl(task.outputFiles[selectedOutputIndex].fileUrl) : null;
-
-      if (inputUrl && outputUrl && task.taskType === 'i2i') {
-        setCheckingRatio(true);
-        setIsSameRatio(false);
-        try {
-          const [inDim, outDim] = await Promise.all([
-            getImageDimensions(inputUrl),
-            getImageDimensions(outputUrl)
-          ]);
-          
-          const r1 = inDim.width / inDim.height;
-          const r2 = outDim.width / outDim.height;
-          
-          // 容差 0.02
-          if (Math.abs(r1 - r2) < 0.02) {
-            setIsSameRatio(true);
-          } else {
-            setIsSameRatio(false);
-          }
-        } catch (e) {
-          setIsSameRatio(false);
-        } finally {
-          setCheckingRatio(false);
-        }
-      } else {
-        setIsSameRatio(false);
-        setCheckingRatio(false);
-      }
-    };
-
-    checkRatio();
-  }, [task, selectedOutputIndex]);
-
-  // Actions
   const handleLike = async () => {
     if (!task?.model?.id) return;
     setLikeLoading(true);
@@ -604,7 +579,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
   if (!task && loading) return <Modal open={open} footer={null} centered width={600}><div style={{padding: 60, textAlign:'center'}}><Spin size="large" /></div></Modal>;
   if (!task) return null;
 
-  // 数据解析
   const inputImageUrl = task.inputFiles?.[0]?.fileUrl ? normalizeUrl(task.inputFiles[0].fileUrl) : null;
   const outputFiles = task.outputFiles || [];
   const currentOutputUrl = outputFiles[selectedOutputIndex]?.fileUrl ? normalizeUrl(outputFiles[selectedOutputIndex].fileUrl) : null;
@@ -631,14 +605,11 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
       closeIcon={<CloseOutlined style={{ fontSize: 16 }} />}
     >
       <SplitLayout>
-        {/* ================= 左侧：视觉区 ================= */}
         <VisualSide>
           <MainViewArea>
-            {checkingRatio ? (
-              <Spin tip="Comparing Dimensions..." />
-            ) : currentOutputUrl ? (
+            {currentOutputUrl ? (
               hasInput ? (
-                (!forceSideBySide && isSameRatio) ? (
+                (!forceSideBySide) ? (
                   <ImageCompareSection 
                     inputUrl={inputImageUrl} 
                     outputUrl={currentOutputUrl} 
@@ -665,13 +636,12 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
             )}
           </MainViewArea>
 
-          {/* 底部控制栏 */}
           <div style={{
             position: 'absolute', 
             bottom: 0, left: 0, right: 0, 
             display: 'flex', flexDirection: 'column' 
           }}>
-             {hasInput && isSameRatio && !checkingRatio && (
+             {hasInput && (
                <div style={{display: 'flex', justifyContent: 'center', paddingBottom: 8, zIndex: 30}}>
                   <Tooltip title="Switch View Mode">
                     <Button 
@@ -703,7 +673,6 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
           </div>
         </VisualSide>
 
-        {/* ================= 右侧：信息区 ================= */}
         <InfoSide>
           <InfoScrollArea>
             <div style={{marginBottom: 24}}>
@@ -753,7 +722,7 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
                   <PropLabel><PictureOutlined /> Ratios</PropLabel>
                   <PropValue>
                     {task.model?.imageAspectRatios?.split(',').map((ratio: string) => (
-                         <span key={ratio} style={{ display: 'inline-block', background: 'rgba(0,0,0,0.04)', padding: '2px 6px', borderRadius: 4, margin: '0 4px 4px 0', fontSize: 12, border: '1px solid rgba(0,0,0,0.05)' }}>{ratio}</span>
+                          <span key={ratio} style={{ display: 'inline-block', background: 'rgba(0,0,0,0.04)', padding: '2px 6px', borderRadius: 4, margin: '0 4px 4px 0', fontSize: 12, border: '1px solid rgba(0,0,0,0.05)' }}>{ratio}</span>
                     )) || '1:1'}
                   </PropValue>
                 </PropRow>

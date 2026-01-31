@@ -1,1 +1,29 @@
- 
+/* 提示词效果图：马赛克/棋盘格背景 */
+.cover-preview-wrapper {
+  background-color: #f5f5f5 !important;
+  background-image:
+    linear-gradient(45deg, #e8e8e8 25%, transparent 25%),
+    linear-gradient(-45deg, #e8e8e8 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e8e8e8 75%),
+    linear-gradient(-45deg, transparent 75%, #e8e8e8 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0px;
+}
+
+/* 封面预览：Upload 填满容器，适配任意比例图片 */
+.cover-preview-upload-wrap .ant-upload,
+.cover-preview-upload-wrap .ant-upload-select {
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+}
+
+/* 授权方式 Select：触发框与下拉框全圆弧 */
+.license-select-pill .ant-select-selector {
+  border-radius: 9999px !important;
+}
+.license-select-dropdown-pill.ant-select-dropdown {
+  border-radius: 16px !important;
+  overflow: hidden;
+}

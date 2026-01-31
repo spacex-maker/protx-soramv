@@ -460,6 +460,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/workspace/prompt-market"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
                 path="/workspace/storage-nodes"
                 element={
                   <PrivateRoute>

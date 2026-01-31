@@ -13,6 +13,7 @@ import Trash from './Trash';
 import StorageNodes from './StorageNodes';
 import Create from './Create';
 import MediaTools from './MediaTools';
+import PromptMarket from './PromptMarket';
 import FileDecryptPage from '../FileDecrypt';
 
 const { Content, Sider } = Layout;
@@ -63,6 +64,8 @@ const CloudDrivePage = () => {
       setSelectedKeys(['mediaTools']);
     } else if (path === '/workspace/storage-nodes') {
       setSelectedKeys(['storageNodes']);
+    } else if (path === '/workspace/prompt-market') {
+      setSelectedKeys(['promptMarket']);
     } else if (path === '/workspace') {
       setSelectedKeys(['create']);
     }
@@ -91,6 +94,8 @@ const CloudDrivePage = () => {
         return <StorageNodes />;
       case 'mediaTools':
         return <MediaTools />;
+      case 'promptMarket':
+        return <PromptMarket />;
       default:
         return <Create />;
     }

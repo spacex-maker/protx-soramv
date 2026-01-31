@@ -14,6 +14,7 @@ import {
   CloudServerOutlined,
   EditOutlined,
   FileImageOutlined,
+  ShoppingOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage } from 'react-intl';
 import FeedbackModalEntry from 'components/modals/FeedbackModalEntry';
@@ -175,6 +176,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
     //   label: <FormattedMessage id="sidebar.decrypt" />
     // },
     {
+      key: 'promptMarket',
+      icon: <ShoppingOutlined style={{ color: '#f59e0b' }} />,
+      label: <FormattedMessage id="sidebar.promptMarket" defaultMessage="提示词商城" />
+    },
+    {
       key: 'mediaTools',
       icon: <FileImageOutlined style={{ color: '#10b981' }} />,
       label: <FormattedMessage id="sidebar.mediaTools" defaultMessage="媒体工具" />
@@ -234,6 +240,14 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
 
     if (key === 'mediaTools') {
       navigate('/workspace/media-tools');
+      if (isMobile) {
+        onCollapse(true);
+      }
+      return;
+    }
+
+    if (key === 'promptMarket') {
+      navigate('/workspace/prompt-market');
       if (isMobile) {
         onCollapse(true);
       }

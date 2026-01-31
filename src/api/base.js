@@ -357,5 +357,57 @@ export const base = {
         message: error.response?.data?.message || '图片上传失败'
       };
     }
-  }
+  },
+
+  // ========== 提示词标签库（C端） ==========
+  // 获取所有启用的标签列表（用于搜索标签下拉）
+  getPromptTagLibraryList: async () => {
+    try {
+      const { data } = await axios.get('/productx/prompt-tag-library/list');
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取标签列表失败'
+      };
+    }
+  },
+  // 获取推荐标签列表
+  getPromptTagLibraryRecommend: async () => {
+    try {
+      const { data } = await axios.get('/productx/prompt-tag-library/recommend');
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取推荐标签失败'
+      };
+    }
+  },
+
+  // ========== 提示词商品（C端） ==========
+  // 商城公开列表（分页+筛选+排序，无需登录）
+  getPromptMarketListingList: async (params = {}) => {
+    try {
+      const { data } = await axios.get('/productx/prompt-market-listing/list', { params });
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取列表失败'
+      };
+    }
+  },
+  // 上架提示词（审核中状态）
+  createPromptMarketListing: async (body) => {
+    try {
+      const { data } = await axios.post('/productx/prompt-market-listing/create', body);
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '上架失败'
+      };
+    }
+  },
 }; 
