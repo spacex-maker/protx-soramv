@@ -300,8 +300,11 @@ const MediaToolsSection = () => {
                 >
                   <ToolInfo theme={theme} color={activeTool.color}>
                     <h3>
-                      <activeTool.icon className="icon" />
-                      {activeTool.title}工具
+                      {(() => {
+                        const IconComponent = activeTool.icon;
+                        return <IconComponent className="icon" />;
+                      })()}
+                      {activeTool.title}{intl.formatMessage({ id: 'home.mediaTools.toolSuffix', defaultMessage: '工具' })}
                     </h3>
                     <p>{activeTool.description}</p>
                   </ToolInfo>

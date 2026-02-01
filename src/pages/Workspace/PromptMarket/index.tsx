@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons';
 import styled, { css } from 'styled-components';
 import { base } from 'api/base';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { useLocale } from 'contexts/LocaleContext';
 import PromptMarketListingCreateFormModel from './PromptMarketListingCreateFormModel';
 import PromptMarketDetailModal from './PromptMarketDetailModal';
@@ -108,7 +109,8 @@ const FilterSection = styled.div`
 
 const CategoryTabs = styled(Tabs)`
   .ant-tabs-nav { margin: 0 !important; }
-  .ant-tabs-nav::before { display: none; } // 去掉底部灰线
+  .ant-tabs-nav::before { display: none; } /* 去掉底部灰线 */
+  .ant-tabs-ink-bar { display: none !important; } /* 去掉选中时的蓝色横线，用胶囊背景表示选中 */
   
   .ant-tabs-tab {
     padding: 8px 20px;
@@ -262,6 +264,7 @@ const SortButton = styled(Button)<{ $active?: boolean }>`
 
 const PromptMarket: React.FC = () => {
   const { token } = theme.useToken();
+  const intl = useIntl();
   const { locale } = useLocale();
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
@@ -287,7 +290,7 @@ const PromptMarket: React.FC = () => {
   const pageSize = 12;
 
   const lang = locale || 'zh';
-  const allLabel = lang === 'zh' ? '全部' : 'All';
+  const allLabel = intl.formatMessage({ id: 'promptMarket.all', defaultMessage: '全部' });
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 768);
@@ -330,7 +333,7 @@ const PromptMarket: React.FC = () => {
         setTotal(res.data.totalNum ?? 0);
       }
     } catch (error) {
-      message.error('加载失败');
+      message.error(intl.formatMessage({ id: 'promptMarket.loadFailed', defaultMessage: '加载失败' }));
     } finally {
       setLoading(false);
     }
@@ -367,11 +370,11 @@ const PromptMarket: React.FC = () => {
     };
     const res = await base.createPromptMarketListing(payload);
     if (res?.success) {
-      message.success('上架成功');
+      message.success(intl.formatMessage({ id: 'promptMarket.listSuccess', defaultMessage: '上架成功' }));
       setCreateModalVisible(false);
       fetchList();
     } else {
-      message.error(res?.message || '上架失败');
+      message.error(res?.message || intl.formatMessage({ id: 'promptMarket.listFailed', defaultMessage: '上架失败' }));
     }
   };
 
@@ -381,22 +384,24 @@ const PromptMarket: React.FC = () => {
       <HeroSection>
         <div style={{ position: 'relative', zIndex: 10 }}>
           <Title level={1} style={{ fontSize: '3rem', margin: '0 0 16px' }}>
-            Prompt Market
+            <FormattedMessage id="promptMarket.title" defaultMessage="Prompt Market" />
           </Title>
           <Paragraph style={{ fontSize: '18px', color: token.colorTextSecondary, maxWidth: 600, margin: '0 auto' }}>
-            探索顶级创作者的 AI 灵感配方，释放无限创意潜能
+            <FormattedMessage id="promptMarket.subtitle" defaultMessage="探索顶级创作者的 AI 灵感配方，释放无限创意潜能" />
           </Paragraph>
           
           <SearchBox>
             <Input 
               prefix={<SearchOutlined style={{ fontSize: 18, color: '#999', marginRight: 8 }} />} 
-              placeholder="搜索 Prompt、风格、模型..." 
+              placeholder={intl.formatMessage({ id: 'promptMarket.searchPlaceholder', defaultMessage: '搜索 Prompt、风格、模型...' })}
               size="large"
               value={searchInput}
               onChange={e => setSearchInput(e.target.value)}
               onPressEnter={handleSearch}
               suffix={
-                <Button type="primary" shape="round" onClick={handleSearch}>搜索</Button>
+                <Button type="primary" shape="round" onClick={handleSearch}>
+                  <FormattedMessage id="promptMarket.search" defaultMessage="搜索" />
+                </Button>
               }
             />
           </SearchBox>
@@ -411,21 +416,21 @@ const PromptMarket: React.FC = () => {
               activeKey={activeTab} 
               onChange={(k) => { setActiveTab(k); setCurrentPage(1); }}
               items={[
-                { key: 'ALL', label: '全部推荐' },
-                { key: 'IMAGE', label: <span><PictureFilled /> 文生图</span> },
-                { key: 'VIDEO', label: <span><PlayCircleFilled /> 文生视频</span> },
-                { key: 'AUDIO', label: <span><AudioFilled /> 文生音乐</span> },
+                { key: 'ALL', label: <FormattedMessage id="promptMarket.tabAll" defaultMessage="全部推荐" /> },
+                { key: 'IMAGE', label: <span><PictureFilled /> <FormattedMessage id="promptMarket.tabImage" defaultMessage="文生图" /></span> },
+                { key: 'VIDEO', label: <span><PlayCircleFilled /> <FormattedMessage id="promptMarket.tabVideo" defaultMessage="文生视频" /></span> },
+                { key: 'AUDIO', label: <span><AudioFilled /> <FormattedMessage id="promptMarket.tabAudio" defaultMessage="文生音乐" /></span> },
               ]}
             />
             
             <Space size={16}>
               <Space size={4}>
-                <SortButton type="text" $active={sort === 'latest'} onClick={() => setSort('latest')}>最新上架</SortButton>
-                <SortButton type="text" $active={sort === 'hot'} onClick={() => setSort('hot')}>热门收藏</SortButton>
-                <SortButton type="text" $active={sort === 'sales'} onClick={() => setSort('sales')}>销量榜</SortButton>
+                <SortButton type="text" $active={sort === 'latest'} onClick={() => setSort('latest')}><FormattedMessage id="promptMarket.sortLatest" defaultMessage="最新上架" /></SortButton>
+                <SortButton type="text" $active={sort === 'hot'} onClick={() => setSort('hot')}><FormattedMessage id="promptMarket.sortHot" defaultMessage="热门收藏" /></SortButton>
+                <SortButton type="text" $active={sort === 'sales'} onClick={() => setSort('sales')}><FormattedMessage id="promptMarket.sortSales" defaultMessage="销量榜" /></SortButton>
               </Space>
               <Button type="primary" shape="round" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)} size="large">
-                发布作品
+                <FormattedMessage id="promptMarket.publish" defaultMessage="发布作品" />
               </Button>
             </Space>
           </div>
@@ -453,7 +458,7 @@ const PromptMarket: React.FC = () => {
         {/* 3. Card Grid */}
         <Spin spinning={loading} size="large" style={{ minHeight: 300 }}>
           {list.length === 0 && !loading ? (
-            <Empty description="暂无相关商品，快来发布第一个吧！" style={{ padding: '60px 0' }} />
+            <Empty description={intl.formatMessage({ id: 'promptMarket.empty', defaultMessage: '暂无相关商品，快来发布第一个吧！' })} style={{ padding: '60px 0' }} />
           ) : (
             <Row gutter={[24, 24]}>
               {list.map((item) => {
@@ -473,11 +478,11 @@ const PromptMarket: React.FC = () => {
                         
                         <PriceFloat $isFree={item.priceToken === 0}>
                           {item.priceToken === 0
-                            ? (lang === 'zh' ? '免费' : 'Free')
+                            ? <FormattedMessage id="promptMarket.free" defaultMessage="免费" />
                             : (
                             <>
                               <ThunderboltFilled style={{ color: '#faad14' }} />
-                              {item.priceToken} TOKEN
+                              {item.priceToken} <FormattedMessage id="promptMarket.token" defaultMessage="TOKEN" />
                             </>
                           )}
                         </PriceFloat>
@@ -525,7 +530,7 @@ const PromptMarket: React.FC = () => {
         isVisible={createModalVisible}
         onCancel={() => setCreateModalVisible(false)}
         onFinish={handleCreate}
-        t={(s) => s}
+        t={(id: string, defaultMessage?: string) => intl.formatMessage({ id, defaultMessage: defaultMessage ?? id })}
       />
 
       {isMobile ? (
