@@ -1,9 +1,9 @@
 export default {
   'header.homepage': 'الصفحة الرئيسية',
   'header.workspace': 'مساحة العمل',
-  'login.title': 'Sora MV',
-  'login.welcome': 'مرحباً بك في Sora MV',
-  'login.description': 'Sora MV هو منصة توليد الفيديو بالذكاء الاصطناعي، يوفر خدمات إنشاء وتوليد فيديو آمنة ومريحة. الوصول إلى جميع ملفاتك في أي وقت وأي مكان.',
+  'login.title': 'AI2OBJ',
+  'login.welcome': 'مرحباً بك في AI2OBJ',
+  'login.description': 'AI2OBJ هو منصة توليد الفيديو بالذكاء الاصطناعي، يوفر خدمات إنشاء وتوليد فيديو آمنة ومريحة. الوصول إلى جميع ملفاتك في أي وقت وأي مكان.',
   'login.email.placeholder': 'البريد الإلكتروني أو اسم المستخدم',
   'login.password.placeholder': 'كلمة المرور',
   'login.button': 'تسجيل الدخول',
@@ -15,9 +15,9 @@ export default {
   'login.success': 'تم تسجيل الدخول',
   'login.forgotPassword': 'نسيت كلمة المرور؟',
   'login.forgotPassword.link': 'إعادة تعيين هنا',
-  'signup.page.title': 'التسجيل - Sora MV',
-  'signup.title': 'Sora MV',
-  'signup.welcome': 'مرحباً بك في Sora MV',
+  'signup.page.title': 'التسجيل - AI2OBJ',
+  'signup.title': 'AI2OBJ',
+  'signup.welcome': 'مرحباً بك في AI2OBJ',
   'signup.description': 'أنشئ حسابك وابدأ رحلة إنشاء الفيديو بالذكاء الاصطناعي',
   'signup.feature.ai': 'مدعوم بالذكاء الاصطناعي',
   'signup.feature.video': 'إنشاء الفيديو',
@@ -41,8 +41,8 @@ export default {
   'signup.password.rule.uppercase': 'يجب أن تحتوي على أحرف كبيرة',
   'signup.password.rule.number': 'يجب أن تحتوي على أرقام',
   'signup.password.rule.special': 'يجب أن تحتوي على رموز خاصة',
-  'resetPassword.page.title': 'إعادة تعيين كلمة المرور - Sora MV',
-  'resetPassword.page.description': 'إعادة تعيين كلمة مرور حسابك في Sora MV',
+  'resetPassword.page.title': 'إعادة تعيين كلمة المرور - AI2OBJ',
+  'resetPassword.page.description': 'إعادة تعيين كلمة مرور حسابك في AI2OBJ',
   'resetPassword.title': 'إعادة تعيين كلمة المرور',
   'resetPassword.email.placeholder': 'أدخل عنوان بريدك الإلكتروني',
   'resetPassword.code.placeholder': 'أدخل رمز التحقق',
@@ -169,7 +169,7 @@ export default {
   'filelist.action.rename': 'إعادة تسمية',
   'filelist.selected': 'تم اختيار {count}',
   'page.cloudDrive.title': 'Cloud Drive الخاص بي',
-  'page.cloudDrive.description': 'Sora MV Cloud Drive - قم بتخزين وإدارة ملفاتك بأمان',
+  'page.cloudDrive.description': 'AI2OBJ Cloud Drive - قم بتخزين وإدارة ملفاتك بأمان',
   'modal.fileUpload.title': 'رفع الملفات',
   'modal.fileUpload.dragText': 'اسحب الملفات هنا أو انقر للرفع',
   'modal.fileUpload.start': 'بدء الرفع',
@@ -791,7 +791,7 @@ export default {
   // سياسة الخصوصية
   'privacyPolicy.title': 'سياسة الخصوصية',
   'privacyPolicy.lastUpdated': 'آخر تحديث: {date}',
-  'privacyPolicy.intro1': 'تصف سياسة الخصوصية هذه كيف تجمع منصة Sora MV (المشار إليها فيما يلي بـ "نحن" أو "هذه المنصة") معلوماتك الشخصية وتستخدمها وتخزنها وتحميها عند استخدامك لخدماتنا، وكذلك حقوقك في الخصوصية. نحن نولي أهمية كبيرة لحماية خصوصيتك. يرجى قراءة سياسة الخصوصية هذه بعناية.',
+  'privacyPolicy.intro1': 'تصف سياسة الخصوصية هذه كيف تجمع منصة AI2OBJ (المشار إليها فيما يلي بـ "نحن" أو "هذه المنصة") معلوماتك الشخصية وتستخدمها وتخزنها وتحميها عند استخدامك لخدماتنا، وكذلك حقوقك في الخصوصية. نحن نولي أهمية كبيرة لحماية خصوصيتك. يرجى قراءة سياسة الخصوصية هذه بعناية.',
   'privacyPolicy.intro2': 'استخدامك لخدماتنا يعني موافقتك على سياسة الخصوصية هذه. إذا كنت لا توافق على أي جزء من سياسة الخصوصية هذه، يرجى عدم استخدام خدماتنا.',
   'privacyPolicy.section1.title': 'I. المعلومات التي نجمعها',
   'privacyPolicy.section1.1.title': '1.1 المعلومات التي تقدمها',
@@ -904,14 +904,14 @@ export default {
   // شروط الخدمة
   'termsOfService.title': 'شروط الخدمة',
   'termsOfService.lastUpdated': 'آخر تحديث: {date}',
-  'termsOfService.intro': 'قبل استخدام خدماتنا، يرجى قراءة شروط الخدمة هذه بعناية. من خلال الوصول إلى منصة Sora MV أو استخدامها (المشار إليها فيما يلي بـ "هذه المنصة" أو "الخدمة")، فإنك توافق على الالتزام بشروط الخدمة هذه. إذا كنت لا توافق على أي جزء من شروط الخدمة هذه، يرجى عدم استخدام خدماتنا.',
+  'termsOfService.intro': 'قبل استخدام خدماتنا، يرجى قراءة شروط الخدمة هذه بعناية. من خلال الوصول إلى منصة AI2OBJ أو استخدامها (المشار إليها فيما يلي بـ "هذه المنصة" أو "الخدمة")، فإنك توافق على الالتزام بشروط الخدمة هذه. إذا كنت لا توافق على أي جزء من شروط الخدمة هذه، يرجى عدم استخدام خدماتنا.',
   'termsOfService.section1.title': 'I. التعريفات والتفسير',
   'termsOfService.section1.1.title': '1.1 التعريفات',
   'termsOfService.section1.1.intro': 'في شروط الخدمة هذه، ما لم يشير السياق إلى خلاف ذلك، فإن المصطلحات التالية لها المعاني التالية:',
   'termsOfService.section1.1.item1.label': '"المنصة" أو "هذه المنصة"',
-  'termsOfService.section1.1.item1.desc': 'يشير إلى منصة خدمة إنشاء الفيديو Sora MV، بما في ذلك على سبيل المثال لا الحصر المواقع الإلكترونية والتطبيقات المحمولة والخدمات ذات الصلة.',
+  'termsOfService.section1.1.item1.desc': 'يشير إلى منصة خدمة إنشاء الفيديو AI2OBJ، بما في ذلك على سبيل المثال لا الحصر المواقع الإلكترونية والتطبيقات المحمولة والخدمات ذات الصلة.',
   'termsOfService.section1.1.item2.label': '"نحن"، "لدينا"، "الشركة"',
-  'termsOfService.section1.1.item2.desc': 'يشير إلى مشغل منصة Sora MV، أي ProTX Team.',
+  'termsOfService.section1.1.item2.desc': 'يشير إلى مشغل منصة AI2OBJ، أي ProTX Team.',
   'termsOfService.section1.1.item3.label': '"أنت"، "المستخدم"',
   'termsOfService.section1.1.item3.desc': 'يشير إلى أي فرد أو شركة أو كيان قانوني آخر يصل إلى هذه الخدمة أو يستخدمها.',
   'termsOfService.section1.1.item4.label': '"الخدمة"',
@@ -1038,7 +1038,7 @@ export default {
   'footer.resources.invite': 'دعوة الأصدقاء',
   'footer.resources.account': 'إدارة الحساب',
   'footer.resources.orders': 'مركز الطلبات',
-  'footer.copyright': '© {year} Sora MV. جميع الحقوق محفوظة.',
+  'footer.copyright': '© {year} AI2OBJ. جميع الحقوق محفوظة.',
   'footer.description': 'تستخدم هذه المنصة تقنية Sora لتقديم خدمات إنشاء الفيديو بالذكاء الاصطناعي',
   
   // صفحة التسعير
@@ -1545,7 +1545,7 @@ export default {
   'decrypt.steps.items': [
     {
       title: 'اختيار الملف المشفر',
-      description: 'اختر ملفات .encrypted المشفرة بأداة Sora MV، يدعم السحب والإفلات أو النقر للاختيار'
+      description: 'اختر ملفات .encrypted المشفرة بأداة AI2OBJ، يدعم السحب والإفلات أو النقر للاختيار'
     },
     {
       title: 'إدخال كلمة مرور فك التشفير',
