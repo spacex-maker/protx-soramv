@@ -476,6 +476,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/workspace/daily-challenge"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
                 path="/workspace/recharge"
                 element={
                   <PrivateRoute>

@@ -611,11 +611,11 @@ const PostDetailPage = () => {
       </NavBar>
 
       <MainContainer>
-        {/* 左侧：图片展示（两张一行） */}
+        {/* 左侧：图片展示，多图时至少一行两张 */}
         <MediaSection>
           <Row gutter={[16, 16]}>
             {post.mediaUrls.map((url, index) => (
-              <Col key={index} xs={24} sm={12}>
+              <Col key={index} xs={post.mediaUrls.length > 1 ? 12 : 24} sm={12}>
                 <ImageContainer>
                   <Image
                     src={addTencentImageCompression(url, { quality: 30 })}

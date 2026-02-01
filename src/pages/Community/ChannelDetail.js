@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Row, Col, Spin, message, Button, Typography, Empty, Select, Avatar, Tooltip, Tag } from 'antd';
+import { Spin, message, Button, Typography, Empty, Select, Avatar, Tooltip, Tag } from 'antd';
+import Masonry from 'react-masonry-css';
 import { 
   HeartOutlined, HeartFilled, 
   StarOutlined, StarFilled, 
@@ -11,7 +12,7 @@ import {
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled, { keyframes, css } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
-import { getChannelByKey, listPosts, likePost, unlikePost, collectPost, uncollectPost, getCurrentChallenge } from 'api/community';
+import { getChannelByKey, listPosts, likePost, unlikePost, collectPost, uncollectPost, getCurrentChallenge, listChannels } from 'api/community';
 import UserRoleCard from 'components/community/UserRoleCard';
 
 const { Text } = Typography;
@@ -155,7 +156,7 @@ const DragHandle = styled.div`
 const HeroSection = styled.div`
   position: relative;
   width: 100%;
-  height: 320px;
+  height: 460px;
   margin-bottom: 40px;
   background-color: ${props => props.bgColor || '#1890ff'};
   overflow: hidden;
@@ -170,21 +171,161 @@ const HeroSection = styled.div`
     background-image: ${props => props.coverUrl ? `url(${props.coverUrl})` : 'none'};
     background-size: cover;
     background-position: center;
-    filter: blur(10px) brightness(0.8);
-    opacity: 0.8;
-    transform: scale(1.1);
+    filter: blur(3px) brightness(0.92);
+    opacity: 0.9;
+    transform: scale(1.05);
   }
 
   &::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.6) 100%);
+    background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) 100%);
   }
 
   @media (max-width: 768px) {
-    height: 200px;
+    height: 300px;
     margin-bottom: 24px;
+  }
+`;
+
+/* Hero 内部底部区域：标题 + 频道列表，与下方 Container 同宽 */
+const HeroInner = styled.div`
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 40px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 20px;
+
+  @media (max-width: 768px) {
+    padding: 0 max(16px, env(safe-area-inset-left)) 20px max(16px, env(safe-area-inset-right));
+    gap: 16px;
+  }
+`;
+
+/* 头部频道快捷列表：与帖子同宽，放在 Hero 内 */
+const ChannelNavWrap = styled.div`
+  margin-bottom: 0;
+
+  @media (max-width: 768px) {
+    margin-bottom: 0;
+  }
+`;
+
+const ChannelNavLabel = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: ${props => props.theme.mode === 'dark' ? '#888' : '#666'};
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  /* Hero 内时使用浅色以在背景上可读 */
+  .hero-inner & {
+    color: rgba(255, 255, 255, 0.92);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+`;
+
+const ChannelNavScroll = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 14px 0 14px 0;
+  min-width: 0;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.mode === 'dark' ? '#333' : 'rgba(0,0,0,0.15)'};
+    border-radius: 3px;
+  }
+  &::-webkit-scrollbar-track {
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'};
+    border-radius: 3px;
+  }
+`;
+
+const ChannelNavItem = styled.div`
+  flex-shrink: 0;
+  width: 120px;
+  height: 72px;
+  border-radius: 12px;
+  overflow: visible;
+  cursor: pointer;
+  position: relative;
+  background: ${props => props.theme.mode === 'dark' ? '#222' : '#e8e8e8'};
+  transition: transform 0.2s ease, box-shadow 0.2s;
+  border: 2px solid transparent;
+  transform-origin: center center;
+
+  &.active {
+    transform: scale(1.18);
+    border-color: ${props => props.theme.mode === 'dark' ? '#1890ff' : '#1890ff'};
+    box-shadow: 0 0 0 1px rgba(24, 144, 255, 0.3);
+    z-index: 1;
+  }
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  &:hover:not(.active) {
+    transform: translateY(-2px);
+  }
+
+  .cover {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    transition: transform 0.3s;
+    border-radius: inherit;
+  }
+  &:hover .cover {
+    transform: scale(1.05);
+  }
+
+  .mask {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.2) 50%, transparent 100%);
+    border-radius: inherit;
+  }
+
+  .name {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  @media (max-width: 768px) {
+    width: 100px;
+    height: 60px;
+    border-radius: 10px;
+    .name { font-size: 11px; padding: 6px 8px; }
+
+    &.active {
+      transform: scale(1.15);
+    }
   }
 `;
 
@@ -192,15 +333,12 @@ const HeroContent = styled.div`
   position: relative;
   z-index: 2;
   width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 40px 60px;
+  padding: 0 0 8px 0;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
 
   @media (max-width: 768px) {
-    padding: 0 max(16px, env(safe-area-inset-left)) 28px max(16px, env(safe-area-inset-right));
     flex-direction: column;
     align-items: flex-start;
   }
@@ -311,25 +449,37 @@ const ToolBarLeft = styled.div`
   }
 `;
 
-const GridWrap = styled.div`
+/* 基于 JS 的瀑布流：新加载帖子严格出现在底部 */
+const breakpointColumnsObj = {
+  default: 4,
+  1200: 3,
+  768: 2,
+};
+
+const MasonryGridWrap = styled.div`
+  .masonry-grid {
+    display: flex;
+    margin-left: -20px;
+    width: auto;
+  }
+  .masonry-grid_column {
+    padding-left: 20px;
+    background-clip: padding-box;
+  }
+  .masonry-grid_column > div {
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 1200px) {
+    .masonry-grid { margin-left: -16px; }
+    .masonry-grid_column { padding-left: 16px; }
+    .masonry-grid_column > div { margin-bottom: 16px; }
+  }
+
   @media (max-width: 768px) {
-    /* 瀑布流：两列，小间距 */
-    column-count: 2;
-    column-gap: 6px;
-    .ant-row {
-      display: contents;
-    }
-    .ant-row > .ant-col {
-      width: 100% !important;
-      max-width: none !important;
-      break-inside: avoid;
-      page-break-inside: avoid;
-      margin-bottom: 6px !important;
-      padding: 0 !important;
-      padding-left: 0 !important;
-      padding-right: 0 !important;
-      padding-bottom: 0 !important;
-    }
+    .masonry-grid { margin-left: -6px; }
+    .masonry-grid_column { padding-left: 6px; }
+    .masonry-grid_column > div { margin-bottom: 6px; }
   }
 `;
 
@@ -444,7 +594,8 @@ const BounceDots = styled.div`
 const ModernCard = styled.div`
   position: relative;
   width: 100%;
-  padding-top: 100%;
+  padding-top: 0;
+  height: auto;
   border-radius: 16px;
   overflow: hidden;
   background: ${props => props.theme.mode === 'dark' ? '#222' : '#f0f2f5'};
@@ -467,8 +618,6 @@ const ModernCard = styled.div`
 
   @media (max-width: 768px) {
     border-radius: 12px;
-    padding-top: 0;
-    height: auto;
     &:hover {
       transform: translateY(-2px);
     }
@@ -479,33 +628,21 @@ const ModernCard = styled.div`
 `;
 
 const CardImageWrapper = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
+  position: relative;
   width: 100%;
-  height: 100%;
+  height: auto;
   z-index: 1;
 
   img {
     width: 100%;
-    height: 100%;
-    object-fit: cover;
+    height: auto;
+    display: block;
+    vertical-align: top;
     transition: transform 0.7s ease;
   }
 
   ${ModernCard}:hover & img {
-    transform: scale(1.08);
-  }
-
-  @media (max-width: 768px) {
-    position: relative;
-    height: auto;
-    img {
-      height: auto;
-      width: 100%;
-      display: block;
-      vertical-align: top;
-    }
+    transform: scale(1.02);
   }
 `;
 
@@ -579,22 +716,22 @@ const CardContent = styled.div`
   padding: 12px 16px;
 
   background: ${props => props.theme.mode === 'dark'
-    ? 'rgba(0, 0, 0, 0.65)'
-    : 'rgba(255, 255, 255, 0.75)'};
+    ? 'rgba(0, 0, 0, 0.28)'
+    : 'rgba(255, 255, 255, 0.35)'};
 
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 
   border-top: 1px solid ${props => props.theme.mode === 'dark'
-    ? 'rgba(255, 255, 255, 0.1)'
-    : 'rgba(255, 255, 255, 0.4)'};
+    ? 'rgba(255, 255, 255, 0.06)'
+    : 'rgba(255, 255, 255, 0.18)'};
 
   transition: background 0.3s ease;
 
   ${ModernCard}:hover & {
     background: ${props => props.theme.mode === 'dark'
-      ? 'rgba(0, 0, 0, 0.8)'
-      : 'rgba(255, 255, 255, 0.9)'};
+      ? 'rgba(0, 0, 0, 0.42)'
+      : 'rgba(255, 255, 255, 0.52)'};
   }
 
   @media (max-width: 768px) {
@@ -686,6 +823,9 @@ const ChannelDetailPage = () => {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [hasMoved, setHasMoved] = useState(false);
 
+  // 头部频道列表（快捷跳转）
+  const [channelsList, setChannelsList] = useState([]);
+
   // 滚动到底部附近自动加载
   const loadMoreRef = useRef(null);
   const postsLoadingRef = useRef(postsLoading);
@@ -736,6 +876,13 @@ const ChannelDetailPage = () => {
       setHasMore(true);
     }
   }, [channel?.id, sortBy]);
+
+  useEffect(() => {
+    if (!channel) return;
+    listChannels()
+      .then((data) => setChannelsList(data || []))
+      .catch(() => setChannelsList([]));
+  }, [channel?.id]);
 
   useEffect(() => {
     if (channel?.id) {
@@ -838,6 +985,20 @@ const ChannelDetailPage = () => {
     navigate(`/community/post/${post.id}`);
   };
 
+  const handleChannelClick = async (ch) => {
+    if (ch.channelKey === channelKey) return;
+    if (ch.channelKey === 'daily-challenge') {
+      try {
+        const currentChallenge = await getCurrentChallenge();
+        navigate(currentChallenge?.id ? `/community/challenge/${currentChallenge.id}` : '/community/challenge');
+      } catch {
+        navigate('/community/challenge');
+      }
+    } else {
+      navigate(`/community/${ch.channelKey}`);
+    }
+  };
+
   // Drag handlers
   const handleMouseDown = (e) => {
     if (e.button !== 0) return;
@@ -925,19 +1086,46 @@ const ChannelDetailPage = () => {
         <UserRoleCard showRoles={true} maxRoleDisplay={1} />
       </UserCardWrapper>
 
-      {/* Hero Banner */}
+      {/* Hero Banner：标题 + Switch Channel 均在内部 */}
       <HeroSection bgColor={channel.themeColor} coverUrl={channel.coverUrl}>
-        <HeroContent>
-          <TitleWrapper>
-            <h1>
-              <PictureOutlined />
-              {channel.name}
-            </h1>
-            <div className="desc">
-              {channel.description || <FormattedMessage id="community.defaultDesc" defaultMessage="Explore amazing AI-generated art in this channel." />}
-            </div>
-          </TitleWrapper>
-        </HeroContent>
+        <HeroInner className="hero-inner">
+          <HeroContent>
+            <TitleWrapper>
+              <h1>
+                <PictureOutlined />
+                {channel.name}
+              </h1>
+              <div className="desc">
+                {channel.description || <FormattedMessage id="community.defaultDesc" defaultMessage="Explore amazing AI-generated art in this channel." />}
+              </div>
+            </TitleWrapper>
+          </HeroContent>
+          {channelsList.length > 0 && (
+            <ChannelNavWrap>
+              <ChannelNavLabel>
+                <FormattedMessage id="community.switchChannel" defaultMessage="Switch Channel" />
+              </ChannelNavLabel>
+              <ChannelNavScroll>
+                {channelsList.map((ch) => (
+                  <ChannelNavItem
+                    key={ch.id}
+                    className={ch.channelKey === channelKey ? 'active' : ''}
+                    onClick={() => handleChannelClick(ch)}
+                  >
+                    <div
+                      className="cover"
+                      style={{
+                        backgroundImage: ch.coverUrl ? `url(${ch.coverUrl})` : 'linear-gradient(135deg, #667eea, #764ba2)',
+                      }}
+                    />
+                    <div className="mask" />
+                    <div className="name">{ch.name}</div>
+                  </ChannelNavItem>
+                ))}
+              </ChannelNavScroll>
+            </ChannelNavWrap>
+          )}
+        </HeroInner>
       </HeroSection>
 
       <Container>
@@ -970,86 +1158,82 @@ const ChannelDetailPage = () => {
           </FilterGroup>
         </ToolBar>
 
-        {/* --- Art Grid --- */}
-        <GridWrap>
-        <Row gutter={[24, 24]}>
-          {posts.map((post) => {
-            const isLiked = post.isLiked || false;
-            const isCollected = post.isCollected || false;
+        {/* --- Art Grid：JS 瀑布流，新帖子严格出现在底部 --- */}
+        <MasonryGridWrap>
+          <Masonry
+            breakpointCols={breakpointColumnsObj}
+            className="masonry-grid"
+            columnClassName="masonry-grid_column"
+          >
+            {posts.map((post) => {
+              const isLiked = post.isLiked || false;
+              const isCollected = post.isCollected || false;
 
-            return (
-              <Col xs={12} sm={12} md={8} lg={6} xl={6} key={post.id}>
-                <ModernCard onClick={() => handlePostClick(post)}>
-                  
-                  {/* Background Image Layer */}
-                  <CardImageWrapper>
-                    <img 
-                      src={addTencentImageCompression(post.coverUrl || post.mediaUrls?.[0], { quality: 20 })} 
-                      alt={post.title} 
-                      loading="lazy"
-                    />
-                  </CardImageWrapper>
+              return (
+                <div key={post.id}>
+                  <ModernCard onClick={() => handlePostClick(post)}>
+                    <CardImageWrapper>
+                      <img
+                        src={addTencentImageCompression(post.coverUrl || post.mediaUrls?.[0], { quality: 20 })}
+                        alt={post.title}
+                        loading="lazy"
+                      />
+                    </CardImageWrapper>
 
-                  {/* Floating Action Buttons */}
-                  <FloatingActions>
-                    <Tooltip title={isLiked ? "Unlike" : "Like"} placement="left">
-                      <GlassBtn 
-                        active={isLiked} 
-                        activeColor="#ff4d4f"
-                        animating={animatingPost === post.id}
-                        onClick={(e) => handleLike(post.id, e)}
-                      >
-                        {isLiked ? <HeartFilled /> : <HeartOutlined />}
-                      </GlassBtn>
-                    </Tooltip>
+                    <FloatingActions>
+                      <Tooltip title={isLiked ? "Unlike" : "Like"} placement="left">
+                        <GlassBtn
+                          active={isLiked}
+                          activeColor="#ff4d4f"
+                          animating={animatingPost === post.id}
+                          onClick={(e) => handleLike(post.id, e)}
+                        >
+                          {isLiked ? <HeartFilled /> : <HeartOutlined />}
+                        </GlassBtn>
+                      </Tooltip>
+                      <Tooltip title={isCollected ? "Uncollect" : "Collect"} placement="left">
+                        <GlassBtn
+                          active={isCollected}
+                          activeColor="#faad14"
+                          onClick={(e) => handleCollect(post.id, e)}
+                        >
+                          {isCollected ? <StarFilled /> : <StarOutlined />}
+                        </GlassBtn>
+                      </Tooltip>
+                    </FloatingActions>
 
-                    <Tooltip title={isCollected ? "Uncollect" : "Collect"} placement="left">
-                      <GlassBtn 
-                        active={isCollected} 
-                        activeColor="#faad14"
-                        onClick={(e) => handleCollect(post.id, e)}
-                      >
-                        {isCollected ? <StarFilled /> : <StarOutlined />}
-                      </GlassBtn>
-                    </Tooltip>
-                  </FloatingActions>
-
-                  {/* Glassmorphism Info Bar at Bottom */}
-                  <CardContent>
-                    <CardTitle title={post.title}>{post.title || "Untitled Artwork"}</CardTitle>
-                    
-                    <MetaRow>
-                      <UserInfo>
-                        <Avatar 
-                          size={22} 
-                          src={post.userAvatar} 
-                          icon={<UserOutlined />}
-                          style={{ 
-                            flexShrink: 0, 
-                            border: '1px solid rgba(255,255,255,0.4)',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                          }}
-                        />
-                        <span className="name">{post.userNickname || 'Anonymous'}</span>
-                      </UserInfo>
-
-                      <StatsInfo>
-                        <Tooltip title="Likes">
-                          <span><HeartFilled style={{ fontSize: 11 }} /> {post.likeCount || 0}</span>
-                        </Tooltip>
-                        <Tooltip title="Views">
-                          <span><EyeOutlined style={{ fontSize: 11 }} /> {post.viewCount || 0}</span>
-                        </Tooltip>
-                      </StatsInfo>
-                    </MetaRow>
-                  </CardContent>
-
-                </ModernCard>
-              </Col>
-            );
-          })}
-        </Row>
-        </GridWrap>
+                    <CardContent>
+                      <CardTitle title={post.title}>{post.title || "Untitled Artwork"}</CardTitle>
+                      <MetaRow>
+                        <UserInfo>
+                          <Avatar
+                            size={22}
+                            src={post.userAvatar}
+                            icon={<UserOutlined />}
+                            style={{
+                              flexShrink: 0,
+                              border: '1px solid rgba(255,255,255,0.4)',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                            }}
+                          />
+                          <span className="name">{post.userNickname || 'Anonymous'}</span>
+                        </UserInfo>
+                        <StatsInfo>
+                          <Tooltip title="Likes">
+                            <span><HeartFilled style={{ fontSize: 11 }} /> {post.likeCount || 0}</span>
+                          </Tooltip>
+                          <Tooltip title="Views">
+                            <span><EyeOutlined style={{ fontSize: 11 }} /> {post.viewCount || 0}</span>
+                          </Tooltip>
+                        </StatsInfo>
+                      </MetaRow>
+                    </CardContent>
+                  </ModernCard>
+                </div>
+              );
+            })}
+          </Masonry>
+        </MasonryGridWrap>
 
         {/* 初次加载：骨架屏 + 流光动画 */}
         {postsLoading && posts.length === 0 && (

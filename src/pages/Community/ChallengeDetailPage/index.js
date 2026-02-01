@@ -16,10 +16,11 @@ import NavigationDrawer from './NavigationDrawer';
 import { PageWrapper, Container, ContentGrid, MainColumn, SideColumn, DetailCard, StyledTabs } from './styled';
 import { cleanChallengeData, cleanPostData } from './utils';
 
-const ChallengeDetailPage = () => {
+const ChallengeDetailPage = ({ challengeId: challengeIdProp, embedInWorkspace = false }) => {
   const intl = useIntl();
   const navigate = useNavigate();
-  const { challengeId } = useParams();
+  const { challengeId: challengeIdFromParams } = useParams();
+  const challengeId = challengeIdProp != null ? String(challengeIdProp) : challengeIdFromParams;
   
   const [activeTab, setActiveTab] = useState('entries');
   const [loading, setLoading] = useState(true);
@@ -117,8 +118,8 @@ const ChallengeDetailPage = () => {
 
   if (loading || !challenge) {
     return (
-      <PageWrapper>
-        <SimpleHeader />
+      <PageWrapper style={embedInWorkspace ? { paddingTop: 24, background: 'transparent' } : undefined}>
+        {!embedInWorkspace && <SimpleHeader />}
         <Container>
           <Skeleton active paragraph={{rows: 10}} style={{marginTop: 40}} />
         </Container>
@@ -139,19 +140,22 @@ const ChallengeDetailPage = () => {
   const isEnded = now >= votingEndTime;
 
   return (
-    <PageWrapper>
-      <SimpleHeader />
-      
+    <PageWrapper style={embedInWorkspace ? { paddingTop: 24, background: 'transparent' } : undefined}>
+      {!embedInWorkspace && <SimpleHeader />}
+
       <Container>
         {/* Navigation Breadcrumb-ish */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Button 
-            type="text" 
-            icon={<LeftOutlined />} 
-            onClick={() => navigate('/community')} 
+          <Button
+            type="text"
+            icon={<LeftOutlined />}
+            onClick={() => navigate(embedInWorkspace ? '/workspace' : '/community')}
             style={{ marginBottom: 0, marginLeft: -16 }}
           >
-            <FormattedMessage id="common.backToCommunity" defaultMessage="Back to Community" />
+            {embedInWorkspace
+              ? <FormattedMessage id="common.backToWorkspace" defaultMessage="Back to Workspace" />
+              : <FormattedMessage id="common.backToCommunity" defaultMessage="Back to Community" />
+            }
           </Button>
           <Button 
             type="default" 

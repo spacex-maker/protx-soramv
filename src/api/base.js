@@ -410,6 +410,24 @@ export const base = {
       };
     }
   },
+  // 用户 Token 余额（用于解锁确认弹窗）
+  getUserBalance: async () => {
+    try {
+      const { data } = await axios.get('/productx/user/balance');
+      return data;
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || '获取余额失败', data: null };
+    }
+  },
+  // 提示词商品下单并支付（扣 Token、转创作者）
+  orderPromptMarket: async (listingId) => {
+    try {
+      const { data } = await axios.post('/productx/prompt-market-listing/order-pay', null, { params: { listingId } });
+      return data;
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || '下单失败', data: null };
+    }
+  },
   // 上架提示词（审核中状态）
   createPromptMarketListing: async (body) => {
     try {

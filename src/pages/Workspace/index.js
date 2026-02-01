@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout } from 'antd';
+import styled from 'styled-components';
 import SimpleHeader from "components/headers/simple";
 import { message } from 'antd';
 import { Helmet } from 'react-helmet';
@@ -15,10 +16,19 @@ import Create from './Create';
 import MediaTools from './MediaTools';
 import PromptMarket from './PromptMarket';
 import Channels from './Channels';
+import DailyChallenge from './DailyChallenge';
 import Recharge from './Recharge';
 import FileDecryptPage from '../FileDecrypt';
 
 const { Content, Sider } = Layout;
+
+/** 内容区：与主题一致的背景，避免滚动到底部时出现分隔线 */
+const ContentLayout = styled(Layout)`
+  transition: margin-left 0.2s;
+  height: 100%;
+  overflow: auto;
+  background: ${props => props.theme?.mode === 'dark' ? '#0a0a0a' : '#f5f7fa'} !important;
+`;
 
 const CloudDrivePage = () => {
   const location = useLocation();
@@ -70,6 +80,8 @@ const CloudDrivePage = () => {
       setSelectedKeys(['promptMarket']);
     } else if (path === '/workspace/channels') {
       setSelectedKeys(['channels']);
+    } else if (path === '/workspace/daily-challenge') {
+      setSelectedKeys(['dailyChallenge']);
     } else if (path === '/workspace/recharge') {
       setSelectedKeys(['recharge']);
     } else if (path === '/workspace') {
@@ -104,6 +116,8 @@ const CloudDrivePage = () => {
         return <PromptMarket />;
       case 'channels':
         return <Channels />;
+      case 'dailyChallenge':
+        return <DailyChallenge />;
       case 'recharge':
         return <Recharge />;
       default:
@@ -126,14 +140,11 @@ const CloudDrivePage = () => {
             collapsed={collapsed}
             onCollapse={setCollapsed}
           />
-          <Layout style={{ 
-            marginLeft: isMobile ? 0 : (collapsed ? 80 : 200),
-            transition: 'margin-left 0.2s',
-            height: '100%',
-            overflow: 'hidden'
+          <ContentLayout style={{
+            marginLeft: isMobile ? 0 : (collapsed ? 80 : 200)
           }}>
             {renderContent()}
-          </Layout>
+          </ContentLayout>
         </Layout>
       </Layout>
     </>

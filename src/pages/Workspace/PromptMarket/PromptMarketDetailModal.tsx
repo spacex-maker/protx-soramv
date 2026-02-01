@@ -12,6 +12,7 @@ import { base } from 'api/base';
 import { followUser, unfollowUser, getRelationStatus } from 'api/community';
 import { motion, HTMLMotionProps } from 'framer-motion';
 import PromptMarketCreatorCard from './PromptMarketCreatorCard';
+import UnlockConfirmModal from './UnlockConfirmModal';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -139,6 +140,7 @@ const PromptMarketDetailModal: React.FC<PromptMarketDetailModalProps> = ({
   const [detail, setDetail] = useState<ListingDetail | null>(null);
   const [relation, setRelation] = useState<{ isFollowing?: boolean; isMutual?: boolean } | null>(null);
   const [followLoading, setFollowLoading] = useState(false);
+  const [unlockModalVisible, setUnlockModalVisible] = useState(false);
 
   useEffect(() => {
     if (visible && listingId) {
@@ -199,6 +201,14 @@ const PromptMarketDetailModal: React.FC<PromptMarketDetailModalProps> = ({
   }, [detail]);
 
   const promptLocked = detail?.promptFullVisible === false;
+
+  const refreshDetail = () => {
+    if (listingId) {
+      base.getPromptMarketListingDetail(listingId).then((res: any) => {
+        if (res?.success) setDetail(res.data);
+      });
+    }
+  };
 
   const copyPrompt = () => {
     if (promptLocked) return;
@@ -315,7 +325,12 @@ const PromptMarketDetailModal: React.FC<PromptMarketDetailModalProps> = ({
                 </div>
 
                 {detail.priceToken > 0 && (
-                  <Button type="primary" block style={{ height: 48, borderRadius: 9999, fontSize: 15, fontWeight: 700 }}>
+                  <Button
+                    type="primary"
+                    block
+                    style={{ height: 48, borderRadius: 9999, fontSize: 15, fontWeight: 700 }}
+                    onClick={() => setUnlockModalVisible(true)}
+                  >
                     {isEn ? 'Unlock Prompt' : '立即解锁作品'}
                   </Button>
                 )}
@@ -339,6 +354,15 @@ const PromptMarketDetailModal: React.FC<PromptMarketDetailModalProps> = ({
           </DetailWrapper>
         )}
       </Spin>
+      <UnlockConfirmModal
+        visible={unlockModalVisible}
+        onCancel={() => setUnlockModalVisible(false)}
+        listingId={detail?.id ?? 0}
+        priceToken={detail?.priceToken ?? 0}
+        title={detail?.title}
+        isEn={isEn}
+        onSuccess={refreshDetail}
+      />
     </StyledModal>
   );
 };

@@ -18,9 +18,9 @@ import {
   CompassOutlined,
   TeamOutlined,
   ThunderboltOutlined,
+  TrophyOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage } from 'react-intl';
-import FeedbackModalEntry from 'components/modals/FeedbackModalEntry';
 import AboutModal from 'components/modals/AboutModal';
 import ProductLogModal from 'components/modals/ProductLogModal';
 import { useNavigate } from 'react-router-dom';
@@ -190,7 +190,6 @@ const RechargeButton = styled.button<{ $collapsed?: boolean }>`
 `;
 
 const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, onCollapse }) => {
-  const [isFeedbackVisible, setIsFeedbackVisible] = useState(false);
   const [isAboutVisible, setIsAboutVisible] = useState(false);
   const [isProductLogVisible, setIsProductLogVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
@@ -261,6 +260,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
       key: 'channels',
       icon: <CompassOutlined style={{ color: '#8b5cf6' }} />,
       label: <FormattedMessage id="sidebar.channels" defaultMessage="生成频道" />
+    },
+    {
+      key: 'dailyChallenge',
+      icon: <TrophyOutlined style={{ color: '#f59e0b' }} />,
+      label: <FormattedMessage id="sidebar.dailyChallenge" defaultMessage="每日挑战" />
     },
     {
       key: 'mediaTools',
@@ -343,7 +347,15 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
       }
       return;
     }
-    
+
+    if (key === 'dailyChallenge') {
+      navigate('/workspace/daily-challenge');
+      if (isMobile) {
+        onCollapse(true);
+      }
+      return;
+    }
+
     if (key === 'about') {
       setIsAboutVisible(true);
       if (isMobile) {
@@ -353,7 +365,7 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
     }
     
     if (key === 'feedback') {
-      setIsFeedbackVisible(true);
+      navigate('/feedback');
       if (isMobile) {
         onCollapse(true);
       }
@@ -425,11 +437,6 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
       <Overlay 
         visible={!collapsed && isMobile} 
         onClick={() => onCollapse(true)}
-      />
-
-      <FeedbackModalEntry
-        open={isFeedbackVisible}
-        onClose={() => setIsFeedbackVisible(false)}
       />
 
       <AboutModal
