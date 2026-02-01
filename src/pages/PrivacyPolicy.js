@@ -186,7 +186,7 @@ export default ({ headingText }) => {
             <p>{intl.formatMessage({ id: 'privacyPolicy.lastUpdated', defaultMessage: '最后更新日期：{date}' }, { date: currentDate })}</p>
 
             <p>
-              {intl.formatMessage({ id: 'privacyPolicy.intro1', defaultMessage: '本隐私政策描述了 Sora MV 平台（以下简称"我们"或"本平台"）在您使用我们的服务时如何收集、使用、存储和保护您的个人信息，以及您的隐私权利。我们非常重视您的隐私保护，请仔细阅读本隐私政策。' })}
+              {intl.formatMessage({ id: 'privacyPolicy.intro1', defaultMessage: '本隐私政策描述了 AI2OBJ 平台（以下简称"我们"或"本平台"）在您使用我们的服务时如何收集、使用、存储和保护您的个人信息，以及您的隐私权利。我们非常重视您的隐私保护，请仔细阅读本隐私政策。' })}
             </p>
 
             <p>

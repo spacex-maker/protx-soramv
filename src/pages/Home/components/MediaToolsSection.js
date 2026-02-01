@@ -74,10 +74,10 @@ const TabsWrapper = styled.div`
 
 const TabButton = styled(motion.button)`
   padding: 16px 32px;
-  border: 2px solid ${props => props.active 
+  border: 2px solid ${props => props.$active 
     ? props.color 
     : (props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)')};
-  background: ${props => props.active 
+  background: ${props => props.$active 
     ? (props.theme.mode === 'dark' 
       ? `linear-gradient(135deg, ${props.color}22, ${props.color}11)` 
       : `linear-gradient(135deg, ${props.color}11, ${props.color}08)`)
@@ -90,10 +90,10 @@ const TabButton = styled(motion.button)`
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 16px;
   font-weight: 600;
-  color: ${props => props.active 
+  color: ${props => props.$active 
     ? props.color 
     : (props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.65)')};
-  box-shadow: ${props => props.active 
+  box-shadow: ${props => props.$active 
     ? `0 8px 24px -8px ${props.color}44` 
     : 'none'};
   position: relative;
@@ -272,7 +272,7 @@ const MediaToolsSection = () => {
                   key={tool.id}
                   theme={theme}
                   color={tool.color}
-                  active={activeTab === tool.id}
+                  $active={activeTab === tool.id}
                   onClick={() => setActiveTab(tool.id)}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}

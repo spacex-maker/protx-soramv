@@ -128,8 +128,8 @@ const CloudDrivePage = () => {
   return (
     <>
       <Helmet>
-        <title>工作台 - Sora MV</title>
-        <meta name="description" content="Sora MV 工作台 - 使用 AI 技术生成高质量视频" />
+        <title>工作台 - AI2OBJ</title>
+        <meta name="description" content="AI2OBJ 工作台 - 使用 AI 技术生成高质量视频" />
       </Helmet>
       <Layout style={{ minHeight: '100vh', height: '100vh', overflow: 'hidden' }}>
         <SimpleHeader />

@@ -448,7 +448,7 @@ const MobileFileEncryptModal = ({
         maxWidth: '100vw',
         height: '100vh'
       }}
-      bodyStyle={{ 
+      styles={{ body: { 
         height: 'calc(100vh - 110px)',
         margin: 0,
         padding: '24px',
@@ -456,7 +456,7 @@ const MobileFileEncryptModal = ({
         flexDirection: 'column',
         background: 'transparent',
         overflow: 'auto'
-      }}
+      } }}
       maskClosable={false}
       closable={!encrypting}
       keyboard={false}
@@ -464,7 +464,7 @@ const MobileFileEncryptModal = ({
     >
       <SecurityTips>
         <Alert
-          message="Sora MV 安全加密"
+          message="AI2OBJ 安全加密"
           description={
             <div>
               <Paragraph>

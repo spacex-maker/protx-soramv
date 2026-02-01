@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { FormattedMessage } from 'react-intl';
 import { 
-  GoogleOutlined, 
   GithubOutlined, 
   AppleOutlined,
   FacebookOutlined,
@@ -15,6 +14,7 @@ import {
   MailOutlined,
   LockOutlined,
 } from '@ant-design/icons';
+import GoogleGIcon from './GoogleGIcon';
 import { 
   SiWechat, 
   SiTencentqq, 
@@ -47,14 +47,14 @@ import {
   ForgotPasswordLink
 } from './styles';
 
-// 登录方式编码到图标的映射
+// 登录方式编码到图标的映射（Google 使用最新四色 G 图标，见 GoogleGIcon）
 const LOGIN_METHOD_ICONS = {
   phone_sms: PhoneOutlined,
   wechat: SiWechat,
   qq: SiTencentqq,
   weibo: SiSinaweibo,
   alipay: SiAlipay,
-  google: GoogleOutlined,
+  google: null,
   github: GithubOutlined,
   apple: AppleOutlined,
   facebook: FacebookOutlined,
@@ -63,6 +63,9 @@ const LOGIN_METHOD_ICONS = {
   email: MailOutlined,
   password: LockOutlined,
 };
+
+// 暂时隐藏前 N 个登录方式（恢复时改为 0）
+const HIDE_FIRST_LOGIN_METHODS = 3;
 
 const emailSuffixes = [
   "@qq.com",
@@ -297,8 +300,12 @@ export const RightSection = ({
           </Divider>
 
           <SocialLogin>
-            {loginMethods.map((method, index) => {
+            {loginMethods
+              .filter((_, i) => i >= HIDE_FIRST_LOGIN_METHODS)
+              .map((method, index) => {
               const IconComponent = LOGIN_METHOD_ICONS[method.code];
+              const isGoogle = method.code === 'google';
+              const hasIcon = isGoogle || IconComponent;
               // 解析多语言名称，获取当前语言的名称
               let methodName = method.code;
               try {
@@ -311,7 +318,7 @@ export const RightSection = ({
               // 将 phone_sms 映射为 phone 类型以匹配样式
               const socialType = method.code === 'phone_sms' ? 'phone' : method.code;
               
-              return IconComponent ? (
+              return hasIcon ? (
                 <SocialButton 
                   key={method.code}
                   type="button" 
@@ -320,7 +327,7 @@ export const RightSection = ({
                   title={methodName}
                   onClick={() => handleSocialLogin(method.code)}
                 >
-                  <IconComponent />
+                  {isGoogle ? <GoogleGIcon size={20} /> : <IconComponent />}
                 </SocialButton>
               ) : null;
             })}

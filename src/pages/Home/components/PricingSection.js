@@ -642,12 +642,11 @@ const PricingCardItem = React.memo(({ plan, index, activeIndex, onDragEnd, setAc
       <div className="glass-overlay" />
       <div className="card-header">
         <div className="icon-wrapper">{plan.icon}</div>
-        <div className="card-title" $color={plan.color}>
+        <div className="card-title">
           <h3>{plan.name}</h3>
           <span>{plan.sub}</span>
           <div 
             className={`price ${priceDisplay.firstMonthPrice ? 'has-first-month' : ''}`} 
-            $color={plan.color} 
             data-price={`${priceDisplay.symbol}${priceDisplay.firstMonthPrice || priceDisplay.price}`}
           >
             {priceDisplay.firstMonthPrice ? (

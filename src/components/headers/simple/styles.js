@@ -179,8 +179,8 @@ export const DarkModeButton = styled.button`
 `;
 
 export const LanguageButton = styled.button`
-  padding: 0.5rem;
-  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
   color: var(--ant-color-text);
   background: transparent;
   border: none;
@@ -189,6 +189,9 @@ export const LanguageButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 0.375rem;
+  min-width: 40px;
+  height: 36px;
 
   &:hover {
     color: var(--ant-color-text-secondary);
@@ -196,7 +199,51 @@ export const LanguageButton = styled.button`
   }
 
   .anticon {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
+  }
+`;
+
+// 语言下拉面板容器（自定义布局）
+export const LanguageDropdownPanel = styled.div`
+  min-width: 168px;
+  padding: 6px;
+  border-radius: 12px;
+  background: ${props => props.theme.mode === 'dark'
+    ? 'rgba(30, 30, 30, 0.98)'
+    : 'rgba(255, 255, 255, 0.98)'};
+  border: 1px solid ${props => props.theme.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.08)'
+    : 'rgba(0, 0, 0, 0.06)'};
+  box-shadow: ${props => props.theme.mode === 'dark'
+    ? '0 8px 24px rgba(0, 0, 0, 0.4)'
+    : '0 8px 24px rgba(0, 0, 0, 0.12)'};
+`;
+
+export const LanguageDropdownItem = styled.button`
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ant-color-text);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  display: block;
+
+  &:hover {
+    background: ${props => props.theme.mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.06)'
+      : 'rgba(0, 0, 0, 0.04)'};
+  }
+
+  &.selected {
+    color: var(--ant-color-primary);
+    background: ${props => props.theme.mode === 'dark'
+      ? 'rgba(59, 130, 246, 0.15)'
+      : 'rgba(59, 130, 246, 0.08)'};
+    font-weight: 500;
   }
 `;
 

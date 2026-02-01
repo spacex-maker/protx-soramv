@@ -48,6 +48,7 @@ import ImageCompress from './pages/Workspace/MediaTools/components/ImageCompress
 import MediaToolsPage from './pages/MediaToolsPage';
 import SettingsPage from './pages/Settings';
 import { getUserSettings } from './api/settings';
+import CookieConsentBanner from './components/CookieConsentBanner';
 
 // 语言配置映射
 const localeMap = {
@@ -312,7 +313,8 @@ export default function App() {
           theme={themeConfig}
         >
           <GlobalStyles />
-          <Router>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <CookieConsentBanner />
             <Routes>
               <Route path="/" element={<RootRoute />} />
               <Route path="/media-tools" element={<MediaToolsPage />} />

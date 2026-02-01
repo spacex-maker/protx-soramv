@@ -207,7 +207,7 @@ const messages = defineMessages({
   },
   step1Description: {
     id: 'decrypt.steps.step1.description',
-    defaultMessage: '选择使用 Sora MV 加密工具加密的 .encrypted 文件，支持拖拽或点击选择'
+    defaultMessage: '选择使用 AI2OBJ 加密工具加密的 .encrypted 文件，支持拖拽或点击选择'
   },
   step2Title: {
     id: 'decrypt.steps.step2.title',

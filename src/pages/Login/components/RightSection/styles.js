@@ -2,11 +2,13 @@ import styled from 'styled-components';
 import { Link } from 'react-router-dom';
 import { slideInFromRight, fadeInScale, marqueeGlow } from '../../styles';
 
-// 社交媒体的品牌颜色
+// 社交媒体的品牌颜色（Google 用白底+边框，与官方「通过 Google 登录」一致）
 const SOCIAL_COLORS = {
   google: {
-    color: '#DB4437',
-    hoverColor: '#C13B2F'
+    color: '#ffffff',
+    hoverColor: '#f8f9fa',
+    borderColor: '#dadce0',
+    hoverBorderColor: '#c6c9cc'
   },
   github: {
     color: '#333333',
@@ -372,9 +374,12 @@ export const SocialButton = styled.button`
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  border: none;
+  border: ${props => {
+    const border = getSocialColor(props.socialType, 'borderColor');
+    return border ? `1px solid ${border}` : 'none';
+  }};
   background: ${props => getSocialColor(props.socialType, 'color')};
-  color: white;
+  color: ${props => props.socialType === 'google' ? 'inherit' : 'white'};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -392,8 +397,9 @@ export const SocialButton = styled.button`
 
   &:hover {
     background: ${props => getSocialColor(props.socialType, 'hoverColor')};
+    ${props => getSocialColor(props.socialType, 'hoverBorderColor') ? `border-color: ${getSocialColor(props.socialType, 'hoverBorderColor')};` : ''}
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
   }
 
   &:active {

@@ -592,7 +592,7 @@ const ResetPasswordContent = () => {
   return (
     <PageLayout $token={token}>
       <Helmet>
-        <title>{intl.formatMessage({ id: 'resetPassword.page.title', defaultMessage: 'Reset Password - Sora MV' })}</title>
+        <title>{intl.formatMessage({ id: 'resetPassword.page.title', defaultMessage: 'Reset Password - AI2OBJ' })}</title>
       </Helmet>
 
       <TopRightControls>

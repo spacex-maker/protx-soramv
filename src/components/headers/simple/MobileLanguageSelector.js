@@ -74,7 +74,7 @@ const MobileLanguageSelector = ({ locale, languages, onLanguageChange }) => {
         onClose={onClose}
         open={open}
         height={400}
-        bodyStyle={{ padding: 0 }}
+        styles={{ body: { padding: 0 } }}
       >
         <List
           dataSource={languages}

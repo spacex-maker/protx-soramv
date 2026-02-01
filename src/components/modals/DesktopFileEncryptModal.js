@@ -465,7 +465,7 @@ const DesktopFileEncryptModal = ({
           <div className="header">
             <div className="title">
               <SafetyCertificateOutlined />
-              Sora MV 安全加密
+              AI2OBJ 安全加密
             </div>
           </div>
           <div className="content">

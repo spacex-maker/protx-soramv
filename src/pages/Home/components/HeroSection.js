@@ -1,8 +1,8 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import React, { useContext, useState, useEffect, useRef, useMemo } from 'react';
 import { Typography, Space, Spin, Button } from 'antd';
 import styled, { ThemeContext, keyframes } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
-import { FormattedMessage } from 'react-intl';
+import { FormattedMessage, useIntl } from 'react-intl';
 import { base } from '../../../api/base';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { motion } from 'framer-motion';
@@ -38,6 +38,17 @@ const HeroContainer = styled.div`
   /* 定义 CSS 变量默认值，防止 SSR 报错 */
   --mouse-x: 50%;
   --mouse-y: 50%;
+`;
+
+/* 无背景图时的渐变后备层（接口失败或未配置时） */
+const FallbackBg = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: ${props => props.theme.mode === 'dark'
+    ? 'radial-gradient(ellipse 80% 50% at 50% 40%, rgba(30, 60, 120, 0.25), transparent), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(100, 50, 120, 0.15), transparent)'
+    : 'radial-gradient(ellipse 80% 50% at 50% 40%, rgba(0, 113, 227, 0.08), transparent), radial-gradient(ellipse 60% 40% at 80% 80%, rgba(124, 58, 237, 0.06), transparent)'};
 `;
 
 // 公共的瀑布流布局样式
@@ -161,19 +172,28 @@ const Badge = styled(motion.div)`
   .icon { color: #007aff; }
 `;
 
+/* 主标题容器：行高和底部留白加大，避免字尾被挡 */
 const MainTitle = styled(motion.h1)`
   font-size: clamp(48px, 6vw, 88px);
   font-weight: 700;
-  line-height: 1.05;
+  line-height: 1.28;
   letter-spacing: -0.025em;
   margin: 0 0 16px 0;
-  background: ${props => props.theme.mode === 'dark' 
-    ? 'linear-gradient(135deg, #FFFFFF 0%, #A5A5A5 100%)' 
-    : 'linear-gradient(135deg, #1d1d1f 0%, #434344 100%)'};
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1d1d1f'};
+  overflow: visible;
+  padding-bottom: 0.35em;
+`;
+
+/* 单层标题：实色 + 炫彩光晕，不用渐变透明字，保证刷新可见 */
+const TitleGradient = styled.span`
+  display: inline-block;
+  line-height: 1.28;
+  overflow: visible;
+  padding-bottom: 0.08em;
+  color: ${props => props.theme?.mode === 'dark' ? '#ffffff' : '#0a0a0a'};
+  text-shadow:
+    0 0 20px rgba(0, 113, 227, 0.6),
+    0 0 40px rgba(124, 58, 237, 0.4),
+    0 0 60px rgba(236, 72, 153, 0.3);
 `;
 
 const SubTitle = styled(motion.p)`
@@ -260,32 +280,65 @@ const HeroSection = () => {
   const { locale } = useLocale();
   const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [columns, setColumns] = useState([]);
+  const [windowWidth, setWindowWidth] = useState(() => (typeof window !== 'undefined' ? window.innerWidth : 1920));
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  
-  // 引用容器，用于更新 CSS 变量
   const containerRef = useRef(null);
+
+  // 用 useMemo 同步计算列，避免依赖 useEffect 导致晚一帧才渲染背景
+  const columns = useMemo(() => {
+    if (images.length === 0) return [];
+    const width = windowWidth;
+    let columnCount = 5;
+    if (width <= 768) columnCount = 2;
+    else if (width <= 1200) columnCount = 3;
+    const cols = Array.from({ length: columnCount }, () => []);
+    images.forEach((img, index) => {
+      cols[index % columnCount].push({ src: img, id: index });
+    });
+    return cols;
+  }, [images, windowWidth]);
+
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
     setIsLoggedIn(!!token);
   }, []);
 
-  // 获取图片
+  // 获取图片（刷新时用当前 locale 可能命中不到后端配置，空则用 default/zh 回退一次）
   useEffect(() => {
+    const parseImagesFromResponse = (response) => {
+      if (!response?.success || !Array.isArray(response.data) || response.data.length === 0) return [];
+      const configValue = response.data[0].configValue;
+      if (configValue == null || configValue === '') return [];
+      try {
+        const parsed = typeof configValue === 'string' ? JSON.parse(configValue) : configValue;
+        const arr = parsed?.images;
+        return Array.isArray(arr) ? arr : [];
+      } catch {
+        return [];
+      }
+    };
+
     const fetchImages = async () => {
       try {
         setLoading(true);
-        const lang = locale === 'zh_CN' ? 'zh' : locale.split('_')[0] || 'zh';
-        const response = await base.getSiteSettings('hero.images', lang);
-        
-        if (response.success && response.data && response.data.length > 0) {
-            const configValue = response.data[0].configValue;
-            const parsed = JSON.parse(configValue);
-            if (parsed.images && Array.isArray(parsed.images)) {
-              setImages(shuffleArray(parsed.images));
-            }
+        const lang = locale === 'zh_CN' ? 'zh' : (locale && locale.split('_')[0]) || 'zh';
+        let response = await base.getSiteSettings('hero.images', lang);
+        let list = parseImagesFromResponse(response);
+        if (list.length === 0 && lang !== 'default') {
+          response = await base.getSiteSettings('hero.images', 'default');
+          list = parseImagesFromResponse(response);
         }
+        if (list.length === 0 && lang !== 'zh') {
+          response = await base.getSiteSettings('hero.images', 'zh');
+          list = parseImagesFromResponse(response);
+        }
+        if (list.length > 0) setImages(shuffleArray(list));
       } catch (error) {
         console.error(error);
       } finally {
@@ -294,25 +347,6 @@ const HeroSection = () => {
     };
     fetchImages();
   }, [locale]);
-
-  // 计算列
-  useEffect(() => {
-    if (images.length === 0) return;
-    const calculateColumns = () => {
-      const width = window.innerWidth;
-      let columnCount = 5; 
-      if (width <= 768) columnCount = 2; 
-      else if (width <= 1200) columnCount = 3; 
-      const newColumns = Array.from({ length: columnCount }, () => []);
-      images.forEach((img, index) => {
-        newColumns[index % columnCount].push({ src: img, id: index });
-      });
-      setColumns(newColumns);
-    };
-    calculateColumns();
-    window.addEventListener('resize', calculateColumns);
-    return () => window.removeEventListener('resize', calculateColumns);
-  }, [images]);
 
   // --- 鼠标移动处理 ---
   // 直接操作 DOM 样式以获得最佳 60fps 性能，避免 React 渲染
@@ -326,14 +360,38 @@ const HeroSection = () => {
     }
   };
 
+  const intl = useIntl();
+  const subtitleText = intl.formatMessage({ id: 'home.hero.subtitle', defaultMessage: 'Like never before.' });
+
+  /* 内容区：只做 stagger，不把整块 opacity 置 0，避免刷新时整块看不见 */
   const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { opacity: 1, transition: { staggerChildren: 0.15, delayChildren: 0.2 } }
+    hidden: { opacity: 1 },
+    visible: { opacity: 1, transition: { staggerChildren: 0.22, delayChildren: 0.35 } }
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 30, filter: 'blur(10px)' },
-    visible: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] } }
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 1, ease: 'easeOut' } }
+  };
+
+  /* 主标题进入：只做 y+scale，不做 opacity，避免首帧被藏住导致“看不见” */
+  const titleVariants = {
+    hidden: { y: 28, scale: 0.92 },
+    visible: {
+      y: 0,
+      scale: 1,
+      transition: { duration: 1.4, delay: 0.6, ease: [0.22, 1, 0.36, 1] }
+    }
+  };
+
+  /* 副标题逐字出现：每个字延迟递增，节奏更慢 */
+  const letterVariants = {
+    hidden: { opacity: 0, y: 6 },
+    visible: (i) => ({
+      opacity: 1,
+      y: 0,
+      transition: { delay: 1.1 + i * 0.1, duration: 0.4, ease: 'easeOut' }
+    })
   };
 
   return (
@@ -344,14 +402,15 @@ const HeroSection = () => {
     >
       {loading && <Spin size="large" style={{ position: 'absolute', zIndex: 50 }} />}
 
-      {!loading && images.length > 0 && (
+      {/* 加载完成但无图时显示渐变后备背景 */}
+      {!loading && images.length === 0 && <FallbackBg theme={theme} />}
+
+      {/* 有图片时同步渲染背景（columns 由 useMemo 计算，与 images 同帧） */}
+      {!loading && images.length > 0 && columns.length > 0 && (
         <>
-          {/* 层级 1: 氛围背景 (始终显示，但暗淡模糊黑白) */}
           <AmbientLayer theme={theme}>
              <MasonryGrid columns={columns} theme={theme} />
           </AmbientLayer>
-
-          {/* 层级 2: 手电筒光圈 (彩色清晰，跟随鼠标) */}
           <FlashlightLayer theme={theme}>
              <MasonryGrid columns={columns} theme={theme} />
           </FlashlightLayer>
@@ -369,12 +428,24 @@ const HeroSection = () => {
           <FormattedMessage id="home.hero.badge" defaultMessage="Introducing the new Workflow" />
         </Badge>
 
-        <MainTitle variants={itemVariants} theme={theme}>
-          <FormattedMessage id="home.hero.title" defaultMessage="Create." />
-          <br />
-          <span style={{ opacity: 0.7 }}>
-            <FormattedMessage id="home.hero.subtitle" defaultMessage="Like never before." />
-          </span>
+        <MainTitle variants={titleVariants} initial="hidden" animate="visible">
+          <TitleGradient style={{ display: 'block' }} theme={theme}>
+            <FormattedMessage id="home.hero.title" defaultMessage="Create." />
+          </TitleGradient>
+          <TitleGradient style={{ display: 'block' }} theme={theme}>
+            {subtitleText.split('').map((char, i) => (
+              <motion.span
+                key={i}
+                custom={i}
+                variants={letterVariants}
+                initial="hidden"
+                animate="visible"
+                style={{ display: 'inline' }}
+              >
+                {char}
+              </motion.span>
+            ))}
+          </TitleGradient>
         </MainTitle>
 
         <SubTitle variants={itemVariants} theme={theme}>

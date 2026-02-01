@@ -487,9 +487,9 @@ const AchievementModal = ({ open, onClose, userInfo }) => {
       footer={null}
       width={1400}
       centered
-      destroyOnClose
+      destroyOnHidden
       closeIcon={<span style={{fontSize: 20}}>×</span>}
-      maskStyle={{ backgroundColor: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(30px)' }}
+      styles={{ mask: { backgroundColor: 'rgba(0,0,0,0.9)', backdropFilter: 'blur(30px)' } }}
     >
       <StarField />
       

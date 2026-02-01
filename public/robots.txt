@@ -1,4 +1,4 @@
-# Sora MV - AI 视频生成平台
+# AI2OBJ - 综合 AI 创作平台
 # https://soramv.cn
 
 # 允许所有搜索引擎爬虫

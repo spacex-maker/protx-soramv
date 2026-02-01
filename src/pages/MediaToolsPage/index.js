@@ -33,7 +33,7 @@ const MediaToolsPage = () => {
       <SEO 
         title={intl.formatMessage({ 
           id: 'mediaToolsPage.title', 
-          defaultMessage: '媒体工具 - Sora MV' 
+          defaultMessage: '媒体工具 - AI2OBJ' 
         })}
         description={intl.formatMessage({ 
           id: 'mediaToolsPage.description', 
@@ -43,7 +43,7 @@ const MediaToolsPage = () => {
       <Helmet>
         <title>{intl.formatMessage({ 
           id: 'mediaToolsPage.title', 
-          defaultMessage: '媒体工具 - Sora MV' 
+          defaultMessage: '媒体工具 - AI2OBJ' 
         })}</title>
         <meta 
           name="description" 

@@ -13,7 +13,7 @@ import {
   ActionTip
 } from './styled';
 
-const { Countdown } = Statistic;
+const Timer = Statistic.Timer;
 
 const ActionCard = ({ isNotStarted, isOngoing, startTime, deadline, onJoin }) => {
   const getStatusConfig = () => {
@@ -58,26 +58,28 @@ const ActionCard = ({ isNotStarted, isOngoing, startTime, deadline, onJoin }) =>
           
           <CountdownDisplay>
             {isNotStarted ? (
-              <Countdown 
-                value={startTime} 
-                format="D[d] H[h] m[m] s[s]" 
-                valueStyle={{ 
-                  fontSize: 28, 
+              <Timer
+                type="countdown"
+                value={startTime}
+                format="D[d] H[h] m[m] s[s]"
+                valueStyle={{
+                  fontSize: 28,
                   fontWeight: 800,
                   color: statusConfig.color,
                   lineHeight: 1.2
-                }} 
+                }}
               />
             ) : isOngoing ? (
-              <Countdown 
-                value={deadline} 
-                format="D[d] H[h] m[m] s[s]" 
-                valueStyle={{ 
-                  fontSize: 28, 
+              <Timer
+                type="countdown"
+                value={deadline}
+                format="D[d] H[h] m[m] s[s]"
+                valueStyle={{
+                  fontSize: 28,
                   fontWeight: 800,
                   color: statusConfig.color,
                   lineHeight: 1.2
-                }} 
+                }}
               />
             ) : (
               <CountdownValue className="closed">

@@ -387,12 +387,12 @@ const AchievementModal = ({ open, onClose, userInfo }) => {
       footer={null}
       width={1000}
       centered
-      destroyOnClose
+      destroyOnHidden
       closeIcon={null}
-      maskStyle={{ 
+      styles={{ mask: { 
         backdropFilter: 'blur(20px)', 
-        backgroundColor: 'rgba(0, 0, 0, 0.4)' // 修复：增加背景模糊遮罩
-      }}
+        backgroundColor: 'rgba(0, 0, 0, 0.4)'
+      } }}
     >
       <Layout $token={token}>
         

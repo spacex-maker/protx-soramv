@@ -1037,8 +1037,8 @@ const JoinUsPage = () => {
     >
       <GlobalStyle />
       <SEO 
-        title={intl.formatMessage({ id: 'joinUs.seo.title', defaultMessage: '加入我们 - Sora MV' })}
-        description={intl.formatMessage({ id: 'joinUs.seo.description', defaultMessage: '加入 Sora MV 团队，一起用 AI 改变视频创作的未来' })}
+        title={intl.formatMessage({ id: 'joinUs.seo.title', defaultMessage: '加入我们 - AI2OBJ' })}
+        description={intl.formatMessage({ id: 'joinUs.seo.description', defaultMessage: '加入 AI2OBJ 团队，一起用 AI 改变创作的未来' })}
       />
       <PageWrapper>
         <SimpleHeader />

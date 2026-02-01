@@ -224,7 +224,7 @@ const SignupPage = () => {
     <>
       <Helmet>
         <title>{intl.formatMessage({ id: 'signup.page.title' })}</title>
-        <meta name="description" content="注册 Sora MV，开始您的 AI 视频创作" />
+        <meta name="description" content="注册 AI2OBJ，开始您的 AI 创作" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
       </Helmet>
       <PageContainer>

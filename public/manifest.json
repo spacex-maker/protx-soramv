@@ -1,7 +1,7 @@
 {
-  "short_name": "Sora MV",
-  "name": "Sora MV - AI 视频生成平台",
-  "description": "领先的 AI 视频生成平台，基于 Sora、Kling、Grok 等顶尖 AI 模型，支持文本生成视频、图片生成视频等功能。",
+  "short_name": "AI2OBJ",
+  "name": "AI2OBJ - 综合 AI 创作平台",
+  "description": "一站式综合 AI 创作平台，提供文生图、文生视频、图生图、图生视频、提示词商城与媒体工具等能力。",
   "icons": [
     {
       "src": "favicon.ico",
@@ -29,7 +29,7 @@
       "src": "landing.png",
       "sizes": "1200x630",
       "type": "image/png",
-      "label": "Sora MV 主页"
+      "label": "AI2OBJ 主页"
     }
   ],
   "shortcuts": [

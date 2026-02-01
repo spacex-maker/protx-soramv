@@ -185,14 +185,14 @@ export default ({ headingText }) => {
             <Text>
             <p>{intl.formatMessage({ id: 'termsOfService.lastUpdated', defaultMessage: '最后更新日期：{date}' }, { date: currentDate })}</p>
 
-            <p>{intl.formatMessage({ id: 'termsOfService.intro', defaultMessage: '在使用我们的服务之前，请仔细阅读本服务条款。通过访问或使用 Sora MV 平台（以下简称"本平台"或"服务"），您同意受本服务条款的约束。如果您不同意本服务条款的任何部分，请不要使用我们的服务。' })}</p>
+            <p>{intl.formatMessage({ id: 'termsOfService.intro', defaultMessage: '在使用我们的服务之前，请仔细阅读本服务条款。通过访问或使用 AI2OBJ 平台（以下简称"本平台"或"服务"），您同意受本服务条款的约束。如果您不同意本服务条款的任何部分，请不要使用我们的服务。' })}</p>
 
             <h1>{intl.formatMessage({ id: 'termsOfService.section1.title', defaultMessage: '一、定义与解释' })}</h1>
             <h2>{intl.formatMessage({ id: 'termsOfService.section1.1.title', defaultMessage: '1.1 定义' })}</h2>
             <p>{intl.formatMessage({ id: 'termsOfService.section1.1.intro', defaultMessage: '在本服务条款中，除非上下文另有说明，下列术语具有以下含义：' })}</p>
             <ul>
-              <li><strong>{intl.formatMessage({ id: 'termsOfService.section1.1.item1.label', defaultMessage: '"平台"或"本平台"' })}</strong>：{intl.formatMessage({ id: 'termsOfService.section1.1.item1.desc', defaultMessage: '指 Sora MV 视频生成服务平台，包括但不限于网站、移动应用及相关服务。' })}</li>
-              <li><strong>{intl.formatMessage({ id: 'termsOfService.section1.1.item2.label', defaultMessage: '"我们"、"我方"、"公司"' })}</strong>：{intl.formatMessage({ id: 'termsOfService.section1.1.item2.desc', defaultMessage: '指 Sora MV 平台的运营方，即 ProTX Team。' })}</li>
+              <li><strong>{intl.formatMessage({ id: 'termsOfService.section1.1.item1.label', defaultMessage: '"平台"或"本平台"' })}</strong>：{intl.formatMessage({ id: 'termsOfService.section1.1.item1.desc', defaultMessage: '指 AI2OBJ 综合 AI 创作平台，包括但不限于网站、移动应用及相关服务。' })}</li>
+              <li><strong>{intl.formatMessage({ id: 'termsOfService.section1.1.item2.label', defaultMessage: '"我们"、"我方"、"公司"' })}</strong>：{intl.formatMessage({ id: 'termsOfService.section1.1.item2.desc', defaultMessage: '指 AI2OBJ 平台的运营方，即 ProTX Team。' })}</li>
               <li><strong>{intl.formatMessage({ id: 'termsOfService.section1.1.item3.label', defaultMessage: '"您"、"用户"' })}</strong>：{intl.formatMessage({ id: 'termsOfService.section1.1.item3.desc', defaultMessage: '指访问或使用本服务的个人、公司或其他法律实体。' })}</li>
               <li><strong>{intl.formatMessage({ id: 'termsOfService.section1.1.item4.label', defaultMessage: '"服务"' })}</strong>：{intl.formatMessage({ id: 'termsOfService.section1.1.item4.desc', defaultMessage: '指本平台提供的所有功能和服务，包括但不限于 AI 视频生成、模型选择、作品管理、用户账户管理等。' })}</li>
               <li><strong>{intl.formatMessage({ id: 'termsOfService.section1.1.item5.label', defaultMessage: '"内容"' })}</strong>：{intl.formatMessage({ id: 'termsOfService.section1.1.item5.desc', defaultMessage: '指用户通过本平台上传、生成、创建或分享的任何文本、图片、视频、音频等材料。' })}</li>
