@@ -6,7 +6,8 @@ import { useIntl } from 'react-intl';
 import {
   GithubOutlined,
   MailOutlined,
-  TeamOutlined
+  TeamOutlined,
+  RightOutlined
 } from '@ant-design/icons';
 import { ContentWrapper } from '../styles';
 
@@ -143,6 +144,61 @@ const SocialLinks = styled.div`
       color: ${props => props.theme.mode === 'dark' ? '#2997ff' : '#3b82f6'};
       transform: translateY(-2px);
     }
+  }
+`;
+
+const OpenRobotXBlock = styled.div`
+  margin-bottom: 40px;
+  padding: 24px 28px;
+  border-radius: 16px;
+  background: ${props => props.theme.mode === 'dark'
+    ? 'linear-gradient(135deg, rgba(0, 212, 170, 0.08) 0%, rgba(0, 212, 170, 0.03) 100%)'
+    : 'linear-gradient(135deg, rgba(0, 212, 170, 0.06) 0%, rgba(0, 212, 170, 0.02) 100%)'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(0, 212, 170, 0.2)' : 'rgba(0, 212, 170, 0.25)'};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  flex-wrap: wrap;
+
+  .openrobotx-text {
+    flex: 1;
+    min-width: 260px;
+    h4 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 600;
+      color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1d1d1f'};
+    }
+    p {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.55;
+      color: ${props => props.theme.mode === 'dark' ? '#86868b' : '#6e6e73'};
+    }
+  }
+  .openrobotx-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #00d4aa;
+    background: rgba(0, 212, 170, 0.12);
+    border: 1px solid rgba(0, 212, 170, 0.35);
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+
+    &:hover {
+      color: #fff;
+      background: #00d4aa;
+      border-color: #00d4aa;
+      transform: translateX(2px);
+    }
+    .anticon { font-size: 12px; }
   }
 `;
 
@@ -406,6 +462,25 @@ const FooterSectionComponent = () => {
             </FooterSection>
           </Col>
         </Row>
+
+        {/* Open Robot X 跳转 */}
+        <OpenRobotXBlock theme={theme}>
+          <div className="openrobotx-text">
+            <h4>{intl.formatMessage({ id: 'footer.openRobotX.title', defaultMessage: '探索人形机器人' })}</h4>
+            <p>{intl.formatMessage({ id: 'footer.openRobotX.description', defaultMessage: '对人形机器人与具身智能感兴趣？欢迎访问 Open Robot X，了解全球人形机器人公司、参数对比与行业资讯。' })}</p>
+          </div>
+          <a
+            href="/openrobotx"
+            className="openrobotx-cta"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate('/openrobotx');
+            }}
+          >
+            {intl.formatMessage({ id: 'footer.openRobotX.visit', defaultMessage: '前往 Open Robot X' })}
+            <RightOutlined />
+          </a>
+        </OpenRobotXBlock>
 
         <Copyright theme={theme}>
           <p>

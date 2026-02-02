@@ -1293,6 +1293,9 @@ export default {
   'footer.resources.orders': '订单中心',
   'footer.copyright': '© {year} AI2OBJ. 保留所有权利。',
   'footer.description': '本平台提供 AI 3D 模型生成服务',
+  'footer.openRobotX.title': '探索人形机器人',
+  'footer.openRobotX.description': '对人形机器人与具身智能感兴趣？欢迎访问 Open Robot X，了解全球人形机器人公司、参数对比与行业资讯。',
+  'footer.openRobotX.visit': '前往 Open Robot X',
   
   // 定价页面
   'pricing.title': '选择适合您的方案',

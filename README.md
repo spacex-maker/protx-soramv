@@ -1,6 +1,6 @@
-# Sora MV AI 视频生成平台
+# AI2OBJ AI 创作平台
 
-Sora MV 是一个基于 Sora 技术的 AI 视频生成平台，提供高质量的文本生成视频、图片生成视频等功能。
+AI2OBJ 是面向 C 端的 AI 多模态创作平台，提供文生图、文生视频、图生图、图生视频、提示词商城、媒体工具与社区等功能。
 
 ## 🌟 主要特性
 
@@ -80,6 +80,23 @@ src/
 ├── styles/       # 全局样式
 └── utils/        # 工具函数
 ```
+
+## ☁️ Cloudflare Pages 部署
+
+本项目使用 **Yarn 1** 和 `yarn.lock` v1。Cloudflare Pages 默认使用 Yarn 4，会导致依赖校验报错（YN0060）或构建卡住。
+
+**在 Cloudflare 控制台必须设置：**
+
+1. 打开 **Workers & Pages** → 你的项目 → **Settings** → **Environment variables**。
+2. 添加变量（生产与预览均可）：
+   - **变量名**：`YARN_VERSION`
+   - **值**：`1.22.22`
+
+3. 构建配置建议：
+   - **Build command**：`yarn build` 或 `npm run build`
+   - **Build output directory**：`build`
+
+设置后重新部署即可使用 Yarn 1 安装依赖，避免 Yarn 4 迁移和 peer 依赖错误。
 
 ## 🔧 配置说明
 

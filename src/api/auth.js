@@ -51,11 +51,12 @@ export const auth = {
     return axios.post('/auth/verify-code', { email, code });
   },
 
-  // 退出登录
-  logout: () => {
+  // 退出登录（可选 redirectTo，默认 /login）
+  logout: (options) => {
     localStorage.removeItem('token');
     localStorage.removeItem('userInfo');
-    window.location.href = '/login';
+    const redirectTo = (options && options.redirectTo) || '/login';
+    window.location.href = redirectTo;
   },
 
   // 获取用户信息

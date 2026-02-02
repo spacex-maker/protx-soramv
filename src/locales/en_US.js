@@ -1222,6 +1222,9 @@ export default {
   'footer.resources.orders': 'Order Center',
   'footer.copyright': '© {year} AI2OBJ. All rights reserved.',
   'footer.description': 'This platform uses Sora technology to provide AI video generation services',
+  'footer.openRobotX.title': 'Explore Humanoid Robotics',
+  'footer.openRobotX.description': 'Interested in humanoid robots and embodied AI? Visit Open Robot X for global humanoid robotics companies, specs comparison, and industry news.',
+  'footer.openRobotX.visit': 'Visit Open Robot X',
   
   // Pricing page
   'pricing.title': 'Choose the Plan That Works for You',

@@ -147,9 +147,12 @@ export function LocaleProvider({ children }) {
   });
 
   const changeLocale = (newLocale) => {
-    const standardLocale = LOCALES[newLocale] || LOCALES['zh'];
+    // 支持短代码（zh, en）或完整代码（zh-CN, en-US）
+    let standardLocale = LOCALES[newLocale];
+    if (!standardLocale && messages[newLocale]) standardLocale = newLocale;
+    if (!standardLocale) standardLocale = LOCALES['zh'] || 'zh-CN';
     setLocale(standardLocale);
-    localStorage.setItem('locale', newLocale);
+    localStorage.setItem('locale', standardLocale.split('-')[0]);
     
     // 如果用户已登录，同步更新 userSettings
     const token = localStorage.getItem('token');

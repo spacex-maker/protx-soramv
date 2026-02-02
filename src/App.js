@@ -6,6 +6,8 @@ import { ConfigProvider, theme, message } from 'antd';
 import { ThemeProvider } from 'styled-components';
 import LoginPage from "./pages/Login";
 import SignupPage from "./pages/Signup";
+import OpenRobotXLoginPage from "./pages/OpenRobotX/auth/OpenRobotXLoginPage";
+import OpenRobotXSignupPage from "./pages/OpenRobotX/auth/OpenRobotXSignupPage";
 import ResetPasswordPage from "./pages/ResetPassword";
 import JoinUs from "pages/JoinUs";
 import Navigation from "pages/Navigation";
@@ -44,6 +46,12 @@ import ChannelDetailPage from './pages/Community/ChannelDetail';
 import PostDetailPage from './pages/Community/PostDetail';
 import ChallengeDetailPage from './pages/Community/ChallengeDetailPage';
 import ResumePage from './pages/Resume';
+import OpenRobotXPage from './pages/OpenRobotX';
+import OpenRobotXCompanyPage from './pages/OpenRobotX/companies/CompanyPage';
+import OpenRobotXRobotPage from './pages/OpenRobotX/robots/RobotPage';
+import OpenRobotXNewsListPage from './pages/OpenRobotX/news/NewsListPage';
+import OpenRobotXNewsDetailPage from './pages/OpenRobotX/news/NewsDetailPage';
+import OpenRobotXAgiPathPage from './pages/OpenRobotX/agi/AgiPathPage';
 import ImageCompress from './pages/Workspace/MediaTools/components/ImageCompress';
 import MediaToolsPage from './pages/MediaToolsPage';
 import SettingsPage from './pages/Settings';
@@ -524,6 +532,15 @@ export default function App() {
                   <PostDetailPage />
                 </PrivateRoute>
               } />
+              {/* Open Robot X 官网落地页 */}
+              <Route path="/openrobotx" element={<OpenRobotXPage />} />
+              <Route path="/openrobotx/companies/:slug" element={<OpenRobotXCompanyPage />} />
+              <Route path="/openrobotx/robots/:id" element={<OpenRobotXRobotPage />} />
+              <Route path="/openrobotx/news" element={<OpenRobotXNewsListPage />} />
+              <Route path="/openrobotx/news/:id" element={<OpenRobotXNewsDetailPage />} />
+              <Route path="/openrobotx/agi-path" element={<OpenRobotXAgiPathPage />} />
+              <Route path="/openrobotx/login" element={<OpenRobotXLoginPage />} />
+              <Route path="/openrobotx/signup" element={<OpenRobotXSignupPage />} />
               {/* 媒体工具路由 */}
               <Route path="/workspace/media-tools/image-compress" element={
                 <PrivateRoute>
