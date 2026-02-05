@@ -8,6 +8,11 @@ class COSService {
     this.uploadTasks = new Map(); // 存储上传任务
     this.bucketName = 'px-1258150206'; // 默认存储桶名称
     this.nodeId = null; // 节点ID
+    this.expiredTime = null; // token过期时间（Unix时间戳，秒）
+    this.renewalTimer = null; // 自动续期定时器
+    this.renewalCheckInterval = 60 * 1000; // 检查间隔：1分钟
+    this.renewalAdvanceTime = 5 * 60; // 提前续期时间：5分钟（秒）
+    this.useAccelerate = false; // 当前使用的加速配置
   }
 
   async init(useAccelerate = false, bucketName = null, nodeId = null) {
@@ -34,11 +39,13 @@ class COSService {
       });
       
       if (data.success) {
-        const { secretId, secretKey, sessionToken, host } = data.data;
+        const { secretId, secretKey, sessionToken, host, expiredTime } = data.data;
         
         // 保存存储桶名称和节点ID
         this.bucketName = requestBucketName;
         this.nodeId = requestNodeId;
+        this.expiredTime = expiredTime; // 保存过期时间（Unix时间戳，秒）
+        this.useAccelerate = useAccelerate;
         
         // 根据是否使用全球加速选择不同的域名
         const domain = useAccelerate 
@@ -70,8 +77,13 @@ class COSService {
         console.log('COS 初始化成功，配置:', {
           accelerate: useAccelerate,
           protocol: 'https:',
-          domain: domain
+          domain: domain,
+          expiredTime: expiredTime ? new Date(expiredTime * 1000).toLocaleString() : '未知'
         });
+        
+        // 启动自动续期
+        this.startAutoRenewal();
+        
         return true;
       }
       return false;
@@ -83,7 +95,13 @@ class COSService {
 
   async uploadFile(file, path = '', onProgress, useChunkUpload = false, useAccelerate = false, resumeData = null, bucketName = null, nodeId = null) {
     try {
-      if (!this.cos || (this.cos.options.UseAccelerate !== useAccelerate)) {
+      // 检查是否需要重新初始化（配置变化或实例不存在）
+      const needReinit = !this.cos || 
+                        (this.cos.options.UseAccelerate !== useAccelerate) ||
+                        (bucketName && bucketName !== this.bucketName) ||
+                        (nodeId && nodeId !== this.nodeId);
+      
+      if (needReinit) {
         const initialized = await this.init(useAccelerate, bucketName, nodeId);
         if (!initialized) {
           throw new Error('COS 初始化失败');
@@ -450,6 +468,131 @@ class COSService {
     } catch (error) {
       console.error('重命名文件失败:', error);
       throw error;
+    }
+  }
+
+  // 续期凭证
+  async renewCredentials() {
+    try {
+      if (!this.nodeId) {
+        console.warn('无法续期：nodeId 未设置');
+        return false;
+      }
+
+      const { data } = await axios.post('/productx/tencent/cos-credential', {
+        bucketName: this.bucketName,
+        nodeId: this.nodeId
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+        },
+        withCredentials: true
+      });
+
+      if (data.success) {
+        const { secretId, secretKey, sessionToken, host, expiredTime } = data.data;
+        
+        // 更新过期时间
+        this.expiredTime = expiredTime;
+        
+        // 根据是否使用全球加速选择不同的域名
+        const domain = this.useAccelerate 
+          ? `${this.bucketName}.cos.accelerate.myqcloud.com`
+          : `${this.bucketName}.cos.ap-nanjing.myqcloud.com`;
+        
+        // 更新 COS 实例的凭证
+        this.cos = new COS({
+          SecretId: secretId,
+          SecretKey: secretKey,
+          SecurityToken: sessionToken,
+          UseAccelerate: this.useAccelerate,
+          Protocol: 'https:',
+          Domain: domain,
+          UploadCheckContentMd5: true,
+          ConnectionTimeout: 120000,
+          SocketTimeout: 120000,
+          ProgressInterval: 1000,
+          Retry: true,
+          RetryCount: 3,
+          EnableTracker: true,
+          AutoSwitchHost: true,
+          FileParallelLimit: 3,
+          ChunkParallelLimit: 8,
+          ChunkSize: 1024 * 1024 * 8,
+          ChunkRetryTimes: 3
+        });
+        
+        this.host = host;
+        console.log('COS 凭证续期成功，新过期时间:', expiredTime ? new Date(expiredTime * 1000).toLocaleString() : '未知');
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('续期 COS 凭证失败:', error.response?.data?.message || '续期失败', error);
+      return false;
+    }
+  }
+
+  // 启动自动续期
+  startAutoRenewal() {
+    // 先清除旧的定时器
+    this.stopAutoRenewal();
+
+    // 设置定时检查
+    this.renewalTimer = setInterval(() => {
+      this.checkAndRenew();
+    }, this.renewalCheckInterval);
+
+    console.log('COS 自动续期已启动，检查间隔:', this.renewalCheckInterval / 1000, '秒');
+  }
+
+  // 停止自动续期
+  stopAutoRenewal() {
+    if (this.renewalTimer) {
+      clearInterval(this.renewalTimer);
+      this.renewalTimer = null;
+      console.log('COS 自动续期已停止');
+    }
+  }
+
+  // 检查并续期
+  async checkAndRenew() {
+    if (!this.expiredTime) {
+      console.warn('无法检查续期：过期时间未设置');
+      return;
+    }
+
+    const now = Math.floor(Date.now() / 1000); // 当前时间（秒）
+    const timeUntilExpiry = this.expiredTime - now; // 距离过期还有多少秒
+
+    // 如果已经过期，立即续期
+    if (timeUntilExpiry <= 0) {
+      console.warn('COS token 已过期，立即续期...');
+      const success = await this.renewCredentials();
+      if (!success) {
+        console.error('COS token 续期失败，将在下次检查时重试');
+      }
+      return;
+    }
+
+    // 如果距离过期时间小于等于提前续期时间，则进行续期
+    if (timeUntilExpiry <= this.renewalAdvanceTime) {
+      const minutesLeft = Math.floor(timeUntilExpiry / 60);
+      console.log(`COS token 即将过期（剩余 ${minutesLeft} 分钟），开始自动续期...`);
+      const success = await this.renewCredentials();
+      if (success) {
+        console.log('COS token 自动续期成功');
+      } else {
+        console.error('COS token 自动续期失败，将在下次检查时重试');
+      }
+    }
+    // 只在剩余时间少于15分钟时输出日志，避免日志过多
+    else if (timeUntilExpiry <= 15 * 60) {
+      const minutesLeft = Math.floor(timeUntilExpiry / 60);
+      console.log(`COS token 状态正常，剩余时间: ${minutesLeft} 分钟`);
     }
   }
 }

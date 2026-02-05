@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Typography,
   Input,
@@ -123,6 +123,9 @@ const TextToImage: React.FC = () => {
   // 生成记录刷新触发器
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
 
+  // API 模型异步任务轮询
+  const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // AI生成提示词相关状态
   const [generatingPrompt, setGeneratingPrompt] = useState(false);
   const [promptValue, setPromptValue] = useState(''); // 监听提示词输入框的值
@@ -230,7 +233,8 @@ const TextToImage: React.FC = () => {
       setFamiliesLoading(true);
       try {
         const response = await instance.get(
-          '/productx/sa-ai-models/image/families'
+          '/productx/sa-ai-models/image/families',
+          { params: { lang: locale || 'en' } }
         );
         if (
           response.data.success &&
@@ -268,20 +272,31 @@ const TextToImage: React.FC = () => {
     };
 
     fetchFamilies();
-  }, [intl, form]);
+  }, [intl, form, locale]);
 
   // 根据模型更新表单参数
   const updateFormByModel = (model: Model | ModelFamily | null) => {
     if (!model) return;
 
     const updates: any = {};
+    const isApi = (model as Model & ModelFamily).modelSource?.toUpperCase() === 'API';
 
-    // 设置默认分辨率（如果有）
-    if (model.imageDefaultResolution) {
+    // 设置默认分辨率：优先 video_default_resolution，否则 video_max 第一个，否则 image_default 第一个，否则 image_max 第一个
+    const resolutionOptions = getResolutionOptions(model);
+    if (resolutionOptions.length > 0) {
+      const firstImageDef = model.imageDefaultResolution
+        ? model.imageDefaultResolution.split(',')[0]?.trim()
+        : '';
+      const defaultVal =
+        model.videoDefaultResolution?.trim() ||
+        firstImageDef ||
+        resolutionOptions[0];
       const currentResolution = form.getFieldValue('resolution');
-      if (!currentResolution) {
-        updates.resolution = model.imageDefaultResolution;
+      if (!currentResolution || !resolutionOptions.includes(currentResolution)) {
+        updates.resolution = defaultVal;
       }
+    } else {
+      updates.resolution = undefined;
     }
 
     // 设置图片比例（如果有支持的比例）
@@ -354,6 +369,8 @@ const TextToImage: React.FC = () => {
           modelLevel: item.modelLevel,
           tokenCost: item.tokenCost,
           coverImage: item.coverImage || null,
+          videoDefaultResolution: item.videoDefaultResolution ?? item.video_default_resolution,
+          videoMaxResolution: item.videoMaxResolution ?? item.video_max_resolution,
         }));
         setStyleModels(styleModelsList);
         if (styleModelsList.length > 0) {
@@ -422,7 +439,7 @@ const TextToImage: React.FC = () => {
               <div className="model-display-code">{family.modelCode}</div>
             )}
           </div>
-          {isFree(family.outputPrice, family.currency) ? (
+          {isFree(family.outputPrice, family.currency, family.tokenCost) ? (
             <div className="model-display-free">
               {intl.formatMessage({
                 id: 'create.model.free',
@@ -430,25 +447,29 @@ const TextToImage: React.FC = () => {
               })}
             </div>
           ) : (
-            family.outputPrice !== null &&
-            family.outputPrice !== undefined && (
+            (family.tokenCost != null && family.tokenCost > 0) ? (
               <div className="model-display-price">
-                <span className="model-display-price-amount">
-                  {family.outputPrice}
-                </span>
+                <span className="model-display-price-amount">{family.tokenCost}</span>
                 <span className="model-display-price-currency">
-                  {family.currency || 'USD'}
-                </span>
-                <span className="model-display-price-unit">
-                  {intl.formatMessage({
-                    id: 'create.model.price.perImage',
-                    defaultMessage: '/张',
-                  })}
+                  {intl.formatMessage({ id: 'create.model.token', defaultMessage: ' token' })}
                 </span>
               </div>
+            ) : (
+              family.outputPrice != null && (
+                <div className="model-display-price">
+                  <span className="model-display-price-amount">{family.outputPrice}</span>
+                  <span className="model-display-price-currency">{family.currency || 'USD'}</span>
+                  <span className="model-display-price-unit">
+                    {intl.formatMessage({ id: 'create.model.price.perImage', defaultMessage: '/张' })}
+                  </span>
+                </div>
+              )
             )
           )}
         </div>
+        {family.modelName === 'Nano Banana Pro' && (
+          <span className="model-display-brand">Google</span>
+        )}
       </ModelSelectDisplay>
     );
   };
@@ -468,7 +489,7 @@ const TextToImage: React.FC = () => {
               <div className="model-display-code">{model.modelCode}</div>
             )}
           </div>
-          {isFree(model.outputPrice, model.currency) ? (
+          {isFree(model.outputPrice, model.currency, model.tokenCost) ? (
             <div className="model-display-free">
               {intl.formatMessage({
                 id: 'create.model.free',
@@ -476,25 +497,29 @@ const TextToImage: React.FC = () => {
               })}
             </div>
           ) : (
-            model.outputPrice !== null &&
-            model.outputPrice !== undefined && (
+            (model.tokenCost != null && model.tokenCost > 0) ? (
               <div className="model-display-price">
-                <span className="model-display-price-amount">
-                  {model.outputPrice}
-                </span>
+                <span className="model-display-price-amount">{model.tokenCost}</span>
                 <span className="model-display-price-currency">
-                  {model.currency || 'USD'}
-                </span>
-                <span className="model-display-price-unit">
-                  {intl.formatMessage({
-                    id: 'create.model.price.perImage',
-                    defaultMessage: '/张',
-                  })}
+                  {intl.formatMessage({ id: 'create.model.token', defaultMessage: ' token' })}
                 </span>
               </div>
+            ) : (
+              model.outputPrice != null && (
+                <div className="model-display-price">
+                  <span className="model-display-price-amount">{model.outputPrice}</span>
+                  <span className="model-display-price-currency">{model.currency || 'USD'}</span>
+                  <span className="model-display-price-unit">
+                    {intl.formatMessage({ id: 'create.model.price.perImage', defaultMessage: '/张' })}
+                  </span>
+                </div>
+              )
             )
           )}
         </div>
+        {model.modelName === 'Nano Banana Pro' && (
+          <span className="model-display-brand">Google</span>
+        )}
       </ModelSelectDisplay>
     );
   };
@@ -517,8 +542,51 @@ const TextToImage: React.FC = () => {
 
   const getEffectiveModel = () => selectedModel || selectedFamily || null;
 
+  const isApiModel =
+    (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
+      .toUpperCase() === 'API';
+
+  // API 模型：从后端 imageMaxResolution（如 "1K,2K,4K"）解析可选分辨率，无则默认 1K,2K,4K
+  const getApiResolutions = (model: Model | ModelFamily | null): string[] => {
+    if (!model?.imageMaxResolution) return ['1K', '2K', '4K'];
+    const list = model.imageMaxResolution.split(',').map((s) => s.trim()).filter(Boolean);
+    return list.length > 0 ? list : ['1K', '2K', '4K'];
+  };
+
+  // Resolution 配置：优先 video 字段，没有则用 image 字段；都没有则不显示该配置
+  const getResolutionOptions = (model: Model | ModelFamily | null): string[] => {
+    if (!model) return [];
+    const vDef = model.videoDefaultResolution?.trim() || '';
+    const vMax = model.videoMaxResolution
+      ? model.videoMaxResolution.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    if (vMax.length > 0) {
+      const list = [...vMax];
+      if (vDef && !list.includes(vDef)) list.unshift(vDef);
+      return list;
+    }
+    if (vDef) return [vDef];
+    const fromImageDef = model.imageDefaultResolution
+      ? model.imageDefaultResolution.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    const fromImageMax = model.imageMaxResolution
+      ? model.imageMaxResolution.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    const list: string[] = [];
+    fromImageDef.forEach((v) => { if (v && !list.includes(v)) list.push(v); });
+    fromImageMax.forEach((v) => { if (v && !list.includes(v)) list.push(v); });
+    return list;
+  };
+
+  // API 模型固定比例（与 /image/generate/text/async 一致）
+  const API_ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', 'auto'];
+  const API_IMAGE_FORMATS = ['png', 'jpg'];
+
   // 获取支持的图片比例选项（根据选中的模型或家族）
   const getAvailableAspectRatios = () => {
+    if (isApiModel) {
+      return API_ASPECT_RATIOS.map((ratio) => getAspectRatioOption(ratio, intl));
+    }
     const activeModel = getEffectiveModel();
     if (!activeModel || !activeModel.imageAspectRatios) {
       return [];
@@ -528,12 +596,14 @@ const TextToImage: React.FC = () => {
       .split(',')
       .map((r) => r.trim());
 
-    // 根据后端返回的比例动态生成选项
     return supportedRatios.map((ratio) => getAspectRatioOption(ratio, intl));
   };
 
   // 获取支持的图片格式选项（根据选中的模型或家族）
   const getAvailableImageFormats = () => {
+    if (isApiModel) {
+      return API_IMAGE_FORMATS;
+    }
     const activeModel = getEffectiveModel();
     if (!activeModel || !activeModel.imageFormats) {
       return [];
@@ -543,53 +613,13 @@ const TextToImage: React.FC = () => {
     return formats;
   };
 
-  // 获取支持的分辨率选项（根据选中的模型或家族）
+  // 获取支持的分辨率选项：优先 video 字段，否则 image 字段；都没有则无选项（不显示该配置）
   const getAvailableResolutions = () => {
-    const activeModel = getEffectiveModel();
-    if (!activeModel) {
-      return [];
-    }
-
-    const resolutions: string[] = [];
-
-    // 如果有默认分辨率，添加到列表
-    if (activeModel.imageDefaultResolution) {
-      resolutions.push(activeModel.imageDefaultResolution);
-    }
-
-    // 如果有最大分辨率，也添加到列表（如果与默认不同）
-    if (
-      activeModel.imageMaxResolution &&
-      activeModel.imageMaxResolution !== activeModel.imageDefaultResolution
-    ) {
-      resolutions.push(activeModel.imageMaxResolution);
-    }
-
-    // 如果没有明确的分辨率，根据比例生成一些常用分辨率
-    if (resolutions.length === 0 && activeModel.imageAspectRatios) {
-      const ratios = activeModel.imageAspectRatios.split(',').map((r) => r.trim());
-      ratios.forEach((ratio) => {
-        const dimensions = calculateDimensionsFromRatio(ratio);
-        if (dimensions) {
-          const resolution = `${dimensions.width}x${dimensions.height}`;
-          if (!resolutions.includes(resolution)) {
-            resolutions.push(resolution);
-          }
-        }
-      });
-    }
-
-    // 添加一些常用分辨率
-    const commonResolutions = ['512x512', '768x768', '1024x1024', '1024x768', '768x1024'];
-    commonResolutions.forEach((res) => {
-      if (!resolutions.includes(res)) {
-        resolutions.push(res);
-      }
-    });
-
-    return resolutions.map((res) => ({
-      label: formatResolution(res),
-      value: res,
+    const list = getResolutionOptions(getEffectiveModel());
+    if (list.length === 0) return [];
+    return list.map((value) => ({
+      label: value.length <= 6 ? value : formatResolution(value),
+      value,
     }));
   };
 
@@ -608,8 +638,122 @@ const TextToImage: React.FC = () => {
     setLoading(true);
     setGeneratedImages([]); // 清空旧图
 
+    const isApiModel =
+      (selectedModel?.modelSource ?? selectedFamily.modelSource ?? '')
+        .toUpperCase() === 'API';
+
+    let skipFinallyLoading = false;
     try {
-      // 构建请求参数
+      if (isApiModel) {
+        // 走异步文生图接口：提交任务后轮询状态
+        const modelCode =
+          selectedModel?.modelCode || selectedFamily.modelCode || '';
+        const asyncPayload: any = {
+          prompt: values.prompt,
+          modelCode,
+        };
+        if (values.aspectRatio) asyncPayload.aspectRatio = values.aspectRatio;
+        if (values.resolution) asyncPayload.resolution = values.resolution;
+        if (values.imageFormat) asyncPayload.outputFormat = values.imageFormat;
+
+        const createRes = await instance.post(
+          '/productx/sa-ai-models/image/generate/text/async',
+          asyncPayload,
+          { timeout: 30000 }
+        );
+
+        const taskId =
+          createRes.data?.data?.id ?? createRes.data?.data?.taskId;
+        if (!taskId) {
+          const err =
+            createRes.data?.error ||
+            createRes.data?.message ||
+            intl.formatMessage({
+              id: 'create.error',
+              defaultMessage: '生成失败，请重试',
+            });
+          message.error(err);
+          return;
+        }
+
+        message.info(
+          intl.formatMessage({
+            id: 'create.image.generate.queued',
+            defaultMessage: '任务已提交，正在生成中…',
+          })
+        );
+
+        const pollStatus = async () => {
+          try {
+            const statusRes = await instance.get(
+              `/productx/sa-ai-models/image/task/${taskId}/status`,
+              { timeout: 60000 }
+            );
+            const data = statusRes.data?.data;
+            const status = data?.status;
+
+            if (status === 'completed' || status === 'success') {
+              if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+              }
+              const urls =
+                data?.resultUrls ||
+                (data?.imageUrl ? [data.imageUrl] : []);
+              const imageUrls = urls
+                .map((url: string) => normalizeImageData(url))
+                .filter((u: string | null): u is string => Boolean(u));
+              if (imageUrls.length > 0) {
+                setGeneratedImages(imageUrls);
+                message.success(
+                  intl.formatMessage({
+                    id: 'create.success',
+                    defaultMessage: '生成成功！',
+                  })
+                );
+              } else {
+                message.warning(
+                  intl.formatMessage({
+                    id: 'create.noResult',
+                    defaultMessage: '未生成图片，请重试',
+                  })
+                );
+              }
+              setLoading(false);
+              setHistoryRefreshTrigger((t) => t + 1);
+              return;
+            }
+            if (
+              status === 'failed' ||
+              status === 'error' ||
+              status === 'fail'
+            ) {
+              if (pollingIntervalRef.current) {
+                clearInterval(pollingIntervalRef.current);
+                pollingIntervalRef.current = null;
+              }
+              message.error(
+                data?.error ||
+                  intl.formatMessage({
+                    id: 'create.error',
+                    defaultMessage: '生成失败，请重试',
+                  })
+              );
+              setLoading(false);
+              return;
+            }
+          } catch (e) {
+            console.error('轮询任务状态失败:', e);
+          }
+        };
+
+        await pollStatus();
+        pollingIntervalRef.current = setInterval(pollStatus, 3000);
+        skipFinallyLoading = true; // 轮询中，由 pollStatus 回调里 setLoading(false)
+        return;
+      }
+
+      // 非 API 模型：走同步文生图接口
       const requestData: any = {
         prompt: values.prompt,
       };
@@ -618,17 +762,14 @@ const TextToImage: React.FC = () => {
         requestData.modelCode = selectedModel.modelCode;
       }
 
-      // 添加模型检查点（使用模型家族的 modelCode）
       if (selectedFamily.modelCode) {
         requestData.sdModelCheckpoint = selectedFamily.modelCode;
       }
 
-      // 添加反向提示词（可选）
       if (values.negativePrompt) {
         requestData.negativePrompt = values.negativePrompt;
       }
 
-      // 优先使用分辨率，如果没有选择分辨率则使用比例计算宽高
       if (values.resolution) {
         const dimensions = parseResolution(values.resolution);
         if (dimensions) {
@@ -643,34 +784,29 @@ const TextToImage: React.FC = () => {
         }
       }
 
-      // 添加批次大小（可选）
       if (values.batchSize) {
         requestData.batchSize = values.batchSize;
       }
 
-      // 添加图片格式（可选）
       if (values.imageFormat) {
         requestData.imageFormat = values.imageFormat;
       }
 
       console.log('Generating image with params:', requestData);
 
-      // 调用真实的 API，设置超时时间为 15 分钟（900000ms），生图可能需要较长时间
       const response = await instance.post(
         '/productx/sa-ai-models/image/generate/text',
         requestData,
         {
-          timeout: 900000, // 15 分钟超时
+          timeout: 900000,
         }
       );
 
       if (response.data && response.data.success !== false) {
-        // 处理返回的图片数据（base64编码）
         const images =
           response.data.images || response.data.data?.images || [];
 
         if (images && images.length > 0) {
-          // 兼容 base64 与 URL 链接
           const imageUrls = images
             .map((img: any) => normalizeImageData(img))
             .filter((url: string | null): url is string => Boolean(url));
@@ -683,7 +819,6 @@ const TextToImage: React.FC = () => {
             })
           );
         } else {
-          // 检查是否有错误信息
           const errorMsg = response.data.error || response.data.message;
           if (errorMsg) {
             message.error(errorMsg);
@@ -730,9 +865,21 @@ const TextToImage: React.FC = () => {
         message.error(errorMessage);
       }
     } finally {
-      setLoading(false);
+      if (!skipFinallyLoading) {
+        setLoading(false);
+      }
     }
   };
+
+  // 组件卸载时清除轮询
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+        pollingIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   const downloadImage = (url: string, index?: number) => {
     try {
@@ -1125,8 +1272,9 @@ const TextToImage: React.FC = () => {
                   />
                 </Form.Item>
 
-                {/* 反向提示词 (可选) - 仅当模型支持时显示 */}
-                {(selectedModel?.supportNegativePrompt || selectedFamily?.supportNegativePrompt) && (
+                {/* 反向提示词 (可选) - 仅当模型支持且非 API 模型时显示 */}
+                {!isApiModel &&
+                  (selectedModel?.supportNegativePrompt || selectedFamily?.supportNegativePrompt) && (
                   <Form.Item
                     name="negativePrompt"
                     label={
@@ -1250,54 +1398,57 @@ const TextToImage: React.FC = () => {
                       </Select>
                     </Form.Item>
                   </Col>
-                  <Col span={8}>
-                    <Form.Item
-                      name="resolution"
-                      label={
-                        <Space>
-                          <DesktopOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                          <FormattedMessage
-                            id="create.resolution"
-                            defaultMessage="分辨率"
-                          />
-                          <Tooltip
-                            title={intl.formatMessage({
-                              id: 'create.resolution.tooltip',
-                              defaultMessage: '选择图片的分辨率，优先级高于画面比例',
-                            })}
-                          >
-                            <InfoCircleOutlined style={{ color: '#999' }} />
-                          </Tooltip>
-                        </Space>
-                      }
-                      style={{ marginBottom: 0 }}
-                    >
-                      <Select
-                        disabled={!getEffectiveModel() || getAvailableResolutions().length === 0}
-                        placeholder={
-                          !getEffectiveModel()
-                            ? intl.formatMessage({
-                                id: 'create.model.select.placeholder',
-                                defaultMessage: '请先选择模型',
-                              })
-                            : intl.formatMessage({
-                                id: 'create.resolution.placeholder',
-                                defaultMessage: '选择分辨率（可选）',
-                              })
+                  {getAvailableResolutions().length > 0 && (
+                    <Col span={8}>
+                      <Form.Item
+                        name="resolution"
+                        label={
+                          <Space>
+                            <DesktopOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                            <FormattedMessage
+                              id="create.resolution"
+                              defaultMessage="分辨率"
+                            />
+                            <Tooltip
+                              title={intl.formatMessage({
+                                id: 'create.resolution.tooltip',
+                                defaultMessage: '选择图片的分辨率，优先级高于画面比例',
+                              })}
+                            >
+                              <InfoCircleOutlined style={{ color: '#999' }} />
+                            </Tooltip>
+                          </Space>
                         }
-                        allowClear
+                        style={{ marginBottom: 0 }}
                       >
-                        {getAvailableResolutions().map((res) => (
-                          <Select.Option key={res.value} value={res.value}>
-                            {res.label}
-                          </Select.Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </Col>
+                        <Select
+                          disabled={!getEffectiveModel()}
+                          placeholder={
+                            !getEffectiveModel()
+                              ? intl.formatMessage({
+                                  id: 'create.model.select.placeholder',
+                                  defaultMessage: '请先选择模型',
+                                })
+                              : intl.formatMessage({
+                                  id: 'create.resolution.placeholder',
+                                  defaultMessage: '选择分辨率（可选）',
+                                })
+                          }
+                          allowClear
+                        >
+                          {getAvailableResolutions().map((res) => (
+                            <Select.Option key={res.value} value={res.value}>
+                              {res.label}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                  )}
                 </Row>
 
-                {/* 艺术风格（可选） */}
+                {/* 艺术风格（可选）- 仅 LOCAL 模型支持 */}
+                {!isApiModel && (
                 <Row gutter={16} style={{ marginBottom: 32 }}>
                   <Col span={24}>
                     <Form.Item
@@ -1359,27 +1510,30 @@ const TextToImage: React.FC = () => {
                     </Form.Item>
                   </Col>
                 </Row>
+                )}
 
-                {/* 高级滑块 */}
-                <Form.Item
-                  name="batchSize"
-                  label={
-                    <Space>
-                      <NumberOutlined style={{ color: '#1890ff' }} />
-                      <FormattedMessage
-                        id="create.batchSize"
-                        defaultMessage="生成数量"
-                      />
-                    </Space>
-                  }
-                  style={{ marginBottom: 20 }}
-                >
-                  <Slider
-                    min={1}
-                    max={4}
-                    marks={{ 1: '1', 2: '2', 3: '3', 4: '4' }}
-                  />
-                </Form.Item>
+                {/* 生成数量 - 仅 LOCAL 模型支持 */}
+                {!isApiModel && (
+                  <Form.Item
+                    name="batchSize"
+                    label={
+                      <Space>
+                        <NumberOutlined style={{ color: '#1890ff' }} />
+                        <FormattedMessage
+                          id="create.batchSize"
+                          defaultMessage="生成数量"
+                        />
+                      </Space>
+                    }
+                    style={{ marginBottom: 20 }}
+                  >
+                    <Slider
+                      min={1}
+                      max={4}
+                      marks={{ 1: '1', 2: '2', 3: '3', 4: '4' }}
+                    />
+                  </Form.Item>
+                )}
 
                 {/* 提交按钮 */}
                 <Form.Item style={{ marginTop: 16 }}>

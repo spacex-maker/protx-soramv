@@ -8,12 +8,17 @@ import {
   AppstoreOutlined,
 } from '@ant-design/icons';
 
-// 判断是否应该显示"免费"
+// 判断是否应该显示"免费"（优先看 tokenCost，>0 则收费）
 export const isFree = (
   outputPrice: number | null | undefined,
   currency: string | null | undefined,
-  unit?: string | null | undefined
+  unitOrTokenCost?: string | number | null | undefined
 ): boolean => {
+  // 若第三个参数是数字，视为 tokenCost：>0 表示收费
+  const tokenCost = typeof unitOrTokenCost === 'number' ? unitOrTokenCost : undefined;
+  if (tokenCost !== undefined && tokenCost !== null && tokenCost > 0) {
+    return false;
+  }
   // 如果价格为null、undefined或0，显示免费
   if (outputPrice === null || outputPrice === undefined || outputPrice === 0) {
     return true;
@@ -22,7 +27,8 @@ export const isFree = (
   if (!currency || currency.trim() === '') {
     return true;
   }
-  // 如果unit存在且为null、undefined或空字符串，显示免费
+  // 如果 unit 存在且为字符串，为空则显示免费
+  const unit = typeof unitOrTokenCost === 'string' ? unitOrTokenCost : undefined;
   if (unit !== undefined && (!unit || unit.trim() === '')) {
     return true;
   }

@@ -12,7 +12,8 @@ import {
 import styled, { css, keyframes } from 'styled-components';
 import dayjs from 'dayjs';
 
-// --- 模拟 utils 逻辑 (请确保你的项目中已包含这些引用) ---
+import { isFree } from './utils';
+
 const addImageCompressSuffix = (url: string | null | undefined, width = 600): string => {
   if (!url) return '';
   if (url.includes('imageMogr2') || url.startsWith('data:')) return url;
@@ -275,15 +276,95 @@ const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
   const intl = useIntl();
   const [searchText, setSearchText] = useState('');
   const [baseModelFilter, setBaseModelFilter] = useState<'all' | 'SDXL' | 'v1.5'>('all');
+  const [priceFilter, setPriceFilter] = useState<'all' | 'free' | 'paid'>('all');
 
   const filteredModels = useMemo(() => {
     return models.filter(m => {
       if (baseModelFilter === 'SDXL' && m.modelLevel !== 1) return false;
       if (baseModelFilter === 'v1.5' && m.modelLevel === 1) return false;
       if (searchText && !m.modelName.toLowerCase().includes(searchText.toLowerCase())) return false;
+      if (type === 'family' && priceFilter !== 'all') {
+        const free = isFree(m.outputPrice, m.currency, m.tokenCost);
+        if (priceFilter === 'free' && !free) return false;
+        if (priceFilter === 'paid' && free) return false;
+      }
       return true;
     });
-  }, [models, searchText, baseModelFilter]);
+  }, [models, searchText, baseModelFilter, type, priceFilter]);
+
+  const renderModelCard = (model: any, index: number, token: any) => {
+    const isSelected = selectedModel?.id === model.id;
+    const isOfficial = model.companyCode === 'stability' || model.companyId === 13;
+    const tokenCost = model.tokenCost ?? 0;
+    const isFreeModel = isFree(model.outputPrice, model.currency, model.tokenCost);
+
+    return (
+      <CardContainer
+        key={model.id}
+        $selected={isSelected}
+        $bgContainer={token.colorBgContainer}
+        $primary={token.colorPrimary}
+        style={{ animationDelay: `${index * 0.05}s` }}
+        onClick={() => {
+          onSelect(model);
+          onClose();
+        }}
+      >
+        <CardImageLayer
+          className="card-image"
+          $url={addImageCompressSuffix(model.coverImage, 400)}
+        />
+        <TopBadges>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {isOfficial ? (
+              <TagBadge $bg="rgba(255, 215, 0, 0.9)" $color="#000">
+                <CrownFilled /> OFFICIAL
+              </TagBadge>
+            ) : (
+              <TagBadge $bg="rgba(255, 255, 255, 0.2)">
+                <UserOutlined /> COMMUNITY
+              </TagBadge>
+            )}
+          </div>
+          {isSelected && (
+            <SelectIndicator $primary={token.colorPrimary}>
+              <CheckCircleFilled />
+            </SelectIndicator>
+          )}
+        </TopBadges>
+        {onShowDetail && (
+          <DetailButtonOverlay className="detail-btn">
+            <GlassButton onClick={(e) => {
+              e.stopPropagation();
+              onShowDetail(model);
+            }}>
+              <EyeOutlined /> 预览详情
+            </GlassButton>
+          </DetailButtonOverlay>
+        )}
+        <CardContentGlass>
+          <Tooltip title={model.modelName}>
+            <ModelTitle>{model.modelName}</ModelTitle>
+          </Tooltip>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <PriceTag $isFree={isFreeModel}>
+              {isFreeModel ? (
+                <FormattedMessage id="create.model.free" defaultMessage="免费" />
+              ) : (
+                intl.formatMessage(
+                  { id: 'create.model.tokenCost.display', defaultMessage: '{count} token' },
+                  { count: tokenCost }
+                )
+              )}
+            </PriceTag>
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
+              {model.modelName === 'Nano Banana Pro' ? 'Google' : (model.modelLevel == 1 ? 'SDXL' : model.modelLevel == 2 ? 'LORA' : 'V1.5')}
+            </span>
+          </div>
+        </CardContentGlass>
+      </CardContainer>
+    );
+  };
 
   return (
     <StyledModal
@@ -321,18 +402,32 @@ const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
             style={{ width: 280, borderRadius: '14px', height: '42px' }}
             onChange={e => setSearchText(e.target.value)}
           />
-          
-          <Select
-            defaultValue="all"
-            variant="filled"
-            style={{ width: 160, height: '42px' }}
-            onChange={val => setBaseModelFilter(val as any)}
-            options={[
-              { value: 'all', label: '所有引擎' },
-              { value: 'SDXL', label: 'SDXL' },
-              { value: 'v1.5', label: 'SD v1.5' },
-            ]}
-          />
+
+          {type === 'family' ? (
+            <Select
+              value={priceFilter}
+              variant="filled"
+              style={{ width: 160, height: '42px' }}
+              onChange={val => setPriceFilter(val as 'all' | 'free' | 'paid')}
+              options={[
+                { value: 'all', label: intl.formatMessage({ id: 'create.model.filter.all', defaultMessage: '全部' }) },
+                { value: 'free', label: intl.formatMessage({ id: 'create.model.free', defaultMessage: '免费' }) },
+                { value: 'paid', label: intl.formatMessage({ id: 'create.model.filter.other', defaultMessage: '其他' }) },
+              ]}
+            />
+          ) : (
+            <Select
+              value={baseModelFilter}
+              variant="filled"
+              style={{ width: 160, height: '42px' }}
+              onChange={val => setBaseModelFilter(val as any)}
+              options={[
+                { value: 'all', label: '所有引擎' },
+                { value: 'SDXL', label: 'SDXL' },
+                { value: 'v1.5', label: 'SD v1.5' },
+              ]}
+            />
+          )}
         </FilterBar>
       </HeaderSection>
 
@@ -343,84 +438,7 @@ const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
             <Empty description={<span style={{ color: '#fff' }}>未找到相关模型</span>} />
           </div>
         ) : (
-          filteredModels.map((model, index) => {
-            const isSelected = selectedModel?.id === model.id;
-            const isOfficial = model.companyCode === 'stability' || model.companyId === 13;
-            const tokenCost = model.tokenCost ?? 0;
-            const isFreeModel = tokenCost === 0;
-
-            return (
-              <CardContainer 
-                key={model.id}
-                $selected={isSelected}
-                $bgContainer={token.colorBgContainer}
-                $primary={token.colorPrimary}
-                style={{ animationDelay: `${index * 0.05}s` }} // 瀑布流进场效果
-                onClick={() => {
-                    onSelect(model);
-                    onClose();
-                }}
-              >
-                <CardImageLayer 
-                    className="card-image" 
-                    $url={addImageCompressSuffix(model.coverImage, 400)} 
-                />
-                
-                <TopBadges>
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    {isOfficial ? (
-                      <TagBadge $bg="rgba(255, 215, 0, 0.9)" $color="#000">
-                        <CrownFilled /> OFFICIAL
-                      </TagBadge>
-                    ) : (
-                      <TagBadge $bg="rgba(255, 255, 255, 0.2)">
-                        <UserOutlined /> COMMUNITY
-                      </TagBadge>
-                    )}
-                  </div>
-
-                  {isSelected && (
-                    <SelectIndicator $primary={token.colorPrimary}>
-                      <CheckCircleFilled />
-                    </SelectIndicator>
-                  )}
-                </TopBadges>
-
-                {onShowDetail && (
-                  <DetailButtonOverlay className="detail-btn">
-                    <GlassButton onClick={(e) => {
-                      e.stopPropagation();
-                      onShowDetail(model);
-                    }}>
-                      <EyeOutlined /> 预览详情
-                    </GlassButton>
-                  </DetailButtonOverlay>
-                )}
-
-                <CardContentGlass>
-                  <Tooltip title={model.modelName}>
-                    <ModelTitle>{model.modelName}</ModelTitle>
-                  </Tooltip>
-                  
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <PriceTag $isFree={isFreeModel}>
-                       {isFreeModel ? (
-                         <FormattedMessage id="create.model.free" defaultMessage="Free" />
-                       ) : (
-                         intl.formatMessage(
-                           { id: 'create.model.tokenCost.display', defaultMessage: '{count} token' },
-                           { count: tokenCost }
-                         )
-                       )}
-                    </PriceTag>
-                    <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
-                      {model.modelLevel == 1 ? 'SDXL' : model.modelLevel == 2 ? 'LORA' : 'V1.5'}
-                    </span>
-                  </div>
-                </CardContentGlass>
-              </CardContainer>
-            );
-          })
+          filteredModels.map((model, index) => renderModelCard(model, index, token))
         )}
       </ScrollableContent>
     </StyledModal>

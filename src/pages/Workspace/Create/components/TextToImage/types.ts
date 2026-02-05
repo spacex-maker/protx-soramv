@@ -19,6 +19,14 @@ export interface ModelFamily {
   releaseYear: string | null;
   status: boolean;
   coverImage: string | null;
+  /** 模型源头：API、LOCAL_MODEL；为 API 时走异步文生图接口 */
+  modelSource?: string | null;
+  /** 每次生成消耗的 token 数，>0 表示收费 */
+  tokenCost?: number | null;
+  /** 默认分辨率（如 1080p/1K），用于 Resolution 配置默认值 */
+  videoDefaultResolution?: string | null;
+  /** 可选分辨率列表（逗号分隔，如 1K,2K,4K），用于 Resolution 配置选项 */
+  videoMaxResolution?: string | null;
 }
 
 export interface Model {
@@ -37,6 +45,14 @@ export interface Model {
   currency: string | null;
   outputPrice: number | null;
   coverImage: string | null;
+  /** 模型源头：API、LOCAL_MODEL；为 API 时走异步文生图接口 */
+  modelSource?: string | null;
+  /** 每次生成消耗的 token 数，>0 表示收费 */
+  tokenCost?: number | null;
+  /** 默认分辨率（如 1080p/1K），用于 Resolution 配置默认值 */
+  videoDefaultResolution?: string | null;
+  /** 可选分辨率列表（逗号分隔，如 1K,2K,4K），用于 Resolution 配置选项 */
+  videoMaxResolution?: string | null;
 }
 
 // 生成任务记录类型

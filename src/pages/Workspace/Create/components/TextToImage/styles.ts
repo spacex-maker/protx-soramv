@@ -818,5 +818,16 @@ export const ModelSelectDisplay = styled.div<{ coverImage?: string | null }>`
     line-height: 1.2;
     flex-shrink: 0;
   }
+
+  .model-display-brand {
+    position: absolute;
+    bottom: 6px;
+    right: 10px;
+    font-size: 10px;
+    font-weight: 600;
+    color: ${(props) => (props.theme.mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)')};
+    letter-spacing: 0.5px;
+    z-index: 1;
+  }
 `;
 

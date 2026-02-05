@@ -3,6 +3,7 @@ import { Select, InputNumber, Input, Button, Tag, message, Spin, Image } from 'a
 import { DeleteOutlined, PictureOutlined, BulbOutlined, ThunderboltOutlined, EyeOutlined, DownloadOutlined } from '@ant-design/icons';
 import { Handle, Position, NodeProps, useReactFlow, useUpdateNodeInternals } from '@xyflow/react';
 import styled from 'styled-components';
+import { useLocale } from 'contexts/LocaleContext';
 import instance from '../../../../../../api/axios';
 
 const { Option } = Select;
@@ -413,6 +414,7 @@ const StableDiffusionXLNode: React.FC<NodeProps> = ({ data, selected, id }) => {
   const nodeData = data as StableDiffusionXLNodeData;
   const { deleteElements, getNodes } = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
+  const { locale } = useLocale();
   const [prompt, setPrompt] = useState(nodeData?.prompt || '');
   const [width, setWidth] = useState(nodeData?.width || 1024);
   const [height, setHeight] = useState(nodeData?.height || 1024);
@@ -494,7 +496,7 @@ const StableDiffusionXLNode: React.FC<NodeProps> = ({ data, selected, id }) => {
     const fetchModelFamilies = async () => {
       setLoadingModels(true);
       try {
-        const response = await instance.get('/productx/sa-ai-models/image/families');
+        const response = await instance.get('/productx/sa-ai-models/image/families', { params: { lang: locale || 'en' } });
         if (response.data.success && response.data.data) {
           setModelFamilies(response.data.data);
           if (response.data.data.length > 0 && !selectedFamilyId) {

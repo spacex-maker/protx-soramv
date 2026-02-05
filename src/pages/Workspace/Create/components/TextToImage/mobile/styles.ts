@@ -177,6 +177,13 @@ export const MobileModelOption = styled.div`
     font-size: 12px;
     font-weight: 500;
   }
+
+  .model-brand {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(0,0,0,0.45);
+    margin-left: 4px;
+  }
 `;
 
 export const MobileActionBar = styled.div`
