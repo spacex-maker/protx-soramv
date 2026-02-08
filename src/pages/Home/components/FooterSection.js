@@ -470,12 +470,10 @@ const FooterSectionComponent = () => {
             <p>{intl.formatMessage({ id: 'footer.openRobotX.description', defaultMessage: '对人形机器人与具身智能感兴趣？欢迎访问 Open Robot X，了解全球人形机器人公司、参数对比与行业资讯。' })}</p>
           </div>
           <a
-            href="/openrobotx"
+            href="https://openrobotx.com"
+            target="_blank"
+            rel="noopener noreferrer"
             className="openrobotx-cta"
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('/openrobotx');
-            }}
           >
             {intl.formatMessage({ id: 'footer.openRobotX.visit', defaultMessage: '前往 Open Robot X' })}
             <RightOutlined />

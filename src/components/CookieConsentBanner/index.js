@@ -4,6 +4,36 @@ import { useIntl } from 'react-intl';
 import styled from 'styled-components';
 
 const COOKIE_CONSENT_KEY = 'cookieConsent';
+const COOKIE_CONSENT_COOKIE = 'cookie_consent';
+const COOKIE_MAX_AGE_DAYS = 365;
+
+function getStoredConsent() {
+  try {
+    const fromStorage = localStorage.getItem(COOKIE_CONSENT_KEY);
+    if (fromStorage) return fromStorage;
+  } catch (_) {}
+  try {
+    const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${COOKIE_CONSENT_COOKIE}=([^;]*)`));
+    const fromCookie = match ? decodeURIComponent(match[1]) : null;
+    if (fromCookie) {
+      try {
+        localStorage.setItem(COOKIE_CONSENT_KEY, fromCookie);
+      } catch (_) {}
+      return fromCookie;
+    }
+  } catch (_) {}
+  return null;
+}
+
+function setStoredConsent(value) {
+  try {
+    localStorage.setItem(COOKIE_CONSENT_KEY, value);
+  } catch (_) {}
+  try {
+    const expires = new Date(Date.now() + COOKIE_MAX_AGE_DAYS * 86400 * 1000).toUTCString();
+    document.cookie = `${COOKIE_CONSENT_COOKIE}=${encodeURIComponent(value)};path=/;max-age=${COOKIE_MAX_AGE_DAYS * 86400};expires=${expires};SameSite=Lax`;
+  } catch (_) {}
+}
 
 const Banner = styled.div`
   position: fixed;
@@ -62,27 +92,28 @@ export default function CookieConsentBanner() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const consent = localStorage.getItem(COOKIE_CONSENT_KEY);
+    const consent = getStoredConsent();
     if (!consent) setVisible(true);
   }, []);
 
   useEffect(() => {
-    const theme = localStorage.getItem('theme');
-    setDark(theme === 'dark');
+    try {
+      setDark(localStorage.getItem('theme') === 'dark');
+    } catch (_) {}
   }, []);
 
   const acceptAll = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'all');
+    setStoredConsent('all');
     setVisible(false);
   };
 
   const essentialOnly = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'essential');
+    setStoredConsent('essential');
     setVisible(false);
   };
 
   const openSettings = () => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, 'pending');
+    setStoredConsent('pending');
     setVisible(false);
     navigate('/privacy-preferences');
   };
