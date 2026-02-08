@@ -40,6 +40,7 @@ import {
   unfavoriteModel,
   getInteractionStatus,
 } from 'api/modelInteraction';
+import { getModelDescription } from '../../modelUtils';
 import BatchImageCompress from 'pages/Workspace/MediaTools/components/ImageCompress/BatchImageCompress';
 
 // ==========================================
@@ -684,9 +685,9 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
                 <span><CalendarOutlined /> {dayjs(task.createTime).format('YYYY-MM-DD HH:mm')}</span>
                 <span><NumberOutlined /> ID: {task.id}</span>
               </MetaRow>
-              {task.model?.description && (
+              {task.model && getModelDescription(task.model, intl.locale || '') && (
                  <div style={{fontSize: 13, color: '#888', background: 'rgba(0,0,0,0.03)', padding: 10, borderRadius: 6}}>
-                    {task.model.description}
+                    {getModelDescription(task.model, intl.locale || '')}
                  </div>
               )}
             </div>

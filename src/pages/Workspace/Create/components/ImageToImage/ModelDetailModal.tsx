@@ -25,6 +25,7 @@ import {
 import styled, { css } from 'styled-components';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { Model } from './types';
+import { getModelDescription } from '../modelUtils';
 import { getModelAspectRatios } from './utils';
 import { getAspectRatioOption } from './utils';
 import { normalizeUrl, isImageUrl } from './utils';
@@ -377,7 +378,8 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
   };
 
   const handleShare = () => {
-    const shareData = { title: model?.modelName, text: model?.description, url: window.location.href };
+    const desc = getModelDescription(model, intl.locale || '');
+    const shareData = { title: model?.modelName, text: desc, url: window.location.href };
     if (navigator.share) {
       navigator.share(shareData).catch(() => {});
     } else {
@@ -487,13 +489,13 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
             </ActionBar>
 
             {/* 描述文本 */}
-            {model.description && (
+            {getModelDescription(model, intl.locale || '') && (
               <Paragraph 
                 type="secondary" 
                 ellipsis={{ rows: 3, expandable: true, symbol: 'more' }}
                 style={{ fontSize: 14, lineHeight: 1.6 }}
               >
-                {model.description}
+                {getModelDescription(model, intl.locale || '')}
               </Paragraph>
             )}
           </HeaderSection>

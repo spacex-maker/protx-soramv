@@ -57,6 +57,7 @@ import {
   UploadText,
   UploadHint,
 } from './styles';
+import { getModelDescription } from '../modelUtils';
 import { 
   getAspectRatioOption, 
   getCameraMotions, 
@@ -74,7 +75,12 @@ import ModelDetailModal from './ModelDetailModal';
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-const ImageToVideo: React.FC = () => {
+export interface ImageToVideoProps {
+  /** 是否为 Seedance 专用页（仅展示 Seedance 模型、独立路由） */
+  seedancePage?: boolean;
+}
+
+const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => {
   const intl = useIntl();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -144,18 +150,26 @@ const ImageToVideo: React.FC = () => {
           params: { modelType: 'i2v' }
         });
         if (response.data.success && response.data.data && response.data.data.length > 0) {
-          setModels(response.data.data);
-          // 默认选择第一个模型
-          const firstModel = response.data.data[0];
-          setSelectedModel(firstModel);
-          // 同步更新表单的 modelId 字段
-          form.setFieldsValue({ modelId: firstModel.id });
-          updateFormByModel(firstModel);
+          let list = response.data.data as Model[];
+          if (seedancePage) {
+            list = list.filter((m: Model) => (m.modelCode || '').toLowerCase().includes('seedance'));
+          }
+          setModels(list);
+          const firstModel = list[0];
+          if (firstModel) {
+            setSelectedModel(firstModel);
+            form.setFieldsValue({ modelId: firstModel.id });
+            updateFormByModel(firstModel);
+          }
+          if (seedancePage && list.length === 0) {
+            message.warning(intl.formatMessage({ id: 'create.seedance.noModel', defaultMessage: '暂无可用的 Seedance 模型，请先在后台配置' }));
+          } else if (!firstModel && !seedancePage) {
+            message.warning(intl.formatMessage({ id: 'create.model.loadFailed', defaultMessage: '加载模型列表失败' }));
+          }
         } else {
-          message.warning(intl.formatMessage({ 
-            id: 'create.model.loadFailed', 
-            defaultMessage: '加载模型列表失败' 
-          }));
+          if (!seedancePage) {
+            message.warning(intl.formatMessage({ id: 'create.model.loadFailed', defaultMessage: '加载模型列表失败' }));
+          }
         }
       } catch (error: any) {
         console.error('获取模型列表失败:', error);
@@ -326,6 +340,12 @@ const ImageToVideo: React.FC = () => {
     // 如果不支持镜头运动，设置为 none
     if (!model.supportCameraMotion) {
       updates.cameraMotion = 'none';
+    }
+
+    // Seedance 模型默认参数
+    if (model.modelCode && model.modelCode.toLowerCase().includes('seedance')) {
+      updates.seedanceCameraFixed = false;
+      updates.seedanceWatermark = true;
     }
 
     // 设置视频格式
@@ -995,6 +1015,12 @@ const ImageToVideo: React.FC = () => {
         requestData.videoQuality = values.videoQuality;
       }
 
+      // Seedance 模型专用参数（字节豆包图生视频）
+      if (selectedModel?.modelCode?.toLowerCase().includes('seedance')) {
+        requestData.seedanceCameraFixed = values.seedanceCameraFixed === true;
+        requestData.seedanceWatermark = values.seedanceWatermark !== false;
+      }
+
       console.log('Generating image-to-video with params:', requestData);
       
       // 调用后端 API
@@ -1130,14 +1156,19 @@ const ImageToVideo: React.FC = () => {
                 <div>
                   <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
                     <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
-                    <FormattedMessage id="create.imageToVideo.title" defaultMessage="AI 图生视频" />
+                    {seedancePage ? (
+                      <FormattedMessage id="create.seedance.title" defaultMessage="Seedance 图生视频" />
+                    ) : (
+                      <FormattedMessage id="create.imageToVideo.title" defaultMessage="AI 图生视频" />
+                    )}
                   </Title>
                   <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <VideoCameraOutlined style={{ fontSize: 14 }} />
-                    <FormattedMessage 
-                      id="create.imageToVideo.subtitle" 
-                      defaultMessage="赋予静态图片生命，通过提示词控制运动" 
-                    />
+                    {seedancePage ? (
+                      <FormattedMessage id="create.seedance.subtitle" defaultMessage="字节豆包 Seedance 1.5，图片驱动短视频生成" />
+                    ) : (
+                      <FormattedMessage id="create.imageToVideo.subtitle" defaultMessage="赋予静态图片生命，通过提示词控制运动" />
+                    )}
                   </Text>
                 </div>
                 <Button
@@ -1207,6 +1238,8 @@ const ImageToVideo: React.FC = () => {
                   videoSupportStyle: undefined,
                   videoQuality: undefined,
                   modelId: null,
+                  seedanceCameraFixed: false,
+                  seedanceWatermark: true,
                 }}
               >
                 {/* 模型选择 */}
@@ -1284,9 +1317,9 @@ const ImageToVideo: React.FC = () => {
                                   </div>
                                 )}
                               </div>
-                              {model.description && (
+                              {getModelDescription(model, intl.locale || '') && (
                                 <div className="model-description" style={{ marginTop: 6, paddingLeft: 26 }}>
-                                  {model.description}
+                                  {getModelDescription(model, intl.locale || '')}
                                 </div>
                               )}
                               <div className="model-bottom-row">
@@ -1625,6 +1658,56 @@ const ImageToVideo: React.FC = () => {
                           ))}
                         </Select>
                       </Form.Item>
+                    );
+                  }}
+                </Form.Item>
+
+                {/* Seedance 模型专用：镜头固定、水印 */}
+                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
+                  {() => {
+                    const isSeedance = selectedModel?.modelCode?.toLowerCase().includes('seedance');
+                    if (!isSeedance) return null;
+                    return (
+                      <Row gutter={16} style={{ marginBottom: 20 }}>
+                        <Col span={12}>
+                          <Form.Item
+                            name="seedanceCameraFixed"
+                            label={
+                              <Space>
+                                <CameraOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                                <FormattedMessage id="create.seedance.cameraFixed" defaultMessage="镜头固定" />
+                              </Space>
+                            }
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Select
+                              options={[
+                                { value: false, label: intl.formatMessage({ id: 'create.seedance.cameraFixed.false', defaultMessage: '否（动态）' }) },
+                                { value: true, label: intl.formatMessage({ id: 'create.seedance.cameraFixed.true', defaultMessage: '是（固定）' }) },
+                              ]}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                          <Form.Item
+                            name="seedanceWatermark"
+                            label={
+                              <Space>
+                                <InfoCircleOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                                <FormattedMessage id="create.seedance.watermark" defaultMessage="添加水印" />
+                              </Space>
+                            }
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Select
+                              options={[
+                                { value: true, label: intl.formatMessage({ id: 'create.seedance.watermark.true', defaultMessage: '是' }) },
+                                { value: false, label: intl.formatMessage({ id: 'create.seedance.watermark.false', defaultMessage: '否' }) },
+                              ]}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
                     );
                   }}
                 </Form.Item>

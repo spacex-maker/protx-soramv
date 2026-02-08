@@ -12,6 +12,7 @@ export interface Model {
   modelName: string;
   modelCode: string;
   description: string;
+  descriptionEn?: string | null;
   imageDefaultResolution: string | null;
   imageMaxResolution: string | null;
   imageAspectRatios: string | null; // 支持的图片比例，如 "1:1,16:9,9:16"
@@ -83,6 +84,7 @@ export interface TaskDetailModel {
   modelCode: string;
   modelType: string;
   description: string;
+  descriptionEn?: string | null;
   releaseYear: string;
   coverImage: string;
   imageDefaultResolution: string;

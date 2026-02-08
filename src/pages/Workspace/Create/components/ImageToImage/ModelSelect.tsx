@@ -10,6 +10,7 @@ import {
   ResolutionTag,
   DetailButton,
 } from './styles';
+import { getModelDescription } from '../modelUtils';
 import { 
   getAspectRatioOption, 
   isImageUrl, 
@@ -154,9 +155,9 @@ const ModelSelect: React.FC<ModelSelectProps> = ({
                       </div>
                     )}
                   </div>
-                  {model.description && (
+                  {getModelDescription(model, intl.locale || '') && (
                     <div className="model-description" style={{ marginTop: 6, paddingLeft: 26 }}>
-                      {model.description}
+                      {getModelDescription(model, intl.locale || '')}
                     </div>
                   )}
                   <div className="model-bottom-row">

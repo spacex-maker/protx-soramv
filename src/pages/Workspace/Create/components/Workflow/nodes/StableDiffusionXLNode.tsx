@@ -543,6 +543,7 @@ const StableDiffusionXLNode: React.FC<NodeProps> = ({ data, selected, id }) => {
           modelName: item.modelName,
           modelCode: item.modelCode,
           description: item.description,
+          descriptionEn: item.descriptionEn,
         }));
         setStyleModels(styleModelsList);
         if (styleModelsList.length > 0 && !selectedModelCode) {

@@ -33,6 +33,7 @@ import {
   getInteractionStatus,
   ModelInteractionResponse,
 } from 'api/modelInteraction';
+import { getModelDescription } from './modelUtils';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -42,6 +43,7 @@ export interface ModelFamily {
   modelName: string;
   modelCode: string;
   description: string;
+  descriptionEn?: string | null;
   imageDefaultResolution: string | null;
   imageMaxResolution: string | null;
   imageAspectRatios: string | null;
@@ -64,6 +66,7 @@ export interface Model {
   modelName: string;
   modelCode: string;
   description: string;
+  descriptionEn?: string | null;
   imageDefaultResolution: string | null;
   imageMaxResolution: string | null;
   imageAspectRatios: string | null;
@@ -436,7 +439,8 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
   };
 
   const handleShare = () => {
-    const shareData = { title: model?.modelName, text: model?.description, url: window.location.href };
+    const desc = getModelDescription(model, intl.locale || '');
+    const shareData = { title: model?.modelName, text: desc, url: window.location.href };
     if (navigator.share) {
       navigator.share(shareData).catch(() => {});
     } else {
@@ -543,13 +547,13 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
             </ActionBar>
 
             {/* 描述文本 */}
-            {model.description && (
+            {getModelDescription(model, intl.locale || '') && (
               <Paragraph 
                 type="secondary" 
                 ellipsis={{ rows: 3, expandable: true, symbol: 'more' }}
                 style={{ fontSize: 14, lineHeight: 1.6 }}
               >
-                {model.description}
+                {getModelDescription(model, intl.locale || '')}
               </Paragraph>
             )}
           </HeaderSection>

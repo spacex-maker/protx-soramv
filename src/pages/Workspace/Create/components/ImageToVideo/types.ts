@@ -12,6 +12,7 @@ export interface Model {
   modelName: string;
   modelCode: string;
   description: string;
+  descriptionEn?: string | null;
   videoDefaultResolution: string | null;
   videoMaxResolution: string | null;
   videoDuration: number | null; // 视频最大时长（秒）
@@ -98,6 +99,7 @@ export interface TaskDetailModel {
   modelCode: string;
   modelType: string;
   description: string;
+  descriptionEn?: string | null;
   releaseYear: string;
   coverImage: string;
   videoDefaultResolution: string;

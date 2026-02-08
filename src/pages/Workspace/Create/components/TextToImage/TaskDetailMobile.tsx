@@ -39,6 +39,7 @@ import {
   getInteractionStatus,
   ModelInteractionResponse,
 } from 'api/modelInteraction';
+import { getModelDescription } from '../modelUtils';
 import PublishToCommunityModal from './PublishToCommunityModal';
 
 const { Text, Title, Paragraph } = Typography;
@@ -392,9 +393,9 @@ const TaskDetailMobile: React.FC<TaskDetailMobileProps> = ({ open, onClose, task
             <ModelTitle>{taskDetail.modelName || 'Untitled'}</ModelTitle>
             <ModelCode><CodeSandboxOutlined /> {taskDetail.modelCode}</ModelCode>
 
-            {taskDetail.model?.description && (
+            {taskDetail.model && getModelDescription(taskDetail.model, intl.locale || '') && (
               <Paragraph style={{ color: 'rgba(128,128,128,0.8)', fontSize: 14 }}>
-                {taskDetail.model.description}
+                {getModelDescription(taskDetail.model, intl.locale || '')}
               </Paragraph>
             )}
 

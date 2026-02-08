@@ -44,86 +44,107 @@ interface CreationTypeSetting {
   enabled: boolean;
 }
 
-// 样式化的 Tabs 组件
+// 样式化的 Tabs 组件（分段控制器风格 + 内容区）
 const StyledTabs = styled(Tabs)`
   .ant-tabs-nav {
-    margin-bottom: 24px;
-    
-    &::before {
-      border-bottom: 2px solid ${props => props.theme.mode === 'dark' ? '#333' : '#f0f0f0'};
+    margin-bottom: 20px;
+    padding: 4px;
+    background: ${p => p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'};
+    border-radius: 12px;
+    width: fit-content;
+    max-width: 100%;
+  }
+  @media (max-width: 768px) {
+    .ant-tabs-nav {
+      margin-bottom: 16px;
+      padding: 3px;
+      border-radius: 10px;
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
     }
-    
+  }
+
+  .ant-tabs-nav::before {
+    display: none;
+  }
+
+  .ant-tabs-nav-list {
+    gap: 2px;
     @media (max-width: 768px) {
-      margin-bottom: 0;
-      padding: 0 8px;
+      gap: 0;
+      flex-wrap: nowrap;
+      min-width: min-content;
     }
   }
 
   .ant-tabs-tab {
-    padding: 12px 24px;
-    margin: 0 4px;
-    border-radius: 12px 12px 0 0;
-    transition: all 0.3s ease;
+    padding: 0;
+    margin: 0;
     border: none;
-    
+    border-radius: 10px;
+    transition: background 0.2s ease, color 0.2s ease, transform 0.15s ease;
+
     @media (max-width: 768px) {
-      padding: 10px 12px;
-      margin: 0 2px;
-      border-radius: 8px 8px 0 0;
-    }
-    
-    &:hover {
-      background: ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.02)'};
-    }
-
-    .ant-tabs-tab-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 500;
-      font-size: 15px;
-      color: ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.65)'};
-      transition: all 0.3s ease;
-      
-      @media (max-width: 768px) {
-        font-size: 13px;
-        gap: 6px;
-      }
-    }
-
-    .anticon {
-      font-size: 18px;
-      transition: all 0.3s ease;
-      
-      @media (max-width: 768px) {
-        font-size: 16px;
-      }
-    }
-
-    &.ant-tabs-tab-active {
-      background: ${props => props.theme.mode === 'dark' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(24, 144, 255, 0.08)'};
-      
-      .ant-tabs-tab-btn {
-        color: #1890ff;
-        font-weight: 600;
-      }
-
-      .anticon {
-        color: #1890ff;
-        transform: scale(1.1);
-      }
+      border-radius: 8px;
+      flex: 0 0 auto;
     }
   }
 
+  .ant-tabs-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-weight: 500;
+    font-size: 14px;
+    color: ${p => p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'};
+    border-radius: 10px;
+    transition: inherit;
+    outline: none;
+
+    @media (max-width: 768px) {
+      padding: 8px 14px;
+      font-size: 13px;
+      gap: 6px;
+      border-radius: 8px;
+    }
+  }
+
+  .ant-tabs-tab .anticon {
+    font-size: 16px;
+    opacity: 0.9;
+    flex-shrink: 0;
+    @media (max-width: 768px) {
+      font-size: 15px;
+    }
+  }
+
+  .ant-tabs-tab:hover:not(.ant-tabs-tab-active) .ant-tabs-tab-btn {
+    color: ${p => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)')};
+    background: ${p => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)')};
+  }
+
+  .ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: ${p => (p.theme?.mode === 'dark' ? '#fff' : '#1a1a1a')};
+    font-weight: 600;
+    background: ${p => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#fff')};
+    box-shadow: ${p => (p.theme?.mode === 'dark' ? '0 1px 3px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.06)')};
+  }
+
+  .ant-tabs-tab-active .anticon {
+    color: ${p => (p.theme?.mode === 'dark' ? '#69b1ff' : '#1890ff')};
+  }
+
   .ant-tabs-ink-bar {
-    background: linear-gradient(90deg, #1890ff, #40a9ff);
-    height: 3px;
-    border-radius: 2px;
+    display: none;
   }
 
   .ant-tabs-content-holder {
     flex: 1;
     overflow: auto;
+    min-height: 0;
   }
 `;
 
@@ -247,24 +268,18 @@ const Create: React.FC = () => {
     }
   ];
 
-  // 根据设置过滤显示的 tab
-  const tabItems = allTabItems.filter(item => enabledTypes.has(item.key));
-
-  // 加载中状态
-  if (loading) {
-    return (
-      <Content style={{ 
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100%',
-        padding: '20px',
-        background: 'transparent'
-      }}>
-        <Spin size="large" />
-      </Content>
-    );
-  }
+  // 根据设置过滤显示的 tab（loading 时用默认全开，保证 Tab 栏一直存在）
+  const tabItems = allTabItems
+    .filter(item => enabledTypes.has(item.key))
+    .map(item => ({
+      ...item,
+      // loading 时内容区只显示加载，不挂载真实子组件，避免 Tab 栏被整块替换
+      children: loading ? (
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 0 }}>
+          <Spin size="large" />
+        </div>
+      ) : item.children,
+    }));
 
   // 加载失败，显示网络错误提示
   if (loadError) {
@@ -344,6 +359,7 @@ const Create: React.FC = () => {
         activeKey={activeTab}
         onChange={handleTabChange}
         items={tabItems}
+        destroyInactiveTabPane={false}
         style={{ 
           flex: 1,
           display: 'flex',

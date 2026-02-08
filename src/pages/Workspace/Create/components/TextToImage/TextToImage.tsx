@@ -357,6 +357,7 @@ const TextToImage: React.FC = () => {
           modelName: item.modelName,
           modelCode: item.modelCode,
           description: item.description,
+          descriptionEn: item.descriptionEn,
           imageDefaultResolution: item.imageDefaultResolution,
           imageMaxResolution: item.imageMaxResolution,
           imageAspectRatios: item.imageAspectRatios,

@@ -5,6 +5,7 @@ export interface ModelFamily {
   modelName: string;
   modelCode: string;
   description: string;
+  descriptionEn?: string | null;
   imageDefaultResolution: string | null;
   imageMaxResolution: string | null;
   imageAspectRatios: string | null;
@@ -34,6 +35,7 @@ export interface Model {
   modelName: string;
   modelCode: string;
   description: string;
+  descriptionEn?: string | null;
   imageDefaultResolution: string | null;
   imageMaxResolution: string | null;
   imageAspectRatios: string | null;
@@ -99,6 +101,7 @@ export interface TaskDetailModel {
   modelCode: string;
   modelType: string;
   description: string;
+  descriptionEn?: string | null;
   releaseYear: string;
   coverImage: string;
   imageDefaultResolution: string;

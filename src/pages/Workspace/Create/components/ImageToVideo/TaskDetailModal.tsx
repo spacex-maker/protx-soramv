@@ -34,6 +34,7 @@ import {
   getInteractionStatus,
   ModelInteractionResponse,
 } from 'api/modelInteraction';
+import { getModelDescription } from '../modelUtils';
 
 // ==========================================
 // 1. 样式系统
@@ -614,10 +615,10 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
               <span><ClockCircleOutlined /> {intl.formatMessage({ id: 'create.taskDetail.durationLabel', defaultMessage: '耗时' })} {durationStr}s</span>
             </div>
             {/* 模型介绍 */}
-            {task.model?.description && (
+            {task.model && getModelDescription(task.model, intl.locale || '') && (
               <ModelDescriptionBox>
                 <div className="description-text">
-                  {task.model.description}
+                  {getModelDescription(task.model, intl.locale || '')}
                 </div>
               </ModelDescriptionBox>
             )}

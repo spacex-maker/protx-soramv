@@ -54,6 +54,7 @@ import OpenRobotXNewsDetailPage from './pages/OpenRobotX/news/NewsDetailPage';
 import OpenRobotXAgiPathPage from './pages/OpenRobotX/agi/AgiPathPage';
 import ImageCompress from './pages/Workspace/MediaTools/components/ImageCompress';
 import MediaToolsPage from './pages/MediaToolsPage';
+import SeedanceVideoPage from './pages/SeedanceVideoPage';
 import SettingsPage from './pages/Settings';
 import { getUserSettings } from './api/settings';
 import CookieConsentBanner from './components/CookieConsentBanner';
@@ -397,8 +398,9 @@ export default function App() {
               <Route path="/test-crypto" element={<TestCrypto />} />
               <Route path="/resume" element={<ResumePage />} />
               <Route path="/workspace/create" element={<Navigate to="/workspace/create/text-to-image" replace />} />
+              {/* 创作用单一路由，切换 Tab 只改 URL 不重挂载页面，已加载的 tab 内容不刷新 */}
               <Route
-                path="/workspace/create/text-to-image"
+                path="/workspace/create/*"
                 element={
                   <PrivateRoute>
                     <CloudDrivePage />
@@ -406,34 +408,10 @@ export default function App() {
                 }
               />
               <Route
-                path="/workspace/create/text-to-video"
+                path="/seedance-video"
                 element={
                   <PrivateRoute>
-                    <CloudDrivePage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/workspace/create/image-to-image"
-                element={
-                  <PrivateRoute>
-                    <CloudDrivePage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/workspace/create/image-to-video"
-                element={
-                  <PrivateRoute>
-                    <CloudDrivePage />
-                  </PrivateRoute>
-                }
-              />
-              <Route
-                path="/workspace/create/workflow"
-                element={
-                  <PrivateRoute>
-                    <CloudDrivePage />
+                    <SeedanceVideoPage />
                   </PrivateRoute>
                 }
               />

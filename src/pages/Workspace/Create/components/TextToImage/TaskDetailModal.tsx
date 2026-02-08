@@ -38,6 +38,7 @@ import {
   getInteractionStatus,
   ModelInteractionResponse,
 } from 'api/modelInteraction';
+import { getModelDescription } from '../modelUtils';
 import PublishToCommunityModal from './PublishToCommunityModal';
 import TaskDetailMobile from './TaskDetailMobile';
 
@@ -800,13 +801,13 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
                     </div>
 
                     {/* 描述 */}
-                    {taskDetail.model?.description && (
+                    {taskDetail.model && getModelDescription(taskDetail.model, intl.locale || '') && (
                          <div style={{ maxHeight: '80px', overflow: 'hidden' }}>
                             <Paragraph 
                                 ellipsis={{ rows: 2, expandable: true, symbol: <span style={{color: '#7dd3fc', marginLeft: 8}}>{intl.formatMessage({ id: 'create.taskDetail.more' })}</span> }}
                                 style={{ fontSize: 14, lineHeight: 1.6, color: 'rgba(255,255,255,0.8)' }}
                             >
-                                {taskDetail.model.description}
+                                {getModelDescription(taskDetail.model, intl.locale || '')}
                             </Paragraph>
                          </div>
                     )}
