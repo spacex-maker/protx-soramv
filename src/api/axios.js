@@ -1,5 +1,43 @@
 import axios from 'axios';
 import { Modal } from 'antd';
+import zh_CN from '../locales/zh_CN';
+import en_US from '../locales/en_US';
+import ja_JP from '../locales/ja_JP';
+import ko_KR from '../locales/ko_KR';
+import fr_FR from '../locales/fr_FR';
+import de_DE from '../locales/de_DE';
+import es_ES from '../locales/es_ES';
+import it_IT from '../locales/it_IT';
+import pt_PT from '../locales/pt_PT';
+import ru_RU from '../locales/ru_RU';
+import ar_SA from '../locales/ar_SA';
+
+const AUTH_MODAL_LOCALES = {
+  zh: zh_CN,
+  en: en_US,
+  ja: ja_JP,
+  ko: ko_KR,
+  fr: fr_FR,
+  de: de_DE,
+  es: es_ES,
+  it: it_IT,
+  pt: pt_PT,
+  ru: ru_RU,
+  ar: ar_SA,
+};
+
+// 按当前语言取 401 弹窗文案（与 LocaleContext 的 locale 存储一致：localStorage 为 zh/en 等短码）
+const getAuthModalMessages = () => {
+  const locale = (typeof localStorage !== 'undefined' && localStorage.getItem('locale')) || '';
+  const key = String(locale).toLowerCase().split('-')[0];
+  const t = AUTH_MODAL_LOCALES[key] || en_US;
+  return {
+    title: t['auth.modal.title'] || 'Login Required',
+    content: t['auth.modal.content'] || 'Your session has expired or you are not logged in. Please log in to continue.',
+    okText: t['auth.modal.ok'] || 'Go to Login',
+    cancelText: t['auth.modal.cancel'] || 'Later',
+  };
+};
 
 // 获取基础URL：根据前端域名判断使用哪个后端
 const getBaseURL = () => {
@@ -48,24 +86,30 @@ instance.interceptors.request.use(
 // 防止重复弹框的标记
 let isShowingModal = false;
 
-// 处理401提示的函数
+// 处理401/403提示：使用主题色、居中、主按钮强调
 const handle401Error = () => {
-  // 防止重复弹框
-  if (isShowingModal) {
-    return;
-  }
-  
+  if (isShowingModal) return;
   isShowingModal = true;
-  
-  // 清除本地存储的 token 和用户信息
+
   localStorage.removeItem('token');
   localStorage.removeItem('userInfo');
-  
-  // 显示弹框提示
-  Modal.warning({
-    title: '登录已过期',
-    content: '您的登录已过期，请重新登录',
-    okText: '去登录',
+
+  const msg = getAuthModalMessages();
+  Modal.confirm({
+    type: 'info',
+    title: msg.title,
+    content: msg.content,
+    okText: msg.okText,
+    okType: 'primary',
+    cancelText: msg.cancelText,
+    centered: true,
+    maskClosable: false,
+    closable: true,
+    width: 400,
+    styles: {
+      body: { paddingTop: 8 },
+      footer: { marginTop: 16 },
+    },
     onOk: () => {
       isShowingModal = false;
       window.location.href = '/login';

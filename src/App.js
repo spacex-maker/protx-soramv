@@ -73,9 +73,29 @@ const PrivateRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
-// 根路径路由组件 - 允许已登录用户访问主页
+// 根路径路由组件：seedance2.cn 域名下 / 直接显示 Seedance 图生视频页（不做登录鉴权），否则显示主页
 const RootRoute = () => {
+  if (typeof window !== 'undefined' && window.location.hostname === 'seedance2.cn') {
+    return <SeedanceVideoPage />;
+  }
   return <HomePage />;
+};
+
+// Seedance 页路由：seedance2.cn、本地(localhost/127.0.0.1) 不做登录鉴权，其他域名需登录
+const SeedanceVideoRoute = () => {
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    const isLocal = host === 'localhost' || host === '127.0.0.1';
+    const isSeedanceDomain = host === 'seedance2.cn';
+    if (isLocal || isSeedanceDomain) {
+      return <SeedanceVideoPage />;
+    }
+  }
+  return (
+    <PrivateRoute>
+      <SeedanceVideoPage />
+    </PrivateRoute>
+  );
 };
 
 export default function App() {
@@ -407,14 +427,7 @@ export default function App() {
                   </PrivateRoute>
                 }
               />
-              <Route
-                path="/seedance-video"
-                element={
-                  <PrivateRoute>
-                    <SeedanceVideoPage />
-                  </PrivateRoute>
-                }
-              />
+              <Route path="/seedance-video" element={<SeedanceVideoRoute />} />
               <Route
                 path="/workspace/all"
                 element={
