@@ -212,9 +212,24 @@ const Create: React.FC = () => {
 
   useEffect(() => {
     fetchCreationTypeSettings();
-  }, [intl, location.pathname]);
+  }, []);
 
-  // 所有可用的 tab 定义
+  // Tab 内容用 useMemo 固定引用，避免切换时被当作新组件而重新挂载
+  const tabContentMap = React.useMemo(() => ({
+    textToImage: <TextToImage />,
+    textToVideo: <TextToVideo />,
+    imageToImage: <ImageToImage />,
+    imageToVideo: <ImageToVideo />,
+    workflow: <Workflow />,
+  }), []);
+
+  const loadingPlaceholder = React.useMemo(() => (
+    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 0 }}>
+      <Spin size="large" />
+    </div>
+  ), []);
+
+  // 所有可用的 tab 定义（label 每次渲染可新，children 用稳定引用）
   const allTabItems = [
     {
       key: 'textToImage',
@@ -224,7 +239,7 @@ const Create: React.FC = () => {
           <FormattedMessage id="create.tab.textToImage" defaultMessage="文生图" />
         </Space>
       ),
-      children: <TextToImage />
+      children: loading ? loadingPlaceholder : tabContentMap.textToImage,
     },
     {
       key: 'textToVideo',
@@ -234,7 +249,7 @@ const Create: React.FC = () => {
           <FormattedMessage id="create.tab.textToVideo" defaultMessage="文生视频" />
         </Space>
       ),
-      children: <TextToVideo />
+      children: loading ? loadingPlaceholder : tabContentMap.textToVideo,
     },
     {
       key: 'imageToImage',
@@ -244,7 +259,7 @@ const Create: React.FC = () => {
           <FormattedMessage id="create.tab.imageToImage" defaultMessage="图生图" />
         </Space>
       ),
-      children: <ImageToImage />
+      children: loading ? loadingPlaceholder : tabContentMap.imageToImage,
     },
     {
       key: 'imageToVideo',
@@ -254,7 +269,7 @@ const Create: React.FC = () => {
           <FormattedMessage id="create.tab.imageToVideo" defaultMessage="图生视频" />
         </Space>
       ),
-      children: <ImageToVideo />
+      children: loading ? loadingPlaceholder : tabContentMap.imageToVideo,
     },
     {
       key: 'workflow',
@@ -264,22 +279,12 @@ const Create: React.FC = () => {
           <FormattedMessage id="create.tab.workflow" defaultMessage="工作流" />
         </Space>
       ),
-      children: <Workflow />
-    }
+      children: loading ? loadingPlaceholder : tabContentMap.workflow,
+    },
   ];
 
-  // 根据设置过滤显示的 tab（loading 时用默认全开，保证 Tab 栏一直存在）
-  const tabItems = allTabItems
-    .filter(item => enabledTypes.has(item.key))
-    .map(item => ({
-      ...item,
-      // loading 时内容区只显示加载，不挂载真实子组件，避免 Tab 栏被整块替换
-      children: loading ? (
-        <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 0 }}>
-          <Spin size="large" />
-        </div>
-      ) : item.children,
-    }));
+  // 根据设置过滤显示的 tab
+  const tabItems = allTabItems.filter(item => enabledTypes.has(item.key));
 
   // 加载失败，显示网络错误提示
   if (loadError) {

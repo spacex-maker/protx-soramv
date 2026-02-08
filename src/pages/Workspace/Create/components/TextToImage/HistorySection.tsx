@@ -324,24 +324,6 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                     <HistoryInfo>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <HistoryModelName>{task.modelName}</HistoryModelName>
-                        {(task.status === 3 || task.status === 4) && task.errorMessage && (
-                          <div
-                            style={{
-                              fontSize: 11,
-                              color: '#ff4d4f',
-                              marginTop: 4,
-                              marginBottom: 4,
-                              lineHeight: 1.4,
-                              wordBreak: 'break-word',
-                              padding: '4px 8px',
-                              background: 'rgba(255, 77, 79, 0.1)',
-                              borderRadius: 4,
-                              border: '1px solid rgba(255, 77, 79, 0.2)',
-                            }}
-                          >
-                            {task.errorMessage}
-                          </div>
-                        )}
                         <HistoryTime>
                           <ClockCircleOutlined style={{ fontSize: 11 }} />
                           {new Date(task.createTime).toLocaleString('zh-CN', {

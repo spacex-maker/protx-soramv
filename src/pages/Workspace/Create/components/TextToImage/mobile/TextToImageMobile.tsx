@@ -1528,24 +1528,6 @@ const TextToImageMobile: React.FC = () => {
                         </MobileHistoryImageWrapper>
                         <MobileHistoryInfo>
                           <MobileHistoryModelName>{task.modelName}</MobileHistoryModelName>
-                          {task.status === 3 && task.errorMessage && (
-                            <div
-                              style={{
-                                fontSize: 10,
-                                color: '#ff4d4f',
-                                marginTop: 4,
-                                marginBottom: 4,
-                                lineHeight: 1.3,
-                                wordBreak: 'break-word',
-                                padding: '3px 6px',
-                                background: 'rgba(255, 77, 79, 0.1)',
-                                borderRadius: 4,
-                                border: '1px solid rgba(255, 77, 79, 0.2)',
-                              }}
-                            >
-                              {task.errorMessage}
-                            </div>
-                          )}
                           <MobileHistoryTime>
                             <ClockCircleOutlined style={{ fontSize: 10 }} />
                             {new Date(task.createTime).toLocaleString('zh-CN', {
