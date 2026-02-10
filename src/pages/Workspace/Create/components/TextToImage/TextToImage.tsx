@@ -20,15 +20,10 @@ import {
   InfoCircleOutlined,
   EditOutlined,
   FileImageOutlined,
-  AppstoreOutlined,
   NumberOutlined,
   SwapOutlined,
-  RobotOutlined,
   EyeOutlined,
   DesktopOutlined,
-  HistoryOutlined,
-  BulbOutlined,
-  UndoOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useLocale } from 'contexts/LocaleContext';
@@ -36,22 +31,34 @@ import instance from 'api/axios';
 import ModelDetailModal, { ModelDetail } from '../ModelDetailModal';
 import ModelSelectionModal from './ModelSelectionModal';
 import TaskDetailModal from './TaskDetailModal';
-import PromptVersionHistoryModal from 'components/common/PromptVersionHistoryModal';
 import HistorySection from './HistorySection';
+import AIPromptSection from './AIPromptSection';
+import StyleModelSelect from './StyleModelSelect';
+import ModelFamilySelect from './ModelFamilySelect';
 import ResultSection from './ResultSection';
 import { ModelFamily, Model } from './types';
 import {
-  isFree,
   getAspectRatioOption,
   calculateDimensionsFromRatio,
   parseResolution,
   formatResolution,
+  normalizeImageData,
+  parseResponseImages,
 } from './utils';
+import {
+  VOLC_SEEDREAM_SIZE_ASPECT_MAP,
+  VOLC_SEEDREAM_ASPECT_RATIOS,
+  VOLC_SEEDREAM_SIZES,
+  API_ASPECT_RATIOS,
+  API_IMAGE_FORMATS,
+} from './constants';
+import { checkAndSetSubmitting, clearSubmitting } from './submitGuard';
+import { useModelFamilies } from './useModelFamilies';
+import { useStyleModels } from './useStyleModels';
 import {
   GlobalSelectStyles,
   StyledCard,
   ModelOptionWrapper,
-  ModelSelectDisplay,
   DetailButton,
   AspectRatioTag,
   AspectRatioOption,
@@ -60,7 +67,6 @@ import {
 } from './styles';
 
 const { Title, Text } = Typography;
-const { TextArea } = Input;
 
 const normalizeImageData = (image: any): string | null => {
   if (!image) {
@@ -99,14 +105,34 @@ const TextToImage: React.FC = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
-  const [modelFamilies, setModelFamilies] = useState<ModelFamily[]>([]);
-  const [selectedFamily, setSelectedFamily] = useState<ModelFamily | null>(
-    null
-  );
-  const [styleModels, setStyleModels] = useState<Model[]>([]);
-  const [selectedModel, setSelectedModel] = useState<Model | null>(null);
-  const [familiesLoading, setFamiliesLoading] = useState(false);
-  const [styleModelsLoading, setStyleModelsLoading] = useState(false);
+  const onFirstFamilySelectedRef = useRef<((family: ModelFamily) => void) | null>(null);
+
+  const {
+    modelFamilies,
+    setModelFamilies,
+    selectedFamily,
+    setSelectedFamily,
+    familiesLoading,
+  } = useModelFamilies({
+    locale,
+    form,
+    onFirstFamilySelected: (family) => onFirstFamilySelectedRef.current?.(family),
+  });
+
+  const updateFormByModelRef = useRef<((model: Model | ModelFamily | null) => void) | null>(null);
+
+  const {
+    styleModels,
+    setStyleModels,
+    selectedModel,
+    setSelectedModel,
+    styleModelsLoading,
+    fetchStyleModels,
+  } = useStyleModels({
+    form,
+    modelFamilies,
+    onAfterLoad: (model) => updateFormByModelRef.current?.(model),
+  });
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailModel, setDetailModel] = useState<ModelDetail | null>(null);
   
@@ -118,162 +144,11 @@ const TextToImage: React.FC = () => {
   const [taskDetailModalVisible, setTaskDetailModalVisible] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   
-  // 提示词版本历史模态框相关状态
-  const [promptVersionModalVisible, setPromptVersionModalVisible] = useState(false);
-  
   // 生成记录刷新触发器
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
 
   // API 模型异步任务轮询
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // AI生成提示词相关状态
-  const [generatingPrompt, setGeneratingPrompt] = useState(false);
-  const [promptValue, setPromptValue] = useState(''); // 监听提示词输入框的值
-  const [originalPrompt, setOriginalPrompt] = useState<string | null>(null); // 保存AI生成/丰富之前的原始提示词
-  const [promptHistory, setPromptHistory] = useState<string[]>([]); // 提示词版本历史（最多保存10个版本）
-
-  // AI生成提示词
-  const handleGeneratePrompt = async () => {
-    setGeneratingPrompt(true);
-    try {
-      // 获取当前输入框中的提示词（作为基础提示词）
-      const currentPrompt = form.getFieldValue('prompt') || '';
-      
-      // 保存当前提示词作为原始值（如果还没有保存过，或者当前值与原始值不同）
-      if (!originalPrompt || originalPrompt !== currentPrompt.trim()) {
-        setOriginalPrompt(currentPrompt.trim() || null);
-        // 如果当前提示词不为空，添加到历史记录
-        if (currentPrompt.trim()) {
-          setPromptHistory((prev) => {
-            const newHistory = [currentPrompt.trim(), ...prev].slice(0, 10); // 最多保存10个版本
-            return newHistory;
-          });
-        }
-      }
-      
-      const requestData: any = {
-        language: locale || 'zh',
-      };
-      
-      // 如果有基础提示词，则传递
-      if (currentPrompt.trim()) {
-        requestData.basePrompt = currentPrompt.trim();
-      }
-      
-      const response = await instance.post('/productx/sa-ai-models/image/prompt/generate', requestData);
-
-      if (response.data.success && response.data.data) {
-        // 处理响应数据：可能是 { prompt: "..." } 或直接是字符串
-        const generatedPrompt = 
-          typeof response.data.data === 'string' 
-            ? response.data.data 
-            : response.data.data.prompt || response.data.data;
-        
-        if (generatedPrompt) {
-          // 将生成的提示词填充到输入框
-          form.setFieldsValue({ prompt: generatedPrompt });
-          setPromptValue(generatedPrompt); // 更新状态
-          message.success(
-            intl.formatMessage({
-              id: 'create.prompt.generate.success',
-              defaultMessage: '提示词生成成功！',
-            })
-          );
-        } else {
-          message.warning(
-            intl.formatMessage({
-              id: 'create.prompt.generate.empty',
-              defaultMessage: '未生成提示词，请重试',
-            })
-          );
-        }
-      } else {
-        message.error(
-          response.data.message ||
-          intl.formatMessage({
-            id: 'create.prompt.generate.error',
-            defaultMessage: '提示词生成失败，请重试',
-          })
-        );
-      }
-    } catch (error: any) {
-      console.error('生成提示词失败:', error);
-      message.error(
-        error.response?.data?.message ||
-        intl.formatMessage({
-          id: 'create.prompt.generate.error',
-          defaultMessage: '提示词生成失败，请重试',
-        })
-      );
-    } finally {
-      setGeneratingPrompt(false);
-    }
-  };
-
-  // 恢复原始提示词
-  const handleRestorePrompt = () => {
-    if (originalPrompt !== null) {
-      form.setFieldsValue({ prompt: originalPrompt });
-      setPromptValue(originalPrompt);
-      message.success(
-        intl.formatMessage({
-          id: 'create.prompt.restore.success',
-          defaultMessage: '已恢复到原始提示词',
-        })
-      );
-    }
-  };
-
-  // 检查是否可以恢复（有原始值且当前值不等于原始值）
-  const canRestore = originalPrompt !== null && promptValue.trim() !== originalPrompt;
-
-  // 获取模型家族列表
-  useEffect(() => {
-    const fetchFamilies = async () => {
-      setFamiliesLoading(true);
-      try {
-        const response = await instance.get(
-          '/productx/sa-ai-models/image/families',
-          { params: { lang: locale || 'en' } }
-        );
-        if (
-          response.data.success &&
-          response.data.data &&
-          response.data.data.length > 0
-        ) {
-          setModelFamilies(response.data.data);
-          // 默认选择第一个家族
-          const firstFamily = response.data.data[0];
-          setSelectedFamily(firstFamily);
-          form.setFieldsValue({ familyId: firstFamily.id });
-          // 获取该家族下的风格模型列表
-          if (firstFamily.modelCode) {
-            fetchStyleModels(firstFamily.modelCode, firstFamily);
-          }
-        } else {
-          message.warning(
-            intl.formatMessage({
-              id: 'create.model.family.loadFailed',
-              defaultMessage: '加载模型家族列表失败',
-            })
-          );
-        }
-      } catch (error: any) {
-        console.error('获取模型家族列表失败:', error);
-        message.error(
-          intl.formatMessage({
-            id: 'create.model.family.loadFailed',
-            defaultMessage: '加载模型家族列表失败',
-          })
-        );
-      } finally {
-        setFamiliesLoading(false);
-      }
-    };
-
-    fetchFamilies();
-  }, [intl, form, locale]);
 
   // 根据模型更新表单参数
   const updateFormByModel = (model: Model | ModelFamily | null) => {
@@ -330,92 +205,11 @@ const TextToImage: React.FC = () => {
     }
   };
 
-  // 获取家族下的风格模型列表
-  const fetchStyleModels = async (
-    parentModelCode: string,
-    family: ModelFamily | null = null
-  ) => {
-    setStyleModelsLoading(true);
-    try {
-      const response = await instance.get(
-        '/productx/sa-ai-models/image/models/by-family',
-        {
-          params: { parentModelCode },
-        }
-      );
+  updateFormByModelRef.current = updateFormByModel;
 
-      // 获取家族信息（优先使用传入的，否则从状态中查找）
-      const targetFamily =
-        family || modelFamilies.find((f) => f.modelCode === parentModelCode);
-
-      if (
-        response.data.success &&
-        response.data.data &&
-        response.data.data.length > 0
-      ) {
-        const styleModelsList = response.data.data.map((item: any) => ({
-          id: item.id,
-          modelName: item.modelName,
-          modelCode: item.modelCode,
-          description: item.description,
-          descriptionEn: item.descriptionEn,
-          imageDefaultResolution: item.imageDefaultResolution,
-          imageMaxResolution: item.imageMaxResolution,
-          imageAspectRatios: item.imageAspectRatios,
-          imageFormats: item.imageFormats,
-          supportControlnet: item.supportControlnet,
-          supportInpaint: item.supportInpaint,
-          supportReference: item.supportReference,
-          currency: item.currency,
-          outputPrice: item.outputPrice,
-          modelLevel: item.modelLevel,
-          tokenCost: item.tokenCost,
-          coverImage: item.coverImage || null,
-          videoDefaultResolution: item.videoDefaultResolution ?? item.video_default_resolution,
-          videoMaxResolution: item.videoMaxResolution ?? item.video_max_resolution,
-          companyName: item.companyName || null,
-        }));
-        setStyleModels(styleModelsList);
-        if (styleModelsList.length > 0) {
-          const firstStyleModel = styleModelsList[0];
-          setSelectedModel(firstStyleModel);
-          form.setFieldsValue({ styleModelId: firstStyleModel.id });
-          updateFormByModel(firstStyleModel);
-        } else {
-          setSelectedModel(null);
-          form.setFieldsValue({ styleModelId: null });
-          if (targetFamily) {
-            updateFormByModel(targetFamily);
-          }
-        }
-      } else {
-        setSelectedModel(null);
-        setStyleModels([]);
-        form.setFieldsValue({ styleModelId: null });
-        if (targetFamily) {
-          updateFormByModel(targetFamily);
-        }
-      }
-    } catch (error: any) {
-      console.error('获取风格模型列表失败:', error);
-      message.error(
-        intl.formatMessage({
-          id: 'create.model.style.loadFailed',
-          defaultMessage: '加载风格模型列表失败',
-        })
-      );
-      // 出错时回退到家族默认配置
-      const targetFamily =
-        family ||
-        modelFamilies.find((f) => f.modelCode === parentModelCode);
-      if (targetFamily) {
-        setSelectedModel(null);
-        setStyleModels([]);
-        form.setFieldsValue({ styleModelId: null });
-        updateFormByModel(targetFamily);
-      }
-    } finally {
-      setStyleModelsLoading(false);
+  onFirstFamilySelectedRef.current = (family: ModelFamily) => {
+    if (family.modelCode) {
+      fetchStyleModels(family.modelCode, family);
     }
   };
 
@@ -427,104 +221,6 @@ const TextToImage: React.FC = () => {
     if (family.modelCode) {
       fetchStyleModels(family.modelCode, family);
     }
-  };
-
-  // 自定义模型家族选择框显示内容
-  const renderFamilySelectDisplay = (family: ModelFamily | null) => {
-    if (!family) return null;
-    
-    return (
-      <ModelSelectDisplay coverImage={family.coverImage}>
-        <div className="model-display-header">
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="model-display-name">{family.modelName}</div>
-            {family.modelCode && (
-              <div className="model-display-code">{family.modelCode}</div>
-            )}
-          </div>
-          {isFree(family.outputPrice, family.currency, family.tokenCost) ? (
-            <div className="model-display-free">
-              {intl.formatMessage({
-                id: 'create.model.free',
-                defaultMessage: '免费',
-              })}
-            </div>
-          ) : (
-            (family.tokenCost != null && family.tokenCost > 0) ? (
-              <div className="model-display-price">
-                <span className="model-display-price-amount">{family.tokenCost}</span>
-                <span className="model-display-price-currency">
-                  {intl.formatMessage({ id: 'create.model.token', defaultMessage: ' token' })}
-                </span>
-              </div>
-            ) : (
-              family.outputPrice != null && (
-                <div className="model-display-price">
-                  <span className="model-display-price-amount">{family.outputPrice}</span>
-                  <span className="model-display-price-currency">{family.currency || 'USD'}</span>
-                  <span className="model-display-price-unit">
-                    {intl.formatMessage({ id: 'create.model.price.perImage', defaultMessage: '/张' })}
-                  </span>
-                </div>
-              )
-            )
-          )}
-        </div>
-        {(family.companyName || (family.modelName === 'Nano Banana Pro' ? 'Google' : null)) && (
-          <span className="model-display-brand">{family.companyName || 'Google'}</span>
-        )}
-      </ModelSelectDisplay>
-    );
-  };
-
-  // 自定义艺术风格选择框显示内容
-  const renderStyleModelSelectDisplay = (model: Model | ModelFamily | null, isDefault: boolean = false) => {
-    if (!model) return null;
-    
-    return (
-      <ModelSelectDisplay coverImage={model.coverImage}>
-        <div className="model-display-header">
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="model-display-name">
-              {isDefault ? `${model.modelName} (默认)` : model.modelName}
-            </div>
-            {model.modelCode && (
-              <div className="model-display-code">{model.modelCode}</div>
-            )}
-          </div>
-          {isFree(model.outputPrice, model.currency, model.tokenCost) ? (
-            <div className="model-display-free">
-              {intl.formatMessage({
-                id: 'create.model.free',
-                defaultMessage: '免费',
-              })}
-            </div>
-          ) : (
-            (model.tokenCost != null && model.tokenCost > 0) ? (
-              <div className="model-display-price">
-                <span className="model-display-price-amount">{model.tokenCost}</span>
-                <span className="model-display-price-currency">
-                  {intl.formatMessage({ id: 'create.model.token', defaultMessage: ' token' })}
-                </span>
-              </div>
-            ) : (
-              model.outputPrice != null && (
-                <div className="model-display-price">
-                  <span className="model-display-price-amount">{model.outputPrice}</span>
-                  <span className="model-display-price-currency">{model.currency || 'USD'}</span>
-                  <span className="model-display-price-unit">
-                    {intl.formatMessage({ id: 'create.model.price.perImage', defaultMessage: '/张' })}
-                  </span>
-                </div>
-              )
-            )
-          )}
-        </div>
-        {(model.companyName || (model.modelName === 'Nano Banana Pro' ? 'Google' : null)) && (
-          <span className="model-display-brand">{model.companyName || 'Google'}</span>
-        )}
-      </ModelSelectDisplay>
-    );
   };
 
   // 处理风格模型选择变化
@@ -674,6 +370,7 @@ const TextToImage: React.FC = () => {
 
   // 调用后端 API 生成图片
   const handleGenerate = async (values: any) => {
+    if (checkAndSetSubmitting()) return;
     if (!selectedFamily) {
       message.warning(
         intl.formatMessage({
@@ -681,6 +378,7 @@ const TextToImage: React.FC = () => {
           defaultMessage: '请选择模型家族',
         })
       );
+      clearSubmitting();
       return;
     }
 
@@ -734,6 +432,7 @@ const TextToImage: React.FC = () => {
         } else {
           message.error(response.data?.error || response.data?.message || intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' }));
         }
+        return; // Seedream 同步接口已处理，避免继续执行下方「非 API 模型」分支导致二次请求
       } else if (useAsyncApi) {
         // 走异步文生图接口：提交任务后轮询状态
         const modelCode =
@@ -955,6 +654,7 @@ const TextToImage: React.FC = () => {
         message.error(errorMessage);
       }
     } finally {
+      clearSubmitting();
       if (!skipFinallyLoading) {
         setLoading(false);
       }
@@ -1132,7 +832,6 @@ const TextToImage: React.FC = () => {
               <Form
                 form={form}
                 layout="vertical"
-                onFinish={handleGenerate}
                 initialValues={{
                   aspectRatio: undefined,
                   resolution: undefined,
@@ -1145,223 +844,15 @@ const TextToImage: React.FC = () => {
                 }}
               >
                 {/* 模型家族选择 */}
-                <Form.Item
-                  name="familyId"
-                  label={
-                    <Space>
-                      <RobotOutlined style={{ color: '#1890ff' }} />
-                      <FormattedMessage
-                        id="create.model.family.select"
-                        defaultMessage="选择模型家族"
-                      />
-                    </Space>
-                  }
-                  style={{ marginBottom: 20 }}
-                >
-                  <div onClick={() => !familiesLoading && setFamilyModalVisible(true)} style={{ cursor: familiesLoading ? 'not-allowed' : 'pointer' }}>
-                    <Select
-                      value={selectedFamily?.id}
-                      open={false}
-                      placeholder={intl.formatMessage({
-                        id: 'create.model.family.select.placeholder',
-                        defaultMessage: '请选择模型家族',
-                      })}
-                      loading={familiesLoading}
-                      style={{ width: '100%', pointerEvents: 'none' }}
-                      optionLabelProp="label"
-                      className="model-family-select"
-                    >
-                      {selectedFamily && (
-                        <Select.Option
-                          key={selectedFamily.id}
-                          value={selectedFamily.id}
-                          label={renderFamilySelectDisplay(selectedFamily)}
-                        >
-                          {selectedFamily.modelName}
-                        </Select.Option>
-                      )}
-                    </Select>
-                  </div>
-                </Form.Item>
+                <ModelFamilySelect
+                  form={form}
+                  selectedFamily={selectedFamily}
+                  familiesLoading={familiesLoading}
+                  onOpenModal={() => setFamilyModalVisible(true)}
+                />
 
-                {/* 提示词输入 */}
-                <Form.Item
-                  name="prompt"
-                  className="prompt-form-item"
-                  label={
-                    <div className="prompt-label-wrapper">
-                      <Space>
-                        <EditOutlined style={{ color: '#1890ff' }} />
-                        <FormattedMessage
-                          id="create.prompt"
-                          defaultMessage="提示词 (Prompt)"
-                        />
-                        <Tooltip
-                          title={intl.formatMessage({
-                            id: 'create.prompt.version.history.tooltip',
-                            defaultMessage: '查看提示词版本历史',
-                          })}
-                        >
-                          <Button
-                            type="text"
-                            size="small"
-                            icon={<HistoryOutlined />}
-                            onClick={() => setPromptVersionModalVisible(true)}
-                            style={{
-                              fontSize: 12,
-                              height: 24,
-                              padding: '0 8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 4,
-                              borderRadius: 6,
-                              background: 'rgba(59, 130, 246, 0.1)',
-                              color: '#3b82f6',
-                              border: '1px solid rgba(59, 130, 246, 0.2)',
-                              fontWeight: 500,
-                              transition: 'all 0.3s ease',
-                              marginLeft: 8,
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.15)';
-                              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.3)';
-                              e.currentTarget.style.transform = 'translateY(-1px)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
-                              e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.2)';
-                              e.currentTarget.style.transform = 'translateY(0)';
-                            }}
-                          >
-                            <FormattedMessage
-                              id="create.prompt.version.history"
-                              defaultMessage="版本历史"
-                            />
-                          </Button>
-                        </Tooltip>
-                      </Space>
-                      <div className="prompt-button-wrapper">
-                        <Space size={8}>
-                          {/* 恢复按钮 - 只在可以恢复时显示 */}
-                          {canRestore && (
-                            <Tooltip
-                              title={intl.formatMessage({
-                                id: 'create.prompt.restore.tooltip',
-                                defaultMessage: '恢复到AI生成/丰富之前的提示词',
-                              })}
-                            >
-                              <Button
-                                type="text"
-                                size="small"
-                                icon={<UndoOutlined />}
-                                onClick={handleRestorePrompt}
-                                style={{
-                                  fontSize: 12,
-                                  height: 28,
-                                  padding: '0 10px',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: 4,
-                                  borderRadius: 6,
-                                  background: 'rgba(0, 0, 0, 0.04)',
-                                  color: '#666',
-                                  border: '1px solid rgba(0, 0, 0, 0.1)',
-                                  fontWeight: 500,
-                                  transition: 'all 0.3s ease',
-                                  marginTop: 4,
-                                }}
-                                onMouseEnter={(e) => {
-                                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.08)';
-                                  e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.2)';
-                                  e.currentTarget.style.transform = 'translateY(-1px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  e.currentTarget.style.background = 'rgba(0, 0, 0, 0.04)';
-                                  e.currentTarget.style.borderColor = 'rgba(0, 0, 0, 0.1)';
-                                  e.currentTarget.style.transform = 'translateY(0)';
-                                }}
-                              >
-                                <FormattedMessage
-                                  id="create.prompt.restore"
-                                  defaultMessage="恢复"
-                                />
-                              </Button>
-                            </Tooltip>
-                          )}
-                          <Button
-                          type="text"
-                          size="small"
-                          icon={<BulbOutlined />}
-                          loading={generatingPrompt}
-                          onClick={handleGeneratePrompt}
-                          className="prompt-generate-button"
-                          style={{ 
-                            fontSize: 12,
-                            height: 28,
-                            padding: '0 12px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            borderRadius: 6,
-                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                            color: '#fff',
-                            border: 'none',
-                            fontWeight: 500,
-                            transition: 'all 0.3s ease',
-                            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)',
-                            marginTop: 4,
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)';
-                          }}
-                        >
-                          {promptValue.trim() ? (
-                            <FormattedMessage
-                              id="create.prompt.enrich"
-                              defaultMessage="AI 丰富提示词"
-                            />
-                          ) : (
-                            <FormattedMessage
-                              id="create.prompt.generate"
-                              defaultMessage="AI 生成提示词"
-                            />
-                          )}
-                        </Button>
-                        </Space>
-                      </div>
-                    </div>
-                  }
-                  rules={[
-                    {
-                      required: true,
-                      message: intl.formatMessage({
-                        id: 'create.prompt.required',
-                        defaultMessage: '请输入提示词',
-                      }),
-                    },
-                  ]}
-                  style={{ marginTop: 32, marginBottom: 20 }}
-                >
-                  <TextArea
-                    rows={5}
-                    placeholder={intl.formatMessage({
-                      id: 'create.prompt.placeholder',
-                      defaultMessage:
-                        '例如：一只在太空中漫步的赛博朋克猫咪，霓虹灯背景，高清细节...',
-                    })}
-                    maxLength={1000}
-                    showCount
-                    style={{ resize: 'none' }}
-                    onChange={(e) => {
-                      setPromptValue(e.target.value);
-                    }}
-                  />
-                </Form.Item>
+                {/* 提示词输入（含 AI 生成/丰富、版本历史、恢复） */}
+                <AIPromptSection form={form} locale={locale} />
 
                 {/* 反向提示词 (可选) - 仅当模型支持且非 API 模型时显示 */}
                 {!isApiModel &&
@@ -1398,73 +889,21 @@ const TextToImage: React.FC = () => {
                   </Form.Item>
                 )}
 
-                {/* 参数设置：Volc 时 2×2 均匀布局，否则一行 */}
-                {isVolcSeedream ? (
-                  <>
-                    <Row gutter={16} style={{ marginBottom: 20 }}>
-                      <Col span={12}>
-                        <Form.Item
-                          name="resolution"
-                          label={<Space><DesktopOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.resolution" defaultMessage="分辨率" /></Space>}
-                          style={{ marginBottom: 0 }}
-                        >
-                          <Select disabled={!getEffectiveModel()} placeholder={intl.formatMessage({ id: 'create.resolution.placeholder', defaultMessage: '选择分辨率（可选）' })}>
-                            {getAvailableResolutions().map((res) => <Select.Option key={res.value} value={res.value}>{res.label}</Select.Option>)}
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item
-                          name="aspectRatio"
-                          label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.ratio" defaultMessage="画面比例" /></Space>}
-                          style={{ marginBottom: 0 }}
-                        >
-                          <Select optionLabelProp="label" disabled={!getEffectiveModel() || getAvailableAspectRatios().length === 0} placeholder={!getEffectiveModel() ? intl.formatMessage({ id: 'create.model.select.placeholder', defaultMessage: '请先选择模型' }) : undefined}>
-                            {getAvailableAspectRatios().map((ratio) => (
-                              <Select.Option key={ratio.value} value={ratio.value} label={<AspectRatioOption>{ratio.icon}<span>{ratio.label}</span></AspectRatioOption>}>
-                                <AspectRatioOption>{ratio.icon}<span>{ratio.label}</span></AspectRatioOption>
-                              </Select.Option>
-                            ))}
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                    <Row gutter={16} style={{ marginBottom: 20 }}>
-                      <Col span={12}>
-                        <Form.Item
-                          name="imageFormat"
-                          label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.image.format" defaultMessage="输出格式" /></Space>}
-                          style={{ marginBottom: 0 }}
-                        >
-                          <Select disabled={!getEffectiveModel()} placeholder={!getEffectiveModel() ? intl.formatMessage({ id: 'create.model.select.placeholder', defaultMessage: '请先选择模型' }) : undefined}>
-                            {getAvailableImageFormats().map((format) => <Select.Option key={format} value={format}>{format.toUpperCase()}</Select.Option>)}
-                          </Select>
-                        </Form.Item>
-                      </Col>
-                      <Col span={12}>
-                        <Form.Item
-                          name="seedreamWatermark"
-                          label={<Space><InfoCircleOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.seedream.watermark" defaultMessage="添加水印" /></Space>}
-                          valuePropName="checked"
-                          style={{ marginBottom: 0 }}
-                        >
-                          <Switch
-                            checkedChildren={intl.formatMessage({ id: 'create.seedream.watermark.yes', defaultMessage: '添加' })}
-                            unCheckedChildren={intl.formatMessage({ id: 'create.seedream.watermark.no', defaultMessage: '不添加' })}
-                          />
-                        </Form.Item>
-                      </Col>
-                    </Row>
-                  </>
-                ) : (
+                {/* 参数设置：自适应宽度 */}
                 <Row gutter={16} style={{ marginBottom: 20 }}>
-                  <Col span={8}>
+                  <Col flex="1" style={{ minWidth: 0 }}>
                     <Form.Item
                       name="aspectRatio"
                       label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.ratio" defaultMessage="画面比例" /></Space>}
                       style={{ marginBottom: 0 }}
                     >
-                      <Select optionLabelProp="label" disabled={!getEffectiveModel() || getAvailableAspectRatios().length === 0} placeholder={!getEffectiveModel() ? intl.formatMessage({ id: 'create.model.select.placeholder', defaultMessage: '请先选择模型' }) : undefined}>
+                      <Select
+                        optionLabelProp="label"
+                        disabled={!getEffectiveModel() || getAvailableAspectRatios().length === 0}
+                        placeholder={!getEffectiveModel() ? intl.formatMessage({ id: 'create.model.select.placeholder', defaultMessage: '请先选择模型' }) : undefined}
+                        dropdownMatchSelectWidth={false}
+                        dropdownStyle={{ minWidth: 'max-content' }}
+                      >
                         {getAvailableAspectRatios().map((ratio) => (
                           <Select.Option key={ratio.value} value={ratio.value} label={<AspectRatioOption>{ratio.icon}<span>{ratio.label}</span></AspectRatioOption>}>
                             <AspectRatioOption>{ratio.icon}<span>{ratio.label}</span></AspectRatioOption>
@@ -1473,7 +912,7 @@ const TextToImage: React.FC = () => {
                       </Select>
                     </Form.Item>
                   </Col>
-                  <Col span={8}>
+                  <Col flex="1" style={{ minWidth: 0 }}>
                     <Form.Item
                       name="imageFormat"
                       label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.image.format" defaultMessage="输出格式" /></Space>}
@@ -1485,7 +924,7 @@ const TextToImage: React.FC = () => {
                     </Form.Item>
                   </Col>
                   {getAvailableResolutions().length > 0 && (
-                    <Col span={8}>
+                    <Col flex="1" style={{ minWidth: 0 }}>
                       <Form.Item
                         name="resolution"
                         label={<Space><DesktopOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.resolution" defaultMessage="分辨率" /><Tooltip title={intl.formatMessage({ id: 'create.resolution.tooltip', defaultMessage: '选择图片的分辨率，优先级高于画面比例' })}><InfoCircleOutlined style={{ color: '#999' }} /></Tooltip></Space>}
@@ -1497,72 +936,32 @@ const TextToImage: React.FC = () => {
                       </Form.Item>
                     </Col>
                   )}
+                  {isVolcSeedream && (
+                    <Col flex="1" style={{ minWidth: 0 }}>
+                      <Form.Item
+                        name="seedreamWatermark"
+                        label={<Space><InfoCircleOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.seedream.watermark" defaultMessage="添加水印" /></Space>}
+                        valuePropName="checked"
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Switch
+                          checkedChildren={intl.formatMessage({ id: 'create.seedream.watermark.yes', defaultMessage: '添加' })}
+                          unCheckedChildren={intl.formatMessage({ id: 'create.seedream.watermark.no', defaultMessage: '不添加' })}
+                        />
+                      </Form.Item>
+                    </Col>
+                  )}
                 </Row>
-                )}
 
                 {/* 艺术风格（可选）- 仅 LOCAL 模型支持 */}
                 {!isApiModel && !isVolcSeedream && (
-                <Row gutter={16} style={{ marginBottom: 32 }}>
-                  <Col span={24}>
-                    <Form.Item
-                      name="styleModelId"
-                      label={
-                        <Space>
-                          <AppstoreOutlined
-                            style={{ color: '#1890ff', fontSize: 12 }}
-                          />
-                          <FormattedMessage
-                            id="create.style"
-                            defaultMessage="艺术风格"
-                          />
-                        </Space>
-                      }
-                      style={{ marginBottom: 0 }}
-                    >
-                      <div 
-                        onClick={() => !styleModelsLoading && selectedFamily && setStyleModalVisible(true)}
-                        style={{ cursor: (!selectedFamily || styleModelsLoading) ? 'not-allowed' : 'pointer' }}
-                      >
-                        <Select
-                          value={selectedModel?.id ?? null}
-                          open={false}
-                          placeholder={intl.formatMessage({
-                            id: 'create.style.select.placeholder',
-                            defaultMessage:
-                              '请选择艺术风格（可选，默认使用家族模型）',
-                          })}
-                          loading={styleModelsLoading}
-                          disabled={!selectedFamily || styleModelsLoading}
-                          allowClear={false}
-                          style={{ width: '100%', pointerEvents: 'none' }}
-                          optionLabelProp="label"
-                          className="model-style-select"
-                        >
-                          {(selectedModel || selectedFamily) && (
-                            <Select.Option
-                              key={selectedModel?.id || `family-${selectedFamily?.id}`}
-                              value={selectedModel?.id ?? null}
-                              label={
-                                selectedModel 
-                                  ? renderStyleModelSelectDisplay(selectedModel, false)
-                                  : selectedFamily 
-                                  ? renderStyleModelSelectDisplay(selectedFamily, true)
-                                  : null
-                              }
-                            >
-                              {selectedModel 
-                                ? selectedModel.modelName
-                                : selectedFamily 
-                                ? `${selectedFamily.modelName} (默认)`
-                                : ''
-                              }
-                            </Select.Option>
-                          )}
-                        </Select>
-                      </div>
-                    </Form.Item>
-                  </Col>
-                </Row>
+                  <StyleModelSelect
+                    form={form}
+                    selectedFamily={selectedFamily}
+                    selectedModel={selectedModel}
+                    styleModelsLoading={styleModelsLoading}
+                    onOpenModal={() => setStyleModalVisible(true)}
+                  />
                 )}
 
                 {/* 生成数量 - 仅 LOCAL 模型支持 */}
@@ -1588,15 +987,18 @@ const TextToImage: React.FC = () => {
                   </Form.Item>
                 )}
 
-                {/* 提交按钮 */}
+                {/* 提交按钮 - 仅 onClick 触发，避免 onFinish 导致双重提交 */}
                 <Form.Item style={{ marginTop: 16 }}>
                   <Button
                     type="primary"
-                    htmlType="submit"
+                    htmlType="button"
                     icon={<ThunderboltOutlined />}
                     size="large"
                     block
                     loading={loading}
+                    onClick={() => {
+                      form.validateFields().then((values) => handleGenerate(values)).catch(() => {});
+                    }}
                     style={{
                       height: 48,
                       fontSize: 16,
@@ -1697,19 +1099,6 @@ const TextToImage: React.FC = () => {
         taskId={selectedTaskId}
       />
 
-      {/* 提示词版本历史弹窗 */}
-      <PromptVersionHistoryModal
-        open={promptVersionModalVisible}
-        onClose={() => setPromptVersionModalVisible(false)}
-        moduleType="t2i"
-        onSelectPrompt={(prompt, negativePrompt) => {
-          form.setFieldsValue({ 
-            prompt,
-            ...(negativePrompt && { negativePrompt })
-          });
-          setPromptValue(prompt);
-        }}
-      />
     </>
   );
 };

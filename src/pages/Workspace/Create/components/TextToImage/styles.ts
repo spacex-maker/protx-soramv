@@ -121,11 +121,35 @@ export const GlobalSelectStyles = createGlobalStyle`
     }
   }
   
-  /* 下拉选项容器圆角 */
+  /* 下拉选项容器圆角与细滚动条 */
   .ant-select-dropdown {
     border-radius: 12px !important;
     overflow: hidden !important;
     padding: 4px !important;
+    /* 细滚动条 - 作用于下拉内任意滚动区域 */
+    &::-webkit-scrollbar,
+    .rc-virtual-list-holder::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-track,
+    .rc-virtual-list-holder::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb,
+    .rc-virtual-list-holder::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+    &::-webkit-scrollbar-thumb:hover,
+    .rc-virtual-list-holder::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+    .rc-virtual-list-holder {
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+    }
     
     .rc-virtual-list {
       border-radius: 12px;

@@ -52,6 +52,7 @@ import {
   parseResolution,
   formatResolution,
 } from '../utils';
+import { checkAndSetSubmitting, clearSubmitting } from '../submitGuard';
 import {
   MobileContainer,
   MobileFormSection,
@@ -576,8 +577,7 @@ const TextToImageMobile: React.FC = () => {
 
   // 调用后端 API 生成图片
   const handleGenerate = async (values: any) => {
-    console.log('handleGenerate called with values:', values);
-    
+    if (checkAndSetSubmitting()) return;
     if (!selectedFamily) {
       message.warning(
         intl.formatMessage({
@@ -585,12 +585,12 @@ const TextToImageMobile: React.FC = () => {
           defaultMessage: '请选择模型家族',
         })
       );
+      clearSubmitting();
       return;
     }
 
     // 获取表单所有字段值（包括高级设置中的参数）
     const allValues = form.getFieldsValue();
-    console.log('All form values:', allValues);
     
     // 检查提示词
     if (!values.prompt && !allValues.prompt) {
@@ -600,6 +600,7 @@ const TextToImageMobile: React.FC = () => {
           defaultMessage: '请输入提示词',
         })
       );
+      clearSubmitting();
       return;
     }
     
@@ -846,6 +847,7 @@ const TextToImageMobile: React.FC = () => {
           })
       );
     } finally {
+      clearSubmitting();
       if (!skipFinallyLoading) {
         setLoading(false);
       }
@@ -1057,7 +1059,6 @@ const TextToImageMobile: React.FC = () => {
           <Form
             form={form}
             layout="vertical"
-            onFinish={handleGenerate}
             initialValues={{
               aspectRatio: undefined,
               resolution: undefined,
@@ -1389,6 +1390,7 @@ const TextToImageMobile: React.FC = () => {
             <Form.Item>
               <Button
                 type="primary"
+                htmlType="button"
                 size="large"
                 block
                 icon={<ThunderboltOutlined />}
