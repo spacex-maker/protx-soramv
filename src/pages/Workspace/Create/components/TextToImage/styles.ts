@@ -541,38 +541,54 @@ export const HistoryTitle = styled.div`
 
 export const HistoryGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+  
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
   
   @media (max-width: 768px) {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
 `;
 
 export const HistoryCard = styled.div`
   position: relative;
-  border-radius: 12px;
+  border-radius: 16px;
   overflow: hidden;
   background: ${(props) =>
-    props.theme.mode === 'dark' ? '#1f1f1f' : '#fff'};
+    props.theme.mode === 'dark' ? '#1a1a1a' : '#fff'};
   border: 1px solid
-    ${(props) => (props.theme.mode === 'dark' ? '#333' : '#e8e8e8')};
-  transition: all 0.3s ease;
+    ${(props) => (props.theme.mode === 'dark' ? '#333' : '#eee')};
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  transition: all 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
   cursor: pointer;
+  transform: translateZ(0);
   
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-    border-color: #1890ff;
+    transform: translateY(-6px);
+    box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.15);
+    border-color: ${(props) => (props.theme.mode === 'dark' ? '#444' : '#d9d9d9')};
+    
+    .history-top-actions {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .history-info-bar {
+      background: linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.5) 60%, transparent 100%);
+    }
   }
 `;
 
 export const HistoryImageWrapper = styled.div`
   position: relative;
   width: 100%;
-  aspect-ratio: 1;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   background: ${(props) =>
     props.theme.mode === 'dark' ? '#0a0a0a' : '#f5f5f5'};
@@ -586,34 +602,71 @@ export const HistoryImageWrapper = styled.div`
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.3s ease;
+      transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
   }
   
-  ${HistoryCard}:hover & {
-    .ant-image-img {
-      transform: scale(1.05);
-    }
+  ${HistoryCard}:hover & .ant-image-img {
+    transform: scale(1.06);
   }
 `;
 
-export const HistoryImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.3s ease;
+export const HistoryTopActions = styled.div`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 6px;
+  z-index: 10;
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: all 0.25s ease;
   
-  ${HistoryCard}:hover & {
-    transform: scale(1.05);
+  .history-action-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    &:hover {
+      background: #fff;
+      color: #333;
+    }
+    
+    &.delete:hover {
+      background: #ff4d4f;
+      color: #fff;
+      border-color: #ff4d4f;
+    }
+    
+    &.download:hover {
+      background: #52c41a;
+      color: #fff;
+    }
+    
+    &.detail:hover {
+      background: #1890ff;
+      color: #fff;
+    }
   }
 `;
 
 export const HistoryStatusBadge = styled.div<{ status: number }>`
   position: absolute;
-  top: 8px;
-  right: 8px;
-  padding: 4px 8px;
-  border-radius: 12px;
+  top: 10px;
+  left: 10px;
+  padding: 5px 10px;
+  border-radius: 10px;
   font-size: 11px;
   font-weight: 600;
   backdrop-filter: blur(8px);
@@ -621,46 +674,75 @@ export const HistoryStatusBadge = styled.div<{ status: number }>`
   
   ${(props) => {
     if (props.status === 2) {
-      // 成功
       return `
-        background: rgba(82, 196, 26, 0.2);
+        background: rgba(82, 196, 26, 0.25);
         color: #52c41a;
-        border: 1px solid rgba(82, 196, 26, 0.3);
+        border: 1px solid rgba(82, 196, 26, 0.4);
       `;
     } else if (props.status === 3 || props.status === 4) {
-      // 失败或超时
       return `
-        background: rgba(255, 77, 79, 0.2);
+        background: rgba(255, 77, 79, 0.25);
         color: #ff4d4f;
-        border: 1px solid rgba(255, 77, 79, 0.3);
+        border: 1px solid rgba(255, 77, 79, 0.4);
       `;
     } else {
-      // 排队或进行中
       return `
-        background: rgba(24, 144, 255, 0.2);
+        background: rgba(24, 144, 255, 0.25);
         color: #1890ff;
-        border: 1px solid rgba(24, 144, 255, 0.3);
+        border: 1px solid rgba(24, 144, 255, 0.4);
       `;
     }
   }}
 `;
 
-export const HistoryInfo = styled.div`
-  padding: 12px;
+export const HistoryImageCount = styled.div`
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  gap: 5px;
+`;
+
+export const HistoryInfoBar = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 36px 14px 14px;
+  background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.35) 50%, transparent 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  transition: background 0.3s ease;
+  pointer-events: none;
+`;
+
+export const HistoryInfo = styled.div`
+  padding: 14px;
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 `;
 
 export const HistoryModelName = styled.div`
   font-size: 13px;
   font-weight: 600;
   color: ${(props) => (props.theme.mode === 'dark' ? '#fff' : '#262626')};
-  margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 `;
 
 export const HistoryTime = styled.div`
@@ -669,12 +751,13 @@ export const HistoryTime = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
 `;
 
 export const HistoryActions = styled.div`
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
   align-items: center;
 `;

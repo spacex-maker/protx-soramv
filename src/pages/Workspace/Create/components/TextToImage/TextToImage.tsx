@@ -5,6 +5,7 @@ import {
   Button,
   Select,
   Slider,
+  Switch,
   Row,
   Col,
   Form,
@@ -372,6 +373,7 @@ const TextToImage: React.FC = () => {
           coverImage: item.coverImage || null,
           videoDefaultResolution: item.videoDefaultResolution ?? item.video_default_resolution,
           videoMaxResolution: item.videoMaxResolution ?? item.video_max_resolution,
+          companyName: item.companyName || null,
         }));
         setStyleModels(styleModelsList);
         if (styleModelsList.length > 0) {
@@ -468,8 +470,8 @@ const TextToImage: React.FC = () => {
             )
           )}
         </div>
-        {family.modelName === 'Nano Banana Pro' && (
-          <span className="model-display-brand">Google</span>
+        {(family.companyName || (family.modelName === 'Nano Banana Pro' ? 'Google' : null)) && (
+          <span className="model-display-brand">{family.companyName || 'Google'}</span>
         )}
       </ModelSelectDisplay>
     );
@@ -518,8 +520,8 @@ const TextToImage: React.FC = () => {
             )
           )}
         </div>
-        {model.modelName === 'Nano Banana Pro' && (
-          <span className="model-display-brand">Google</span>
+        {(model.companyName || (model.modelName === 'Nano Banana Pro' ? 'Google' : null)) && (
+          <span className="model-display-brand">{model.companyName || 'Google'}</span>
         )}
       </ModelSelectDisplay>
     );
@@ -543,9 +545,38 @@ const TextToImage: React.FC = () => {
 
   const getEffectiveModel = () => selectedModel || selectedFamily || null;
 
+  const resolution = Form.useWatch('resolution', form) || '2K';
+
   const isApiModel =
     (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
       .toUpperCase() === 'API';
+
+  // Volc Seedream 文生图：companyCode=Volc 且 modelCode 包含 seedream，走同步接口
+  const effectiveFamily = selectedFamily as ModelFamily & { companyCode?: string } | null;
+  const effectiveSelectedModel = selectedModel as Model & { companyCode?: string } | null;
+  const companyCode = effectiveFamily?.companyCode ?? effectiveSelectedModel?.companyCode ?? '';
+  const effectiveModelCode = effectiveFamily?.modelCode ?? effectiveSelectedModel?.modelCode ?? '';
+  const isVolcSeedream =
+    companyCode === 'Volc' && effectiveModelCode?.toLowerCase().includes('seedream');
+
+  // API 模型（非 Volc Seedream）：走异步接口
+  const isApiModelAsync = isApiModel && !isVolcSeedream;
+
+  // Volc Seedream 尺寸与宽高映射（2K/4K + 宽高比 -> 像素）
+  const VOLC_SEEDREAM_SIZE_ASPECT_MAP: Record<string, Record<string, string>> = {
+    '2K': {
+      '1:1': '2048x2048', '4:3': '2304x1728', '3:4': '1728x2304',
+      '16:9': '2560x1440', '9:16': '1440x2560', '3:2': '2496x1664',
+      '2:3': '1664x2496', '21:9': '3024x1296',
+    },
+    '4K': {
+      '1:1': '4096x4096', '4:3': '4704x3520', '3:4': '3520x4704',
+      '16:9': '5504x3040', '9:16': '3040x5504', '3:2': '4992x3328',
+      '2:3': '3328x4992', '21:9': '6240x2656',
+    },
+  };
+  const VOLC_SEEDREAM_ASPECT_RATIOS = ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'];
+  const VOLC_SEEDREAM_SIZES = ['2K', '4K'];
 
   // API 模型：从后端 imageMaxResolution（如 "1K,2K,4K"）解析可选分辨率，无则默认 1K,2K,4K
   const getApiResolutions = (model: Model | ModelFamily | null): string[] => {
@@ -554,9 +585,13 @@ const TextToImage: React.FC = () => {
     return list.length > 0 ? list : ['1K', '2K', '4K'];
   };
 
-  // Resolution 配置：优先 video 字段，没有则用 image 字段；都没有则不显示该配置
+  // Resolution 配置：Volc Seedream 用 2K/4K；否则优先 video 字段，没有则用 image 字段
   const getResolutionOptions = (model: Model | ModelFamily | null): string[] => {
     if (!model) return [];
+    const m = model as Model & ModelFamily & { companyCode?: string };
+    if (m.companyCode === 'Volc' && m.modelCode?.toLowerCase().includes('seedream')) {
+      return ['2K', '4K'];
+    }
     const vDef = model.videoDefaultResolution?.trim() || '';
     const vMax = model.videoMaxResolution
       ? model.videoMaxResolution.split(',').map((s) => s.trim()).filter(Boolean)
@@ -583,8 +618,18 @@ const TextToImage: React.FC = () => {
   const API_ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', 'auto'];
   const API_IMAGE_FORMATS = ['png', 'jpg'];
 
-  // 获取支持的图片比例选项（根据选中的模型或家族）
+  // 获取支持的图片比例选项（Volc Seedream 时附带当前分辨率对应的像素）
   const getAvailableAspectRatios = () => {
+    if (isVolcSeedream) {
+      const sizeKey = (resolution || '2K').toUpperCase();
+      const sizeMap = VOLC_SEEDREAM_SIZE_ASPECT_MAP[sizeKey];
+      return VOLC_SEEDREAM_ASPECT_RATIOS.map((ratio) => {
+        const base = getAspectRatioOption(ratio, intl);
+        const px = sizeMap?.[ratio];
+        const pixelInfo = px ? ` (${px.replace('x', '×')})` : '';
+        return { ...base, label: base.label + pixelInfo };
+      });
+    }
     if (isApiModel) {
       return API_ASPECT_RATIOS.map((ratio) => getAspectRatioOption(ratio, intl));
     }
@@ -614,8 +659,11 @@ const TextToImage: React.FC = () => {
     return formats;
   };
 
-  // 获取支持的分辨率选项：优先 video 字段，否则 image 字段；都没有则无选项（不显示该配置）
+  // 获取支持的分辨率选项：Volc Seedream 用 2K/4K；其余优先 video 字段，否则 image 字段
   const getAvailableResolutions = () => {
+    if (isVolcSeedream) {
+      return VOLC_SEEDREAM_SIZES.map((v) => ({ label: v, value: v }));
+    }
     const list = getResolutionOptions(getEffectiveModel());
     if (list.length === 0) return [];
     return list.map((value) => ({
@@ -640,12 +688,53 @@ const TextToImage: React.FC = () => {
     setGeneratedImages([]); // 清空旧图
 
     const isApiModel =
-      (selectedModel?.modelSource ?? selectedFamily.modelSource ?? '')
+      (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
         .toUpperCase() === 'API';
+    const isVolcSeedreamGen =
+      companyCode === 'Volc' && effectiveModelCode?.toLowerCase().includes('seedream');
+    const useAsyncApi = isApiModel && !isVolcSeedreamGen;
 
     let skipFinallyLoading = false;
     try {
-      if (isApiModel) {
+      if (isVolcSeedreamGen) {
+        // Volc Seedream：走同步文生图接口
+        const modelCode = selectedModel?.modelCode || selectedFamily?.modelCode || '';
+        const requestData: any = {
+          prompt: values.prompt,
+          sdModelCheckpoint: selectedFamily?.modelCode || modelCode,
+          size: values.resolution || '2K',
+          seedreamWatermark: values.seedreamWatermark === true,
+        };
+        if (values.aspectRatio && values.resolution) {
+          const sizeKey = (values.resolution || '2K').toUpperCase();
+          const map = VOLC_SEEDREAM_SIZE_ASPECT_MAP[sizeKey];
+          if (map && map[values.aspectRatio]) {
+            requestData.size = map[values.aspectRatio];
+          }
+        }
+        const response = await instance.post(
+          '/productx/sa-ai-models/image/generate/text',
+          requestData,
+          { timeout: 120000 }
+        );
+        if (response.data && response.data.success !== false) {
+          const images = response.data.images || response.data.data?.images;
+          const resultUrls = response.data.data?.resultUrls;
+          const rawList = images || resultUrls || [];
+          const imageUrls = (Array.isArray(rawList) ? rawList : [])
+            .map((img: any) => normalizeImageData(typeof img === 'string' ? img : img?.url || img))
+            .filter((url: string | null): url is string => Boolean(url));
+          if (imageUrls.length > 0) {
+            setGeneratedImages(imageUrls);
+            message.success(intl.formatMessage({ id: 'create.success', defaultMessage: '生成成功！' }));
+          } else {
+            message.warning(intl.formatMessage({ id: 'create.noResult', defaultMessage: '未生成图片，请重试' }));
+          }
+          setHistoryRefreshTrigger((t) => t + 1);
+        } else {
+          message.error(response.data?.error || response.data?.message || intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' }));
+        }
+      } else if (useAsyncApi) {
         // 走异步文生图接口：提交任务后轮询状态
         const modelCode =
           selectedModel?.modelCode || selectedFamily.modelCode || '';
@@ -1052,6 +1141,7 @@ const TextToImage: React.FC = () => {
                   steps: 30,
                   familyId: null,
                   imageFormat: undefined,
+                  seedreamWatermark: false,
                 }}
               >
                 {/* 模型家族选择 */}
@@ -1308,54 +1398,76 @@ const TextToImage: React.FC = () => {
                   </Form.Item>
                 )}
 
-                {/* 参数设置行：画面比例、输出格式、分辨率 */}
+                {/* 参数设置：Volc 时 2×2 均匀布局，否则一行 */}
+                {isVolcSeedream ? (
+                  <>
+                    <Row gutter={16} style={{ marginBottom: 20 }}>
+                      <Col span={12}>
+                        <Form.Item
+                          name="resolution"
+                          label={<Space><DesktopOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.resolution" defaultMessage="分辨率" /></Space>}
+                          style={{ marginBottom: 0 }}
+                        >
+                          <Select disabled={!getEffectiveModel()} placeholder={intl.formatMessage({ id: 'create.resolution.placeholder', defaultMessage: '选择分辨率（可选）' })}>
+                            {getAvailableResolutions().map((res) => <Select.Option key={res.value} value={res.value}>{res.label}</Select.Option>)}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item
+                          name="aspectRatio"
+                          label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.ratio" defaultMessage="画面比例" /></Space>}
+                          style={{ marginBottom: 0 }}
+                        >
+                          <Select optionLabelProp="label" disabled={!getEffectiveModel() || getAvailableAspectRatios().length === 0} placeholder={!getEffectiveModel() ? intl.formatMessage({ id: 'create.model.select.placeholder', defaultMessage: '请先选择模型' }) : undefined}>
+                            {getAvailableAspectRatios().map((ratio) => (
+                              <Select.Option key={ratio.value} value={ratio.value} label={<AspectRatioOption>{ratio.icon}<span>{ratio.label}</span></AspectRatioOption>}>
+                                <AspectRatioOption>{ratio.icon}<span>{ratio.label}</span></AspectRatioOption>
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                    <Row gutter={16} style={{ marginBottom: 20 }}>
+                      <Col span={12}>
+                        <Form.Item
+                          name="imageFormat"
+                          label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.image.format" defaultMessage="输出格式" /></Space>}
+                          style={{ marginBottom: 0 }}
+                        >
+                          <Select disabled={!getEffectiveModel()} placeholder={!getEffectiveModel() ? intl.formatMessage({ id: 'create.model.select.placeholder', defaultMessage: '请先选择模型' }) : undefined}>
+                            {getAvailableImageFormats().map((format) => <Select.Option key={format} value={format}>{format.toUpperCase()}</Select.Option>)}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                      <Col span={12}>
+                        <Form.Item
+                          name="seedreamWatermark"
+                          label={<Space><InfoCircleOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.seedream.watermark" defaultMessage="添加水印" /></Space>}
+                          valuePropName="checked"
+                          style={{ marginBottom: 0 }}
+                        >
+                          <Switch
+                            checkedChildren={intl.formatMessage({ id: 'create.seedream.watermark.yes', defaultMessage: '添加' })}
+                            unCheckedChildren={intl.formatMessage({ id: 'create.seedream.watermark.no', defaultMessage: '不添加' })}
+                          />
+                        </Form.Item>
+                      </Col>
+                    </Row>
+                  </>
+                ) : (
                 <Row gutter={16} style={{ marginBottom: 20 }}>
                   <Col span={8}>
                     <Form.Item
                       name="aspectRatio"
-                      label={
-                        <Space>
-                          <FileImageOutlined
-                            style={{ color: '#1890ff', fontSize: 12 }}
-                          />
-                          <FormattedMessage
-                            id="create.ratio"
-                            defaultMessage="画面比例"
-                          />
-                        </Space>
-                      }
+                      label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.ratio" defaultMessage="画面比例" /></Space>}
                       style={{ marginBottom: 0 }}
                     >
-                      <Select
-                        optionLabelProp="label"
-                        disabled={
-                          !getEffectiveModel() ||
-                          getAvailableAspectRatios().length === 0
-                        }
-                        placeholder={
-                          !getEffectiveModel()
-                            ? intl.formatMessage({
-                                id: 'create.model.select.placeholder',
-                                defaultMessage: '请先选择模型',
-                              })
-                            : undefined
-                        }
-                      >
+                      <Select optionLabelProp="label" disabled={!getEffectiveModel() || getAvailableAspectRatios().length === 0} placeholder={!getEffectiveModel() ? intl.formatMessage({ id: 'create.model.select.placeholder', defaultMessage: '请先选择模型' }) : undefined}>
                         {getAvailableAspectRatios().map((ratio) => (
-                          <Select.Option
-                            key={ratio.value}
-                            value={ratio.value}
-                            label={
-                              <AspectRatioOption>
-                                {ratio.icon}
-                                <span>{ratio.label}</span>
-                              </AspectRatioOption>
-                            }
-                          >
-                            <AspectRatioOption>
-                              {ratio.icon}
-                              <span>{ratio.label}</span>
-                            </AspectRatioOption>
+                          <Select.Option key={ratio.value} value={ratio.value} label={<AspectRatioOption>{ratio.icon}<span>{ratio.label}</span></AspectRatioOption>}>
+                            <AspectRatioOption>{ratio.icon}<span>{ratio.label}</span></AspectRatioOption>
                           </Select.Option>
                         ))}
                       </Select>
@@ -1364,38 +1476,11 @@ const TextToImage: React.FC = () => {
                   <Col span={8}>
                     <Form.Item
                       name="imageFormat"
-                      label={
-                        <Space>
-                          <FileImageOutlined
-                            style={{ color: '#1890ff', fontSize: 12 }}
-                          />
-                          <FormattedMessage
-                            id="create.image.format"
-                            defaultMessage="输出格式"
-                          />
-                        </Space>
-                      }
+                      label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.image.format" defaultMessage="输出格式" /></Space>}
                       style={{ marginBottom: 0 }}
                     >
-                      <Select
-                        disabled={
-                          !getEffectiveModel() ||
-                          getAvailableImageFormats().length === 0
-                        }
-                        placeholder={
-                          !getEffectiveModel()
-                            ? intl.formatMessage({
-                                id: 'create.model.select.placeholder',
-                                defaultMessage: '请先选择模型',
-                              })
-                            : undefined
-                        }
-                      >
-                        {getAvailableImageFormats().map((format) => (
-                          <Select.Option key={format} value={format}>
-                            {format.toUpperCase()}
-                          </Select.Option>
-                        ))}
+                      <Select disabled={!getEffectiveModel()} placeholder={!getEffectiveModel() ? intl.formatMessage({ id: 'create.model.select.placeholder', defaultMessage: '请先选择模型' }) : undefined}>
+                        {getAvailableImageFormats().map((format) => <Select.Option key={format} value={format}>{format.toUpperCase()}</Select.Option>)}
                       </Select>
                     </Form.Item>
                   </Col>
@@ -1403,53 +1488,20 @@ const TextToImage: React.FC = () => {
                     <Col span={8}>
                       <Form.Item
                         name="resolution"
-                        label={
-                          <Space>
-                            <DesktopOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                            <FormattedMessage
-                              id="create.resolution"
-                              defaultMessage="分辨率"
-                            />
-                            <Tooltip
-                              title={intl.formatMessage({
-                                id: 'create.resolution.tooltip',
-                                defaultMessage: '选择图片的分辨率，优先级高于画面比例',
-                              })}
-                            >
-                              <InfoCircleOutlined style={{ color: '#999' }} />
-                            </Tooltip>
-                          </Space>
-                        }
+                        label={<Space><DesktopOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.resolution" defaultMessage="分辨率" /><Tooltip title={intl.formatMessage({ id: 'create.resolution.tooltip', defaultMessage: '选择图片的分辨率，优先级高于画面比例' })}><InfoCircleOutlined style={{ color: '#999' }} /></Tooltip></Space>}
                         style={{ marginBottom: 0 }}
                       >
-                        <Select
-                          disabled={!getEffectiveModel()}
-                          placeholder={
-                            !getEffectiveModel()
-                              ? intl.formatMessage({
-                                  id: 'create.model.select.placeholder',
-                                  defaultMessage: '请先选择模型',
-                                })
-                              : intl.formatMessage({
-                                  id: 'create.resolution.placeholder',
-                                  defaultMessage: '选择分辨率（可选）',
-                                })
-                          }
-                          allowClear
-                        >
-                          {getAvailableResolutions().map((res) => (
-                            <Select.Option key={res.value} value={res.value}>
-                              {res.label}
-                            </Select.Option>
-                          ))}
+                        <Select disabled={!getEffectiveModel()} placeholder={intl.formatMessage({ id: 'create.resolution.placeholder', defaultMessage: '选择分辨率（可选）' })} allowClear>
+                          {getAvailableResolutions().map((res) => <Select.Option key={res.value} value={res.value}>{res.label}</Select.Option>)}
                         </Select>
                       </Form.Item>
                     </Col>
                   )}
                 </Row>
+                )}
 
                 {/* 艺术风格（可选）- 仅 LOCAL 模型支持 */}
-                {!isApiModel && (
+                {!isApiModel && !isVolcSeedream && (
                 <Row gutter={16} style={{ marginBottom: 32 }}>
                   <Col span={24}>
                     <Form.Item

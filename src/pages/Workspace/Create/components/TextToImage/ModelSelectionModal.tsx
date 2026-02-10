@@ -358,7 +358,7 @@ const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
               )}
             </PriceTag>
             <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.6)', fontWeight: 600 }}>
-              {model.modelName === 'Nano Banana Pro' ? 'Google' : (model.modelLevel == 1 ? 'SDXL' : model.modelLevel == 2 ? 'LORA' : 'V1.5')}
+              {model.companyName || (model.modelName === 'Nano Banana Pro' ? 'Google' : (model.modelLevel == 1 ? 'SDXL' : model.modelLevel == 2 ? 'LORA' : 'V1.5'))}
             </span>
           </div>
         </CardContentGlass>
