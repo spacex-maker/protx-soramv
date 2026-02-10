@@ -2,96 +2,183 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml"
         xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-  
+
   <!-- 首页 -->
   <url>
-    <loc>https://soramv.cn/</loc>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://soramv.cn/"/>
-    <xhtml:link rel="alternate" hreflang="en" href="https://soramv.cn/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="ja" href="https://soramv.cn/?lang=ja"/>
-    <xhtml:link rel="alternate" hreflang="ko" href="https://soramv.cn/?lang=ko"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://soramv.cn/"/>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://ai2obj.com/</loc>
+    <xhtml:link rel="alternate" hreflang="zh-CN" href="https://ai2obj.com/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://ai2obj.com/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://ai2obj.com/?lang=ja"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://ai2obj.com/?lang=ko"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://ai2obj.com/"/>
+    <lastmod>2025-02-11</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
     <image:image>
-      <image:loc>https://soramv.cn/landing.png</image:loc>
-      <image:title>AI2OBJ - 综合 AI 创作平台</image:title>
-      <image:caption>领先的 AI 视频生成平台，支持文生视频、图生视频</image:caption>
+      <image:loc>https://ai2obj.com/landing.png</image:loc>
+      <image:title>AI2OBJ - Sora2 Seedance2 综合 AI 创作平台 / AI Creation Platform</image:title>
+      <image:caption>Sora2 Seedance2 文生图、图生视频、社区与工作区 / Text-to-image, image-to-video, community and workspace</image:caption>
     </image:image>
   </url>
-  
-  <!-- 登录页 -->
+
+  <!-- 登录 / 注册 -->
   <url>
-    <loc>https://soramv.cn/login</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://ai2obj.com/login</loc>
+    <lastmod>2025-02-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-  
-  <!-- 注册页 -->
   <url>
-    <loc>https://soramv.cn/signup</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://ai2obj.com/signup</loc>
+    <lastmod>2025-02-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
-  
-  <!-- 关于我们 -->
   <url>
-    <loc>https://soramv.cn/about</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://ai2obj.com/reset-password</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- 关于 / 帮助 / 反馈 -->
+  <url>
+    <loc>https://ai2obj.com/about</loc>
+    <lastmod>2025-02-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
-  
-  <!-- 帮助中心 -->
   <url>
-    <loc>https://soramv.cn/help</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://ai2obj.com/help</loc>
+    <lastmod>2025-02-11</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
-  
-  <!-- 反馈 -->
   <url>
-    <loc>https://soramv.cn/feedback</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://ai2obj.com/feedback</loc>
+    <lastmod>2025-02-11</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
-  
-  <!-- 服务条款 -->
   <url>
-    <loc>https://soramv.cn/terms-of-service</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://ai2obj.com/join-us</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- 法律与协议 -->
+  <url>
+    <loc>https://ai2obj.com/terms-of-service</loc>
+    <lastmod>2025-02-11</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
-  
-  <!-- 隐私政策 -->
   <url>
-    <loc>https://soramv.cn/privacy-policy</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://ai2obj.com/privacy-policy</loc>
+    <lastmod>2025-02-11</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
-  
-  <!-- 充值协议 -->
   <url>
-    <loc>https://soramv.cn/recharge-agreement</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://ai2obj.com/recharge-agreement</loc>
+    <lastmod>2025-02-11</lastmod>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
-  
-  <!-- 重置密码 -->
+
+  <!-- 核心功能页（便于搜索引擎了解站点结构） -->
   <url>
-    <loc>https://soramv.cn/reset-password</loc>
-    <lastmod>2025-01-01</lastmod>
-    <changefreq>yearly</changefreq>
+    <loc>https://ai2obj.com/workspace</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/media-tools</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/community</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/seedance-video</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/resume</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+
+  <!-- 用户相关（需登录） -->
+  <url>
+    <loc>https://ai2obj.com/profile</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/settings</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/privacy-preferences</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/billing</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/orders</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/recharge</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/recharge/success</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/works</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/notifications</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://ai2obj.com/invite</loc>
+    <lastmod>2025-02-11</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
 
 </urlset>
-

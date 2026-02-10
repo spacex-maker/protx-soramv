@@ -95,8 +95,8 @@ const SEO: React.FC<SEOProps> = ({
 export const SEOConfigs = {
   home: {
     title: undefined, // 使用默认标题
-    description: 'AI2OBJ 是一站式综合 AI 创作平台，提供文生图、文生视频、图生图、图生视频、提示词商城与媒体工具等能力，让创意从想法到作品一步到位。',
-    keywords: 'AI2OBJ, AI创作, 文生图, 文生视频, 图生图, 图生视频, 提示词商城, 媒体工具, AI生成',
+    description: 'AI2OBJ 一站式 AI 创作平台，支持 Sora2、Seedance2，提供文生图、文生视频、图生图、图生视频、提示词商城与媒体工具等能力，让创意从想法到作品一步到位。',
+    keywords: 'AI2OBJ, Sora2, Seedance2, Seedance, AI创作, 文生图, 文生视频, 图生图, 图生视频, 提示词商城, 媒体工具, AI生成',
     url: '/',
   },
   
@@ -117,8 +117,8 @@ export const SEOConfigs = {
   
   workspace: {
     title: '工作台',
-    description: 'AI2OBJ 创作工作台，支持文生图、文生视频、图生图、图生视频、提示词商城与媒体工具等。',
-    keywords: 'AI工作台, 文生图, 文生视频, 图生图, 图生视频, 提示词商城, AI创作工具',
+    description: 'AI2OBJ 创作工作台，支持 Sora2、Seedance2，文生图、文生视频、图生图、图生视频、提示词商城与媒体工具等。',
+    keywords: 'AI工作台, Sora2, Seedance2, 文生图, 文生视频, 图生图, 图生视频, 提示词商城, AI创作工具',
     url: '/workspace',
     noindex: true,
   },
@@ -133,8 +133,8 @@ export const SEOConfigs = {
   
   imageToVideo: {
     title: '图生视频',
-    description: '将静态图片转换为动态视频。AI 智能分析图像内容，生成流畅自然的视频动画效果。',
-    keywords: '图生视频, image to video, 图片转视频, AI动画, 图像动画化',
+    description: 'Seedance2 图生视频：将静态图片转换为动态视频。AI 智能分析图像内容，生成流畅自然的视频动画效果。',
+    keywords: 'Seedance2, Seedance, 图生视频, image to video, 图片转视频, AI动画, 图像动画化',
     url: '/workspace?tab=i2v',
     noindex: true,
   },
