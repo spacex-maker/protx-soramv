@@ -301,7 +301,7 @@ export const RightSection = ({
 
           <SocialLogin>
             {loginMethods
-              .filter((_, i) => i >= HIDE_FIRST_LOGIN_METHODS)
+              .filter((method, i) => method.code === 'google' || i >= HIDE_FIRST_LOGIN_METHODS)
               .map((method, index) => {
               const IconComponent = LOGIN_METHOD_ICONS[method.code];
               const isGoogle = method.code === 'google';
