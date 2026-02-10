@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Typography,
   Input,
@@ -42,7 +42,6 @@ import {
   calculateDimensionsFromRatio,
   parseResolution,
   formatResolution,
-  normalizeImageData,
   parseResponseImages,
 } from './utils';
 import {
@@ -55,6 +54,7 @@ import {
 import { checkAndSetSubmitting, clearSubmitting } from './submitGuard';
 import { useModelFamilies } from './useModelFamilies';
 import { useStyleModels } from './useStyleModels';
+import { useDownloadImage } from './useDownloadImage';
 import {
   GlobalSelectStyles,
   StyledCard,
@@ -67,37 +67,6 @@ import {
 } from './styles';
 
 const { Title, Text } = Typography;
-
-const normalizeImageData = (image: any): string | null => {
-  if (!image) {
-    return null;
-  }
-
-  const source =
-    typeof image === 'string'
-      ? image
-      : image.url || image.base64 || image.data || '';
-
-  if (!source) {
-    return null;
-  }
-
-  // Normalize image source
-  const trimmed = source.trim();
-  if (trimmed.startsWith('data:image')) {
-    return trimmed;
-  }
-  if (/^https?:\/\//i.test(trimmed)) {
-    return trimmed;
-  }
-  if (trimmed.startsWith('//') && typeof window !== 'undefined') {
-    return `${window.location.protocol}${trimmed}`;
-  }
-  if (trimmed.startsWith('/') && typeof window !== 'undefined') {
-    return `${window.location.origin}${trimmed}`;
-  }
-  return `data:image/png;base64,${trimmed}`;
-};
 
 const TextToImage: React.FC = () => {
   const intl = useIntl();
@@ -146,6 +115,8 @@ const TextToImage: React.FC = () => {
   
   // 生成记录刷新触发器
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
+
+  const { downloadImage } = useDownloadImage();
 
   // API 模型异步任务轮询
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -258,22 +229,6 @@ const TextToImage: React.FC = () => {
   // API 模型（非 Volc Seedream）：走异步接口
   const isApiModelAsync = isApiModel && !isVolcSeedream;
 
-  // Volc Seedream 尺寸与宽高映射（2K/4K + 宽高比 -> 像素）
-  const VOLC_SEEDREAM_SIZE_ASPECT_MAP: Record<string, Record<string, string>> = {
-    '2K': {
-      '1:1': '2048x2048', '4:3': '2304x1728', '3:4': '1728x2304',
-      '16:9': '2560x1440', '9:16': '1440x2560', '3:2': '2496x1664',
-      '2:3': '1664x2496', '21:9': '3024x1296',
-    },
-    '4K': {
-      '1:1': '4096x4096', '4:3': '4704x3520', '3:4': '3520x4704',
-      '16:9': '5504x3040', '9:16': '3040x5504', '3:2': '4992x3328',
-      '2:3': '3328x4992', '21:9': '6240x2656',
-    },
-  };
-  const VOLC_SEEDREAM_ASPECT_RATIOS = ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'];
-  const VOLC_SEEDREAM_SIZES = ['2K', '4K'];
-
   // API 模型：从后端 imageMaxResolution（如 "1K,2K,4K"）解析可选分辨率，无则默认 1K,2K,4K
   const getApiResolutions = (model: Model | ModelFamily | null): string[] => {
     if (!model?.imageMaxResolution) return ['1K', '2K', '4K'];
@@ -309,10 +264,6 @@ const TextToImage: React.FC = () => {
     fromImageMax.forEach((v) => { if (v && !list.includes(v)) list.push(v); });
     return list;
   };
-
-  // API 模型固定比例（与 /image/generate/text/async 一致）
-  const API_ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', 'auto'];
-  const API_IMAGE_FORMATS = ['png', 'jpg'];
 
   // 获取支持的图片比例选项（Volc Seedream 时附带当前分辨率对应的像素）
   const getAvailableAspectRatios = () => {
@@ -368,7 +319,180 @@ const TextToImage: React.FC = () => {
     }));
   };
 
-  // 调用后端 API 生成图片
+  // 缓存选项列表，避免每次渲染重算
+  const availableAspectRatios = useMemo(
+    () => getAvailableAspectRatios(),
+    [isVolcSeedream, isApiModel, resolution, selectedModel, selectedFamily, intl]
+  );
+  const availableImageFormats = useMemo(
+    () => getAvailableImageFormats(),
+    [isApiModel, selectedModel, selectedFamily]
+  );
+  const availableResolutions = useMemo(
+    () => getAvailableResolutions(),
+    [isVolcSeedream, selectedModel, selectedFamily]
+  );
+
+  // 三条生成路线共用的结果处理
+  const applySuccess = (imageUrls: string[]) => {
+    if (imageUrls.length > 0) {
+      setGeneratedImages(imageUrls);
+      message.success(intl.formatMessage({ id: 'create.success', defaultMessage: '生成成功！' }));
+    } else {
+      message.warning(intl.formatMessage({ id: 'create.noResult', defaultMessage: '未生成图片，请重试' }));
+    }
+    setHistoryRefreshTrigger((t) => t + 1);
+  };
+  const applyError = (err?: string) => {
+    message.error(err || intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' }));
+  };
+
+  /** 路线一：Volc Seedream 同步文生图 */
+  const runSeedreamSync = async (values: any) => {
+    const modelCode = selectedModel?.modelCode || selectedFamily?.modelCode || '';
+    const requestData: any = {
+      prompt: values.prompt,
+      sdModelCheckpoint: selectedFamily?.modelCode || modelCode,
+      size: values.resolution || '2K',
+      seedreamWatermark: values.seedreamWatermark === true,
+    };
+    if (values.aspectRatio && values.resolution) {
+      const sizeKey = (values.resolution || '2K').toUpperCase();
+      const map = VOLC_SEEDREAM_SIZE_ASPECT_MAP[sizeKey];
+      if (map?.[values.aspectRatio]) requestData.size = map[values.aspectRatio];
+    }
+    const response = await instance.post(
+      '/productx/sa-ai-models/image/generate/text',
+      requestData,
+      { timeout: 120000 }
+    );
+    if (response.data && response.data.success !== false) {
+      const rawList =
+        response.data.images ||
+        response.data.data?.images ||
+        response.data.data?.resultUrls ||
+        [];
+      applySuccess(parseResponseImages(rawList));
+    } else {
+      applyError(response.data?.error || response.data?.message);
+    }
+  };
+
+  /** 路线二：API 异步文生图（提交任务 + 轮询状态） */
+  const runApiAsync = async (values: any) => {
+    const modelCode = selectedModel?.modelCode || selectedFamily?.modelCode || '';
+    const asyncPayload: any = { prompt: values.prompt, modelCode };
+    if (values.aspectRatio) asyncPayload.aspectRatio = values.aspectRatio;
+    if (values.resolution) asyncPayload.resolution = values.resolution;
+    if (values.imageFormat) asyncPayload.outputFormat = values.imageFormat;
+
+    const createRes = await instance.post(
+      '/productx/sa-ai-models/image/generate/text/async',
+      asyncPayload,
+      { timeout: 30000 }
+    );
+    const taskId = createRes.data?.data?.id ?? createRes.data?.data?.taskId;
+    if (!taskId) {
+      applyError(
+        createRes.data?.error ||
+          createRes.data?.message ||
+          intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' })
+      );
+      return;
+    }
+    message.info(
+      intl.formatMessage({
+        id: 'create.image.generate.queued',
+        defaultMessage: '任务已提交，正在生成中…',
+      })
+    );
+
+    const pollStatus = async () => {
+      try {
+        const statusRes = await instance.get(
+          `/productx/sa-ai-models/image/task/${taskId}/status`,
+          { timeout: 60000 }
+        );
+        const data = statusRes.data?.data;
+        const status = data?.status;
+
+        if (status === 'completed' || status === 'success') {
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          const rawList = data?.resultUrls ?? (data?.imageUrl ? [data.imageUrl] : []);
+          applySuccess(parseResponseImages(rawList));
+          setLoading(false);
+          return;
+        }
+        if (status === 'failed' || status === 'error' || status === 'fail') {
+          if (pollingIntervalRef.current) {
+            clearInterval(pollingIntervalRef.current);
+            pollingIntervalRef.current = null;
+          }
+          applyError(data?.error);
+          setLoading(false);
+          return;
+        }
+      } catch (e) {
+        console.error('轮询任务状态失败:', e);
+      }
+    };
+
+    await pollStatus();
+    pollingIntervalRef.current = setInterval(pollStatus, 3000);
+  };
+
+  /** 路线三：非 API 模型同步文生图（LOCAL） */
+  const runLocalSync = async (values: any) => {
+    const requestData: any = { prompt: values.prompt };
+    if (selectedModel?.modelCode) requestData.modelCode = selectedModel.modelCode;
+    if (selectedFamily?.modelCode) requestData.sdModelCheckpoint = selectedFamily.modelCode;
+    if (values.negativePrompt) requestData.negativePrompt = values.negativePrompt;
+
+    if (values.resolution) {
+      const dimensions = parseResolution(values.resolution);
+      if (dimensions) {
+        requestData.width = dimensions.width;
+        requestData.height = dimensions.height;
+      }
+    } else if (values.aspectRatio) {
+      const dimensions = calculateDimensionsFromRatio(values.aspectRatio);
+      if (dimensions) {
+        requestData.width = dimensions.width;
+        requestData.height = dimensions.height;
+      }
+    }
+    if (values.batchSize) requestData.batchSize = values.batchSize;
+    if (values.imageFormat) requestData.imageFormat = values.imageFormat;
+
+    const response = await instance.post(
+      '/productx/sa-ai-models/image/generate/text',
+      requestData,
+      { timeout: 900000 }
+    );
+
+    if (response.data && response.data.success !== false) {
+      const rawList = response.data.images || response.data.data?.images || [];
+      const imageUrls = parseResponseImages(rawList);
+      if (imageUrls.length > 0) {
+        applySuccess(imageUrls);
+      } else {
+        const errorMsg = response.data.error || response.data.message;
+        if (errorMsg) message.error(errorMsg);
+        else message.warning(intl.formatMessage({ id: 'create.noResult', defaultMessage: '未生成图片，请重试' }));
+      }
+    } else {
+      applyError(
+        response.data?.error ||
+          response.data?.message ||
+          intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' })
+      );
+    }
+  };
+
+  // 调用后端 API 生成图片：按模型类型走三条路线之一
   const handleGenerate = async (values: any) => {
     if (checkAndSetSubmitting()) return;
     if (!selectedFamily) {
@@ -383,253 +507,20 @@ const TextToImage: React.FC = () => {
     }
 
     setLoading(true);
-    setGeneratedImages([]); // 清空旧图
-
-    const isApiModel =
-      (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
-        .toUpperCase() === 'API';
-    const isVolcSeedreamGen =
-      companyCode === 'Volc' && effectiveModelCode?.toLowerCase().includes('seedream');
-    const useAsyncApi = isApiModel && !isVolcSeedreamGen;
+    setGeneratedImages([]);
 
     let skipFinallyLoading = false;
     try {
-      if (isVolcSeedreamGen) {
-        // Volc Seedream：走同步文生图接口
-        const modelCode = selectedModel?.modelCode || selectedFamily?.modelCode || '';
-        const requestData: any = {
-          prompt: values.prompt,
-          sdModelCheckpoint: selectedFamily?.modelCode || modelCode,
-          size: values.resolution || '2K',
-          seedreamWatermark: values.seedreamWatermark === true,
-        };
-        if (values.aspectRatio && values.resolution) {
-          const sizeKey = (values.resolution || '2K').toUpperCase();
-          const map = VOLC_SEEDREAM_SIZE_ASPECT_MAP[sizeKey];
-          if (map && map[values.aspectRatio]) {
-            requestData.size = map[values.aspectRatio];
-          }
-        }
-        const response = await instance.post(
-          '/productx/sa-ai-models/image/generate/text',
-          requestData,
-          { timeout: 120000 }
-        );
-        if (response.data && response.data.success !== false) {
-          const images = response.data.images || response.data.data?.images;
-          const resultUrls = response.data.data?.resultUrls;
-          const rawList = images || resultUrls || [];
-          const imageUrls = (Array.isArray(rawList) ? rawList : [])
-            .map((img: any) => normalizeImageData(typeof img === 'string' ? img : img?.url || img))
-            .filter((url: string | null): url is string => Boolean(url));
-          if (imageUrls.length > 0) {
-            setGeneratedImages(imageUrls);
-            message.success(intl.formatMessage({ id: 'create.success', defaultMessage: '生成成功！' }));
-          } else {
-            message.warning(intl.formatMessage({ id: 'create.noResult', defaultMessage: '未生成图片，请重试' }));
-          }
-          setHistoryRefreshTrigger((t) => t + 1);
-        } else {
-          message.error(response.data?.error || response.data?.message || intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' }));
-        }
-        return; // Seedream 同步接口已处理，避免继续执行下方「非 API 模型」分支导致二次请求
-      } else if (useAsyncApi) {
-        // 走异步文生图接口：提交任务后轮询状态
-        const modelCode =
-          selectedModel?.modelCode || selectedFamily.modelCode || '';
-        const asyncPayload: any = {
-          prompt: values.prompt,
-          modelCode,
-        };
-        if (values.aspectRatio) asyncPayload.aspectRatio = values.aspectRatio;
-        if (values.resolution) asyncPayload.resolution = values.resolution;
-        if (values.imageFormat) asyncPayload.outputFormat = values.imageFormat;
-
-        const createRes = await instance.post(
-          '/productx/sa-ai-models/image/generate/text/async',
-          asyncPayload,
-          { timeout: 30000 }
-        );
-
-        const taskId =
-          createRes.data?.data?.id ?? createRes.data?.data?.taskId;
-        if (!taskId) {
-          const err =
-            createRes.data?.error ||
-            createRes.data?.message ||
-            intl.formatMessage({
-              id: 'create.error',
-              defaultMessage: '生成失败，请重试',
-            });
-          message.error(err);
-          return;
-        }
-
-        message.info(
-          intl.formatMessage({
-            id: 'create.image.generate.queued',
-            defaultMessage: '任务已提交，正在生成中…',
-          })
-        );
-
-        const pollStatus = async () => {
-          try {
-            const statusRes = await instance.get(
-              `/productx/sa-ai-models/image/task/${taskId}/status`,
-              { timeout: 60000 }
-            );
-            const data = statusRes.data?.data;
-            const status = data?.status;
-
-            if (status === 'completed' || status === 'success') {
-              if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
-                pollingIntervalRef.current = null;
-              }
-              const urls =
-                data?.resultUrls ||
-                (data?.imageUrl ? [data.imageUrl] : []);
-              const imageUrls = urls
-                .map((url: string) => normalizeImageData(url))
-                .filter((u: string | null): u is string => Boolean(u));
-              if (imageUrls.length > 0) {
-                setGeneratedImages(imageUrls);
-                message.success(
-                  intl.formatMessage({
-                    id: 'create.success',
-                    defaultMessage: '生成成功！',
-                  })
-                );
-              } else {
-                message.warning(
-                  intl.formatMessage({
-                    id: 'create.noResult',
-                    defaultMessage: '未生成图片，请重试',
-                  })
-                );
-              }
-              setLoading(false);
-              setHistoryRefreshTrigger((t) => t + 1);
-              return;
-            }
-            if (
-              status === 'failed' ||
-              status === 'error' ||
-              status === 'fail'
-            ) {
-              if (pollingIntervalRef.current) {
-                clearInterval(pollingIntervalRef.current);
-                pollingIntervalRef.current = null;
-              }
-              message.error(
-                data?.error ||
-                  intl.formatMessage({
-                    id: 'create.error',
-                    defaultMessage: '生成失败，请重试',
-                  })
-              );
-              setLoading(false);
-              return;
-            }
-          } catch (e) {
-            console.error('轮询任务状态失败:', e);
-          }
-        };
-
-        await pollStatus();
-        pollingIntervalRef.current = setInterval(pollStatus, 3000);
-        skipFinallyLoading = true; // 轮询中，由 pollStatus 回调里 setLoading(false)
+      if (isVolcSeedream) {
+        await runSeedreamSync(values);
         return;
       }
-
-      // 非 API 模型：走同步文生图接口
-      const requestData: any = {
-        prompt: values.prompt,
-      };
-
-      if (selectedModel?.modelCode) {
-        requestData.modelCode = selectedModel.modelCode;
+      if (isApiModelAsync) {
+        await runApiAsync(values);
+        skipFinallyLoading = true;
+        return;
       }
-
-      if (selectedFamily.modelCode) {
-        requestData.sdModelCheckpoint = selectedFamily.modelCode;
-      }
-
-      if (values.negativePrompt) {
-        requestData.negativePrompt = values.negativePrompt;
-      }
-
-      if (values.resolution) {
-        const dimensions = parseResolution(values.resolution);
-        if (dimensions) {
-          requestData.width = dimensions.width;
-          requestData.height = dimensions.height;
-        }
-      } else if (values.aspectRatio) {
-        const dimensions = calculateDimensionsFromRatio(values.aspectRatio);
-        if (dimensions) {
-          requestData.width = dimensions.width;
-          requestData.height = dimensions.height;
-        }
-      }
-
-      if (values.batchSize) {
-        requestData.batchSize = values.batchSize;
-      }
-
-      if (values.imageFormat) {
-        requestData.imageFormat = values.imageFormat;
-      }
-
-      console.log('Generating image with params:', requestData);
-
-      const response = await instance.post(
-        '/productx/sa-ai-models/image/generate/text',
-        requestData,
-        {
-          timeout: 900000,
-        }
-      );
-
-      if (response.data && response.data.success !== false) {
-        const images =
-          response.data.images || response.data.data?.images || [];
-
-        if (images && images.length > 0) {
-          const imageUrls = images
-            .map((img: any) => normalizeImageData(img))
-            .filter((url: string | null): url is string => Boolean(url));
-
-          setGeneratedImages(imageUrls);
-          message.success(
-            intl.formatMessage({
-              id: 'create.success',
-              defaultMessage: '生成成功！',
-            })
-          );
-        } else {
-          const errorMsg = response.data.error || response.data.message;
-          if (errorMsg) {
-            message.error(errorMsg);
-          } else {
-            message.warning(
-              intl.formatMessage({
-                id: 'create.noResult',
-                defaultMessage: '未生成图片，请重试',
-              })
-            );
-          }
-        }
-      } else {
-        const errorMsg =
-          response.data?.error ||
-          response.data?.message ||
-          intl.formatMessage({
-            id: 'create.error',
-            defaultMessage: '生成失败，请重试',
-          });
-        message.error(errorMsg);
-      }
+      await runLocalSync(values);
     } catch (error: any) {
       console.error('图片生成失败:', error);
 
@@ -670,63 +561,6 @@ const TextToImage: React.FC = () => {
       }
     };
   }, []);
-
-  const downloadImage = (url: string, index?: number) => {
-    try {
-      // 如果是 base64 数据 URL，转换为 blob 下载
-      if (url.startsWith('data:image')) {
-        // 提取 base64 数据
-        const base64Data = url.split(',')[1];
-        const mimeType = url.match(/data:image\/([^;]+)/)?.[1] || 'png';
-
-        // 将 base64 转换为二进制
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: `image/${mimeType}` });
-
-        // 创建下载链接
-        const blobUrl = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = blobUrl;
-        const fileName =
-          index !== undefined
-            ? `generated-${Date.now()}-${index + 1}.${mimeType}`
-            : `generated-${Date.now()}.${mimeType}`;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        // 释放 blob URL
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 100);
-      } else {
-        // 普通 URL 下载
-        const link = document.createElement('a');
-        link.href = url;
-        const fileName =
-          index !== undefined
-            ? `generated-${Date.now()}-${index + 1}.jpg`
-            : `generated-${Date.now()}.jpg`;
-        link.download = fileName;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-    } catch (error) {
-      console.error('下载图片失败:', error);
-      message.error(
-        intl.formatMessage({
-          id: 'create.download.error',
-          defaultMessage: '下载失败，请重试',
-        })
-      );
-    }
-  };
 
   // 生成成功后刷新记录
   useEffect(() => {
@@ -899,12 +733,12 @@ const TextToImage: React.FC = () => {
                     >
                       <Select
                         optionLabelProp="label"
-                        disabled={!getEffectiveModel() || getAvailableAspectRatios().length === 0}
+                        disabled={!getEffectiveModel() || availableAspectRatios.length === 0}
                         placeholder={!getEffectiveModel() ? intl.formatMessage({ id: 'create.model.select.placeholder', defaultMessage: '请先选择模型' }) : undefined}
                         dropdownMatchSelectWidth={false}
                         dropdownStyle={{ minWidth: 'max-content' }}
                       >
-                        {getAvailableAspectRatios().map((ratio) => (
+                        {availableAspectRatios.map((ratio) => (
                           <Select.Option key={ratio.value} value={ratio.value} label={<AspectRatioOption>{ratio.icon}<span>{ratio.label}</span></AspectRatioOption>}>
                             <AspectRatioOption>{ratio.icon}<span>{ratio.label}</span></AspectRatioOption>
                           </Select.Option>
@@ -919,11 +753,11 @@ const TextToImage: React.FC = () => {
                       style={{ marginBottom: 0 }}
                     >
                       <Select disabled={!getEffectiveModel()} placeholder={!getEffectiveModel() ? intl.formatMessage({ id: 'create.model.select.placeholder', defaultMessage: '请先选择模型' }) : undefined}>
-                        {getAvailableImageFormats().map((format) => <Select.Option key={format} value={format}>{format.toUpperCase()}</Select.Option>)}
+                        {availableImageFormats.map((format) => <Select.Option key={format} value={format}>{format.toUpperCase()}</Select.Option>)}
                       </Select>
                     </Form.Item>
                   </Col>
-                  {getAvailableResolutions().length > 0 && (
+                  {availableResolutions.length > 0 && (
                     <Col flex="1" style={{ minWidth: 0 }}>
                       <Form.Item
                         name="resolution"
@@ -931,7 +765,7 @@ const TextToImage: React.FC = () => {
                         style={{ marginBottom: 0 }}
                       >
                         <Select disabled={!getEffectiveModel()} placeholder={intl.formatMessage({ id: 'create.resolution.placeholder', defaultMessage: '选择分辨率（可选）' })} allowClear>
-                          {getAvailableResolutions().map((res) => <Select.Option key={res.value} value={res.value}>{res.label}</Select.Option>)}
+                          {availableResolutions.map((res) => <Select.Option key={res.value} value={res.value}>{res.label}</Select.Option>)}
                         </Select>
                       </Form.Item>
                     </Col>
