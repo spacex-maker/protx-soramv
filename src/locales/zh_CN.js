@@ -134,6 +134,8 @@ export default {
   'create.tab.imageToImage': '图生图',
   'create.tab.imageToVideo': '图生视频',
   'create.tab.seedanceVideo': 'Seedance 图生视频',
+  'create.feedback': '问题反馈',
+  'create.tab.workflow.badge': '测试版',
   'create.seedance.title': 'Seedance 图生视频',
   'create.seedance.subtitle': '字节豆包 Seedance 1.5，图片驱动短视频生成',
   'create.seedance.noModel': '暂无可用的 Seedance 模型，请先在后台配置',

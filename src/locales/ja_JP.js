@@ -108,6 +108,7 @@ export default {
   'create.tab.imageToImage': '画像から画像',
   'create.tab.imageToVideo': '画像から動画',
   'create.tab.seedanceVideo': 'Seedance 画像から動画',
+  'create.feedback': 'フィードバック',
   'create.seedance.title': 'Seedance 画像から動画',
   'create.seedance.subtitle': 'ByteDance Doubao Seedance 1.5、画像駆動のショート動画生成',
   'create.seedance.noModel': '利用可能な Seedance モデルがありません。管理画面で設定してください。',
