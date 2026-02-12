@@ -14,6 +14,7 @@ import {
   Tooltip,
   Drawer,
   Pagination,
+  Modal,
 } from 'antd';
 import {
   ThunderboltOutlined,
@@ -36,6 +37,7 @@ import {
   ReloadOutlined,
   BulbOutlined,
   UndoOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useLocale } from 'contexts/LocaleContext';
@@ -50,6 +52,7 @@ import {
   parseResolution,
   formatResolution,
 } from '../utils';
+import { checkAndSetSubmitting, clearSubmitting } from '../submitGuard';
 import {
   MobileContainer,
   MobileFormSection,
@@ -335,6 +338,7 @@ const TextToImageMobile: React.FC = () => {
           coverImage: item.coverImage || null,
           videoDefaultResolution: item.videoDefaultResolution ?? item.video_default_resolution,
           videoMaxResolution: item.videoMaxResolution ?? item.video_max_resolution,
+          companyName: item.companyName || null,
         }));
         setStyleModels(styleModelsList);
         if (styleModelsList.length > 0) {
@@ -461,9 +465,25 @@ const TextToImageMobile: React.FC = () => {
 
   const getEffectiveModel = () => selectedModel || selectedFamily || null;
 
+  const resolution = Form.useWatch('resolution', form) || '2K';
+
   const isApiModel =
     (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
       .toUpperCase() === 'API';
+
+  const effectiveFamily = selectedFamily as ModelFamily & { companyCode?: string } | null;
+  const effectiveSelectedModel = selectedModel as Model & { companyCode?: string } | null;
+  const companyCode = effectiveFamily?.companyCode ?? effectiveSelectedModel?.companyCode ?? '';
+  const effectiveModelCode = effectiveFamily?.modelCode ?? effectiveSelectedModel?.modelCode ?? '';
+  const isVolcSeedream = companyCode === 'Volc' && effectiveModelCode?.toLowerCase().includes('seedream');
+  const useAsyncApi = isApiModel && !isVolcSeedream;
+
+  const VOLC_SEEDREAM_SIZE_ASPECT_MAP: Record<string, Record<string, string>> = {
+    '2K': { '1:1': '2048x2048', '4:3': '2304x1728', '3:4': '1728x2304', '16:9': '2560x1440', '9:16': '1440x2560', '3:2': '2496x1664', '2:3': '1664x2496', '21:9': '3024x1296' },
+    '4K': { '1:1': '4096x4096', '4:3': '4704x3520', '3:4': '3520x4704', '16:9': '5504x3040', '9:16': '3040x5504', '3:2': '4992x3328', '2:3': '3328x4992', '21:9': '6240x2656' },
+  };
+  const VOLC_SEEDREAM_ASPECT_RATIOS = ['1:1', '4:3', '3:4', '16:9', '9:16', '3:2', '2:3', '21:9'];
+  const VOLC_SEEDREAM_SIZES = ['2K', '4K'];
 
   // API 模型：从后端 imageMaxResolution（如 "1K,2K,4K"）解析可选分辨率，无则默认 1K,2K,4K
   const getApiResolutions = (model: Model | ModelFamily | null): string[] => {
@@ -472,9 +492,13 @@ const TextToImageMobile: React.FC = () => {
     return list.length > 0 ? list : ['1K', '2K', '4K'];
   };
 
-  // Resolution 配置：优先 video 字段，没有则用 image 字段；都没有则不显示该配置
+  // Resolution 配置：Volc Seedream 用 2K/4K；否则优先 video 字段，没有则用 image 字段
   const getResolutionOptions = (model: Model | ModelFamily | null): string[] => {
     if (!model) return [];
+    const m = model as Model & ModelFamily & { companyCode?: string };
+    if (m.companyCode === 'Volc' && m.modelCode?.toLowerCase().includes('seedream')) {
+      return ['2K', '4K'];
+    }
     const vDef = model.videoDefaultResolution?.trim() || '';
     const vMax = model.videoMaxResolution
       ? model.videoMaxResolution.split(',').map((s) => s.trim()).filter(Boolean)
@@ -500,8 +524,18 @@ const TextToImageMobile: React.FC = () => {
   const API_ASPECT_RATIOS = ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', 'auto'];
   const API_IMAGE_FORMATS = ['png', 'jpg'];
 
-  // 获取支持的图片比例选项
+  // 获取支持的图片比例选项（Volc Seedream 时附带当前分辨率对应的像素）
   const getAvailableAspectRatios = () => {
+    if (isVolcSeedream) {
+      const sizeKey = (resolution || '2K').toUpperCase();
+      const sizeMap = VOLC_SEEDREAM_SIZE_ASPECT_MAP[sizeKey];
+      return VOLC_SEEDREAM_ASPECT_RATIOS.map((ratio) => {
+        const base = getAspectRatioOption(ratio, intl);
+        const px = sizeMap?.[ratio];
+        const pixelInfo = px ? ` (${px.replace('x', '×')})` : '';
+        return { ...base, label: base.label + pixelInfo };
+      });
+    }
     if (isApiModel) {
       return API_ASPECT_RATIOS.map((ratio) => getAspectRatioOption(ratio, intl));
     }
@@ -528,8 +562,11 @@ const TextToImageMobile: React.FC = () => {
     return formats;
   };
 
-  // 获取支持的分辨率选项：优先 video 字段，否则 image 字段；都没有则无选项（不显示该配置）
+  // 获取支持的分辨率选项：Volc Seedream 用 2K/4K；否则优先 video 字段，否则 image 字段
   const getAvailableResolutions = () => {
+    if (isVolcSeedream) {
+      return VOLC_SEEDREAM_SIZES.map((v) => ({ label: v, value: v }));
+    }
     const list = getResolutionOptions(getEffectiveModel());
     if (list.length === 0) return [];
     return list.map((value) => ({
@@ -540,8 +577,7 @@ const TextToImageMobile: React.FC = () => {
 
   // 调用后端 API 生成图片
   const handleGenerate = async (values: any) => {
-    console.log('handleGenerate called with values:', values);
-    
+    if (checkAndSetSubmitting()) return;
     if (!selectedFamily) {
       message.warning(
         intl.formatMessage({
@@ -549,12 +585,12 @@ const TextToImageMobile: React.FC = () => {
           defaultMessage: '请选择模型家族',
         })
       );
+      clearSubmitting();
       return;
     }
 
     // 获取表单所有字段值（包括高级设置中的参数）
     const allValues = form.getFieldsValue();
-    console.log('All form values:', allValues);
     
     // 检查提示词
     if (!values.prompt && !allValues.prompt) {
@@ -564,6 +600,7 @@ const TextToImageMobile: React.FC = () => {
           defaultMessage: '请输入提示词',
         })
       );
+      clearSubmitting();
       return;
     }
     
@@ -571,12 +608,45 @@ const TextToImageMobile: React.FC = () => {
     setGeneratedImages([]);
 
     const isApiModel =
-      (selectedModel?.modelSource ?? selectedFamily.modelSource ?? '')
+      (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
         .toUpperCase() === 'API';
+    const isVolcSeedreamGen = companyCode === 'Volc' && effectiveModelCode?.toLowerCase().includes('seedream');
+    const useAsyncApiGen = isApiModel && !isVolcSeedreamGen;
 
     let skipFinallyLoading = false;
     try {
-      if (isApiModel) {
+      if (isVolcSeedreamGen) {
+        const modelCode = selectedModel?.modelCode || selectedFamily?.modelCode || '';
+        const requestData: any = {
+          prompt: values.prompt || allValues.prompt,
+          sdModelCheckpoint: selectedFamily?.modelCode || modelCode,
+          size: allValues.resolution || '2K',
+          seedreamWatermark: allValues.seedreamWatermark === true,
+        };
+        if (allValues.aspectRatio && allValues.resolution) {
+          const sizeKey = (allValues.resolution || '2K').toUpperCase();
+          const map = VOLC_SEEDREAM_SIZE_ASPECT_MAP[sizeKey];
+          if (map && map[allValues.aspectRatio]) {
+            requestData.size = map[allValues.aspectRatio];
+          }
+        }
+        const response = await instance.post('/productx/sa-ai-models/image/generate/text', requestData, { timeout: 120000 });
+        if (response.data && response.data.success !== false) {
+          const rawList = response.data.images || response.data.data?.images || response.data.data?.resultUrls || [];
+          const imageUrls = (Array.isArray(rawList) ? rawList : [])
+            .map((img: any) => normalizeImageData(typeof img === 'string' ? img : img?.url || img))
+            .filter((url: string | null): url is string => Boolean(url));
+          if (imageUrls.length > 0) {
+            setGeneratedImages(imageUrls);
+            message.success(intl.formatMessage({ id: 'create.generate.success', defaultMessage: `成功生成 ${imageUrls.length} 张图片！` }));
+          } else {
+            message.warning(intl.formatMessage({ id: 'create.generate.noImages', defaultMessage: '生成完成，但没有返回图片' }));
+          }
+          fetchHistoryTasks(historyPagination.current, historyPagination.pageSize);
+        } else {
+          message.error(response.data?.error || response.data?.message || intl.formatMessage({ id: 'create.generate.failed', defaultMessage: '生成失败，请重试' }));
+        }
+      } else if (useAsyncApiGen) {
         const modelCode =
           selectedModel?.modelCode || selectedFamily.modelCode || '';
         const asyncPayload: any = {
@@ -777,6 +847,7 @@ const TextToImageMobile: React.FC = () => {
           })
       );
     } finally {
+      clearSubmitting();
       if (!skipFinallyLoading) {
         setLoading(false);
       }
@@ -906,6 +977,30 @@ const TextToImageMobile: React.FC = () => {
     fetchHistoryTasks(page, pageSize);
   };
 
+  const handleDeleteHistoryTask = async (e: React.MouseEvent, taskId: number) => {
+    e.stopPropagation();
+    Modal.confirm({
+      title: intl.formatMessage({ id: 'create.history.deleteConfirm.title', defaultMessage: '确认删除' }),
+      content: intl.formatMessage({ id: 'create.history.deleteConfirm.content', defaultMessage: '确定要删除这个任务吗？删除后将无法恢复。' }),
+      okText: intl.formatMessage({ id: 'common.confirm', defaultMessage: '确定' }),
+      cancelText: intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' }),
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          const response = await instance.delete(`/productx/sa-ai-gen-task/${taskId}`);
+          if (response.data?.success) {
+            message.success(intl.formatMessage({ id: 'create.history.deleteSuccess', defaultMessage: '删除成功' }));
+            fetchHistoryTasks(historyPagination.current, historyPagination.pageSize);
+          } else {
+            message.error(response.data?.message || intl.formatMessage({ id: 'create.history.deleteFailed', defaultMessage: '删除失败' }));
+          }
+        } catch (error: any) {
+          message.error(error.response?.data?.message || intl.formatMessage({ id: 'create.history.deleteFailed', defaultMessage: '删除失败' }));
+        }
+      },
+    });
+  };
+
   // 获取状态文本
   const getStatusText = (status: number) => {
     switch (status) {
@@ -964,13 +1059,13 @@ const TextToImageMobile: React.FC = () => {
           <Form
             form={form}
             layout="vertical"
-            onFinish={handleGenerate}
             initialValues={{
               aspectRatio: undefined,
               resolution: undefined,
               styleModelId: null,
               batchSize: 2,
               steps: 30,
+              seedreamWatermark: false,
               familyId: null,
               imageFormat: undefined,
             }}
@@ -1050,7 +1145,7 @@ const TextToImageMobile: React.FC = () => {
                               )
                             )
                           )}
-                          {selectedFamily.modelName === 'Nano Banana Pro' && <span className="model-brand">Google</span>}
+                          {(selectedFamily.companyName || (selectedFamily.modelName === 'Nano Banana Pro' ? 'Google' : null)) && <span className="model-brand">{selectedFamily.companyName || 'Google'}</span>}
                         </div>
                       </MobileModelOption>
                     </Select.Option>
@@ -1119,7 +1214,7 @@ const TextToImageMobile: React.FC = () => {
                                   )
                                 )
                               )}
-                              {selectedModel.modelName === 'Nano Banana Pro' && <span className="model-brand">Google</span>}
+                              {(selectedModel.companyName || (selectedModel.modelName === 'Nano Banana Pro' ? 'Google' : null)) && <span className="model-brand">{selectedModel.companyName || 'Google'}</span>}
                             </div>
                           </MobileModelOption>
                         ) : selectedFamily ? (
@@ -1146,7 +1241,7 @@ const TextToImageMobile: React.FC = () => {
                                   )
                                 )
                               )}
-                              {selectedFamily.modelName === 'Nano Banana Pro' && <span className="model-brand">Google</span>}
+                              {(selectedFamily.companyName || (selectedFamily.modelName === 'Nano Banana Pro' ? 'Google' : null)) && <span className="model-brand">{selectedFamily.companyName || 'Google'}</span>}
                             </div>
                           </MobileModelOption>
                         ) : null}
@@ -1295,6 +1390,7 @@ const TextToImageMobile: React.FC = () => {
             <Form.Item>
               <Button
                 type="primary"
+                htmlType="button"
                 size="large"
                 block
                 icon={<ThunderboltOutlined />}
@@ -1527,7 +1623,18 @@ const TextToImageMobile: React.FC = () => {
                           </MobileHistoryStatusBadge>
                         </MobileHistoryImageWrapper>
                         <MobileHistoryInfo>
-                          <MobileHistoryModelName>{task.modelName}</MobileHistoryModelName>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                            <MobileHistoryModelName>{task.modelName}</MobileHistoryModelName>
+                            <Tooltip title={intl.formatMessage({ id: 'create.history.delete', defaultMessage: '删除' })}>
+                              <Button
+                                type="text"
+                                size="small"
+                                icon={<DeleteOutlined />}
+                                onClick={(e) => handleDeleteHistoryTask(e, task.id)}
+                                style={{ color: '#ff4d4f', padding: '0 4px', minWidth: 28 }}
+                              />
+                            </Tooltip>
+                          </div>
                           <MobileHistoryTime>
                             <ClockCircleOutlined style={{ fontSize: 10 }} />
                             {new Date(task.createTime).toLocaleString('zh-CN', {
@@ -1634,6 +1741,27 @@ const TextToImageMobile: React.FC = () => {
               </Form.Item>
             )}
 
+            {isVolcSeedream && getAvailableResolutions().length > 0 && (
+              <Form.Item
+                name="resolution"
+                label={
+                  <Space>
+                    <DesktopOutlined style={{ color: '#1890ff', fontSize: 14 }} />
+                    <FormattedMessage id="create.resolution" defaultMessage="分辨率" />
+                  </Space>
+                }
+              >
+                <Select
+                  disabled={!getEffectiveModel()}
+                  placeholder={intl.formatMessage({ id: 'create.resolution.placeholder', defaultMessage: '选择分辨率（可选）' })}
+                >
+                  {getAvailableResolutions().map((res) => (
+                    <Select.Option key={res.value} value={res.value}>{res.label}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            )}
+
             {/* 画面比例 */}
             <Form.Item
               name="aspectRatio"
@@ -1648,6 +1776,7 @@ const TextToImageMobile: React.FC = () => {
               }
             >
               <Select
+                style={isVolcSeedream ? { minWidth: 280, width: '100%' } : undefined}
                 optionLabelProp="label"
                 disabled={
                   !getEffectiveModel() ||
@@ -1682,7 +1811,7 @@ const TextToImageMobile: React.FC = () => {
               </Select>
             </Form.Item>
 
-            {getAvailableResolutions().length > 0 && (
+            {!isVolcSeedream && getAvailableResolutions().length > 0 && (
               <Form.Item
                 name="resolution"
                 label={

@@ -7,6 +7,8 @@ import {
   Image,
   Pagination,
   message,
+  Modal,
+  Tooltip,
 } from 'antd';
 import {
   HistoryOutlined,
@@ -16,6 +18,7 @@ import {
   EyeOutlined,
   DownloadOutlined,
   InfoCircleOutlined,
+  DeleteOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import instance from 'api/axios';
@@ -27,11 +30,12 @@ import {
   HistoryGrid,
   HistoryCard,
   HistoryImageWrapper,
+  HistoryTopActions,
   HistoryStatusBadge,
-  HistoryInfo,
+  HistoryImageCount,
+  HistoryInfoBar,
   HistoryModelName,
   HistoryTime,
-  HistoryActions,
   HistoryEmpty,
 } from './styles';
 
@@ -128,6 +132,31 @@ const HistorySection: React.FC<HistorySectionProps> = ({
   // 处理分页变化
   const handleHistoryPageChange = (page: number, pageSize: number) => {
     fetchHistoryTasks(page, pageSize);
+  };
+
+  // 删除生成记录
+  const handleDelete = async (e: React.MouseEvent, taskId: number) => {
+    e.stopPropagation();
+    Modal.confirm({
+      title: intl.formatMessage({ id: 'create.history.deleteConfirm.title', defaultMessage: '确认删除' }),
+      content: intl.formatMessage({ id: 'create.history.deleteConfirm.content', defaultMessage: '确定要删除这个任务吗？删除后将无法恢复。' }),
+      okText: intl.formatMessage({ id: 'common.confirm', defaultMessage: '确定' }),
+      cancelText: intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' }),
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          const response = await instance.delete(`/productx/sa-ai-gen-task/${taskId}`);
+          if (response.data?.success) {
+            message.success(intl.formatMessage({ id: 'create.history.deleteSuccess', defaultMessage: '删除成功' }));
+            fetchHistoryTasks(historyPagination.current, historyPagination.pageSize);
+          } else {
+            message.error(response.data?.message || intl.formatMessage({ id: 'create.history.deleteFailed', defaultMessage: '删除失败' }));
+          }
+        } catch (error: any) {
+          message.error(error.response?.data?.message || intl.formatMessage({ id: 'create.history.deleteFailed', defaultMessage: '删除失败' }));
+        }
+      },
+    });
   };
 
   // 获取状态文本
@@ -240,7 +269,6 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                     <HistoryImageWrapper>
                       {thumbnailUrl ? (
                         <>
-                          {/* 显示第一张图片作为缩略图 */}
                           <Image
                             src={thumbnailUrl}
                             alt={task.modelName}
@@ -249,19 +277,16 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                             style={{ objectFit: 'cover', cursor: 'pointer' }}
                             preview={{
                               mask: <EyeOutlined style={{ fontSize: 16 }} />,
-                              src: rawThumbnailUrl ? addTencentImageCompression(rawThumbnailUrl, { quality: 85, width: 1200 }) : undefined,
+                              src: rawThumbnailUrl || undefined,
                             }}
                           />
-                          {/* 隐藏的其他图片，用于预览组 */}
                           {imageUrls.length > 1 && imageUrls.slice(1).map((url, index) => (
                             <Image
                               key={`${task.id}-${index + 1}`}
                               src={addTencentImageCompression(url, { quality: 60, width: 400 })}
                               alt={`${task.modelName} - ${index + 2}`}
                               style={{ display: 'none' }}
-                              preview={{
-                                src: addTencentImageCompression(url, { quality: 85, width: 1200 })
-                              }}
+                              preview={{ src: url }}
                             />
                           ))}
                         </>
@@ -296,36 +321,62 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                       <HistoryStatusBadge status={task.status}>
                         {getStatusText(task.status)}
                       </HistoryStatusBadge>
-                      {/* 图片数量指示器 */}
                       {task.status === 2 && imageCount > 1 && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: 8,
-                            left: 8,
-                            padding: '4px 8px',
-                            borderRadius: 12,
-                            background: 'rgba(0, 0, 0, 0.6)',
-                            color: '#fff',
-                            fontSize: 11,
-                            fontWeight: 600,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            backdropFilter: 'blur(8px)',
-                            WebkitBackdropFilter: 'blur(8px)',
-                          }}
-                        >
+                        <HistoryImageCount>
                           <PictureOutlined style={{ fontSize: 12 }} />
                           <span>{imageCount}</span>
-                        </div>
+                        </HistoryImageCount>
                       )}
-                    </HistoryImageWrapper>
-                    <HistoryInfo>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <HistoryModelName>{task.modelName}</HistoryModelName>
-                        <HistoryTime>
-                          <ClockCircleOutlined style={{ fontSize: 11 }} />
+                      <HistoryTopActions className="history-top-actions">
+                        <Tooltip title={intl.formatMessage({ id: 'create.history.detail.tooltip', defaultMessage: '查看详情' })}>
+                          <div
+                            className="history-action-btn detail"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTaskDetailClick?.(task.id);
+                            }}
+                          >
+                            <InfoCircleOutlined />
+                          </div>
+                        </Tooltip>
+                        <Tooltip title={intl.formatMessage({ id: 'create.history.delete', defaultMessage: '删除' })}>
+                          <div className="history-action-btn delete" onClick={(e) => handleDelete(e, task.id)}>
+                            <DeleteOutlined />
+                          </div>
+                        </Tooltip>
+                        {task.status === 2 && imageUrls.length > 0 && (
+                          <Tooltip
+                            title={
+                              imageUrls.length > 1
+                                ? intl.formatMessage({ id: 'create.history.downloadAll.tooltip', defaultMessage: '下载全部' }, { count: imageUrls.length })
+                                : intl.formatMessage({ id: 'create.history.download.tooltip', defaultMessage: '下载图片' })
+                            }
+                          >
+                            <div
+                              className="history-action-btn download"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (imageUrls.length === 1) {
+                                  downloadImage(imageUrls[0]);
+                                } else {
+                                  imageUrls.forEach((url, index) => {
+                                    setTimeout(() => downloadImage(url, index), index * 300);
+                                  });
+                                  message.success(
+                                    intl.formatMessage({ id: 'create.history.downloadAll.start', defaultMessage: '开始下载 {count} 张图片' }, { count: imageUrls.length })
+                                  );
+                                }
+                              }}
+                            >
+                              <DownloadOutlined />
+                            </div>
+                          </Tooltip>
+                        )}
+                      </HistoryTopActions>
+                      <HistoryInfoBar className="history-info-bar">
+                        <HistoryModelName style={{ color: '#fff', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>{task.modelName}</HistoryModelName>
+                        <HistoryTime style={{ color: 'rgba(255,255,255,0.85)', fontSize: 11, marginTop: 4 }}>
+                          <ClockCircleOutlined style={{ fontSize: 10 }} />
                           {new Date(task.createTime).toLocaleString('zh-CN', {
                             month: '2-digit',
                             day: '2-digit',
@@ -334,88 +385,13 @@ const HistorySection: React.FC<HistorySectionProps> = ({
                           })}
                           {(() => {
                             const duration = calculateGenerationTime(task.startTime, task.endTime);
-                            if (duration !== null) {
-                              return (
-                                <span style={{ marginLeft: 8, color: '#1890ff' }}>
-                                  · {duration}s
-                                </span>
-                              );
-                            }
-                            return null;
+                            return duration !== null ? (
+                              <span style={{ marginLeft: 6, color: 'rgba(24, 144, 255, 0.95)' }}>· {duration}s</span>
+                            ) : null;
                           })()}
                         </HistoryTime>
-                      </div>
-                      <HistoryActions>
-                        {/* 详情按钮 - 始终显示在右下角 */}
-                        <Button
-                          shape="circle"
-                          size="small"
-                          icon={<InfoCircleOutlined />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onTaskDetailClick?.(task.id);
-                          }}
-                          style={{
-                            color: '#1890ff',
-                            background: 'rgba(24, 144, 255, 0.1)',
-                            border: '1px solid rgba(24, 144, 255, 0.3)',
-                          }}
-                          title={intl.formatMessage({
-                            id: 'create.history.detail.tooltip',
-                            defaultMessage: '查看详情',
-                          })}
-                        />
-                        {/* 下载按钮 - 仅在成功且有图片时显示 */}
-                        {task.status === 2 && imageUrls.length > 0 && (
-                          <Button
-                            shape="circle"
-                            size="small"
-                            icon={<DownloadOutlined />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (imageUrls.length === 1) {
-                                downloadImage(imageUrls[0]);
-                              } else {
-                                // 下载所有图片
-                                imageUrls.forEach((url, index) => {
-                                  setTimeout(() => {
-                                    downloadImage(url, index);
-                                  }, index * 300);
-                                });
-                                message.success(
-                                  intl.formatMessage(
-                                    {
-                                      id: 'create.history.downloadAll.start',
-                                      defaultMessage: '开始下载 {count} 张图片',
-                                    },
-                                    { count: imageUrls.length }
-                                  )
-                                );
-                              }
-                            }}
-                            style={{
-                              color: '#52c41a',
-                              background: 'rgba(82, 196, 26, 0.1)',
-                              border: '1px solid rgba(82, 196, 26, 0.3)',
-                            }}
-                            title={
-                              imageUrls.length > 1
-                                ? intl.formatMessage(
-                                    {
-                                      id: 'create.history.downloadAll.tooltip',
-                                      defaultMessage: '下载全部 {count} 张图片',
-                                    },
-                                    { count: imageUrls.length }
-                                  )
-                                : intl.formatMessage({
-                                    id: 'create.history.download.tooltip',
-                                    defaultMessage: '下载图片',
-                                  })
-                            }
-                          />
-                        )}
-                      </HistoryActions>
-                    </HistoryInfo>
+                      </HistoryInfoBar>
+                    </HistoryImageWrapper>
                   </HistoryCard>
                 );
               })}

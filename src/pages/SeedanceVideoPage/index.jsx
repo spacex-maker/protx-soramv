@@ -50,8 +50,9 @@ const SeedanceVideoPage = () => {
   return (
     <>
       <Helmet>
-        <title>Seedance 图生视频 - AI2OBJ</title>
-        <meta name="description" content="字节豆包 Seedance 1.5 图生视频" />
+        <title>Seedance2 图生视频 - AI2OBJ</title>
+        <meta name="description" content="Seedance2 / Seedance 图生视频，字节豆包模型，将图片一键生成高质量 AI 视频。" />
+        <meta name="keywords" content="Seedance2, Seedance, 图生视频, 豆包, image to video, AI视频生成" />
       </Helmet>
       <VideoBackdrop>
         <video

@@ -7,7 +7,8 @@ import {
   VideoCameraOutlined,
   SwapOutlined,
   FileImageOutlined,
-  ApartmentOutlined
+  ApartmentOutlined,
+  QuestionCircleOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -38,6 +39,19 @@ const tabKeyToPath: Record<string, string> = {
 };
 
 const { Content } = Layout;
+
+const BetaBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 0 6px;
+  height: 18px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(114, 46, 209, 0.2), rgba(235, 47, 150, 0.2));
+  color: #722ed1;
+  margin-left: 4px;
+`;
 
 interface CreationTypeSetting {
   key: string;
@@ -127,14 +141,23 @@ const StyledTabs = styled(Tabs)`
   }
 
   .ant-tabs-tab-active .ant-tabs-tab-btn {
-    color: ${p => (p.theme?.mode === 'dark' ? '#fff' : '#1a1a1a')};
     font-weight: 600;
-    background: ${p => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#fff')};
+    /* 渐变层在上、pill 在下，text-clip 才能正确透出渐变 */
+    background: ${p => (p.theme?.mode === 'dark'
+      ? 'linear-gradient(90deg, #69b1ff, #b37feb, #ff85c0), rgba(255,255,255,0.12)'
+      : 'linear-gradient(90deg, #1890ff, #722ed1, #eb2f96), #fff')};
+    background-size: 200% auto, 100% 100%;
+    -webkit-background-clip: text, padding-box;
+    background-clip: text, padding-box;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
     box-shadow: ${p => (p.theme?.mode === 'dark' ? '0 1px 3px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.06)')};
+    animation: tab-gradient-shift 3s ease infinite;
   }
 
-  .ant-tabs-tab-active .anticon {
-    color: ${p => (p.theme?.mode === 'dark' ? '#69b1ff' : '#1890ff')};
+  @keyframes tab-gradient-shift {
+    0%, 100% { background-position: 0% 50%, 0% 50%; }
+    50% { background-position: 100% 50%, 0% 50%; }
   }
 
   .ant-tabs-ink-bar {
@@ -277,6 +300,9 @@ const Create: React.FC = () => {
         <Space>
           <ApartmentOutlined />
           <FormattedMessage id="create.tab.workflow" defaultMessage="工作流" />
+          <BetaBadge>
+            <FormattedMessage id="create.tab.workflow.badge" defaultMessage="Beta" />
+          </BetaBadge>
         </Space>
       ),
       children: loading ? loadingPlaceholder : tabContentMap.workflow,
@@ -365,6 +391,16 @@ const Create: React.FC = () => {
         onChange={handleTabChange}
         items={tabItems}
         destroyInactiveTabPane={false}
+        tabBarExtraContent={
+          <Button
+            type="link"
+            icon={<QuestionCircleOutlined />}
+            onClick={() => navigate('/feedback')}
+            style={{ marginLeft: 8 }}
+          >
+            <FormattedMessage id="create.feedback" defaultMessage="问题反馈" />
+          </Button>
+        }
         style={{ 
           flex: 1,
           display: 'flex',

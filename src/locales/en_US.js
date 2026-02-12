@@ -142,6 +142,8 @@ export default {
   'create.seedance.watermark.true': 'Yes',
   'create.seedance.watermark.false': 'No',
   'create.tab.workflow': 'Workflow',
+  'create.feedback': 'Feedback',
+  'create.tab.workflow.badge': 'Beta',
   'create.textToImage.title': 'Text to Image',
   'create.textToImage.subtitle': 'Enter a description and let AI draw the image in your mind',
   'create.textToImage.description': 'Generate images from text descriptions. This feature is under development...',

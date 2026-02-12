@@ -34,6 +34,7 @@ import {
   ModelInteractionResponse,
 } from 'api/modelInteraction';
 import { getModelDescription } from './modelUtils';
+import { isFree } from './TextToImage/utils';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -59,6 +60,7 @@ export interface ModelFamily {
   coverImage?: string | null;
   likesCount?: number;
   favoritesCount?: number;
+  tokenCost?: number | null;
 }
 
 export interface Model {
@@ -79,17 +81,10 @@ export interface Model {
   coverImage: string | null;
   likesCount?: number;
   favoritesCount?: number;
+  tokenCost?: number | null;
 }
 
 export type ModelDetail = ModelFamily | Model;
-
-// --- 工具函数 (保持不变) ---
-const isFree = (outputPrice: number | null | undefined, currency: string | null | undefined, unit?: string | null | undefined): boolean => {
-  if (outputPrice === null || outputPrice === undefined || outputPrice === 0) return true;
-  if (!currency || currency.trim() === '') return true;
-  if (unit !== undefined && (!unit || unit.trim() === '')) return true;
-  return false;
-};
 
 const getAspectRatioOption = (ratio: string, intl: any) => {
   const ratioMap: { [key: string]: { labelKey: string; defaultLabel: string; icon: React.ReactNode } } = {
@@ -463,7 +458,8 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
   if (!model) return null;
 
   const coverImage = 'coverImage' in model && model.coverImage ? model.coverImage : null;
-  const free = isFree(model.outputPrice, model.currency);
+  const free = isFree(model.outputPrice, model.currency, model.tokenCost);
+  const tokenCost = model.tokenCost ?? 0;
 
   return (
     <ModalOverlay open={open} onClick={(e) => e.target === e.currentTarget && onClose()}>
@@ -497,12 +493,16 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
               )}
               {free ? (
                 <Tag color="success" style={{ borderRadius: 100, border: 'none', padding: '2px 10px' }}>
-                  <FormattedMessage id="create.model.free" defaultMessage="Free" />
+                  <FormattedMessage id="create.model.free" defaultMessage="免费" />
                 </Tag>
+              ) : tokenCost > 0 ? (
+                <PriceTag>
+                  <FormattedMessage id="create.model.tokenCost.display" defaultMessage="{count} token" values={{ count: tokenCost }} />
+                </PriceTag>
               ) : (
                 <PriceTag>
                   <DollarOutlined />
-                  {model.outputPrice} {model.currency} 
+                  {model.outputPrice} {model.currency}
                   <span style={{ fontSize: 10, opacity: 0.8, fontWeight: 400 }}>/ img</span>
                 </PriceTag>
               )}

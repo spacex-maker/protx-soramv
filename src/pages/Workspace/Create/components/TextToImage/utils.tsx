@@ -164,3 +164,34 @@ export const formatResolution = (resolution: string): string => {
   return `${parsed.width} × ${parsed.height}`;
 };
 
+/** 将接口返回的单条图片数据规范为可用的 URL 字符串 */
+export const normalizeImageData = (image: unknown): string | null => {
+  if (image == null) return null;
+  const source =
+    typeof image === 'string'
+      ? image
+      : (image as { url?: string; base64?: string; data?: string }).url ||
+        (image as { base64?: string }).base64 ||
+        (image as { data?: string }).data ||
+    '';
+  if (!source || typeof source !== 'string') return null;
+  const trimmed = source.trim();
+  if (trimmed.startsWith('data:image')) return trimmed;
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('//') && typeof window !== 'undefined') {
+    return `${window.location.protocol}${trimmed}`;
+  }
+  if (trimmed.startsWith('/') && typeof window !== 'undefined') {
+    return `${window.location.origin}${trimmed}`;
+  }
+  return `data:image/png;base64,${trimmed}`;
+};
+
+/** 从接口返回的图片列表（可能是 images / data.images / resultUrls）解析为 URL 数组 */
+export const parseResponseImages = (rawList: unknown): string[] => {
+  const arr = Array.isArray(rawList) ? rawList : [];
+  return arr
+    .map((img) => normalizeImageData(typeof img === 'string' ? img : img))
+    .filter((url): url is string => Boolean(url));
+};
+

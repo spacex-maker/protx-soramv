@@ -102,6 +102,7 @@ export default {
   'create.tab.imageToImage': 'Immagine a Immagine',
   'create.tab.imageToVideo': 'Immagine a Video',
   'create.tab.seedanceVideo': 'Seedance Immagine a Video',
+  'create.feedback': 'Feedback',
   'create.seedance.title': 'Seedance Immagine a Video',
   'create.seedance.subtitle': 'ByteDance Doubao Seedance 1.5, generazione di video brevi guidata dall\'immagine',
   'create.seedance.noModel': 'Nessun modello Seedance disponibile. Configurare nel pannello di amministrazione.',

@@ -17,6 +17,7 @@ export interface ModelFamily {
   currency: string | null;
   outputPrice: number | null;
   companyCode: string | null;
+  companyName?: string | null;
   releaseYear: string | null;
   status: boolean;
   coverImage: string | null;
@@ -46,6 +47,7 @@ export interface Model {
   supportNegativePrompt: boolean;
   currency: string | null;
   outputPrice: number | null;
+  companyName?: string | null;
   coverImage: string | null;
   /** 模型源头：API、LOCAL_MODEL；为 API 时走异步文生图接口 */
   modelSource?: string | null;

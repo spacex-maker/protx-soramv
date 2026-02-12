@@ -102,6 +102,7 @@ export default {
   'create.tab.imageToImage': '이미지에서 이미지',
   'create.tab.imageToVideo': '이미지에서 비디오',
   'create.tab.seedanceVideo': 'Seedance 이미지→비디오',
+  'create.feedback': '피드백',
   'create.seedance.title': 'Seedance 이미지→비디오',
   'create.seedance.subtitle': 'ByteDance Doubao Seedance 1.5, 이미지 기반 숏폼 비디오 생성',
   'create.seedance.noModel': '사용 가능한 Seedance 모델이 없습니다. 관리자에서 설정해 주세요.',
