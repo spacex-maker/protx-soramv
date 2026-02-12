@@ -9,20 +9,19 @@ export const payment = {
    * @param {Object} params - 订单参数
    * @param {string} params.coinType - 币种 (CNY/USD/USDT)
    * @param {number} params.amount - 充值金额
-   * @param {string} params.paymentMethod - 支付方式 (alipay/wechat/usdt/bank/creem)
+   * @param {string} params.paymentMethod - 支付方式 (alipay/wechat_pay_xunhu/usdt/bank/creem)
    * @returns {Promise} 订单信息
    */
   createRechargeOrder: async (params) => {
     try {
-      const { data } = await instance.post('/productx/recharge/create', {
+      const body = {
         coinType: params.coinType,
         amount: params.amount,
         paymentMethod: params.paymentMethod,
-        // creem 支付特定参数
-        ...(params.paymentMethod === 'creem' && {
-          creemProductId: params.creemProductId,
-        }),
-      });
+      };
+      if (params.creemProductId) body.creemProductId = params.creemProductId;
+      if (params.skuCode) body.skuCode = params.skuCode;
+      const { data } = await instance.post('/productx/recharge/create', body);
       return data;
     } catch (error) {
       return {
@@ -88,6 +87,26 @@ export const payment = {
   },
 
   /**
+   * 创建微信支付（虎皮椒），获取支付 URL 与二维码 URL
+   * @param {Object} params - { orderNo }
+   * @returns {Promise} { success, data: { url, urlQrcode } }
+   */
+  createWechatCheckout: async (params) => {
+    try {
+      const { data } = await instance.post('/productx/recharge/wechat/checkout', {
+        orderNo: params.orderNo,
+      });
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取微信支付链接失败',
+        error: error,
+      };
+    }
+  },
+
+  /**
    * 创建 Creem 支付会话
    * @param {Object} params - 支付参数
    * @param {string} params.orderNo - 订单号
@@ -139,6 +158,24 @@ export const payment = {
       return {
         success: false,
         message: error.response?.data?.message || '获取货币列表失败',
+        error: error,
+      };
+    }
+  },
+
+  /**
+   * 获取 CNY 充值套餐列表（currency=CNY, type=充值, 上架）
+   * @returns {Promise} 套餐列表
+   */
+  getCnyRechargePackages: async () => {
+    try {
+      const { data } = await instance.get('/productx/app-product-packages/cny-recharge');
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取套餐列表失败',
+        data: [],
         error: error,
       };
     }
