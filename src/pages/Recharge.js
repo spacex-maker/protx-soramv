@@ -1,26 +1,27 @@
 import React, { useState, useEffect, useRef } from "react";
 import styled, { css, keyframes } from "styled-components";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useIntl } from "react-intl";
+import { useLocale } from "contexts/LocaleContext";
 import SimpleHeader from "components/headers/simple";
 import instance from "api/axios";
 import { auth } from "api/auth";
 import { payment } from "api/payment";
-import { 
-  Button, 
+import {
+  Button,
   ConfigProvider,
   theme,
-  Statistic,
   Input,
   message,
-  Tooltip,
-  Spin
+  Spin,
+  Badge,
+  Tag,
+  Modal
 } from "antd";
-import { 
+import {
   WalletOutlined,
   ArrowLeftOutlined,
-  CheckCircleFilled,
   AlipayCircleFilled,
   WechatFilled,
   BankOutlined,
@@ -29,227 +30,108 @@ import {
   RightOutlined,
   GiftFilled,
   ReloadOutlined,
-  CreditCardOutlined
+  CreditCardOutlined,
+  CheckCircleFilled
 } from "@ant-design/icons";
-import { 
-  FaYenSign, 
+import {
+  FaYenSign,
   FaDollarSign
 } from "react-icons/fa";
-import { 
-  SiTether 
+import {
+  SiTether
 } from "react-icons/si";
-import dayjs from "dayjs";
 
 // ==========================================
-// 1. 样式系统 (Styled System) - 全面增加 ?. 保护
+// 1. 样式系统 (Design System)
 // ==========================================
 
 const PageLayout = styled.div`
   min-height: ${props => props.$embedded ? 'auto' : '100vh'};
   width: 100%;
   background-color: ${props => props.$token?.colorBgLayout};
-  /* 高级噪点纹理背景 */
-  background-image: 
-    radial-gradient(at 0% 0%, ${props => props.$token?.colorPrimary}15 0px, transparent 50%),
-    radial-gradient(at 100% 100%, ${props => props.$token?.colorSuccess}10 0px, transparent 50%);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: ${props => props.$token?.colorText};
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   padding-top: ${props => props.$embedded ? '0' : '80px'};
   overflow-x: hidden;
-  
-  &::before {
-    content: "";
-    position: fixed;
-    top: 0; left: 0; width: 100%; height: 100%;
-    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none;
-    z-index: 0;
-  }
+
+  /* 极简背景纹理 */
+  background-image: radial-gradient(${props => props.$token?.colorFillSecondary} 1px, transparent 1px);
+  background-size: 40px 40px;
 `;
 
 const ContentContainer = styled(motion.div)`
-  max-width: 1100px;
+  max-width: 1200px;
   width: 95%;
-  margin: 20px auto 60px;
+  margin: 24px auto 60px;
   position: relative;
   z-index: 10;
 `;
 
-// ==========================================
-// 2. 头部组件
-// ==========================================
+// ------------------------------------------
+// 头部区域
+// ------------------------------------------
 
 const HeaderArea = styled.div`
   margin-bottom: 32px;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
 
-  .left {
-    .back-link {
+  .left-content {
+    .back-btn {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       font-size: 14px;
-      color: ${props => props.$token?.colorTextSecondary};
-      margin-bottom: 12px;
+      font-weight: 500;
+      color: ${props => props.$token?.colorPrimary};
+      margin-bottom: 14px;
       cursor: pointer;
-      transition: color 0.2s;
-      &:hover { color: ${props => props.$token?.colorPrimary}; }
+      transition: all 0.2s ease;
+      padding: 8px 14px;
+      border-radius: 10px;
+      background: ${props => props.$token?.colorPrimaryBg};
+      border: 1px solid ${props => props.$token?.colorPrimaryBorder};
+
+      &:hover {
+        background: ${props => props.$token?.colorPrimary}15;
+        color: ${props => props.$token?.colorPrimaryActive};
+        border-color: ${props => props.$token?.colorPrimary};
+        transform: translateX(-2px);
+      }
     }
+
     h1 {
       font-size: 32px;
-      font-weight: 800;
-      color: ${props => props.$token?.colorText};
+      font-weight: 700;
       margin: 0;
       letter-spacing: -0.5px;
+      color: ${props => props.$token?.colorText};
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
-  }
-
-  .balance-preview {
-    text-align: right;
-    .label { font-size: 12px; color: ${props => props.$token?.colorTextSecondary}; text-transform: uppercase; letter-spacing: 1px; }
-    .val { font-size: 24px; font-weight: 700; color: ${props => props.$token?.colorText}; font-family: 'SF Mono', monospace; }
   }
 
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: flex-start;
-    gap: 20px;
-    .balance-preview { text-align: left; }
-  }
-`;
-
-// ==========================================
-// 现代化余额卡片组件
-// ==========================================
-
-const BalanceCard = styled(motion.div)`
-  background: ${props => props.$token?.colorBgContainer};
-  border-radius: 20px;
-  padding: 24px;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-  border: 1px solid ${props => props.$token?.colorBorderSecondary};
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 24px;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, 
-      ${props => props.$token?.colorPrimary} 0%, 
-      ${props => props.$token?.colorSuccess} 100%);
-  }
-
-  .balance-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 20px;
-    
-    .title {
-      font-size: 14px;
-      font-weight: 600;
-      color: ${props => props.$token?.colorTextSecondary};
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .refresh-btn {
-      cursor: pointer;
-      color: ${props => props.$token?.colorTextTertiary};
-      transition: all 0.2s;
-      &:hover {
-        color: ${props => props.$token?.colorPrimary};
-        transform: rotate(180deg);
-      }
-    }
-  }
-
-  .balance-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
     gap: 16px;
-
-    @media (max-width: 768px) {
-      grid-template-columns: 1fr;
-      gap: 12px;
-    }
-  }
-
-  .balance-item {
-    padding: 16px;
-    border-radius: 12px;
-    background: ${props => props.$token?.colorFillQuaternary};
-    border: 1px solid ${props => props.$token?.colorBorder};
-    transition: all 0.2s;
-    
-    &:hover {
-      background: ${props => props.$token?.colorFillTertiary};
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-    }
-
-    .coin-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      color: ${props => props.$token?.colorTextSecondary};
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      
-      svg {
-        transition: all 0.2s;
-        flex-shrink: 0;
-      }
-    }
-
-    .coin-value {
-      font-size: 20px;
-      font-weight: 700;
-      color: ${props => props.$token?.colorText};
-      font-family: 'SF Mono', monospace;
-      line-height: 1.2;
-    }
-
-    &.active {
-      background: ${props => props.$token?.colorPrimaryBg};
-      border-color: ${props => props.$token?.colorPrimary};
-      
-      .coin-label {
-        color: ${props => props.$token?.colorPrimary};
-        
-        svg {
-          color: ${props => props.$token?.colorPrimary} !important;
-          transform: scale(1.1);
-        }
-      }
-      
-      .coin-value {
-        color: ${props => props.$token?.colorPrimary};
-      }
-    }
   }
 `;
 
-// ==========================================
-// 3. 双栏布局系统
-// ==========================================
+// ------------------------------------------
+// 布局结构
+// ------------------------------------------
 
 const SplitLayout = styled.div`
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1fr 380px;
   gap: 40px;
 
   @media (max-width: 992px) {
     grid-template-columns: 1fr;
+    gap: 32px;
   }
 `;
 
@@ -263,9 +145,9 @@ const SideSection = styled.div`
   position: relative;
 `;
 
-// ==========================================
-// 4. 核心组件：选择器与卡片
-// ==========================================
+// ------------------------------------------
+// 通用区块标题
+// ------------------------------------------
 
 const SectionTitle = styled.h3`
   font-size: 16px;
@@ -275,261 +157,412 @@ const SectionTitle = styled.h3`
   display: flex;
   align-items: center;
   gap: 8px;
-  
-  &::before {
+
+  &::after {
     content: '';
-    display: block;
-    width: 4px;
-    height: 16px;
-    background: ${props => props.$token?.colorPrimary};
-    border-radius: 2px;
+    flex: 1;
+    height: 1px;
+    background: ${props => props.$token?.colorBorderSecondary};
+    opacity: 0.6;
   }
 `;
 
-const CoinToggle = styled.div`
-  display: flex;
+// ------------------------------------------
+// 1. 币种切换器 (Segmented Control 风格)
+// ------------------------------------------
+
+const CoinSwitchContainer = styled.div`
   background: ${props => props.$token?.colorFillQuaternary};
   padding: 4px;
   border-radius: 12px;
-  margin-bottom: 32px;
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
 `;
 
-const CoinOption = styled.div`
-  flex: 1;
-  text-align: center;
-  padding: 10px;
+const CoinTab = styled.button`
+  border: none;
+  background: ${props => props.$active ? props.$token?.colorBgContainer : 'transparent'};
+  color: ${props => props.$active ? props.$token?.colorText : props.$token?.colorTextSecondary};
+  padding: 8px 16px;
+  border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  border-radius: 8px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
+  gap: 6px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: ${props => props.$active ? '0 2px 8px rgba(0,0,0,0.08)' : 'none'};
+
+  &:hover {
+    color: ${props => props.$token?.colorText};
+  }
 
   svg {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    flex-shrink: 0;
+    color: ${props => props.$active ? props.$token?.colorPrimary : 'inherit'};
   }
-
-  ${props => props.$active ? css`
-    background: ${props.$token?.colorBgContainer};
-    color: ${props.$token?.colorPrimary};
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    
-    svg {
-      color: ${props.$token?.colorPrimary};
-      transform: scale(1.1);
-    }
-  ` : css`
-    color: ${props.$token?.colorTextSecondary};
-    
-    svg {
-      color: ${props.$token?.colorTextSecondary};
-    }
-    
-    &:hover { 
-      color: ${props.$token?.colorText}; 
-      svg {
-        color: ${props.$token?.colorText};
-        transform: scale(1.05);
-      }
-    }
-  `}
 `;
 
-const AmountGrid = styled.div`
+// ------------------------------------------
+// 2. 支付方式 (Grid 风格)
+// ------------------------------------------
+
+const PaymentGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
-  margin-bottom: 16px;
   
   @media (max-width: 576px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
 `;
 
-const AmountCard = styled(motion.div)`
+const PayMethodCard = styled.div`
   position: relative;
-  padding: 24px 16px;
-  border-radius: 16px;
+  border: 2px solid ${props => props.$active ? props.$token?.colorPrimary : props.$token?.colorBorderSecondary};
   background: ${props => props.$active ? props.$token?.colorPrimaryBg : props.$token?.colorBgContainer};
-  border: 2px solid ${props => props.$active ? props.$token?.colorPrimary : 'transparent'};
-  box-shadow: ${props => props.$active ? `0 0 0 4px ${props.$token?.colorPrimary}20` : '0 4px 20px rgba(0,0,0,0.02)'};
+  border-radius: 16px;
+  padding: 16px;
   cursor: pointer;
-  text-align: center;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 16px;
   overflow: hidden;
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0,0,0,0.06);
-    border-color: ${props => props.$active ? props.$token?.colorPrimary : props.$token?.colorBorder};
+    border-color: ${props => props.$active ? props.$token?.colorPrimary : props.$token?.colorPrimaryBorder};
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.04);
   }
 
-  .val-group {
-    margin-bottom: 8px;
-    .symbol { font-size: 16px; vertical-align: top; margin-right: 2px; }
-    .num { font-size: 32px; font-weight: 800; font-family: 'SF Pro Display', sans-serif; line-height: 1; }
-  }
-
-  .bonus-badge {
-    display: inline-block;
-    font-size: 12px;
-    font-weight: 600;
-    color: ${props => props.$token?.colorSuccess};
-    background: ${props => props.$token?.colorSuccessBg};
-    padding: 2px 8px;
-    border-radius: 100px;
-  }
-
-  /* 热销标签 */
-  ${props => props.$tag && css`
-    &::after {
-      content: '${props.$tag}';
-      position: absolute;
-      top: 0;
-      right: 0;
-      background: linear-gradient(135deg, #ff4d4f, #ff7875);
-      color: white;
-      font-size: 10px;
-      font-weight: 700;
-      padding: 4px 12px;
-      border-bottom-left-radius: 12px;
-      box-shadow: -2px 2px 8px rgba(0,0,0,0.1);
-    }
-  `}
-`;
-
-const CustomInputWrapper = styled.div`
-  margin-top: 16px;
-  .ant-input-affix-wrapper {
-    border-radius: 12px;
-    padding: 12px 16px;
-    border: 2px solid transparent;
-    background: ${props => props.$token?.colorFillQuaternary};
-    
-    &:hover, &:focus-within {
-      background: ${props => props.$token?.colorBgContainer};
-      border-color: ${props => props.$token?.colorPrimary} !important;
-      box-shadow: 0 0 0 4px ${props => props.$token?.colorPrimaryBg} !important;
-    }
-
-    input { font-size: 16px; font-weight: 600; text-align: center; background: transparent; }
-  }
-`;
-
-const PaymentList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-`;
-
-const PayItem = styled.div`
-  display: flex;
-  align-items: center;
-  padding: 16px 20px;
-  border-radius: 16px;
-  background: ${props => props.$active ? props.$token?.colorBgContainer : props.$token?.colorBgLayout};
-  border: 2px solid ${props => props.$active ? props.$token?.colorPrimary : 'transparent'};
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: ${props => props.$token?.colorBgContainer};
-  }
-
-  .icon-box {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+  .icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
     background: #fff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 24px;
-    margin-right: 16px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  }
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    flex-shrink: 0;
 
-  .info {
-    flex: 1;
-    .title { font-size: 15px; font-weight: 600; color: ${props => props.$token?.colorText}; }
-    .sub { font-size: 12px; color: ${props => props.$token?.colorTextSecondary}; }
-  }
-
-  .radio-circle {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    border: 2px solid ${props => props.$active ? props.$token?.colorPrimary : props.$token?.colorBorder};
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    
-    &::after {
-      content: '';
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: ${props => props.$token?.colorPrimary};
-      opacity: ${props => props.$active ? 1 : 0};
-      transform: scale(${props => props.$active ? 1 : 0});
-      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    img {
+      width: 100%; height: 100%; object-fit: cover; border-radius: 10px;
     }
   }
-`;
 
-const ReceiptCard = styled.div`
-  background: ${props => props.$token?.colorBgContainer};
-  border-radius: 24px;
-  padding: 32px;
-  box-shadow: 0 20px 40px -12px rgba(0,0,0,0.1);
-  position: sticky;
-  top: 100px;
-  border: 1px solid ${props => props.$token?.colorBorderSecondary};
+  .content {
+    flex: 1;
+    min-width: 0;
+    .name-row {
+      display: flex; align-items: center; gap: 6px;
+      font-weight: 600;
+      color: ${props => props.$token?.colorText};
+      margin-bottom: 2px;
+    }
+    .desc {
+      font-size: 12px;
+      color: ${props => props.$token?.colorTextSecondary};
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
 
-  &::before {
-    content: '';
+  .check-mark {
     position: absolute;
-    top: 0; left: 24px; right: 24px;
-    height: 4px;
+    top: -1px; right: -1px;
+    width: 24px; height: 24px;
     background: ${props => props.$token?.colorPrimary};
-    border-radius: 0 0 4px 4px;
+    border-bottom-left-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+    font-size: 12px;
+    opacity: ${props => props.$active ? 1 : 0};
+    transition: opacity 0.2s;
   }
 `;
 
-const ReceiptRow = styled.div`
+// ------------------------------------------
+// 3. 金额选择 (Modern Grid)
+// ------------------------------------------
+
+const AmountWrapper = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+
+  @media (max-width: 576px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+`;
+
+const AmountOption = styled(motion.div)`
+  border-radius: 16px;
+  background: ${props => props.$active
+    ? `linear-gradient(135deg, ${props.$token?.colorPrimary} 0%, ${props.$token?.colorPrimary}e6 100%)`
+    : props.$token?.colorBgContainer};
+  border: 1px solid ${props => props.$active ? 'transparent' : props.$token?.colorBorderSecondary};
+  padding: 20px 12px;
+  text-align: center;
+  cursor: pointer;
+  position: relative;
+  box-shadow: ${props => props.$active
+    ? `0 8px 20px -4px ${props.$token?.colorPrimary}66`
+    : '0 2px 4px rgba(0,0,0,0.02)'};
+  color: ${props => props.$active ? '#fff' : props.$token?.colorText};
+  transition: transform 0.2s, box-shadow 0.2s;
+
+  &:hover {
+    transform: translateY(-4px);
+    border-color: ${props => props.$active ? 'transparent' : props.$token?.colorPrimary};
+  }
+
+  .amount-val {
+    font-size: 28px;
+    font-weight: 800;
+    font-family: 'SF Pro Display', sans-serif;
+    line-height: 1;
+    margin-bottom: 4px;
+    
+    small { font-size: 16px; font-weight: 600; margin-right: 2px; }
+  }
+
+  .bonus-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    background: ${props => props.$active ? 'rgba(255,255,255,0.2)' : props.$token?.colorSuccessBg};
+    color: ${props => props.$active ? '#fff' : props.$token?.colorSuccess};
+  }
+
+  .bonus-tag.token-breakdown {
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-size: 11px;
+    white-space: normal;
+    line-height: 1.35;
+  }
+  
+  .corner-badge {
+    position: absolute;
+    top: 0; right: 0;
+    background: #ff4d4f;
+    color: #fff;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 0 14px 0 10px;
+    font-weight: 700;
+  }
+`;
+
+const CustomInputArea = styled.div`
+  margin-top: 16px;
+  .ant-input-affix-wrapper {
+    padding: 12px 16px;
+    border-radius: 12px;
+    border-color: ${props => props.$token?.colorBorderSecondary};
+    background: ${props => props.$token?.colorBgContainer};
+    &:hover, &:focus-within {
+      border-color: ${props => props.$token?.colorPrimary};
+    }
+  }
+  input { font-size: 16px; font-weight: 600; text-align: right; }
+`;
+
+// ------------------------------------------
+// 4. 右侧收银台 (Floating Panel) + 账户余额
+// ------------------------------------------
+
+const BalanceSection = styled.div`
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid ${props => props.$token?.colorBorderSecondary};
+
+  .balance-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+
+    .balance-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: ${props => props.$token?.colorTextSecondary};
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .refresh-btn {
+      width: 26px;
+      height: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      background: ${props => props.$token?.colorFillQuaternary};
+      color: ${props => props.$token?.colorTextTertiary};
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 12px;
+
+      &:hover {
+        background: ${props => props.$token?.colorFillTertiary};
+        color: ${props => props.$token?.colorPrimary};
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  .balance-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+`;
+
+const BalanceItem = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: ${props => props.$active ? props.$token?.colorPrimaryBg : props.$token?.colorFillQuaternary};
+  border: 1px solid ${props => props.$active ? props.$token?.colorPrimaryBorder : 'transparent'};
+  margin-bottom: 6px;
+  transition: all 0.2s;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  .label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: ${props => props.$active ? props.$token?.colorPrimary : props.$token?.colorTextSecondary};
+  }
+
+  .value {
+    font-size: 15px;
+    font-weight: 700;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    color: ${props => props.$active ? props.$token?.colorPrimary : props.$token?.colorText};
+    font-variant-numeric: tabular-nums;
+  }
+
+  &.token-item .value {
+    color: ${props => props.$token?.colorWarning};
+  }
+
+  &.token-item .label {
+    color: ${props => props.$token?.colorWarning};
+  }
+`;
+
+const ReceiptPanel = styled.div`
+  background: ${props => props.$token?.colorBgContainer};
+  border-radius: 24px;
+  padding: 32px 24px;
+  border: 1px solid ${props => props.$token?.colorBorderSecondary};
+  box-shadow: 
+    0 20px 40px -10px rgba(0,0,0,0.08),
+    0 0 0 1px rgba(0,0,0,0.02);
+  position: sticky;
+  top: 100px;
+
+  .header-row {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid ${props => props.$token?.colorBorderSecondary};
+  }
+`;
+
+const DetailRow = styled.div`
   display: flex;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
   font-size: 14px;
   color: ${props => props.$token?.colorTextSecondary};
   
-  span:last-child {
-    font-weight: 600;
+  &.main {
     color: ${props => props.$token?.colorText};
+    font-weight: 500;
   }
 
-  &.total {
+  &.total-row {
     margin-top: 24px;
-    padding-top: 24px;
-    border-top: 2px dashed ${props => props.$token?.colorBorder};
-    font-size: 16px;
-    align-items: flex-end;
+    padding-top: 20px;
+    border-top: 2px dashed ${props => props.$token?.colorBorderSecondary};
+    align-items: baseline;
     
-    .total-price {
-      font-size: 36px;
-      font-weight: 800;
+    .label { font-size: 16px; font-weight: 600; }
+    .val { 
+      font-size: 36px; 
+      font-weight: 800; 
       color: ${props => props.$token?.colorPrimary};
       line-height: 1;
+      
+      small { font-size: 20px; font-weight: 600; }
     }
   }
 `;
 
-const SecureBadge = styled.div`
+// 动画按钮
+const shine = keyframes`
+  0% { left: -100%; }
+  20% { left: 100%; }
+  100% { left: 100%; }
+`;
+
+const PayButton = styled(Button)`
+  height: 56px;
+  border-radius: 14px !important;
+  font-size: 18px;
+  font-weight: 700;
   margin-top: 24px;
+  border: none;
+  background: linear-gradient(135deg, ${props => props.$token?.colorPrimary}, ${props => props.$token?.colorPrimary}dd) !important;
+  box-shadow: 0 8px 24px ${props => props.$token?.colorPrimary}40;
+  position: relative;
+  overflow: hidden;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px ${props => props.$token?.colorPrimary}60;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; width: 50%; height: 100%;
+    background: linear-gradient(to right, transparent, rgba(255,255,255,0.3), transparent);
+    transform: skewX(-20deg);
+    animation: ${shine} 3s infinite;
+  }
+  
+  &:disabled {
+    background: ${props => props.$token?.colorBgContainerDisabled} !important;
+    color: ${props => props.$token?.colorTextDisabled} !important;
+    box-shadow: none;
+    &::after { display: none; }
+  }
+`;
+
+const TrustBadge = styled.div`
+  margin-top: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -537,143 +570,14 @@ const SecureBadge = styled.div`
   font-size: 12px;
   color: ${props => props.$token?.colorSuccess};
   background: ${props => props.$token?.colorSuccessBg};
-  padding: 8px;
+  padding: 10px;
   border-radius: 8px;
-`;
-
-// 脉冲动画
-const pulseAnimation = keyframes`
-  0%, 100% {
-    box-shadow: 
-      0 8px 24px rgba(0, 112, 243, 0.4),
-      0 0 0 0 rgba(0, 112, 243, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  }
-  50% {
-    box-shadow: 
-      0 8px 32px rgba(0, 112, 243, 0.6),
-      0 0 0 8px rgba(0, 112, 243, 0.1),
-      inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  }
-`;
-
-// 光效扫过动画
-const shineAnimation = keyframes`
-  0% {
-    left: -100%;
-  }
-  100% {
-    left: 100%;
-  }
-`;
-
-const PayButton = styled(Button)`
-  height: 56px;
-  border-radius: 50px !important; /* 全圆弧 */
-  font-size: 18px;
-  font-weight: 600;
-  margin-top: 24px;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
-  /* 渐变背景 */
-  background: linear-gradient(135deg, 
-    ${props => props.$token?.colorPrimary} 0%, 
-    ${props => {
-      // 计算一个稍微亮一点的颜色作为渐变终点
-      const primary = props.$token?.colorPrimary || '#0070f3';
-      return primary;
-    }} 100%
-  ) !important;
-  border: none !important;
-  
-  /* 基础阴影和光晕 */
-  box-shadow: 
-    0 8px 24px ${props => props.$token?.colorPrimary}40,
-    0 0 0 0 ${props => props.$token?.colorPrimary}20,
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  
-  /* 光效层 */
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.3),
-      transparent
-    );
-    z-index: 1;
-    pointer-events: none;
-  }
-  
-  /* 内容层级 */
-  > span {
-    position: relative;
-    z-index: 2;
-  }
-  
-  /* 悬停效果 */
-  &:hover:not(:disabled) {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 
-      0 12px 32px ${props => props.$token?.colorPrimary}60,
-      0 0 0 4px ${props => props.$token?.colorPrimary}20,
-      inset 0 1px 0 rgba(255, 255, 255, 0.3);
-    animation: ${pulseAnimation} 2s ease-in-out infinite;
-    
-    &::before {
-      animation: ${shineAnimation} 0.6s ease-in-out;
-    }
-  }
-  
-  /* 激活/点击效果 */
-  &:active:not(:disabled) {
-    transform: translateY(-1px) scale(0.98);
-    box-shadow: 
-      0 4px 16px ${props => props.$token?.colorPrimary}50,
-      0 0 0 2px ${props => props.$token?.colorPrimary}30,
-      inset 0 2px 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  /* 加载状态 */
-  &.ant-btn-loading {
-    animation: ${pulseAnimation} 2s ease-in-out infinite;
-  }
-  
-  /* 禁用状态 */
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-    animation: none !important;
-  }
-  
-  /* 图标动画 */
-  .anticon {
-    transition: transform 0.3s ease;
-    display: inline-flex;
-    align-items: center;
-  }
-  
-  &:hover:not(:disabled) .anticon {
-    transform: translateX(4px);
-  }
-  
-  /* 加载图标特殊处理 */
-  .ant-btn-loading-icon {
-    z-index: 3;
-  }
+  svg { font-size: 14px; }
 `;
 
 // ==========================================
-// 2. 数据配置
+// 2. 逻辑部分 (保持原样，仅整合样式)
 // ==========================================
 
 const PRESETS = {
@@ -703,23 +607,12 @@ const PRESETS = {
   ]
 };
 
-const PAY_METHODS = [
-  { id: 'alipay', name: '支付宝', icon: <AlipayCircleFilled style={{color:'#1677ff'}} />, desc: '数亿用户的选择' },
-  { id: 'wechat', name: '微信支付', icon: <WechatFilled style={{color:'#52c41a'}} />, desc: '国民级社交支付' },
-  { id: 'creem', name: 'Creem 支付', icon: <CreditCardOutlined style={{color:'#1890ff'}} />, desc: '国际信用卡支付' },
-  { id: 'usdt', name: '加密货币', icon: <DollarCircleFilled style={{color:'#26a17b'}} />, desc: 'USDT (TRC20/ERC20)' },
-  { id: 'bank', name: '银行转账', icon: <BankOutlined style={{color:'#722ed1'}} />, desc: '大额支付首选' },
-];
-
-// ==========================================
-// 3. 逻辑组件
-// ==========================================
-
 const RechargeContent = ({ embedded = false }) => {
   const { token } = theme.useToken();
   const navigate = useNavigate();
   const intl = useIntl();
-  
+  const { locale } = useLocale();
+
   // State
   const [coinType, setCoinType] = useState('');
   const [amount, setAmount] = useState(200);
@@ -737,14 +630,19 @@ const RechargeContent = ({ embedded = false }) => {
   const [selectedCreemProduct, setSelectedCreemProduct] = useState(null);
   const [supportedCurrencies, setSupportedCurrencies] = useState([]);
   const [currenciesLoading, setCurrenciesLoading] = useState(false);
+  const [cnyPackages, setCnyPackages] = useState([]);
+  const [cnyPackagesLoading, setCnyPackagesLoading] = useState(false);
+  const [selectedCnyPackage, setSelectedCnyPackage] = useState(null);
+  const [wechatQrUrl, setWechatQrUrl] = useState('');
+  const [wechatPayModalVisible, setWechatPayModalVisible] = useState(false);
   const orderPollingIntervalRef = useRef(null);
+
+  // --- 保持所有业务逻辑 Effect 和 Function 不变 ---
 
   useEffect(() => {
     fetchBalance();
     fetchUserInfo();
     fetchSupportedCurrencies();
-    
-    // 清理轮询
     return () => {
       if (orderPollingIntervalRef.current) {
         clearInterval(orderPollingIntervalRef.current);
@@ -759,8 +657,8 @@ const RechargeContent = ({ embedded = false }) => {
       const response = await instance.get('/productx/user/balance');
       if (response.data.success && response.data.data) {
         const { balance: cnyBalance, usdtAmount, usdBalance, tokenBalance } = response.data.data;
-        setBalance({ 
-          cny: cnyBalance || 0, 
+        setBalance({
+          cny: cnyBalance || 0,
           usdt: usdtAmount || 0,
           usd: usdBalance || 0,
           token: tokenBalance || 0
@@ -791,18 +689,15 @@ const RechargeContent = ({ embedded = false }) => {
     }
   };
 
-  // 获取系统支持的货币列表
   const fetchSupportedCurrencies = async () => {
     setCurrenciesLoading(true);
     try {
       const result = await payment.getSupportedCurrencies();
       if (result.success && result.data) {
         setSupportedCurrencies(result.data);
-        // 设置默认选中第一个货币
         if (result.data.length > 0 && !coinType) {
           const firstCurrency = result.data[0];
           setCoinType(firstCurrency.currencyCode);
-          // 选择货币后，获取该货币支持的支付方式
           fetchPaymentMethods(firstCurrency.currencyCode);
         }
       }
@@ -825,15 +720,12 @@ const RechargeContent = ({ embedded = false }) => {
           desc: method.descriptionZh || method.descriptionEn || '',
           iconUrl: method.iconUrl,
           method: method,
-          // 根据 payment_method_code 选择对应的图标组件
           icon: getPaymentIcon(method.paymentMethodCode, method.iconUrl),
         }));
         setPaymentMethods(methods);
-        // 设置默认选中第一个支付方式
         if (methods.length > 0) {
           setPayMethod(methods[0].id);
         } else {
-          // 如果没有支付方式，清空所有选择
           setPayMethod('');
           setAmount(0);
           setCustomAmount('');
@@ -841,7 +733,6 @@ const RechargeContent = ({ embedded = false }) => {
           setSelectedCreemProduct(null);
         }
       } else {
-        // 如果请求失败或没有数据，清空所有选择
         setPaymentMethods([]);
         setPayMethod('');
         setAmount(0);
@@ -852,29 +743,19 @@ const RechargeContent = ({ embedded = false }) => {
     } catch (error) {
       console.error(intl.formatMessage({ id: 'recharge.message.fetchPaymentMethodsError' }), error);
       message.error(intl.formatMessage({ id: 'recharge.message.fetchPaymentMethodsError' }));
-      // 出错时也清空选择
       setPaymentMethods([]);
       setPayMethod('');
-      setAmount(0);
-      setCustomAmount('');
-      setCreemProducts([]);
-      setSelectedCreemProduct(null);
     } finally {
       setPaymentMethodsLoading(false);
     }
   };
 
-  // 根据支付方式代码获取对应的图标组件
   const getPaymentIcon = (code, iconUrl) => {
-    // 如果有图标URL，优先使用图片
-    if (iconUrl) {
-      return <img src={iconUrl} alt={code} style={{ width: 24, height: 24 }} />;
-    }
-    
-    // 否则根据代码返回对应的图标组件
+    if (iconUrl) return <img src={iconUrl} alt={code} />;
     const iconMap = {
       'alipay': <AlipayCircleFilled style={{color:'#1677ff'}} />,
       'wechat': <WechatFilled style={{color:'#52c41a'}} />,
+      'wechat_pay_xunhu': <WechatFilled style={{color:'#52c41a'}} />,
       'creem': <CreditCardOutlined style={{color:'#1890ff'}} />,
       'usdt': <DollarCircleFilled style={{color:'#26a17b'}} />,
       'crypto_usdt': <DollarCircleFilled style={{color:'#26a17b'}} />,
@@ -883,7 +764,6 @@ const RechargeContent = ({ embedded = false }) => {
     return iconMap[code] || <CreditCardOutlined style={{color:'#1890ff'}} />;
   };
 
-  // 获取 Creem 产品列表
   const fetchCreemProducts = async (coinType) => {
     setCreemProductsLoading(true);
     try {
@@ -900,7 +780,6 @@ const RechargeContent = ({ embedded = false }) => {
           product: product,
         }));
         setCreemProducts(products);
-        // 如果有产品，默认选中第一个
         if (products.length > 0) {
           setSelectedCreemProduct(products[0]);
           setAmount(products[0].amount);
@@ -919,36 +798,57 @@ const RechargeContent = ({ embedded = false }) => {
     }
   };
 
-  // 监听币种变化，重新获取支付方式
   useEffect(() => {
     if (coinType) {
       fetchPaymentMethods(coinType);
-      // 清空之前的选择
       setPayMethod('');
       setCreemProducts([]);
       setSelectedCreemProduct(null);
+      setSelectedCnyPackage(null);
+      if (coinType === 'CNY') {
+        fetchCnyRechargePackages();
+      } else {
+        setCnyPackages([]);
+      }
     }
   }, [coinType]);
 
-  // 监听支付方式变化
+  const fetchCnyRechargePackages = async () => {
+    setCnyPackagesLoading(true);
+    try {
+      const result = await payment.getCnyRechargePackages();
+      if (result.success && Array.isArray(result.data)) {
+        setCnyPackages(result.data);
+        if (result.data.length > 0) {
+          setSelectedCnyPackage(result.data[0]);
+          setAmount(Number(result.data[0].price));
+          setCustomAmount('');
+        }
+      } else {
+        setCnyPackages([]);
+      }
+    } catch (error) {
+      console.error(intl.formatMessage({ id: 'recharge.message.fetchBalanceError' }), error);
+      setCnyPackages([]);
+    } finally {
+      setCnyPackagesLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (payMethod === 'creem' && coinType) {
-      // 选择 Creem 支付时，获取产品列表
       fetchCreemProducts(coinType);
     } else {
-      // 切换到其他支付方式时，清空 Creem 产品列表
       setCreemProducts([]);
       setSelectedCreemProduct(null);
     }
   }, [payMethod, coinType]);
 
-  const handlePresetClick = (val, creemProduct = null) => {
+  const handlePresetClick = (val, creemProduct = null, cnyPackage = null) => {
     setAmount(val);
     setCustomAmount('');
-    // 如果是 Creem 支付，保存选中的产品
-    if (creemProduct) {
-      setSelectedCreemProduct(creemProduct);
-    }
+    if (creemProduct) setSelectedCreemProduct(creemProduct);
+    if (cnyPackage) setSelectedCnyPackage(cnyPackage);
   };
 
   const handleCustomChange = (e) => {
@@ -959,25 +859,25 @@ const RechargeContent = ({ embedded = false }) => {
     }
   };
 
-  const getCurrentAmount = () => amount || parseFloat(customAmount) || 0;
-  
-  // 根据货币代码获取符号
+  const getCurrentAmount = () => {
+    if (coinType === 'CNY' && selectedCnyPackage) return Number(selectedCnyPackage.price);
+    return amount || parseFloat(customAmount) || 0;
+  };
+
   const getSymbol = (currencyCode) => {
     if (!currencyCode) return '';
     const currency = supportedCurrencies.find(c => c.currencyCode === currencyCode);
     return currency ? currency.symbol : '';
   };
   const symbol = getSymbol(coinType);
-  
-  // 根据货币代码获取图标
-  const getCurrencyIcon = (code, size = 18) => {
+
+  const getCurrencyIcon = (code, size = 16) => {
     if (code === 'CNY') return <FaYenSign style={{ fontSize: size }} />;
     if (code === 'USDT') return <SiTether style={{ fontSize: size }} />;
     if (code === 'USD') return <FaDollarSign style={{ fontSize: size }} />;
     return <DollarCircleFilled style={{ fontSize: size }} />;
   };
-  
-  // 根据货币代码获取余额
+
   const getBalanceByCoinType = (currencyCode) => {
     if (!currencyCode) return 0;
     if (currencyCode === 'CNY') return balance.cny;
@@ -986,11 +886,7 @@ const RechargeContent = ({ embedded = false }) => {
     return 0;
   };
 
-  /**
-   * 轮询订单状态
-   */
   const pollOrderStatus = (orderNo) => {
-    // 清除之前的轮询
     if (orderPollingIntervalRef.current) {
       clearInterval(orderPollingIntervalRef.current);
       orderPollingIntervalRef.current = null;
@@ -1001,66 +897,47 @@ const RechargeContent = ({ embedded = false }) => {
         const result = await payment.getOrderStatus(orderNo);
         if (result.success && result.data) {
           const status = result.data.status;
-          
           if (status === 'PAID' || status === 'SUCCESS') {
-            // 支付成功
             clearInterval(interval);
             orderPollingIntervalRef.current = null;
             setCurrentOrderNo(null);
+            setWechatPayModalVisible(false);
             message.success(intl.formatMessage({ id: 'recharge.message.paymentSuccess' }));
-            // 刷新余额
             fetchBalance();
-            // 可选：跳转到订单页面
-            // navigate('/orders');
           } else if (status === 'CANCELLED' || status === 'FAILED' || status === 'EXPIRED') {
-            // 支付失败或取消
             clearInterval(interval);
             orderPollingIntervalRef.current = null;
             setCurrentOrderNo(null);
-            const statusMsg = status === 'CANCELLED' ? 
-              intl.formatMessage({ id: 'recharge.message.orderCancelled' }) : 
-              status === 'FAILED' ? 
-              intl.formatMessage({ id: 'recharge.message.paymentFailed' }) : 
-              intl.formatMessage({ id: 'recharge.message.orderExpired' });
+            const statusMsg = status === 'CANCELLED' ?
+                intl.formatMessage({ id: 'recharge.message.orderCancelled' }) :
+                status === 'FAILED' ?
+                    intl.formatMessage({ id: 'recharge.message.paymentFailed' }) :
+                    intl.formatMessage({ id: 'recharge.message.orderExpired' });
             message.warning(statusMsg);
           }
-          // 其他状态（PENDING等）继续轮询
         }
       } catch (error) {
         console.error(intl.formatMessage({ id: 'recharge.message.queryOrderError' }), error);
-        // 不中断轮询，继续尝试
       }
-    }, 3000); // 每3秒轮询一次
-
+    }, 3000);
     orderPollingIntervalRef.current = interval;
-    
-    // 5分钟后停止轮询（避免无限轮询）
     setTimeout(() => {
       if (orderPollingIntervalRef.current === interval) {
         clearInterval(interval);
         orderPollingIntervalRef.current = null;
       }
-    }, 300000); // 5分钟后停止
+    }, 300000);
   };
 
-  /**
-   * 处理 Creem 支付
-   */
   const handleCreemPayment = async (orderNo) => {
     try {
-      // 创建 Creem checkout session
       const checkoutResult = await payment.createCreemCheckout({ orderNo });
-      
       if (checkoutResult.success && checkoutResult.data) {
-        const { checkoutUrl, sessionId } = checkoutResult.data;
-        
+        const { checkoutUrl } = checkoutResult.data;
         if (checkoutUrl) {
-          // 打开支付页面
           const paymentWindow = window.open(checkoutUrl, '_blank', 'width=800,height=600');
-          
           if (paymentWindow) {
             message.info(intl.formatMessage({ id: 'recharge.message.paymentProcessing' }));
-            // 开始轮询订单状态
             pollOrderStatus(orderNo);
           } else {
             message.warning(intl.formatMessage({ id: 'recharge.message.popupBlocked' }));
@@ -1077,9 +954,37 @@ const RechargeContent = ({ embedded = false }) => {
     }
   };
 
-  /**
-   * 处理其他支付方式（支付宝、微信等）
-   */
+  const handleWechatPayment = async (orderNo) => {
+    try {
+      const result = await payment.createWechatCheckout({ orderNo });
+      if (!result.success || !result.data) {
+        message.error(result.message || intl.formatMessage({ id: 'recharge.message.paymentUrlError' }));
+        return;
+      }
+      const { url, urlQrcode } = result.data;
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+      if (isMobile && url) {
+        window.location.href = url;
+        message.info(intl.formatMessage({ id: 'recharge.message.paymentProcessing' }));
+        pollOrderStatus(orderNo);
+      } else if (urlQrcode) {
+        setWechatQrUrl(urlQrcode);
+        setWechatPayModalVisible(true);
+        message.info(intl.formatMessage({ id: 'recharge.message.scanQRToPay' }) || '请使用微信扫描二维码完成支付');
+        pollOrderStatus(orderNo);
+      } else if (url) {
+        window.open(url, '_blank');
+        message.info(intl.formatMessage({ id: 'recharge.message.paymentProcessing' }));
+        pollOrderStatus(orderNo);
+      } else {
+        message.error(intl.formatMessage({ id: 'recharge.message.paymentUrlError' }));
+      }
+    } catch (error) {
+      console.error(intl.formatMessage({ id: 'recharge.message.paymentError' }), error);
+      message.error(intl.formatMessage({ id: 'recharge.message.paymentError' }));
+    }
+  };
+
   const handleOtherPayment = (payUrl) => {
     if (payUrl) {
       window.open(payUrl, '_blank');
@@ -1093,40 +998,38 @@ const RechargeContent = ({ embedded = false }) => {
     const finalAmount = getCurrentAmount();
     if (finalAmount <= 0) return message.warning(intl.formatMessage({ id: 'recharge.message.invalidAmount' }));
     if (!payMethod) return message.warning(intl.formatMessage({ id: 'recharge.message.selectPaymentMethod' }));
-    
-    // Creem 支付需要选择产品
     if (payMethod === 'creem' && !selectedCreemProduct) {
       return message.warning(intl.formatMessage({ id: 'recharge.message.selectAmount' }));
     }
-    
+    if (payMethod === 'wechat_pay_xunhu' && coinType === 'CNY' && !selectedCnyPackage) {
+      return message.warning(intl.formatMessage({ id: 'recharge.message.selectAmount' }));
+    }
+
     setLoading(true);
     try {
-      // 创建订单
-      const orderResult = await payment.createRechargeOrder({
+      const orderParams = {
         coinType,
         amount: finalAmount,
         paymentMethod: payMethod,
-        // 如果是 creem 支付，使用选中的产品ID
-        ...(payMethod === 'creem' && selectedCreemProduct && {
-          creemProductId: selectedCreemProduct.productId,
-        }),
-      });
+      };
+      if (payMethod === 'creem' && selectedCreemProduct) {
+        orderParams.creemProductId = selectedCreemProduct.productId;
+      }
+      if (payMethod === 'wechat_pay_xunhu' && selectedCnyPackage) {
+        orderParams.skuCode = selectedCnyPackage.skuCode ?? selectedCnyPackage.sku_code;
+      }
+      const orderResult = await payment.createRechargeOrder(orderParams);
 
       if (orderResult.success && orderResult.data) {
         const { orderNo, payUrl, status } = orderResult.data;
         setCurrentOrderNo(orderNo);
-        
         message.success(intl.formatMessage({ id: 'recharge.message.orderCreated' }));
-        
-        // 根据支付方式处理
         if (payMethod === 'creem') {
-          // Creem 支付需要创建 checkout session
           await handleCreemPayment(orderNo);
+        } else if (payMethod === 'wechat_pay_xunhu') {
+          await handleWechatPayment(orderNo);
         } else {
-          // 其他支付方式直接跳转
           handleOtherPayment(payUrl);
-          
-          // 如果是待支付状态，开始轮询
           if (status === 'PENDING') {
             pollOrderStatus(orderNo);
           }
@@ -1142,394 +1045,346 @@ const RechargeContent = ({ embedded = false }) => {
     }
   };
 
+  // ==========================================
+  // 3. 渲染视图
+  // ==========================================
+
   return (
-    <PageLayout $token={token} $embedded={embedded}>
-      {!embedded && <SimpleHeader />}
-      
-      <ContentContainer
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-      >
-        <HeaderArea $token={token}>
-          <div className="left">
-            <div className="back-link" onClick={() => embedded ? navigate('/workspace') : window.history.back()}>
-              <ArrowLeftOutlined /> {embedded ? (intl.formatMessage({ id: 'recharge.page.backToWorkspace', defaultMessage: '返回工作台' }) || '返回工作台') : intl.formatMessage({ id: 'recharge.page.backLink' })}
-            </div>
-            <h1>
-              <span style={{ marginRight: 12 }}>⚡</span>
-              {intl.formatMessage({ id: 'recharge.page.title' })}
-            </h1>
-          </div>
-        </HeaderArea>
+      <PageLayout $token={token} $embedded={embedded}>
+        {!embedded && <SimpleHeader />}
 
-        {/* 现代化余额卡片 */}
-        <BalanceCard 
-          $token={token}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
+        <ContentContainer
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
         >
-          <div className="balance-header">
-            <div className="title">
-              <WalletOutlined style={{ marginRight: 8 }} />
-              {intl.formatMessage({ id: 'recharge.balance.title' })}
+          <HeaderArea $token={token}>
+            <div className="left-content">
+              <button className="back-btn" onClick={() => embedded ? navigate('/workspace') : navigate('/billing')}>
+                <ArrowLeftOutlined />
+                {embedded
+                    ? (intl.formatMessage({ id: 'recharge.page.backToWorkspace', defaultMessage: '返回工作台' }) || '返回工作台')
+                    : intl.formatMessage({ id: 'recharge.page.backLink', defaultMessage: '返回财务中心' })}
+              </button>
+              <h1>
+                <span style={{ fontSize: '1.2em' }}>⚡</span>
+                {intl.formatMessage({ id: 'recharge.page.title' })}
+              </h1>
             </div>
-            <ReloadOutlined 
-              className="refresh-btn" 
-              onClick={fetchBalance}
-              spin={balanceLoading}
-              style={{ fontSize: 16 }}
-            />
-          </div>
-          <Spin spinning={balanceLoading}>
-            <div className="balance-grid">
-              {supportedCurrencies.map((currency) => {
-                const isActive = coinType === currency.currencyCode;
-                const balanceValue = getBalanceByCoinType(currency.currencyCode);
-                // 根据货币代码获取图标
-                const getCurrencyIcon = (code) => {
-                  if (code === 'CNY') return <FaYenSign style={{ fontSize: 16 }} />;
-                  if (code === 'USDT' || code === 'USDT_TRC20') return <SiTether style={{ fontSize: 16 }} />;
-                  if (code === 'USD') return <FaDollarSign style={{ fontSize: 16 }} />;
-                  return <DollarCircleFilled style={{ fontSize: 16 }} />;
-                };
-                
-                // 根据货币代码确定小数位数
-                const getDecimalPlaces = (code) => {
-                  if (code === 'USDT' || code === 'USDT_TRC20') return { min: 6, max: 6 };
-                  return { min: 2, max: 2 };
-                };
-                
-                const decimals = getDecimalPlaces(currency.currencyCode);
-                const isUSDT = currency.currencyCode === 'USDT' || currency.currencyCode === 'USDT_TRC20';
-                
-                return (
-                  <div key={currency.id} className={`balance-item ${isActive ? 'active' : ''}`}>
-                    <div className="coin-label">
-                      {getCurrencyIcon(currency.currencyCode)}
-                      <span>{currency.currencyCode}</span>
-                      {isUSDT && (
-                        <span style={{ 
-                          marginLeft: 6, 
-                          fontSize: 10, 
-                          padding: '2px 6px', 
-                          background: token.colorInfo || '#1890ff', 
-                          color: '#fff', 
-                          borderRadius: 4,
-                          fontWeight: 500
-                        }}>
-                          TRC20
-                        </span>
-                      )}
-                    </div>
-                    <div className="coin-value">
-                      {currency.symbol}{balanceValue.toLocaleString('zh-CN', { 
-                        minimumFractionDigits: decimals.min, 
-                        maximumFractionDigits: decimals.max 
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-              {/* Token 余额显示 */}
-              <div className="balance-item">
-                <div className="coin-label">
-                  <CreditCardOutlined style={{ fontSize: 16, color: token.colorWarning }} />
-                  <span>Token</span>
-                </div>
-                <div className="coin-value">
-                  {balance.token.toLocaleString('zh-CN', { 
-                    minimumFractionDigits: 2, 
-                    maximumFractionDigits: 6 
-                  })}
-                </div>
-              </div>
-            </div>
-          </Spin>
-        </BalanceCard>
+          </HeaderArea>
 
-        <SplitLayout>
-          {/* 左侧：配置区 */}
-          <MainSection>
-            
-            {/* 1. 币种选择 */}
-            <section>
-              <SectionTitle $token={token}>{intl.formatMessage({ id: 'recharge.section.coinType' })}</SectionTitle>
-              <Spin spinning={currenciesLoading}>
-                <CoinToggle $token={token}>
-                  {supportedCurrencies.length > 0 ? (
-                    supportedCurrencies.map((currency) => {
-                      const isActive = coinType === currency.currencyCode;
-                      return (
-                        <CoinOption 
-                          key={currency.id}
-                          $token={token} 
-                          $active={isActive} 
-                          onClick={() => { 
-                            setCoinType(currency.currencyCode);
-                            // 切换币种时，如果用户输入了自定义金额，清空自定义金额
-                            // 但保持预设金额的选择不变（如果用户选择了预设金额）
-                            if (customAmount) {
-                              setCustomAmount('');
-                            }
-                            // 不设置任何默认金额，保持用户已选择的金额
-                          }}
-                        >
-                          {getCurrencyIcon(currency.currencyCode)}
-                          {currency.descriptionZh || currency.currencyName} ({currency.currencyCode})
-                        </CoinOption>
-                      );
-                    })
-                  ) : (
-                    <div style={{ padding: 20, textAlign: 'center', color: token.colorTextSecondary }}>
-                      {intl.formatMessage({ id: 'recharge.empty.noCurrency' })}
-                    </div>
-                  )}
-                </CoinToggle>
-              </Spin>
-            </section>
+          <SplitLayout>
+            {/* 左侧主要操作区 */}
+            <MainSection>
 
-            {/* 2. 支付方式 */}
-            <section>
-              <SectionTitle $token={token}>{intl.formatMessage({ id: 'recharge.section.paymentMethod' })}</SectionTitle>
-              <Spin spinning={paymentMethodsLoading}>
-                {paymentMethods.length > 0 ? (
-                  <PaymentList>
-                    {paymentMethods.map(method => (
-                      <PayItem 
-                        key={method.id} 
-                        $token={token}
-                        $active={payMethod === method.id}
-                        onClick={() => setPayMethod(method.id)}
-                      >
-                        <div className="icon-box">{method.icon}</div>
-                        <div className="info">
-                          <div className="title">
-                            {method.name}
-                            {method.method?.badgeText && (
-                              <span style={{ 
-                                marginLeft: 8, 
-                                fontSize: 10, 
-                                padding: '2px 6px', 
-                                background: token.colorError, 
-                                color: '#fff', 
-                                borderRadius: 4 
-                              }}>
-                                {method.method.badgeText}
-                              </span>
-                            )}
-                            {method.method?.isRecommend && (
-                              <span style={{ 
-                                marginLeft: 4, 
-                                fontSize: 10, 
-                                color: token.colorWarning 
-                              }}>⭐</span>
-                            )}
-                          </div>
-                          <div className="sub">{method.desc}</div>
-                          {method.method?.feeRate && (
-                            <div className="sub" style={{ fontSize: 11, marginTop: 2 }}>
-                              费率: {(method.method.feeRate * 100).toFixed(2)}%
-                              {method.method.feeFixed > 0 && ` + $${method.method.feeFixed}`}
-                            </div>
-                          )}
-                        </div>
-                        <div className="radio-circle" />
-                      </PayItem>
-                    ))}
-                  </PaymentList>
-                ) : (
-                  <div style={{ padding: 20, textAlign: 'center', color: token.colorTextSecondary }}>
-                    {coinType ? intl.formatMessage({ id: 'recharge.empty.noPaymentMethod' }, { currency: coinType }) : intl.formatMessage({ id: 'recharge.empty.pleaseSelectCurrency' })}
-                  </div>
-                )}
-              </Spin>
-            </section>
-
-            {/* 3. 金额选择 */}
-            <section>
-              <SectionTitle $token={token}>{intl.formatMessage({ id: 'recharge.section.amount' })}</SectionTitle>
-              {!payMethod ? (
-                <div style={{ padding: 20, textAlign: 'center', color: token.colorTextSecondary }}>
-                  {intl.formatMessage({ id: 'recharge.empty.pleaseSelectPayment' })}
-                </div>
-              ) : (
-                <Spin spinning={payMethod === 'creem' && creemProductsLoading}>
-                  <AmountGrid>
-                    {payMethod === 'creem' ? (
-                      // Creem 支付：使用产品列表
-                      creemProducts.length > 0 ? (
-                        creemProducts.map((product, i) => (
-                          <AmountCard 
-                            key={i} 
-                            $token={token} 
-                            $active={selectedCreemProduct?.productId === product.productId} 
-                            $tag={product.tag || ''}
-                            onClick={() => handlePresetClick(product.amount, product)}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            <div className="val-group">
-                              <span className="symbol">{symbol}</span>
-                              <span className="num">{product.amount}</span>
-                            </div>
-                            {product.totalToken > 0 && (
-                              <span className="bonus-badge">
-                                <GiftFilled style={{ marginRight: 4 }} />
-                                {product.totalToken.toLocaleString()} Tokens
-                                {product.bonusToken > 0 && ` (+${product.bonusToken.toLocaleString()})`}
-                              </span>
-                            )}
-                            {product.productName && (
-                              <div style={{ 
-                                fontSize: 11, 
-                                color: token.colorTextTertiary, 
-                                marginTop: 4,
-                                fontWeight: 500
-                              }}>
-                                {product.productName}
-                              </div>
-                            )}
-                          </AmountCard>
+              {/* 1. 币种选择 */}
+              <section>
+                <SectionTitle $token={token}>{intl.formatMessage({ id: 'recharge.section.coinType' })}</SectionTitle>
+                <Spin spinning={currenciesLoading}>
+                  <CoinSwitchContainer $token={token}>
+                    {supportedCurrencies.length > 0 ? (
+                        supportedCurrencies.map(c => (
+                            <CoinTab
+                                key={c.id}
+                                $token={token}
+                                $active={coinType === c.currencyCode}
+                                onClick={() => {
+                                  setCoinType(c.currencyCode);
+                                  if (customAmount) setCustomAmount('');
+                                }}
+                            >
+                              {getCurrencyIcon(c.currencyCode)}
+                              {(locale && String(locale).toLowerCase().startsWith('zh') && (c.currencyNameZh || c.descriptionZh)) ? (c.currencyNameZh || c.descriptionZh) : (c.currencyName || c.currencyCode)}
+                            </CoinTab>
                         ))
-                      ) : (
-                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 20, color: token.colorTextSecondary }}>
-                          {intl.formatMessage({ id: 'recharge.empty.noProducts' })}
-                        </div>
-                      )
                     ) : (
-                      // 其他支付方式：使用预设金额
-                      (PRESETS[coinType] && PRESETS[coinType].length > 0) ? (
-                        PRESETS[coinType].map((item, i) => (
-                          <AmountCard 
-                            key={i} 
-                            $token={token} 
-                            $active={amount === item.val} 
-                            $tag={item.tag}
-                            onClick={() => handlePresetClick(item.val)}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            <div className="val-group">
-                              <span className="symbol">{symbol}</span>
-                              <span className="num">{item.val}</span>
-                            </div>
-                            {item.bonus && (
-                              <span className="bonus-badge">
-                                <GiftFilled style={{ marginRight: 4 }} />
-                                {item.bonus}
-                              </span>
-                            )}
-                          </AmountCard>
-                        ))
-                      ) : (
-                        <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 20, color: token.colorTextSecondary }}>
-                          {coinType ? intl.formatMessage({ id: 'recharge.empty.noPresets' }, { currency: coinType }) : intl.formatMessage({ id: 'recharge.empty.pleaseSelectCurrency' })}
+                        <div style={{ padding: '10px 20px', color: token.colorTextSecondary }}>
+                          {intl.formatMessage({ id: 'recharge.empty.noCurrency' })}
                         </div>
-                      )
                     )}
-                  </AmountGrid>
+                  </CoinSwitchContainer>
                 </Spin>
-              )}
-              
-              {/* Creem 支付时不显示自定义金额输入框 */}
-              {payMethod && payMethod !== 'creem' && (
-                <CustomInputWrapper $token={token}>
-                  <Input 
-                    placeholder={intl.formatMessage({ id: 'recharge.placeholder.customAmount' })} 
-                    prefix={<span style={{color: token.colorTextTertiary}}>{intl.formatMessage({ id: 'recharge.button.customize' })}</span>} 
-                    suffix={<span style={{fontWeight:600}}>{symbol}</span>}
-                    value={customAmount}
-                    onChange={handleCustomChange}
-                  />
-                </CustomInputWrapper>
-              )}
-            </section>
+              </section>
 
-          </MainSection>
+              {/* 2. 支付方式 */}
+              <section>
+                <SectionTitle $token={token}>{intl.formatMessage({ id: 'recharge.section.paymentMethod' })}</SectionTitle>
+                <Spin spinning={paymentMethodsLoading}>
+                  {paymentMethods.length > 0 ? (
+                      <PaymentGrid>
+                        {paymentMethods.map(method => (
+                            <PayMethodCard
+                                key={method.id}
+                                $token={token}
+                                $active={payMethod === method.id}
+                                onClick={() => setPayMethod(method.id)}
+                            >
+                              <div className="icon-wrapper">
+                                {method.icon}
+                              </div>
+                              <div className="content">
+                                <div className="name-row">
+                                  {method.name}
+                                  {method.method?.isRecommend && <Badge status="processing" color={token.colorWarning} />}
+                                </div>
+                                <div className="desc">
+                                  {(locale && String(locale).toLowerCase().startsWith('zh'))
+                                      ? (method.method?.descriptionZh || method.method?.descriptionEn || method.desc)
+                                      : (method.method?.descriptionEn || method.method?.descriptionZh || method.desc)}
+                                </div>
+                              </div>
+                              <div className="check-mark"><CheckCircleFilled /></div>
+                            </PayMethodCard>
+                        ))}
+                      </PaymentGrid>
+                  ) : (
+                      <div style={{ padding: 24, textAlign: 'center', background: token.colorFillQuaternary, borderRadius: 12 }}>
+                        {intl.formatMessage({ id: coinType ? 'recharge.empty.noPaymentMethod' : 'recharge.empty.pleaseSelectCurrency' }, { currency: coinType })}
+                      </div>
+                  )}
+                </Spin>
+              </section>
 
-          {/* 右侧：收银台 (Sticky) */}
-          <SideSection>
-            <ReceiptCard $token={token}>
-              <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 24, color: token.colorText }}>{intl.formatMessage({ id: 'recharge.order.title' })}</h2>
-              
-              <ReceiptRow $token={token}>
-                <span>{intl.formatMessage({ id: 'recharge.order.type' })}</span>
-                <span>{intl.formatMessage({ id: 'recharge.order.typeValue' })}</span>
-              </ReceiptRow>
-              <ReceiptRow $token={token}>
-                <span>{intl.formatMessage({ id: 'recharge.order.account' })}</span>
-                <span>{username || intl.formatMessage({ id: 'recharge.order.accountLoading' })}</span>
-              </ReceiptRow>
-              <ReceiptRow $token={token}>
-                <span>{intl.formatMessage({ id: 'recharge.order.paymentMethod' })}</span>
-                <span>{paymentMethods.find(p => p.id === payMethod)?.name || intl.formatMessage({ id: 'recharge.order.paymentMethodPlease' })}</span>
-              </ReceiptRow>
-              
-              <ReceiptRow $token={token} className="total">
-                <span>{intl.formatMessage({ id: 'recharge.order.total' })}</span>
-                <span className="total-price">
-                  <span style={{fontSize: 20, verticalAlign: 'top'}}>{symbol}</span>
-                  {getCurrentAmount().toFixed(2)}
+              {/* 3. 金额选择 */}
+              <section>
+                <SectionTitle $token={token}>{intl.formatMessage({ id: 'recharge.section.amount' })}</SectionTitle>
+                {!payMethod ? (
+                    <div style={{ padding: 24, textAlign: 'center', background: token.colorFillQuaternary, borderRadius: 12 }}>
+                      {intl.formatMessage({ id: 'recharge.empty.pleaseSelectPayment' })}
+                    </div>
+                ) : (
+                    <Spin spinning={(payMethod === 'creem' && creemProductsLoading) || (coinType === 'CNY' && cnyPackagesLoading)}>
+                      <AmountWrapper>
+                        {payMethod === 'creem' ? (
+                            // Creem Products
+                            creemProducts.length > 0 ? (
+                                creemProducts.map((product, i) => (
+                                    <AmountOption
+                                        key={i}
+                                        $token={token}
+                                        $active={selectedCreemProduct?.productId === product.productId}
+                                        onClick={() => handlePresetClick(product.amount, product)}
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                    >
+                                      {product.tag && <div className="corner-badge">{product.tag}</div>}
+                                      <div className="amount-val"><small>{symbol}</small>{product.amount}</div>
+                                      {product.totalToken > 0 && (
+                                          <div className="bonus-tag token-breakdown">
+                                            <GiftFilled />
+                                            {product.bonusToken > 0 ? (
+                                                <span>
+                                                  {(product.baseToken || 0).toLocaleString()} {intl.formatMessage({ id: 'recharge.token.base', defaultMessage: '基础' })} + {product.bonusToken.toLocaleString()} {intl.formatMessage({ id: 'recharge.token.gift', defaultMessage: '赠送' })} Token
+                                                </span>
+                                            ) : (
+                                                <span>{(product.baseToken || 0).toLocaleString()} Token</span>
+                                            )}
+                                          </div>
+                                      )}
+                                    </AmountOption>
+                                ))
+                            ) : (
+                                <div style={{ gridColumn: '1/-1', textAlign: 'center', color: token.colorTextSecondary }}>
+                                  {intl.formatMessage({ id: 'recharge.empty.noProducts' })}
+                                </div>
+                            )
+                        ) : coinType === 'CNY' && cnyPackages.length > 0 ? (
+                            // CNY Packages
+                            cnyPackages.map((pkg) => {
+                              const isZh = locale && String(locale).toLowerCase().startsWith('zh');
+                              const name = isZh ? (pkg.name || pkg.nameEn) : (pkg.nameEn || pkg.name);
+                              const tag = isZh ? (pkg.tagText || pkg.tagTextEn) : (pkg.tagTextEn || pkg.tagText);
+                              const basePoints = pkg.points || 0;
+                              const giftPoints = pkg.giftPoints || 0;
+                              const totalToken = basePoints + giftPoints;
+                              return (
+                                  <AmountOption
+                                      key={pkg.id}
+                                      $token={token}
+                                      $active={selectedCnyPackage?.id === pkg.id}
+                                      onClick={() => handlePresetClick(Number(pkg.price), null, pkg)}
+                                      whileHover={{ scale: 1.02 }}
+                                      whileTap={{ scale: 0.98 }}
+                                  >
+                                    {tag && <div className="corner-badge">{tag}</div>}
+                                    <div className="amount-val"><small>{symbol}</small>{Number(pkg.price)}</div>
+                                    <div style={{fontSize: 13, marginBottom: 4, fontWeight: 500}}>{name}</div>
+                                    {totalToken > 0 && (
+                                        <div className="bonus-tag token-breakdown">
+                                          <GiftFilled />
+                                          {giftPoints > 0 ? (
+                                              <span>
+                                                {basePoints.toLocaleString()} {intl.formatMessage({ id: 'recharge.token.base', defaultMessage: '基础' })} + {giftPoints.toLocaleString()} {intl.formatMessage({ id: 'recharge.token.gift', defaultMessage: '赠送' })} Token
+                                              </span>
+                                          ) : (
+                                              <span>{basePoints.toLocaleString()} Token</span>
+                                          )}
+                                        </div>
+                                    )}
+                                  </AmountOption>
+                              );
+                            })
+                        ) : (
+                            // Presets
+                            (PRESETS[coinType] || []).map((item, i) => (
+                                <AmountOption
+                                    key={i}
+                                    $token={token}
+                                    $active={amount === item.val}
+                                    onClick={() => handlePresetClick(item.val)}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                >
+                                  {item.tag && <div className="corner-badge">{item.tag}</div>}
+                                  <div className="amount-val"><small>{symbol}</small>{item.val}</div>
+                                  {item.bonus && <div className="bonus-tag">{item.bonus}</div>}
+                                </AmountOption>
+                            ))
+                        )}
+                      </AmountWrapper>
+
+                      {/* 自定义金额输入 */}
+                      {payMethod && payMethod !== 'creem' && !(coinType === 'CNY' && cnyPackages.length > 0) && (
+                          <CustomInputArea $token={token}>
+                            <Input
+                                placeholder={intl.formatMessage({ id: 'recharge.placeholder.customAmount' })}
+                                prefix={<span style={{color: token.colorTextSecondary}}>自定义</span>}
+                                suffix={<span style={{fontWeight:800, color: token.colorText}}>{symbol}</span>}
+                                value={customAmount}
+                                onChange={handleCustomChange}
+                                size="large"
+                            />
+                          </CustomInputArea>
+                      )}
+                    </Spin>
+                )}
+              </section>
+            </MainSection>
+
+            {/* 右侧：收银台 + 账户余额 */}
+            <SideSection>
+              <ReceiptPanel $token={token}>
+                {/* 账户余额 */}
+                <BalanceSection $token={token}>
+                  <div className="balance-header">
+                    <div className="balance-title">
+                      <WalletOutlined /> {intl.formatMessage({ id: 'recharge.balance.title' })}
+                    </div>
+                    <div className="refresh-btn" onClick={fetchBalance}>
+                      <ReloadOutlined spin={balanceLoading} />
+                    </div>
+                  </div>
+                  <Spin spinning={balanceLoading}>
+                    <div className="balance-list">
+                      {supportedCurrencies.map((currency) => {
+                        const isActive = coinType === currency.currencyCode;
+                        const balanceValue = getBalanceByCoinType(currency.currencyCode);
+                        const decimals = (currency.currencyCode === 'USDT' || currency.currencyCode === 'USDT_TRC20') ? 6 : 2;
+                        const displayName = (locale && String(locale).toLowerCase().startsWith('zh') && (currency.currencyNameZh || currency.descriptionZh)) ? (currency.currencyNameZh || currency.descriptionZh) : (currency.currencyName || currency.currencyCode);
+                        return (
+                            <BalanceItem key={currency.id} $token={token} $active={isActive}>
+                              <div className="label">
+                                {getCurrencyIcon(currency.currencyCode)}
+                                {displayName}
+                              </div>
+                              <div className="value">
+                                {currency.symbol}{balanceValue.toLocaleString('zh-CN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
+                              </div>
+                            </BalanceItem>
+                        );
+                      })}
+                      <BalanceItem $token={token} className="token-item">
+                        <div className="label">
+                          <GiftFilled />
+                          Tokens
+                        </div>
+                        <div className="value">
+                          {balance.token.toLocaleString('zh-CN', { minimumFractionDigits: 2 })}
+                        </div>
+                      </BalanceItem>
+                    </div>
+                  </Spin>
+                </BalanceSection>
+
+                <div className="header-row">
+                  {intl.formatMessage({ id: 'recharge.order.title' })}
+                </div>
+
+                <DetailRow $token={token}>
+                  <span>{intl.formatMessage({ id: 'recharge.order.account' })}</span>
+                  <span className="main">{username || '...'}</span>
+                </DetailRow>
+                <DetailRow $token={token}>
+                  <span>{intl.formatMessage({ id: 'recharge.order.paymentMethod' })}</span>
+                  <span className="main">{paymentMethods.find(p => p.id === payMethod)?.name || '-'}</span>
+                </DetailRow>
+
+                <DetailRow className="total-row" $token={token}>
+                  <span className="label">{intl.formatMessage({ id: 'recharge.order.total' })}</span>
+                  <span className="val">
+                  <small>{symbol}</small>{getCurrentAmount().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
-              </ReceiptRow>
+                </DetailRow>
 
-              <PayButton 
-                type="primary" 
-                block 
-                size="large" 
-                loading={loading}
-                onClick={handleSubmit}
-                style={{ height: 56, fontSize: 18 }}
-                disabled={getCurrentAmount() <= 0}
-                $token={token}
-              >
-                {intl.formatMessage({ id: 'recharge.button.pay' })} <RightOutlined style={{fontSize:14}}/>
-              </PayButton>
-
-              <SecureBadge $token={token}>
-                <SafetyCertificateFilled style={{ color: token.colorSuccess }} />
-                {intl.formatMessage({ id: 'recharge.security.ssl' })}
-              </SecureBadge>
-
-              <div style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: token.colorTextTertiary, lineHeight: 1.6 }}>
-                {intl.formatMessage({ id: 'recharge.security.agreement' })}<br/>
-                <a 
-                  href="/recharge-agreement"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate('/recharge-agreement');
-                  }}
-                  style={{ 
-                    color: token.colorPrimary, 
-                    textDecoration: 'underline',
-                    cursor: 'pointer',
-                    transition: 'color 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.target.style.color = token.colorPrimaryHover}
-                  onMouseLeave={(e) => e.target.style.color = token.colorPrimary}
+                <PayButton
+                    type="primary"
+                    block
+                    loading={loading}
+                    onClick={handleSubmit}
+                    disabled={getCurrentAmount() <= 0}
+                    $token={token}
                 >
-                  {intl.formatMessage({ id: 'recharge.security.agreementLink' })}
-                </a>
-              </div>
-            </ReceiptCard>
-          </SideSection>
+                  {intl.formatMessage({ id: 'recharge.button.pay' })} <RightOutlined />
+                </PayButton>
 
-        </SplitLayout>
-      </ContentContainer>
-    </PageLayout>
+                <TrustBadge $token={token}>
+                  <SafetyCertificateFilled />
+                  <span>{intl.formatMessage({ id: 'recharge.security.ssl' })} | 256-bit Secure Payment</span>
+                </TrustBadge>
+
+                <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: token.colorTextTertiary }}>
+                  {intl.formatMessage({ id: 'recharge.security.agreement' })}{' '}
+                  <a href="/recharge-agreement" onClick={(e) => { e.preventDefault(); navigate('/recharge-agreement'); }} style={{ color: token.colorPrimary }}>
+                    {intl.formatMessage({ id: 'recharge.security.agreementLink' })}
+                  </a>
+                </div>
+              </ReceiptPanel>
+            </SideSection>
+          </SplitLayout>
+        </ContentContainer>
+
+        <Modal
+          title={intl.formatMessage({ id: 'recharge.wechat.qrTitle', defaultMessage: '微信扫码支付' })}
+          open={wechatPayModalVisible}
+          onCancel={() => setWechatPayModalVisible(false)}
+          maskClosable={false}
+          footer={
+            <div style={{ textAlign: 'center' }}>
+              <Button onClick={() => setWechatPayModalVisible(false)}>
+                {intl.formatMessage({ id: 'recharge.wechat.close', defaultMessage: '关闭' })}
+              </Button>
+            </div>
+          }
+          width={360}
+          centered
+        >
+          <div style={{ textAlign: 'center', padding: '16px 0' }}>
+            {wechatQrUrl && (
+              <img src={wechatQrUrl} alt="微信支付二维码" style={{ width: 240, height: 240, display: 'block', margin: '0 auto 16px' }} />
+            )}
+            <span style={{ color: token.colorTextSecondary, fontSize: 13 }}>
+              {intl.formatMessage({ id: 'recharge.wechat.qrTip', defaultMessage: '请使用微信扫描二维码完成支付' })}
+            </span>
+          </div>
+        </Modal>
+      </PageLayout>
   );
 };
-
-// ==========================================
-// 4. 根组件
-// ==========================================
 
 const RechargePage = ({ embedded = false }) => {
   const customTheme = {
     token: {
-      colorPrimary: '#0070f3',
+      colorPrimary: '#0070f3', // 极客蓝
       borderRadius: 12,
       fontFamily: "'Inter', sans-serif",
     },
@@ -1540,9 +1395,9 @@ const RechargePage = ({ embedded = false }) => {
   };
 
   return (
-    <ConfigProvider theme={customTheme}>
-      <RechargeContent embedded={embedded} />
-    </ConfigProvider>
+      <ConfigProvider theme={customTheme}>
+        <RechargeContent embedded={embedded} />
+      </ConfigProvider>
   );
 };
 

@@ -370,6 +370,7 @@ const ORDER_STATUS_CONFIG = {
 const PAYMENT_METHOD_CONFIG = {
   'alipay': { color: 'blue' },
   'wechat': { color: 'green' },
+  'wechat_pay_xunhu': { color: 'green' },
   'bank': { color: 'purple' },
   'usdt': { color: 'orange' },
   'creem': { color: 'purple' },
@@ -752,6 +753,7 @@ const OrdersContent = () => {
                   { value: 'all', label: intl.formatMessage({ id: 'orders.payment.all' }) },
                   { value: 'alipay', label: intl.formatMessage({ id: 'orders.payment.alipay' }) },
                   { value: 'wechat', label: intl.formatMessage({ id: 'orders.payment.wechat' }) },
+                  { value: 'wechat_pay_xunhu', label: intl.formatMessage({ id: 'orders.payment.wechat_pay_xunhu' }) },
                   { value: 'bank', label: intl.formatMessage({ id: 'orders.payment.bank' }) },
                   { value: 'usdt', label: intl.formatMessage({ id: 'orders.payment.usdt' }) },
                   { value: 'creem', label: intl.formatMessage({ id: 'orders.payment.creem' }) },
@@ -859,7 +861,7 @@ const OrdersContent = () => {
           <DrawerSection $token={token}>
             <h3>{intl.formatMessage({ id: 'orders.filter.paymentMethod' })}</h3>
             <ChipGrid>
-              {['all', 'alipay', 'wechat', 'bank', 'usdt', 'creem'].map(method => {
+              {['all', 'alipay', 'wechat', 'wechat_pay_xunhu', 'bank', 'usdt', 'creem'].map(method => {
                 const label = method === 'all' 
                   ? intl.formatMessage({ id: 'orders.payment.all' })
                   : intl.formatMessage({ id: `orders.payment.${method}` });

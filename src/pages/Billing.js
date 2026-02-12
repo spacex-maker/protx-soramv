@@ -412,18 +412,27 @@ const FilterChip = styled.div`
 // ==========================================
 
 const getChangeTypeMap = (intl) => ({
-  'FROZEN': { label: intl.formatMessage({ id: 'billing.type.frozen' }), color: 'orange', icon: <BankOutlined /> },
-  'AI_MODEL_FEE': { label: intl.formatMessage({ id: 'billing.type.aiModelFee' }), color: 'blue', icon: <CreditCardOutlined /> },
-  'RECHARGE': { label: intl.formatMessage({ id: 'billing.type.recharge' }), color: 'green', icon: <ArrowUpOutlined /> },
-  'REFUND': { label: intl.formatMessage({ id: 'billing.type.refund' }), color: 'cyan', icon: <ReloadOutlined /> },
-  'REWARD': { label: intl.formatMessage({ id: 'billing.type.reward' }), color: 'gold', icon: <WalletOutlined /> },
+  DEPOSIT: { label: intl.formatMessage({ id: 'billing.type.deposit' }), color: 'green', icon: <ArrowUpOutlined /> },
+  WITHDRAWAL: { label: intl.formatMessage({ id: 'billing.type.withdrawal' }), color: 'red', icon: <ArrowDownOutlined /> },
+  TRANSFER: { label: intl.formatMessage({ id: 'billing.type.transfer' }), color: 'blue', icon: <CreditCardOutlined /> },
+  REFUND: { label: intl.formatMessage({ id: 'billing.type.refund' }), color: 'cyan', icon: <ReloadOutlined /> },
+  PAYMENT: { label: intl.formatMessage({ id: 'billing.type.payment' }), color: 'purple', icon: <DollarOutlined /> },
+  FROZEN: { label: intl.formatMessage({ id: 'billing.type.frozen' }), color: 'orange', icon: <BankOutlined /> },
+  FEE: { label: intl.formatMessage({ id: 'billing.type.fee' }), color: 'default', icon: <DollarOutlined /> },
+  REWARD: { label: intl.formatMessage({ id: 'billing.type.reward' }), color: 'gold', icon: <WalletOutlined /> },
+  ADJUSTMENT: { label: intl.formatMessage({ id: 'billing.type.adjustment' }), color: 'default', icon: <CreditCardOutlined /> },
+  AI_MODEL_FEE: { label: intl.formatMessage({ id: 'billing.type.aiModelFee' }), color: 'blue', icon: <CreditCardOutlined /> },
+  PROMPT_MARKET_PURCHASE: { label: intl.formatMessage({ id: 'billing.type.promptMarketPurchase' }), color: 'volcano', icon: <CreditCardOutlined /> },
+  PROMPT_MARKET_INCOME: { label: intl.formatMessage({ id: 'billing.type.promptMarketIncome' }), color: 'green', icon: <WalletOutlined /> },
 });
 
 const COIN_TYPE_MAP = {
-  'USDT_ERC20': 'USDT',
-  'CNY': 'CNY',
-  'USD': 'USD',
-  'TOKEN': 'TOKEN',
+  USDT_ERC20: 'USDT',
+  USDT_TRC20: 'USDT',
+  USDT: 'USDT',
+  CNY: 'CNY',
+  USD: 'USD',
+  TOKEN: 'TOKEN',
 };
 
 const BillingContent = () => {
@@ -453,6 +462,7 @@ const BillingContent = () => {
     tokenBalance: 0
   });
 
+  const [quickDatePreset, setQuickDatePreset] = useState('30'); // 快捷时间下拉当前项：'today'|'week'|'month'|'year'|'7'|'30'|'90'|null 为自定义
   const [tempDateRange, setTempDateRange] = useState(dateRange);
   const [tempChangeTypeFilter, setTempChangeTypeFilter] = useState(changeTypeFilter);
   const [tempCoinTypeFilter, setTempCoinTypeFilter] = useState(coinTypeFilter);
@@ -496,7 +506,7 @@ const BillingContent = () => {
     setLoading(true);
     try {
       const params = {
-        pageNum: pagination.current,
+        currentPage: pagination.current,
         pageSize: pagination.pageSize,
         orderBy: 'createTime',
         isDesc: true,
@@ -535,11 +545,50 @@ const BillingContent = () => {
     }
   };
 
-  const handleQuickDate = (days) => {
+  /** 快捷时间范围：preset 为 'today'|'week'|'month'|'year'|'7'|'30'|'90' 或数字 */
+  const getQuickDateRange = (preset) => {
     const end = dayjs();
-    const start = dayjs().subtract(days, 'day');
-    setTempDateRange([start, end]);
+    const p = typeof preset === 'string' && /^\d+$/.test(preset) ? parseInt(preset, 10) : preset;
+    if (p === 'today') {
+      return [dayjs().startOf('day'), dayjs().endOf('day')];
+    }
+    if (p === 'week') {
+      return [dayjs().startOf('week'), end];
+    }
+    if (p === 'month') {
+      return [dayjs().startOf('month'), end];
+    }
+    if (p === 'year') {
+      return [dayjs().startOf('year'), end];
+    }
+    if (typeof p === 'number') {
+      return [dayjs().subtract(p, 'day'), end];
+    }
+    return [dayjs().subtract(30, 'day'), end];
   };
+
+  /** 筛选抽屉内：仅更新临时日期，需点击「应用」生效 */
+  const handleQuickDate = (preset) => {
+    setTempDateRange(getQuickDateRange(preset));
+  };
+
+  /** 工具栏：直接应用快捷时间并刷新列表 */
+  const applyQuickDate = (preset) => {
+    setDateRange(getQuickDateRange(preset));
+    setQuickDatePreset(preset);
+    setPagination(prev => ({ ...prev, current: 1 }));
+  };
+
+  /** 快捷时间下拉选项（工具栏与抽屉共用） */
+  const quickDateOptions = [
+    { value: 'today', label: intl.formatMessage({ id: 'billing.filter.today' }) },
+    { value: 'week', label: intl.formatMessage({ id: 'billing.filter.thisWeek' }) },
+    { value: 'month', label: intl.formatMessage({ id: 'billing.filter.thisMonth' }) },
+    { value: 'year', label: intl.formatMessage({ id: 'billing.filter.thisYear' }) },
+    { value: '7', label: intl.formatMessage({ id: 'billing.filter.days7' }) },
+    { value: '30', label: intl.formatMessage({ id: 'billing.filter.days30' }) },
+    { value: '90', label: intl.formatMessage({ id: 'billing.filter.days90' }) },
+  ];
 
   const handleApplyFilter = () => {
     setDateRange(tempDateRange);
@@ -575,9 +624,10 @@ const BillingContent = () => {
         return (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{ 
-              width: 36, height: 36, borderRadius: 10, 
+              width: 36, height: 36, minWidth: 36, minHeight: 36, borderRadius: 10, 
               background: token.colorFillQuaternary, 
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              fontSize: 16,
               color: token[config.color === 'default' ? 'colorText' : `color${config.color.charAt(0).toUpperCase() + config.color.slice(1)}`]
             }}>
               {config.icon}
@@ -761,6 +811,16 @@ const BillingContent = () => {
 
         <Toolbar $token={token}>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Select
+              value={quickDatePreset || undefined}
+              onChange={(v) => v && applyQuickDate(v)}
+              style={{ width: 130 }}
+              placeholder={intl.formatMessage({ id: 'billing.filter.dateQuick' })}
+              options={quickDateOptions}
+              allowClear={!!quickDatePreset}
+              onClear={() => setQuickDatePreset(null)}
+              popupMatchSelectWidth={false}
+            />
             <Select 
               value={changeTypeFilter} 
               onChange={setChangeTypeFilter} 
@@ -768,11 +828,18 @@ const BillingContent = () => {
               placeholder={intl.formatMessage({ id: 'billing.placeholder.changeType' })}
               options={[
                 { value: 'all', label: intl.formatMessage({ id: 'billing.type.all' }) },
-                { value: 'FROZEN', label: intl.formatMessage({ id: 'billing.type.frozen' }) },
-                { value: 'AI_MODEL_FEE', label: intl.formatMessage({ id: 'billing.type.aiModelFee' }) },
-                { value: 'RECHARGE', label: intl.formatMessage({ id: 'billing.type.recharge' }) },
+                { value: 'DEPOSIT', label: intl.formatMessage({ id: 'billing.type.deposit' }) },
+                { value: 'WITHDRAWAL', label: intl.formatMessage({ id: 'billing.type.withdrawal' }) },
+                { value: 'TRANSFER', label: intl.formatMessage({ id: 'billing.type.transfer' }) },
                 { value: 'REFUND', label: intl.formatMessage({ id: 'billing.type.refund' }) },
+                { value: 'PAYMENT', label: intl.formatMessage({ id: 'billing.type.payment' }) },
+                { value: 'FROZEN', label: intl.formatMessage({ id: 'billing.type.frozen' }) },
+                { value: 'FEE', label: intl.formatMessage({ id: 'billing.type.fee' }) },
                 { value: 'REWARD', label: intl.formatMessage({ id: 'billing.type.reward' }) },
+                { value: 'ADJUSTMENT', label: intl.formatMessage({ id: 'billing.type.adjustment' }) },
+                { value: 'AI_MODEL_FEE', label: intl.formatMessage({ id: 'billing.type.aiModelFee' }) },
+                { value: 'PROMPT_MARKET_PURCHASE', label: intl.formatMessage({ id: 'billing.type.promptMarketPurchase' }) },
+                { value: 'PROMPT_MARKET_INCOME', label: intl.formatMessage({ id: 'billing.type.promptMarketIncome' }) },
               ]}
             />
             <Select 
@@ -782,10 +849,14 @@ const BillingContent = () => {
               placeholder={intl.formatMessage({ id: 'billing.placeholder.coinType' })}
               options={[
                 { value: 'all', label: intl.formatMessage({ id: 'billing.coin.all' }) },
-                { value: 'USDT_ERC20', label: intl.formatMessage({ id: 'billing.coin.usdt' }) },
                 { value: 'CNY', label: intl.formatMessage({ id: 'billing.coin.cny' }) },
+                { value: 'USD', label: intl.formatMessage({ id: 'billing.coin.usd' }) },
+                { value: 'USDT', label: intl.formatMessage({ id: 'billing.coin.usdt' }) },
+                { value: 'USDT_ERC20', label: 'USDT (ERC20)' },
+                { value: 'USDT_TRC20', label: 'USDT (TRC20)' },
                 { value: 'TOKEN', label: intl.formatMessage({ id: 'billing.coin.token' }) },
               ]}
+              popupMatchSelectWidth={false}
             />
             <Input
               placeholder={intl.formatMessage({ id: 'billing.placeholder.remark' })}
@@ -796,7 +867,7 @@ const BillingContent = () => {
             />
             <DatePicker.RangePicker 
               value={dateRange} 
-              onChange={setDateRange} 
+              onChange={(v) => { setDateRange(v || [dayjs().subtract(30, 'day'), dayjs()]); setQuickDatePreset(null); }} 
               style={{ width: 260 }}
               allowClear={false}
             />
@@ -860,15 +931,22 @@ const BillingContent = () => {
           <DrawerSection $token={token}>
             <h3>{intl.formatMessage({ id: 'billing.filter.changeType' })}</h3>
             <ChipGrid>
-              {['all', 'FROZEN', 'AI_MODEL_FEE', 'RECHARGE', 'REFUND', 'REWARD'].map(type => {
+              {['all', 'DEPOSIT', 'WITHDRAWAL', 'TRANSFER', 'REFUND', 'PAYMENT', 'FROZEN', 'FEE', 'REWARD', 'ADJUSTMENT', 'AI_MODEL_FEE', 'PROMPT_MARKET_PURCHASE', 'PROMPT_MARKET_INCOME'].map(type => {
                 const getLabel = (t) => {
                   const labelMap = {
                     all: intl.formatMessage({ id: 'billing.type.all' }),
-                    FROZEN: intl.formatMessage({ id: 'billing.type.frozen' }),
-                    AI_MODEL_FEE: intl.formatMessage({ id: 'billing.type.aiModelFee' }),
-                    RECHARGE: intl.formatMessage({ id: 'billing.type.recharge' }),
+                    DEPOSIT: intl.formatMessage({ id: 'billing.type.deposit' }),
+                    WITHDRAWAL: intl.formatMessage({ id: 'billing.type.withdrawal' }),
+                    TRANSFER: intl.formatMessage({ id: 'billing.type.transfer' }),
                     REFUND: intl.formatMessage({ id: 'billing.type.refund' }),
-                    REWARD: intl.formatMessage({ id: 'billing.type.reward' })
+                    PAYMENT: intl.formatMessage({ id: 'billing.type.payment' }),
+                    FROZEN: intl.formatMessage({ id: 'billing.type.frozen' }),
+                    FEE: intl.formatMessage({ id: 'billing.type.fee' }),
+                    REWARD: intl.formatMessage({ id: 'billing.type.reward' }),
+                    ADJUSTMENT: intl.formatMessage({ id: 'billing.type.adjustment' }),
+                    AI_MODEL_FEE: intl.formatMessage({ id: 'billing.type.aiModelFee' }),
+                    PROMPT_MARKET_PURCHASE: intl.formatMessage({ id: 'billing.type.promptMarketPurchase' }),
+                    PROMPT_MARKET_INCOME: intl.formatMessage({ id: 'billing.type.promptMarketIncome' })
                   };
                   return labelMap[t];
                 };
@@ -890,12 +968,15 @@ const BillingContent = () => {
           <DrawerSection $token={token}>
             <h3>{intl.formatMessage({ id: 'billing.filter.coinType' })}</h3>
             <ChipGrid>
-              {['all', 'USDT_ERC20', 'CNY', 'TOKEN'].map(coin => {
+              {['all', 'CNY', 'USD', 'USDT', 'USDT_ERC20', 'USDT_TRC20', 'TOKEN'].map(coin => {
                 const getLabel = (c) => {
                   const labelMap = {
                     all: intl.formatMessage({ id: 'billing.coin.all' }),
-                    USDT_ERC20: intl.formatMessage({ id: 'billing.coin.usdt' }),
                     CNY: intl.formatMessage({ id: 'billing.coin.cny' }),
+                    USD: intl.formatMessage({ id: 'billing.coin.usd' }),
+                    USDT: intl.formatMessage({ id: 'billing.coin.usdt' }),
+                    USDT_ERC20: 'USDT (ERC20)',
+                    USDT_TRC20: 'USDT (TRC20)',
                     TOKEN: intl.formatMessage({ id: 'billing.coin.token' })
                   };
                   return labelMap[c];
@@ -927,11 +1008,13 @@ const BillingContent = () => {
 
           <DrawerSection $token={token}>
             <h3>{intl.formatMessage({ id: 'billing.filter.dateQuick' })}</h3>
-            <ChipGrid>
-              <FilterChip $token={token} onClick={() => handleQuickDate(7)}>{intl.formatMessage({ id: 'billing.filter.days7' })}</FilterChip>
-              <FilterChip $token={token} onClick={() => handleQuickDate(30)}>{intl.formatMessage({ id: 'billing.filter.days30' })}</FilterChip>
-              <FilterChip $token={token} onClick={() => handleQuickDate(90)}>{intl.formatMessage({ id: 'billing.filter.days90' })}</FilterChip>
-            </ChipGrid>
+            <Select
+              style={{ width: '100%' }}
+              placeholder={intl.formatMessage({ id: 'billing.filter.dateQuick' })}
+              options={quickDateOptions}
+              onChange={(v) => v && handleQuickDate(v)}
+              popupMatchSelectWidth={false}
+            />
           </DrawerSection>
 
           <DrawerSection $token={token}>
