@@ -493,6 +493,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/workspace/embedding"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
                 path="/workspace/storage-nodes"
                 element={
                   <PrivateRoute>
