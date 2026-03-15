@@ -1509,7 +1509,9 @@ export default {
   'home.community.text.description': '分享AI创作的精彩文字，小说、诗歌、剧本、文案，激发你的文学灵感',
 
   // 提示词商城 (Prompt Market Section)
+  'market.sectionTag': '精选产品',
   'market.label': '提示词商城',
+  'market.intro': '提示词商城是面向创作者与企业的 AI 提示词发现、交易与复用平台。在这里可以找到经实战验证的 Midjourney、Runway、Sora 等模型配方，一键接入工作流；也可将自己的优质提示词上架变现。',
   'market.h1': '释放你的',
   'market.h1.highlight': '无限创意。',
   'market.sub': '一站式 AI 提示词平台：覆盖文生图、文生视频、文生音乐。经验证的顶流模型配方，兼容 OpenAI、Google、Midjourney、Runway、Kling、Luma、Suno、ElevenLabs 等主流生态。不再试错，直接创作。',

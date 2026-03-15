@@ -6,7 +6,6 @@ import {
   DeploymentUnitOutlined, 
   GoldOutlined, 
   RocketOutlined, 
-  PieChartOutlined, 
   ThunderboltFilled,
   SyncOutlined,
   CheckCircleOutlined
@@ -270,24 +269,6 @@ const AI2OBJPage = () => {
   const steps = [
     {
       id: 0,
-      title: "MARKET INTELLIGENCE",
-      subtitle: "Demand & Spec Definition",
-      color: "#fab1a0",
-      icon: <PieChartOutlined />,
-      shape: "analysis", 
-      metrics: [
-        { label: "TREND MATCH", value: "98.4%" },
-        { label: "TARGET PRICE", value: "$129.00" },
-        { label: "GAP ANALYSIS", value: "HIGH DEMAND" }
-      ],
-      logs: [
-        "> Scanning global search trends...",
-        "> Competitor specs analyzed.",
-        "> PRD (Product Req Doc) generated."
-      ]
-    },
-    {
-      id: 1,
       title: "GENERATIVE ENGINEERING",
       subtitle: "Topology & CAD Optimization",
       color: "#66fcf1",
@@ -305,7 +286,7 @@ const AI2OBJPage = () => {
       ]
     },
     {
-      id: 2,
+      id: 1,
       title: "DIGITAL TWIN SIM",
       subtitle: "FEA & Physics Validation",
       color: "#ff7675",
@@ -323,7 +304,7 @@ const AI2OBJPage = () => {
       ]
     },
     {
-      id: 3,
+      id: 2,
       title: "SMART SUPPLY CHAIN",
       subtitle: "BOM & Sourcing Network",
       color: "#ffeaa7",
@@ -341,7 +322,7 @@ const AI2OBJPage = () => {
       ]
     },
     {
-      id: 4,
+      id: 3,
       title: "CYBER MFG & LAUNCH",
       subtitle: "CAM & G-Code Generation",
       color: "#55efc4",
@@ -407,9 +388,6 @@ const AI2OBJPage = () => {
            <h2 style={{fontSize:32, margin:0, color:'#fff', textShadow:'0 0 20px rgba(102, 252, 241, 0.3)'}}>
              {currentStep.title}
            </h2>
-           <div style={{marginTop:8, display:'inline-block', padding:'4px 12px', background:'rgba(69, 162, 158, 0.2)', borderRadius:4, color:'#66fcf1', fontSize:11, letterSpacing:2}}>
-             SYSTEM STATUS: ACTIVE
-           </div>
         </div>
 
         <Scene3D>
@@ -426,7 +404,7 @@ const AI2OBJPage = () => {
               <div className="face front">{currentStep.icon}</div>
               <div className="face back">{currentStep.icon}</div>
               <div className="face right"><CheckCircleOutlined /></div>
-              <div className="face left"><SyncOutlined spin={activeStep===4} /></div>
+              <div className="face left"><SyncOutlined spin={activeStep===3} /></div>
               <div className="face top">AI</div>
               <div className="face bottom">OBJ</div>
             </WireframeObject>

@@ -87,25 +87,75 @@ const HeroSection = styled(Section)`
 `;
 
 const HeaderContainer = styled(motion.div)`
-  text-align: center;
   max-width: 900px;
   margin: 0 auto 100px;
   position: relative;
   z-index: 1;
 `;
 
-const Label = styled(motion.div)`
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: #2997ff;
-  margin-bottom: 20px;
+// 标题区：精选产品 + 提示词商城 统一成一块
+const TitleBlock = styled(motion.div)`
+  text-align: center;
+  margin-bottom: 0;
+`;
+
+const Label = styled(motion.span)`
   display: inline-block;
-  padding: 6px 16px;
-  background: rgba(41, 151, 255, 0.1);
-  border-radius: 20px;
-  backdrop-filter: blur(10px);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: ${(props) => (props.theme.mode === 'dark' ? '#5ac8fa' : '#007aff')};
+  margin-bottom: 14px;
+  padding: 6px 14px;
+  border-radius: 100px;
+  background: ${(props) =>
+    props.theme.mode === 'dark'
+      ? 'rgba(41, 151, 255, 0.12)'
+      : 'rgba(0, 122, 255, 0.08)'};
+  border: 1px solid ${(props) =>
+    props.theme.mode === 'dark'
+      ? 'rgba(41, 151, 255, 0.25)'
+      : 'rgba(0, 122, 255, 0.2)'};
+`;
+
+// 提示词商城 — 大标题主视觉
+const MarketTitle = styled(motion.h1)`
+  font-size: clamp(42px, 6.5vw, 72px);
+  font-weight: 800;
+  line-height: 1.12;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: ${(props) => (props.theme.mode === 'dark' ? '#f5f5f7' : '#1d1d1f')};
+  position: relative;
+  display: inline-block;
+
+  .gradient-text {
+    background: linear-gradient(135deg, #2997ff 0%, #5ac8fa 35%, #af52de 70%, #ff2d55 100%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: ${textGradientFlow} 10s linear infinite;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: -10px;
+    width: 80px;
+    height: 4px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #2997ff, #af52de);
+    opacity: 0.9;
+  }
+
+  @media (max-width: 768px) {
+    font-size: clamp(36px, 10vw, 48px);
+    &::after { width: 48px; height: 3px; bottom: -8px; }
+  }
 `;
 
 const MainTitle = styled(motion.h2)`
@@ -133,6 +183,73 @@ const SubDescription = styled(motion.p)`
   color: ${(props) => (props.theme.mode === 'dark' ? '#86868b' : '#6e6e73')};
   max-width: 720px;
   margin: 0 auto;
+`;
+
+// 提示词商城介绍段落（独立介绍模块）- 优化排版与可读性
+const IntroBlock = styled(motion.div)`
+  max-width: 720px;
+  margin: 40px auto 36px;
+  padding: 28px 36px 30px;
+  text-align: left;
+  background: ${(props) =>
+    props.theme.mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.03)'
+      : 'rgba(255, 255, 255, 0.85)'};
+  border-radius: 20px;
+  border: 1px solid ${(props) =>
+    props.theme.mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.06)'
+      : 'rgba(0, 0, 0, 0.06)'};
+  box-shadow: ${(props) =>
+    props.theme.mode === 'dark'
+      ? 'none'
+      : '0 4px 24px -4px rgba(0, 0, 0, 0.06)'};
+  position: relative;
+  z-index: 1;
+
+  /* 左侧装饰条 */
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 24px;
+    bottom: 24px;
+    width: 4px;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #2997ff, #af52de);
+    opacity: 0.7;
+  }
+
+  .intro-text {
+    font-size: 17px;
+    line-height: 1.85;
+    font-weight: 400;
+    color: ${(props) => (props.theme.mode === 'dark' ? '#a1a1a6' : '#4a4a4f')};
+    margin: 0;
+    padding-left: 4px;
+  }
+
+  @media (max-width: 768px) {
+    margin: 32px 16px 28px;
+    padding: 22px 24px 24px;
+    text-align: center;
+
+    &::before {
+      left: 50%;
+      transform: translateX(-50%);
+      top: 0;
+      bottom: auto;
+      width: 48px;
+      height: 4px;
+      border-radius: 2px;
+    }
+
+    .intro-text {
+      font-size: 15px;
+      line-height: 1.8;
+      padding-left: 0;
+    }
+  }
 `;
 
 // 提供商标签区
@@ -421,9 +538,25 @@ const PromptMarketSection = () => {
           viewport={{ once: true, margin: "-100px" }}
           variants={containerVariants}
         >
-          <Label variants={blurTextVariant}>
-            {intl.formatMessage({ id: 'market.label', defaultMessage: 'PROMPT MARKETPLACE' })}
-          </Label>
+          <TitleBlock variants={blurTextVariant}>
+            <Label theme={theme}>
+              {intl.formatMessage({ id: 'market.sectionTag', defaultMessage: 'PROMPT MARKET' })}
+            </Label>
+            <MarketTitle theme={theme}>
+              <span className="gradient-text">
+                {intl.formatMessage({ id: 'market.label', defaultMessage: 'PROMPT MARKETPLACE' })}
+              </span>
+            </MarketTitle>
+          </TitleBlock>
+
+          <IntroBlock theme={theme} variants={blurTextVariant}>
+            <p className="intro-text">
+              {intl.formatMessage({
+                id: 'market.intro',
+                defaultMessage: 'Prompt Market is a discovery, trade, and reuse platform for AI prompts. Find battle-tested recipes for Midjourney, Runway, Sora, and more—import with one click, or list your best prompts and earn.'
+              })}
+            </p>
+          </IntroBlock>
           
           <MainTitle variants={blurTextVariant} theme={theme}>
              {intl.formatMessage({ id: 'market.h1', defaultMessage: 'Unleash your' })} <br/>

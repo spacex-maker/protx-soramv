@@ -32,8 +32,10 @@ export const RightSection = styled.div`
   align-items: center;
   padding: 2rem;
   background: ${props => props.theme.mode === 'dark' 
-    ? '#1f1f1f'
-    : '#ffffff'};
+    ? 'rgba(30, 27, 75, 0.4)'
+    : 'rgba(255, 255, 255, 0.55)'};
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   height: 100%;
@@ -50,11 +52,10 @@ export const LoginBox = styled.div`
   width: 100%;
   max-width: 420px;
   padding: 2rem;
-  background: ${props => props.theme.mode === 'dark' 
-    ? 'transparent' 
-    : '#ffffff'};
+  background: transparent;
   border-radius: 1rem;
   box-shadow: none;
+  border: none;
   opacity: 0;
   animation: ${slideUpFade} 0.8s ease-out forwards;
   animation-delay: 0.3s;

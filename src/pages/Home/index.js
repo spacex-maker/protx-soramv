@@ -4,7 +4,6 @@ import { PageContainer } from './styles';
 import HeroSection from './components/HeroSection';
 import FeaturesSection from './components/FeaturesSection';
 import PricingSection from './components/PricingSection';
-import TechnologySection from './components/TechnologySection';
 import MediaToolsSection from './components/MediaToolsSection';
 import CommunitySection from './components/CommunitySection';
 import PromptMarketSection from './components/PromptMarketSection';
@@ -19,7 +18,6 @@ const HomePage = () => {
       <SimpleHeader />
       <HeroSection />
       <FeaturesSection />
-      <TechnologySection />
       <CommunitySection />
       <PromptMarketSection />
       <PricingSection />

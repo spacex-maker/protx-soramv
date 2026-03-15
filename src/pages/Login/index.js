@@ -10,7 +10,6 @@ import SEO, { SEOConfigs } from 'components/SEO';
 
 import { PageContainer, VersionTag } from './styles';
 import { TopControls } from './components/TopControls';
-import { LeftSection } from './components/LeftSection';
 import { RightSection } from './components/RightSection';
 import { PhilosophyQuote, PoweredBy } from './components/Footer';
 
@@ -98,8 +97,6 @@ const LoginPage = () => {
           languages={languages}
           changeLocale={changeLocale}
         />
-
-        <LeftSection />
 
         <RightSection 
           email={email}

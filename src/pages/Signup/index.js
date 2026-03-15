@@ -8,7 +8,6 @@ import { auth } from "../../api/auth";
 import { base } from "../../api/base";
 import axios from '../../api/axios';
 import { TopControls } from './components/TopControls';
-import { LeftSection } from './components/LeftSection';
 import { RightSection } from './components/RightSection';
 import { PhilosophyQuote, PoweredBy } from './components/Footer';
 import { PageContainer } from './styles';
@@ -235,7 +234,6 @@ const SignupPage = () => {
           languages={languages}
           changeLocale={changeLocale}
         />
-        <LeftSection />
         <RightSection 
           username={username}
           setUsername={setUsername}

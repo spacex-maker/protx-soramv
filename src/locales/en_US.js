@@ -1440,7 +1440,9 @@ export default {
   'home.community.text.description': 'Share excellent AI-created texts, novels, poems, scripts, copywriting, and inspire your literary creativity',
 
   // Prompt Market (market.* keys used by PromptMarketSection)
+  'market.sectionTag': 'PROMPT MARKET',
   'market.label': 'PROMPT MARKETPLACE',
+  'market.intro': 'Prompt Market is a discovery, trade, and reuse platform for AI prompts. Find battle-tested recipes for Midjourney, Runway, Sora, and more—import with one click, or list your best prompts and earn.',
   'market.h1': 'Unleash your',
   'market.h1.highlight': 'Unlimited Creativity.',
   'market.sub': 'The premium destination for AI prompts: image, video, and music. Verified recipes that work across OpenAI, Google, Midjourney, Runway, Kling, Luma, Suno, ElevenLabs, and more. Stop guessing, start creating.',
