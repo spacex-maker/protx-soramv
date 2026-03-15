@@ -19,6 +19,7 @@ import {
   TeamOutlined,
   ThunderboltOutlined,
   TrophyOutlined,
+  CodeOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage } from 'react-intl';
 import AboutModal from 'components/modals/AboutModal';
@@ -270,6 +271,11 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
       key: 'mediaTools',
       icon: <FileImageOutlined style={{ color: '#10b981' }} />,
       label: <FormattedMessage id="sidebar.mediaTools" defaultMessage="媒体工具" />
+    },
+    {
+      key: 'embedding',
+      icon: <CodeOutlined style={{ color: '#6366f1' }} />,
+      label: <FormattedMessage id="sidebar.embedding" defaultMessage="向量模型" />
     }
   ];
 
@@ -350,6 +356,14 @@ const SideMenu: React.FC<SideMenuProps> = ({ selectedKeys, onSelect, collapsed, 
 
     if (key === 'dailyChallenge') {
       navigate('/workspace/daily-challenge');
+      if (isMobile) {
+        onCollapse(true);
+      }
+      return;
+    }
+
+    if (key === 'embedding') {
+      navigate('/workspace/embedding');
       if (isMobile) {
         onCollapse(true);
       }

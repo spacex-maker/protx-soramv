@@ -19,6 +19,7 @@ import Channels from './Channels';
 import DailyChallenge from './DailyChallenge';
 import Recharge from './Recharge';
 import FileDecryptPage from '../FileDecrypt';
+import Embedding from './Embedding';
 
 const { Content, Sider } = Layout;
 
@@ -84,6 +85,8 @@ const CloudDrivePage = () => {
       setSelectedKeys(['dailyChallenge']);
     } else if (path === '/workspace/recharge') {
       setSelectedKeys(['recharge']);
+    } else if (path === '/workspace/embedding') {
+      setSelectedKeys(['embedding']);
     } else if (path === '/workspace') {
       setSelectedKeys(['create']);
     }
@@ -120,6 +123,8 @@ const CloudDrivePage = () => {
         return <DailyChallenge />;
       case 'recharge':
         return <Recharge />;
+      case 'embedding':
+        return <Embedding />;
       default:
         return <Create />;
     }
