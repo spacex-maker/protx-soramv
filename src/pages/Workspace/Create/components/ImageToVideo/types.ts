@@ -36,6 +36,12 @@ export interface Model {
   likesCount?: number; // 点赞总数
   favoritesCount?: number; // 收藏总数
   coverImage?: string | null; // 封面图
+  /** 模型级别：1 家族 / 2 具体型号（接口可选返回） */
+  modelLevel?: number;
+  parentModelCode?: string;
+  companyName?: string | null;
+  companyCode?: string | null;
+  modelSource?: string | null;
 }
 
 // 生成任务记录类型

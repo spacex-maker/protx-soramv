@@ -7,6 +7,31 @@ import {
   TabletOutlined,
   BorderOutlined,
 } from '@ant-design/icons';
+/** 与 ModelDetailModal 封面逻辑一致 */
+export function normalizeUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  const u = url.trim();
+  if (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('data:')) return u;
+  if (u.startsWith('//') && typeof window !== 'undefined') return `${window.location.protocol}${u}`;
+  if (typeof window === 'undefined') return u.startsWith('/') ? u : `/${u}`;
+  return `${window.location.origin}${u.startsWith('/') ? '' : '/'}${u}`;
+}
+
+export function isVideoUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  if (url.trim().startsWith('data:video')) return true;
+  const path = url.split('?')[0].split('#')[0];
+  const ext = path.split('.').pop()?.toLowerCase() || '';
+  return ['mp4', 'webm', 'mov', 'mkv', 'm4v'].includes(ext);
+}
+
+/** 列表接口可能是 cover_image */
+export function modelCoverUrl(model: { coverImage?: unknown; cover_image?: unknown } | null | undefined): string | null {
+  if (!model) return null;
+  const raw = model.coverImage ?? model.cover_image;
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  return normalizeUrl(raw.trim());
+}
 
 // 根据比例值获取对应的图标和标签
 export const getAspectRatioOption = (ratio: string, intl: any) => {
@@ -40,6 +65,11 @@ export const getAspectRatioOption = (ratio: string, intl: any) => {
       labelKey: 'create.aspectRatio.3:4',
       defaultLabel: '3:4 (Portrait Classic)',
       icon: <MobileOutlined />
+    },
+    'adaptive': {
+      labelKey: 'create.aspectRatio.adaptive',
+      defaultLabel: 'Adaptive (随素材)',
+      icon: <BorderOutlined />
     },
     // 支持枚举值
     'portrait': {
@@ -80,20 +110,6 @@ export const getCameraMotions = (intl: any) => [
   { label: intl.formatMessage({ id: 'create.cameraMotion.tiltUp', defaultMessage: '向上倾斜 (Tilt Up)' }), value: 'tilt_up' },
   { label: intl.formatMessage({ id: 'create.cameraMotion.orbital', defaultMessage: '360° 环绕 (Orbital)' }), value: 'orbital' },
 ];
-
-// 判断 URL 是否是视频
-export const isVideoUrl = (url: string | null | undefined): boolean => {
-  if (!url) return false;
-  const ext = url.split('.').pop()?.toLowerCase();
-  return ['mp4', 'webm', 'mov', 'mkv'].includes(ext || '') || url.startsWith('data:video');
-};
-
-// 规范化 URL
-export const normalizeUrl = (url: string | null | undefined): string => {
-  if (!url) return '';
-  if (url.startsWith('http') || url.startsWith('data:')) return url;
-  return `${window.location.origin}${url.startsWith('/') ? '' : '/'}${url}`;
-};
 
 // 获取模型支持的视频比例列表
 // 优先使用 videoAspectRatios，如果为空则使用 videoAspectRatiosEnum（直接使用，不转换）

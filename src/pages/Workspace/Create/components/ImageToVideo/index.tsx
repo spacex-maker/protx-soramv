@@ -14,6 +14,7 @@ import {
   Spin,
   Tooltip,
   Modal,
+  Switch,
 } from 'antd';
 import { 
   ThunderboltOutlined,
@@ -28,12 +29,12 @@ import {
   CameraOutlined,
   CheckCircleOutlined,
   SwapOutlined,
-  RobotOutlined,
   CloseOutlined,
   SyncOutlined,
   UnorderedListOutlined,
   InboxOutlined,
   DeleteOutlined,
+  AudioOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import instance from 'api/axios';
@@ -45,11 +46,6 @@ import {
   VideoPlaceholder,
   ActionOverlay,
   AspectRatioOption,
-  ModelOptionWrapper,
-  ModelSelectDisplay,
-  AspectRatioTag,
-  ResolutionTag,
-  DetailButton,
   InputImageContainer,
   OverlayActions,
   CustomUploadArea,
@@ -57,12 +53,11 @@ import {
   UploadText,
   UploadHint,
 } from './styles';
-import { getModelDescription } from '../modelUtils';
+import VideoModelSelectionModal from './VideoModelSelectionModal';
+import VideoModelSelectField from './VideoModelSelectField';
 import { 
   getAspectRatioOption, 
   getCameraMotions, 
-  isVideoUrl, 
-  normalizeUrl, 
   getModelAspectRatios, 
   getModelDurationOptions,
   getBase64,
@@ -71,9 +66,52 @@ import HistorySection from './HistorySection';
 import TaskDetailModal from './TaskDetailModal';
 import WaitingTaskQueue, { WaitingTask } from './WaitingTaskQueue';
 import ModelDetailModal from './ModelDetailModal';
+import DoubaoSeedance20Params, {
+  DOUBAO_SEEDANCE_2_0_FAST_260128,
+  DOUBAO_SEEDANCE_20_I2V_FIRST_INPUT_ID,
+  DOUBAO_SEEDANCE_20_I2V_END_INPUT_ID,
+} from './generationParams/DoubaoSeedance20Params';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+
+function isSeedance2Model(model: Model | null | undefined): boolean {
+  const code = (model?.modelCode || '').toLowerCase();
+  return code.includes('seedance-2') || code.includes('seedance2');
+}
+
+function isSeedance15Model(model: Model | null | undefined): boolean {
+  const code = (model?.modelCode || '').toLowerCase();
+  return code.includes('seedance') && !isSeedance2Model(model);
+}
+
+function getSeedance2ResolutionSelectOptions(model: Model | null | undefined): { value: string; label: string }[] {
+  const max = (model?.videoMaxResolution || '').toLowerCase();
+  const opts = [
+    { value: '480p', label: '480p' },
+    { value: '720p', label: '720p' },
+    { value: '1080p', label: '1080p' },
+  ];
+  if (max.includes('1080')) {
+    return opts;
+  }
+  return opts.filter((o) => o.value !== '1080p');
+}
+
+function splitSeedanceRefLines(raw: string | undefined | null): string[] {
+  if (!raw || !String(raw).trim()) return [];
+  return String(raw)
+    .split(/[\r\n,]+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function normalizeSeedance2ResolutionFromModel(model: Model | null | undefined): string {
+  const raw = (model?.videoDefaultResolution || '720p').trim();
+  const lower = raw.toLowerCase();
+  if (lower === '480p' || lower === '720p' || lower === '1080p') return lower;
+  return '720p';
+}
 
 export interface ImageToVideoProps {
   /** 是否为 Seedance 专用页（仅展示 Seedance 模型、独立路由） */
@@ -89,6 +127,8 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
   const [models, setModels] = useState<Model[]>([]);
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [modelsLoading, setModelsLoading] = useState(false);
+  const [modelPickerVisible, setModelPickerVisible] = useState(false);
+  const updateFormByModelRef = useRef<(model: Model) => void>(() => {});
   const abortControllerRef = useRef<AbortController | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pollingTasksRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
@@ -99,6 +139,9 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
   // 图片上传状态
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
+  /** Seedance 2.x 可选尾帧图（上传后作为 imageUrls 第二项） */
+  const [endFrameImageUrl, setEndFrameImageUrl] = useState<string | null>(null);
+  const [endFrameImageFile, setEndFrameImageFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
   
@@ -141,13 +184,12 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     return () => observer.disconnect();
   }, []);
 
-  // 获取模型列表
   useEffect(() => {
     const fetchModels = async () => {
       setModelsLoading(true);
       try {
         const response = await instance.get('/productx/sa-ai-models/enabled/by-type', {
-          params: { modelType: 'i2v' }
+          params: { modelType: 'i2v' },
         });
         if (response.data.success && response.data.data && response.data.data.length > 0) {
           let list = response.data.data as Model[];
@@ -159,24 +201,49 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
           if (firstModel) {
             setSelectedModel(firstModel);
             form.setFieldsValue({ modelId: firstModel.id });
-            updateFormByModel(firstModel);
+            updateFormByModelRef.current(firstModel);
           }
           if (seedancePage && list.length === 0) {
-            message.warning(intl.formatMessage({ id: 'create.seedance.noModel', defaultMessage: '暂无可用的 Seedance 模型，请先在后台配置' }));
+            message.warning(
+              intl.formatMessage({
+                id: 'create.seedance.noModel',
+                defaultMessage: '暂无可用的 Seedance 模型，请先在后台配置',
+              })
+            );
           } else if (!firstModel && !seedancePage) {
-            message.warning(intl.formatMessage({ id: 'create.model.loadFailed', defaultMessage: '加载模型列表失败' }));
+            message.warning(
+              intl.formatMessage({
+                id: 'create.model.loadFailed',
+                defaultMessage: '加载模型列表失败',
+              })
+            );
           }
         } else {
-          if (!seedancePage) {
-            message.warning(intl.formatMessage({ id: 'create.model.loadFailed', defaultMessage: '加载模型列表失败' }));
-          }
+          setModels([]);
+          setSelectedModel(null);
+          form.setFieldsValue({ modelId: null });
+          message.warning(
+            intl.formatMessage(
+              seedancePage
+                ? {
+                    id: 'create.seedance.noModel',
+                    defaultMessage: '暂无可用的 Seedance 模型，请先在后台配置',
+                  }
+                : {
+                    id: 'create.model.loadFailed',
+                    defaultMessage: '加载模型列表失败',
+                  }
+            )
+          );
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('获取模型列表失败:', error);
-        message.error(intl.formatMessage({ 
-          id: 'create.model.loadFailed', 
-          defaultMessage: '加载模型列表失败' 
-        }));
+        message.error(
+          intl.formatMessage({
+            id: 'create.model.loadFailed',
+            defaultMessage: '加载模型列表失败',
+          })
+        );
       } finally {
         setModelsLoading(false);
       }
@@ -184,9 +251,8 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
 
     fetchModels();
     fetchHistoryTasks();
-    fetchPendingTasks(); // 获取进行中的任务并恢复轮询
+    fetchPendingTasks();
 
-    // 组件卸载时清理 AbortController 和轮询定时器
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -196,13 +262,13 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
         clearInterval(pollingTimerRef.current);
         pollingTimerRef.current = null;
       }
-      // 清理所有任务轮询
       pollingTasksRef.current.forEach((timer) => {
         clearInterval(timer);
       });
       pollingTasksRef.current.clear();
     };
-  }, [intl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 与历史一致：intl / seedance 页切换时重拉
+  }, [intl, seedancePage]);
 
   // 生成成功后刷新记录
   useEffect(() => {
@@ -342,8 +408,18 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
       updates.cameraMotion = 'none';
     }
 
-    // Seedance 模型默认参数
-    if (model.modelCode && model.modelCode.toLowerCase().includes('seedance')) {
+    // Seedance 1.5 / 2.x 默认参数（2.x 水印默认关，与方舟 body.watermark 一致）
+    if (isSeedance2Model(model)) {
+      const allowedRes = getSeedance2ResolutionSelectOptions(model).map((o) => o.value);
+      let res = normalizeSeedance2ResolutionFromModel(model);
+      if (!allowedRes.includes(res)) {
+        res = allowedRes.includes('720p') ? '720p' : allowedRes[0] || '720p';
+      }
+      updates.seedanceResolution = res;
+      updates.seedanceWatermark = false;
+      updates.seedanceGenerateAudio = false;
+      updates.seedanceReturnLastFrame = false;
+    } else if (model.modelCode && model.modelCode.toLowerCase().includes('seedance')) {
       updates.seedanceCameraFixed = false;
       updates.seedanceWatermark = true;
     }
@@ -365,14 +441,16 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     }
   };
 
-  // 处理模型选择变化
-  const handleModelChange = (modelId: number) => {
-    const model = models.find(m => m.id === modelId);
-    if (model) {
-      setSelectedModel(model);
-      form.setFieldsValue({ modelId: modelId });
-      updateFormByModel(model);
+  updateFormByModelRef.current = updateFormByModel;
+
+  const applySelectedModel = (model: Model) => {
+    if (!isSeedance2Model(model)) {
+      setEndFrameImageUrl(null);
+      setEndFrameImageFile(null);
     }
+    setSelectedModel(model);
+    form.setFieldsValue({ modelId: model.id });
+    updateFormByModel(model);
   };
 
   // 处理文件选择
@@ -443,55 +521,46 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     if (fileInput) {
       fileInput.value = '';
     }
+    const seedance20First = document.getElementById(DOUBAO_SEEDANCE_20_I2V_FIRST_INPUT_ID) as HTMLInputElement;
+    if (seedance20First) seedance20First.value = '';
   };
 
-  // 自定义模型选择框显示内容
-  const renderModelSelectDisplay = (model: Model | null) => {
-    if (!model) return null;
-    
-    const coverImage = (model as any).coverImage ? normalizeUrl((model as any).coverImage) : null;
-    const isVideo = coverImage ? isVideoUrl(coverImage) : false;
-    
-    return (
-      <ModelSelectDisplay coverImage={coverImage} isVideo={isVideo}>
-        {isVideo && coverImage && (
-          <video 
-            className="cover-video"
-            src={coverImage}
-            autoPlay
-            loop
-            muted
-            playsInline
-          />
-        )}
-        <div className="model-display-header">
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="model-display-name">
-              {model.modelName}
-            </div>
-            {model.modelCode && (
-              <div className="model-display-code">{model.modelCode}</div>
-            )}
-          </div>
-          {model.tokenCost !== null && model.tokenCost !== undefined && (
-            <div className="model-display-price">
-              <span className="model-display-price-amount">
-                {model.tokenCost}
-              </span>
-              <span className="model-display-price-currency">
-                Token
-              </span>
-              <span className="model-display-price-unit">
-                {intl.formatMessage({ 
-                  id: 'create.model.price.perSecond', 
-                  defaultMessage: '/秒' 
-                })}
-              </span>
-            </div>
-          )}
-        </div>
-      </ModelSelectDisplay>
-    );
+  const handleEndFrameFileSelect = async (file: File | null) => {
+    if (!file) {
+      setEndFrameImageUrl(null);
+      setEndFrameImageFile(null);
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      message.error(intl.formatMessage({ id: 'create.i2v.fileType.error', defaultMessage: '请选择图片文件' }));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      message.error(intl.formatMessage({ id: 'create.i2v.fileSize.error', defaultMessage: '图片文件大小不能超过10MB' }));
+      return;
+    }
+    try {
+      const url = await getBase64(file);
+      setEndFrameImageUrl(url);
+      setEndFrameImageFile(file);
+    } catch {
+      message.error(intl.formatMessage({ id: 'create.i2v.fileRead.error', defaultMessage: '图片读取失败' }));
+    }
+  };
+
+  const handleEndFrameFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    handleEndFrameFileSelect(file);
+  };
+
+  const handleRemoveEndFrame = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEndFrameImageUrl(null);
+    setEndFrameImageFile(null);
+    const el = document.getElementById('i2v-endframe-upload-input') as HTMLInputElement;
+    if (el) el.value = '';
+    const seedance20End = document.getElementById(DOUBAO_SEEDANCE_20_I2V_END_INPUT_ID) as HTMLInputElement;
+    if (seedance20End) seedance20End.value = '';
   };
 
   // 获取支持的视频比例选项
@@ -558,6 +627,224 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
 
     const qualities = selectedModel.videoQuality.split(',').map(q => q.trim()).filter(q => q);
     return qualities;
+  };
+
+  /** 视频比例 + 输出格式（可选第三列，如 Seedance Fast 的输出分辨率） */
+  const renderAspectRatioAndFormatRow = (layout?: { marginBottom?: number; thirdColumn?: React.ReactNode }) => {
+    const mb = layout?.marginBottom ?? 20;
+    const thirdColumn = layout?.thirdColumn;
+    const availableRatios = getAvailableAspectRatios();
+    const availableFormats = getAvailableVideoFormats();
+    const hasRatios = availableRatios.length > 0;
+    const hasFormats = availableFormats.length > 0;
+    if (!hasRatios && !hasFormats && !thirdColumn) {
+      return null;
+    }
+    const colCount = (hasRatios ? 1 : 0) + (hasFormats ? 1 : 0) + (thirdColumn ? 1 : 0);
+    const smSpan = colCount >= 3 ? 8 : colCount === 2 ? 12 : 24;
+    return (
+      <Row gutter={16} style={{ marginBottom: mb }}>
+        {hasRatios && (
+          <Col xs={24} sm={smSpan}>
+            <Form.Item
+              name="aspectRatio"
+              label={
+                <Space>
+                  <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                  <FormattedMessage id="create.video.ratio" defaultMessage="视频比例" />
+                </Space>
+              }
+              style={{ marginBottom: 0 }}
+              rules={[
+                {
+                  validator: (_, value) => {
+                    if (!value) {
+                      return Promise.resolve();
+                    }
+                    const validValues = availableRatios.map((r) => r.value);
+                    if (validValues.includes(value)) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(
+                      new Error(
+                        intl.formatMessage({
+                          id: 'create.video.ratio.invalid',
+                          defaultMessage: '请选择模型支持的视频比例',
+                        }),
+                      ),
+                    );
+                  },
+                },
+              ]}
+            >
+              <Select
+                optionLabelProp="label"
+                placeholder={intl.formatMessage({
+                  id: 'create.video.ratio.placeholder',
+                  defaultMessage: '请选择视频比例',
+                })}
+                allowClear={false}
+              >
+                {availableRatios.map((ratio) => (
+                  <Select.Option
+                    key={ratio.value}
+                    value={ratio.value}
+                    label={
+                      <AspectRatioOption>
+                        {ratio.icon}
+                        <span>{ratio.label}</span>
+                      </AspectRatioOption>
+                    }
+                  >
+                    <AspectRatioOption>
+                      {ratio.icon}
+                      <span>{ratio.label}</span>
+                    </AspectRatioOption>
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        )}
+        {hasFormats && (
+          <Col xs={24} sm={smSpan}>
+            <Form.Item
+              name="videoFormat"
+              label={
+                <Space>
+                  <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                  <FormattedMessage id="create.video.format" defaultMessage="输出格式" />
+                </Space>
+              }
+              style={{ marginBottom: 0 }}
+            >
+              <Select
+                placeholder={intl.formatMessage({
+                  id: 'create.video.format.placeholder',
+                  defaultMessage: '请选择输出格式',
+                })}
+              >
+                {availableFormats.map((format) => (
+                  <Select.Option key={format} value={format}>
+                    {format.toUpperCase()}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Col>
+        )}
+        {thirdColumn && (
+          <Col xs={24} sm={smSpan}>
+            {thirdColumn}
+          </Col>
+        )}
+      </Row>
+    );
+  };
+
+  const renderVideoDurationField = (layout?: { marginBottom?: number }) => {
+    const mb = layout?.marginBottom ?? 20;
+    const durationOptions = getDurationOptions();
+    if (durationOptions !== null && durationOptions.length === 0) {
+      return null;
+    }
+    return (
+      <Form.Item
+        name="duration"
+        label={
+          <Space>
+            <ClockCircleOutlined style={{ color: '#1890ff' }} />
+            <FormattedMessage id="create.video.duration" defaultMessage="视频时长 (秒)" />
+          </Space>
+        }
+        style={{ marginBottom: mb }}
+      >
+        {durationOptions === null ? (
+          <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.duration !== currentValues.duration} noStyle>
+            {({ getFieldValue }) => {
+              const duration = getFieldValue('duration') || 8;
+              return (
+                <Slider
+                  min={4}
+                  max={getMaxDuration()}
+                  value={duration}
+                  marks={{
+                    4: intl.formatMessage({ id: 'create.duration.4s', defaultMessage: '4s' }),
+                    8: intl.formatMessage({ id: 'create.duration.8s', defaultMessage: '8s' }),
+                    [getMaxDuration()]: intl.formatMessage(
+                      {
+                        id: 'create.duration.format',
+                        defaultMessage: '{duration}s',
+                      },
+                      { duration: getMaxDuration() },
+                    ),
+                  }}
+                  tooltip={{
+                    formatter: (val) => {
+                      const d = val as number;
+                      const price = calculateEstimatedPrice(d);
+                      if (price) {
+                        return `${intl.formatMessage(
+                          {
+                            id: 'create.duration.format',
+                            defaultMessage: '{duration}s',
+                          },
+                          { duration: d },
+                        )} | ${intl.formatMessage(
+                          {
+                            id: 'create.estimated.price',
+                            defaultMessage: '预估: {price}',
+                          },
+                          { price },
+                        )}`;
+                      }
+                      return intl.formatMessage(
+                        {
+                          id: 'create.duration.format',
+                          defaultMessage: '{duration}s',
+                        },
+                        { duration: d },
+                      );
+                    },
+                  }}
+                  disabled={!selectedModel}
+                  onChange={(val) => {
+                    form.setFieldsValue({ duration: val });
+                  }}
+                />
+              );
+            }}
+          </Form.Item>
+        ) : (
+          <Select
+            disabled={!selectedModel || durationOptions.length === 0}
+            placeholder={
+              !selectedModel
+                ? intl.formatMessage({
+                    id: 'create.model.select.placeholder',
+                    defaultMessage: '请先选择模型',
+                  })
+                : intl.formatMessage({
+                    id: 'create.duration.select.placeholder',
+                    defaultMessage: '请选择视频时长',
+                  })
+            }
+          >
+            {durationOptions.map((duration) => (
+              <Select.Option key={duration} value={duration}>
+                {intl.formatMessage(
+                  {
+                    id: 'create.duration.format',
+                    defaultMessage: '{duration}s',
+                  },
+                  { duration },
+                )}
+              </Select.Option>
+            ))}
+          </Select>
+        )}
+      </Form.Item>
+    );
   };
 
   // 根据选中的比例获取对应的分辨率
@@ -850,13 +1137,6 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     setSelectedTaskId(null);
   };
 
-  // 显示模型详情
-  const handleShowModelDetail = (e: React.MouseEvent, model: Model) => {
-    e.stopPropagation();
-    setSelectedModelForDetail(model);
-    setModelDetailModalVisible(true);
-  };
-
   // 关闭模型详情模态框
   const handleCloseModelDetail = () => {
     setModelDetailModalVisible(false);
@@ -972,6 +1252,11 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
       try {
         // 上传图片到COS
         const imageUrl = await uploadImageToServer(originalImageFile);
+        let imageUrls: string[] = [imageUrl];
+        if (isSeedance2Model(selectedModel) && endFrameImageFile) {
+          const endUrl = await uploadImageToServer(endFrameImageFile);
+          imageUrls.push(endUrl);
+        }
         
         // 关闭上传提示
         uploadingMessage();
@@ -987,7 +1272,8 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
         const requestData: any = {
         prompt: values.prompt,
         modelCode: selectedModel.modelCode,
-        imageUrls: [imageUrl], // 图生视频需要传递图片URL数组
+        imageUrls,
+        translatePromptToEnglish: values.translatePromptToEnglish === true,
       };
 
       // 添加视频比例
@@ -1015,10 +1301,27 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
         requestData.videoQuality = values.videoQuality;
       }
 
-      // Seedance 模型专用参数（字节豆包图生视频）
-      if (selectedModel?.modelCode?.toLowerCase().includes('seedance')) {
-        requestData.seedanceCameraFixed = values.seedanceCameraFixed === true;
-        requestData.seedanceWatermark = values.seedanceWatermark !== false;
+      // Seedance 1.5 / 2.x（字节豆包图生视频）
+      const mc = selectedModel?.modelCode?.toLowerCase() || '';
+      if (mc.includes('seedance')) {
+        if (isSeedance2Model(selectedModel)) {
+          if (values.seedanceResolution) {
+            requestData.seedanceResolution = values.seedanceResolution;
+          }
+          if (values.aspectRatio) {
+            requestData.seedanceRatio = values.aspectRatio;
+          }
+          requestData.seedanceGenerateAudio = values.seedanceGenerateAudio === true;
+          requestData.seedanceReturnLastFrame = values.seedanceReturnLastFrame === true;
+          requestData.seedanceWatermark = values.seedanceWatermark === true;
+          const vRefs = splitSeedanceRefLines(values.seedanceVideoRefsRaw);
+          const aRefs = splitSeedanceRefLines(values.seedanceAudioRefsRaw);
+          if (vRefs.length) requestData.seedanceVideoReferenceUrls = vRefs;
+          if (aRefs.length) requestData.seedanceAudioReferenceUrls = aRefs;
+        } else {
+          requestData.seedanceCameraFixed = values.seedanceCameraFixed === true;
+          requestData.seedanceWatermark = values.seedanceWatermark !== false;
+        }
       }
 
       console.log('Generating image-to-video with params:', requestData);
@@ -1165,7 +1468,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                   <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <VideoCameraOutlined style={{ fontSize: 14 }} />
                     {seedancePage ? (
-                      <FormattedMessage id="create.seedance.subtitle" defaultMessage="字节豆包 Seedance 1.5，图片驱动短视频生成" />
+                      <FormattedMessage id="create.seedance.subtitle" defaultMessage="字节豆包 Seedance 1.5 / 2.0，图片驱动视频生成" />
                     ) : (
                       <FormattedMessage id="create.imageToVideo.subtitle" defaultMessage="赋予静态图片生命，通过提示词控制运动" />
                     )}
@@ -1240,128 +1543,80 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                   modelId: null,
                   seedanceCameraFixed: false,
                   seedanceWatermark: true,
+                  seedanceResolution: '720p',
+                  seedanceGenerateAudio: false,
+                  seedanceReturnLastFrame: false,
+                  seedanceVideoRefsRaw: '',
+                  seedanceAudioRefsRaw: '',
                 }}
               >
-                {/* 模型选择 */}
-                <Form.Item
-                  name="modelId"
-                  label={
-                    <Space>
-                      <RobotOutlined style={{ color: '#1890ff' }} />
-                      <FormattedMessage id="create.model.select" defaultMessage="选择模型" />
-                    </Space>
-                  }
-                  style={{ marginBottom: 28 }}
-                >
-                  <Select
-                    value={selectedModel?.id}
-                    onChange={handleModelChange}
-                    placeholder={intl.formatMessage({ 
-                      id: 'create.model.select.placeholder', 
-                      defaultMessage: '请选择要使用的视频生成模型' 
-                    })}
-                    loading={modelsLoading}
-                    style={{ width: '100%' }}
-                    optionLabelProp="label"
-                    dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-                    dropdownClassName="model-select-dropdown"
-                    className="model-video-select"
-                  >
-                    {models.map(model => (
-                      <Select.Option 
-                        key={model.id} 
-                        value={model.id}
-                        label={
-                          <div style={{ width: '100%' }}>
-                            {renderModelSelectDisplay(model)}
-                          </div>
-                        }
-                      >
-                        {(() => {
-                          const coverImage = (model as any).coverImage ? normalizeUrl((model as any).coverImage) : null;
-                          const isVideo = coverImage ? isVideoUrl(coverImage) : false;
-                          return (
-                            <ModelOptionWrapper coverImage={coverImage} isVideo={isVideo}>
-                              {isVideo && coverImage && (
-                                <video 
-                                  className="cover-video"
-                                  src={coverImage}
-                                  autoPlay
-                                  loop
-                                  muted
-                                  playsInline
-                                />
-                              )}
-                              <div className="model-header">
-                                <VideoCameraOutlined style={{ color: '#1890ff', fontSize: 18, flexShrink: 0 }} />
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div className="model-name">
-                                    {model.modelName}
-                                  </div>
-                                  {model.modelCode && (
-                                    <div className="model-code">
-                                      {model.modelCode}
-                                    </div>
-                                  )}
-                                </div>
-                                {model.tokenCost !== null && model.tokenCost !== undefined && (
-                                  <div className="model-price">
-                                    <span className="model-price-amount">{model.tokenCost}</span>
-                                    <span className="model-price-currency">Token</span>
-                                    <span className="model-price-unit">
-                                      {intl.formatMessage({ 
-                                        id: 'create.model.price.perSecond', 
-                                        defaultMessage: '/秒' 
-                                      })}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                              {getModelDescription(model, intl.locale || '') && (
-                                <div className="model-description" style={{ marginTop: 6, paddingLeft: 26 }}>
-                                  {getModelDescription(model, intl.locale || '')}
-                                </div>
-                              )}
-                              <div className="model-bottom-row">
-                                {(getModelAspectRatios(model).length > 0 || model.videoAspectResolution) && (
-                                  <div className="model-aspect-ratios">
-                                    {getModelAspectRatios(model).map((ratio, index) => {
-                                      const ratioOption = getAspectRatioOption(ratio, intl);
-                                      return (
-                                        <AspectRatioTag key={index}>
-                                          {ratioOption.icon}
-                                          <span>{ratio}</span>
-                                        </AspectRatioTag>
-                                      );
-                                    })}
-                                    {model.videoAspectResolution && model.videoAspectResolution.split(',').map((resolution, index) => (
-                                      <ResolutionTag key={index}>
-                                        {resolution.trim()}
-                                      </ResolutionTag>
-                                    ))}
-                                  </div>
-                                )}
-                                <DetailButton
-                                  className="model-detail-button"
-                                  size="small"
-                                  icon={<EyeOutlined />}
-                                  onClick={(e: React.MouseEvent) => handleShowModelDetail(e, model)}
-                                >
+                <VideoModelSelectField
+                  selectedModel={selectedModel}
+                  modelsLoading={modelsLoading}
+                  onOpenModal={() => setModelPickerVisible(true)}
+                />
+
+                {/* Seedance 2.0 / 2.0 Fast：共用参数组件（字段一致，分辨率等由模型元数据裁剪） */}
+                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
+                  {() => {
+                    if (!selectedModel || !isSeedance2Model(selectedModel)) return null;
+                    const resOptions = getSeedance2ResolutionSelectOptions(selectedModel);
+                    const isFast = selectedModel.modelCode === DOUBAO_SEEDANCE_2_0_FAST_260128;
+                    return (
+                      <DoubaoSeedance20Params
+                        isDark={isDark}
+                        originalImageUrl={originalImageUrl}
+                        endFrameImageUrl={endFrameImageUrl}
+                        onFirstFrameFileChange={handleFileInputChange}
+                        onRemoveFirstFrame={handleRemoveImage}
+                        onEndFrameFileChange={handleEndFrameFileInputChange}
+                        onRemoveEndFrame={handleRemoveEndFrame}
+                        onFirstFrameDropFile={(file) => {
+                          void handleFileSelect(file);
+                        }}
+                        onEndFrameDropFile={(file) => {
+                          void handleEndFrameFileSelect(file);
+                        }}
+                        ratioAndFormatRow={renderAspectRatioAndFormatRow({
+                          marginBottom: 16,
+                          thirdColumn: (
+                            <Form.Item
+                              name="seedanceResolution"
+                              label={
+                                <Space>
+                                  <VideoCameraOutlined style={{ color: '#1890ff', fontSize: 12 }} />
                                   <FormattedMessage
-                                    id="create.model.detail"
-                                    defaultMessage="详情"
+                                    id="create.seedance2.resolution"
+                                    defaultMessage="输出分辨率"
                                   />
-                                </DetailButton>
-                              </div>
-                            </ModelOptionWrapper>
-                          );
-                        })()}
-                      </Select.Option>
-                    ))}
-                  </Select>
+                                  <Tooltip
+                                    title={intl.formatMessage({
+                                      id: isFast
+                                        ? 'create.seedance2.resolution.tooltip.fast'
+                                        : 'create.seedance2.resolution.tooltip',
+                                      defaultMessage: isFast
+                                        ? 'Fast 版最高 720p（与方舟一致）；可选 480p / 720p'
+                                        : '对应方舟 API 的 resolution 字段（480p / 720p / 1080p）',
+                                    })}
+                                  >
+                                    <InfoCircleOutlined style={{ color: '#999', fontSize: 12 }} />
+                                  </Tooltip>
+                                </Space>
+                              }
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Select options={resOptions} />
+                            </Form.Item>
+                          ),
+                        })}
+                        durationField={renderVideoDurationField({ marginBottom: 20 })}
+                      />
+                    );
+                  }}
                 </Form.Item>
 
-                {/* 上传图片区域 */}
+                {/* 上传图片区域（Seedance 2.x 见上方共用组件） */}
+                {!isSeedance2Model(selectedModel) && (
                 <Form.Item
                   name="inputFile"
                   label={
@@ -1415,15 +1670,40 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                     </CustomUploadArea>
                   )}
                 </Form.Item>
+                )}
 
                 {/* 提示词输入 */}
                 <Form.Item
                   name="prompt"
                   label={
                     <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                      <Space>
+                      <Space wrap align="center">
                         <EditOutlined style={{ color: '#1890ff' }} />
                         <FormattedMessage id="create.prompt" defaultMessage="运动引导提示词 (Prompt)" />
+                        <Form.Item
+                          name="translatePromptToEnglish"
+                          valuePropName="checked"
+                          initialValue={false}
+                          noStyle
+                        >
+                          <Tooltip
+                            title={intl.formatMessage({
+                              id: 'create.prompt.translateEn.tooltip',
+                              defaultMessage:
+                                '部分模型对英文提示词支持更好，若中文或其它语言效果不理想可开启。开启后会在提交前将提示词译为英文再调用模型（会消耗翻译服务）；关闭则直接使用您输入的原文。',
+                            })}
+                          >
+                            <Space size={6} style={{ marginLeft: 4 }}>
+                              <Switch size="small" />
+                              <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                                <FormattedMessage
+                                  id="create.prompt.translateEn"
+                                  defaultMessage="译为英文"
+                                />
+                              </Text>
+                            </Space>
+                          </Tooltip>
+                        </Form.Item>
                       </Space>
                       <Space size="small">
                         {originalPrompt && (
@@ -1471,108 +1751,13 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                   />
                 </Form.Item>
 
-                {/* 视频参数设置 */}
+                {/* 视频参数设置（Seedance 2.x 在下方「生成参数」分组内一并展示，避免重复与顺序混乱） */}
                 <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
                   {() => {
-                    const availableRatios = getAvailableAspectRatios();
-                    const availableFormats = getAvailableVideoFormats();
-                    const hasRatios = availableRatios.length > 0;
-                    const hasFormats = availableFormats.length > 0;
-                    
-                    // 如果两个选项都不支持，则不显示整个Row
-                    if (!hasRatios && !hasFormats) {
+                    if (isSeedance2Model(selectedModel)) {
                       return null;
                     }
-                    
-                    return (
-                      <Row gutter={16} style={{ marginBottom: 20 }}>
-                        {hasRatios && (
-                          <Col span={hasFormats ? 12 : 24}>
-                            <Form.Item
-                              name="aspectRatio"
-                              label={
-                                <Space>
-                                  <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                                  <FormattedMessage id="create.video.ratio" defaultMessage="视频比例" />
-                                </Space>
-                              }
-                              style={{ marginBottom: 0 }}
-                              rules={[
-                                {
-                                  validator: (_, value) => {
-                                    if (!value) {
-                                      return Promise.resolve();
-                                    }
-                                    const validValues = availableRatios.map(r => r.value);
-                                    if (validValues.includes(value)) {
-                                      return Promise.resolve();
-                                    }
-                                    return Promise.reject(new Error(intl.formatMessage({ 
-                                      id: 'create.video.ratio.invalid', 
-                                      defaultMessage: '请选择模型支持的视频比例' 
-                                    })));
-                                  }
-                                }
-                              ]}
-                            >
-                              <Select
-                                optionLabelProp="label"
-                                placeholder={intl.formatMessage({ 
-                                  id: 'create.video.ratio.placeholder', 
-                                  defaultMessage: '请选择视频比例' 
-                                })}
-                                allowClear={false}
-                              >
-                                {availableRatios.map(ratio => (
-                                  <Select.Option 
-                                    key={ratio.value} 
-                                    value={ratio.value}
-                                    label={
-                                      <AspectRatioOption>
-                                        {ratio.icon}
-                                        <span>{ratio.label}</span>
-                                      </AspectRatioOption>
-                                    }
-                                  >
-                                    <AspectRatioOption>
-                                      {ratio.icon}
-                                      <span>{ratio.label}</span>
-                                    </AspectRatioOption>
-                                  </Select.Option>
-                                ))}
-                              </Select>
-                            </Form.Item>
-                          </Col>
-                        )}
-                        {hasFormats && (
-                          <Col span={hasRatios ? 12 : 24}>
-                            <Form.Item
-                              name="videoFormat"
-                              label={
-                                <Space>
-                                  <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                                  <FormattedMessage id="create.video.format" defaultMessage="输出格式" />
-                                </Space>
-                              }
-                              style={{ marginBottom: 0 }}
-                            >
-                              <Select
-                                placeholder={intl.formatMessage({ 
-                                  id: 'create.video.format.placeholder', 
-                                  defaultMessage: '请选择输出格式' 
-                                })}
-                              >
-                                {availableFormats.map(format => (
-                                  <Select.Option key={format} value={format}>
-                                    {format.toUpperCase()}
-                                  </Select.Option>
-                                ))}
-                              </Select>
-                            </Form.Item>
-                          </Col>
-                        )}
-                      </Row>
-                    );
+                    return renderAspectRatioAndFormatRow({ marginBottom: 20 });
                   }}
                 </Form.Item>
 
@@ -1662,11 +1847,10 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                   }}
                 </Form.Item>
 
-                {/* Seedance 模型专用：镜头固定、水印 */}
+                {/* Seedance 1.5：镜头固定、水印 */}
                 <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
                   {() => {
-                    const isSeedance = selectedModel?.modelCode?.toLowerCase().includes('seedance');
-                    if (!isSeedance) return null;
+                    if (!isSeedance15Model(selectedModel)) return null;
                     return (
                       <Row gutter={16} style={{ marginBottom: 20 }}>
                         <Col span={12}>
@@ -1712,93 +1896,13 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                   }}
                 </Form.Item>
 
-                {/* 时长控制 */}
+                {/* 时长控制（Seedance 2.x 已并入上方共用组件） */}
                 <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
                   {() => {
-                    const durationOptions = getDurationOptions();
-                    
-                    if (durationOptions !== null && durationOptions.length === 0) {
+                    if (isSeedance2Model(selectedModel)) {
                       return null;
                     }
-                    
-                    return (
-                      <Form.Item
-                        name="duration"
-                        label={
-                          <Space>
-                            <ClockCircleOutlined style={{ color: '#1890ff' }} />
-                            <FormattedMessage id="create.video.duration" defaultMessage="视频时长 (秒)" />
-                          </Space>
-                        }
-                        style={{ marginBottom: 20 }}
-                      >
-                        {durationOptions === null ? (
-                          <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.duration !== currentValues.duration} noStyle>
-                            {({ getFieldValue }) => {
-                              const duration = getFieldValue('duration') || 8;
-                              return (
-                                <Slider 
-                                  min={4} 
-                                  max={getMaxDuration()} 
-                                  value={duration}
-                                  marks={{ 
-                                    4: intl.formatMessage({ id: 'create.duration.4s', defaultMessage: '4s' }), 
-                                    8: intl.formatMessage({ id: 'create.duration.8s', defaultMessage: '8s' }), 
-                                    [getMaxDuration()]: intl.formatMessage({ 
-                                      id: 'create.duration.format', 
-                                      defaultMessage: '{duration}s' 
-                                    }, { duration: getMaxDuration() })
-                                  }} 
-                                  tooltip={{ 
-                                    formatter: (val) => {
-                                      const duration = val as number;
-                                      const price = calculateEstimatedPrice(duration);
-                                      if (price) {
-                                        return `${intl.formatMessage({ 
-                                          id: 'create.duration.format', 
-                                          defaultMessage: '{duration}s' 
-                                        }, { duration })} | ${intl.formatMessage({ 
-                                          id: 'create.estimated.price', 
-                                          defaultMessage: '预估: {price}' 
-                                        }, { price })}`;
-                                      }
-                                      return intl.formatMessage({ 
-                                        id: 'create.duration.format', 
-                                        defaultMessage: '{duration}s' 
-                                      }, { duration });
-                                    }
-                                  }} 
-                                  disabled={!selectedModel}
-                                  onChange={(val) => {
-                                    form.setFieldsValue({ duration: val });
-                                  }}
-                                />
-                              );
-                            }}
-                          </Form.Item>
-                        ) : (
-                          <Select
-                            disabled={!selectedModel || durationOptions.length === 0}
-                            placeholder={!selectedModel ? intl.formatMessage({ 
-                              id: 'create.model.select.placeholder', 
-                              defaultMessage: '请先选择模型' 
-                            }) : intl.formatMessage({ 
-                              id: 'create.duration.select.placeholder', 
-                              defaultMessage: '请选择视频时长' 
-                            })}
-                          >
-                            {durationOptions.map(duration => (
-                              <Select.Option key={duration} value={duration}>
-                                {intl.formatMessage({ 
-                                  id: 'create.duration.format', 
-                                  defaultMessage: '{duration}s' 
-                                }, { duration })}
-                              </Select.Option>
-                            ))}
-                          </Select>
-                        )}
-                      </Form.Item>
-                    );
+                    return renderVideoDurationField({ marginBottom: 20 });
                   }}
                 </Form.Item>
 
@@ -2033,6 +2137,24 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
           getStatusText={getStatusText}
         />
       </StyledCard>
+
+      <VideoModelSelectionModal
+        open={modelPickerVisible}
+        onClose={() => setModelPickerVisible(false)}
+        type="family"
+        title={intl.formatMessage({
+          id: 'create.model.select',
+          defaultMessage: '选择模型',
+        })}
+        models={models}
+        selectedModel={selectedModel}
+        onSelect={(m) => applySelectedModel(m as Model)}
+        onShowDetail={(m) => {
+          setSelectedModelForDetail(m as Model);
+          setModelDetailModalVisible(true);
+        }}
+        loading={modelsLoading}
+      />
 
       {/* 任务详情模态框 */}
       <TaskDetailModal
