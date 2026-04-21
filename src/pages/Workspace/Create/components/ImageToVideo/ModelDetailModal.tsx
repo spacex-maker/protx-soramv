@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Tag, Typography, message, Tooltip, Button, Spin } from 'antd';
 import {
   CheckCircleOutlined,
@@ -29,7 +30,7 @@ import { Model } from './types';
 import { getModelDescription } from '../modelUtils';
 import { getModelAspectRatios } from './utils';
 import { getAspectRatioOption } from './utils';
-import { normalizeUrl, isVideoUrl } from './utils';
+import { isVideoUrl, modelCoverUrl } from './utils';
 import {
   likeModel,
   unlikeModel,
@@ -56,7 +57,8 @@ const ModalOverlay = styled.div<{ open: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  /* 高于 antd Modal（约 1000+），避免从模型选择弹窗打开详情时被挡在背后 */
+  z-index: 2100;
   backdrop-filter: blur(8px);
   opacity: ${props => props.open ? 1 : 0};
   visibility: ${props => props.open ? 'visible' : 'hidden'};
@@ -397,7 +399,7 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
   };
 
   const handleDownload = () => {
-    const coverImage = (model as any)?.coverImage ? normalizeUrl((model as any).coverImage) : null;
+    const coverImage = model ? modelCoverUrl(model) : null;
     if (coverImage) {
       const link = document.createElement('a');
       link.href = coverImage;
@@ -410,18 +412,18 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
 
   if (!model) return null;
 
-  const coverImage = (model as any)?.coverImage ? normalizeUrl((model as any).coverImage) : null;
+  const coverImage = modelCoverUrl(model);
   const isVideo = coverImage ? isVideoUrl(coverImage) : false;
   const free = isFree(model.tokenCost);
   const aspectRatios = getModelAspectRatios(model);
 
-  return (
+  return createPortal(
     <ModalOverlay open={open} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <Container>
         {/* 左侧：视觉冲击区 */}
         <VisualPanel coverImage={coverImage} isVideo={isVideo}>
           {isVideo && coverImage ? (
-            <video src={coverImage} autoPlay loop muted playsInline />
+            <video src={coverImage} autoPlay loop muted playsInline preload="metadata" />
           ) : null}
           {coverImage && (
             <Button 
@@ -631,7 +633,8 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
 
         </ContentPanel>
       </Container>
-    </ModalOverlay>
+    </ModalOverlay>,
+    document.body
   );
 };
 

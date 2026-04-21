@@ -14,6 +14,7 @@ import {
   Spin,
   Tooltip,
   Modal,
+  Switch,
 } from 'antd';
 import { 
   ThunderboltOutlined,
@@ -815,6 +816,7 @@ const TextToVideo: React.FC = () => {
       const requestData: any = {
         prompt: values.prompt,
         modelCode: selectedModel.modelCode,
+        translatePromptToEnglish: values.translatePromptToEnglish === true,
       };
 
       // 添加视频比例
@@ -1190,9 +1192,33 @@ const TextToVideo: React.FC = () => {
                   className="prompt-form-item"
                   label={
                     <div className="prompt-label-wrapper" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-                    <Space>
+                    <Space wrap align="center">
                       <EditOutlined style={{ color: '#1890ff' }} />
                       <FormattedMessage id="create.prompt.video" defaultMessage="视频场景描述 (Prompt)" />
+                      <Form.Item
+                        name="translatePromptToEnglish"
+                        valuePropName="checked"
+                        initialValue={false}
+                        noStyle
+                      >
+                        <Tooltip
+                          title={intl.formatMessage({
+                            id: 'create.prompt.translateEn.tooltip',
+                            defaultMessage:
+                              '部分模型对英文提示词支持更好，若中文或其它语言效果不理想可开启。开启后会在提交前将提示词译为英文再调用模型（会消耗翻译服务）；关闭则直接使用您输入的原文。',
+                          })}
+                        >
+                          <Space size={6} style={{ marginLeft: 4 }}>
+                            <Switch size="small" />
+                            <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                              <FormattedMessage
+                                id="create.prompt.translateEn"
+                                defaultMessage="译为英文"
+                              />
+                            </Text>
+                          </Space>
+                        </Tooltip>
+                      </Form.Item>
                     </Space>
                       <div className="prompt-button-wrapper">
                         <Space size={8}>
