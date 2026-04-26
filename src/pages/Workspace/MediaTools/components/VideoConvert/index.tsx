@@ -1,17 +1,15 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { Alert, Button, Card, Col, Progress, Radio, Row, Select, Space, Typography, Upload, message } from 'antd';
+import { Alert, Button, Card, Col, Progress, Row, Select, Space, Typography, Upload, message } from 'antd';
 import { DownloadOutlined, ReloadOutlined, RetweetOutlined, StopOutlined, UploadOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
 import { initFFmpeg, formatSize, terminateFFmpegInstance } from '../VideoCompress/utils';
-import { isWebCodecsAvailable, transcodeWithWebCodecs } from './webcodecsTranscoder';
 
 const { Dragger } = Upload;
 const { Paragraph, Text } = Typography;
 
 type OutputFormat = 'mp4' | 'webm' | 'avi' | 'mov';
-type DeviceMode = 'cpu' | 'gpu';
 
 const SUPPORTED_FORMATS: Array<{ label: string; value: OutputFormat }> = [
   { label: 'MP4 (H.264)', value: 'mp4' },
@@ -43,23 +41,6 @@ const ResultPreview = styled.video`
   background: #000;
 `;
 
-const getGpuInfo = (): string | null => {
-  try {
-    const canvas = document.createElement('canvas');
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    if (!gl) return null;
-
-    const webglCtx = gl as WebGLRenderingContext;
-    const debugInfo = webglCtx.getExtension('WEBGL_debug_renderer_info');
-    if (!debugInfo) return 'WebGL GPU';
-
-    const renderer = webglCtx.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-    return renderer ? String(renderer) : 'WebGL GPU';
-  } catch {
-    return null;
-  }
-};
-
 const buildCommandArgs = (inputName: string, outputName: string, format: OutputFormat): string[] => {
   if (format === 'webm') {
     return [
@@ -86,7 +67,6 @@ const VideoConvert: React.FC = () => {
   const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [sourcePreview, setSourcePreview] = useState<string>('');
   const [outputFormat, setOutputFormat] = useState<OutputFormat>('mp4');
-  const [deviceMode, setDeviceMode] = useState<DeviceMode>('cpu');
   const [convertProgress, setConvertProgress] = useState<number>(0);
   const [isConverting, setIsConverting] = useState(false);
   const [outputBlob, setOutputBlob] = useState<Blob | null>(null);
@@ -94,11 +74,8 @@ const VideoConvert: React.FC = () => {
   const [ffmpegHint, setFfmpegHint] = useState<string>('');
   const [isStopRequested, setIsStopRequested] = useState(false);
   const stopRequestedRef = useRef(false);
-  const webCodecsAbortRef = useRef<AbortController | null>(null);
   const activeCpuFfmpegRef = useRef<FFmpeg | null>(null);
-  const webCodecsSupported = useMemo(() => isWebCodecsAvailable(), []);
 
-  const gpuInfo = useMemo(() => getGpuInfo(), []);
   const cpuInfo = useMemo(() => `${navigator.hardwareConcurrency || 'N/A'} 线程`, []);
 
   const resetResult = () => {
@@ -131,35 +108,11 @@ const VideoConvert: React.FC = () => {
     setIsConverting(true);
     setIsStopRequested(false);
     stopRequestedRef.current = false;
-    webCodecsAbortRef.current = new AbortController();
     setConvertProgress(0);
     setFfmpegHint('');
 
     try {
-      if (deviceMode === 'gpu') {
-        if (!webCodecsSupported) {
-          throw new Error('当前浏览器不支持 WebCodecs，无法使用 GPU 转换。');
-        }
-        if (outputFormat !== 'mp4') {
-          throw new Error('GPU 模式暂仅支持输出 MP4，请切换为 MP4 格式。');
-        }
-
-        setFfmpegHint('GPU 模式已启用：当前使用 WebCodecs 编码管线（实验性）。');
-        const gpuBlob = await transcodeWithWebCodecs(sourceFile, {
-          format: 'mp4',
-          onProgress: (progress) => setConvertProgress(progress),
-          signal: webCodecsAbortRef.current.signal,
-        });
-
-        const gpuUrl = URL.createObjectURL(gpuBlob);
-        setOutputBlob(gpuBlob);
-        setOutputUrl(gpuUrl);
-        setConvertProgress(100);
-        message.success('视频转换完成（GPU 模式）');
-        return;
-      }
-
-      setFfmpegHint('CPU 模式：使用 FFmpeg.wasm 在本地执行转换。');
+      setFfmpegHint('使用 FFmpeg.wasm 在本地执行转换。');
       const ffmpeg: FFmpeg = await initFFmpeg((progress) => {
         setConvertProgress(Math.max(1, Math.round(progress)));
       });
@@ -196,18 +149,19 @@ const VideoConvert: React.FC = () => {
       setConvertProgress(100);
       message.success('视频转换完成');
     } catch (error) {
-      console.error(error);
+      if (!(error instanceof Error && error.message.includes('stopped by user'))) {
+        console.error(error);
+      }
       if (stopRequestedRef.current || (error instanceof Error && error.message.includes('stopped by user'))) {
         message.warning('已停止转换');
       } else {
-        message.error('视频转换失败，请重试');
+        message.error(error instanceof Error ? error.message : '视频转换失败，请重试');
       }
     } finally {
       activeCpuFfmpegRef.current = null;
       setIsConverting(false);
       setIsStopRequested(false);
       stopRequestedRef.current = false;
-      webCodecsAbortRef.current = null;
     }
   };
 
@@ -215,7 +169,6 @@ const VideoConvert: React.FC = () => {
     if (!isConverting) return;
     setIsStopRequested(true);
     stopRequestedRef.current = true;
-    webCodecsAbortRef.current?.abort();
     if (activeCpuFfmpegRef.current) {
       terminateFFmpegInstance();
     }
@@ -226,15 +179,13 @@ const VideoConvert: React.FC = () => {
     <Wrapper>
       <DeviceCard title="处理设备">
         <Space direction="vertical" style={{ width: '100%' }}>
-          <Text>CPU：{cpuInfo}</Text>
-          <Text>GPU：{gpuInfo || '未检测到可用 WebGL GPU 信息'}</Text>
-          <Radio.Group value={deviceMode} onChange={(e) => setDeviceMode(e.target.value)}>
-            <Radio value="cpu">使用 CPU</Radio>
-            <Radio value="gpu" disabled={!gpuInfo || !webCodecsSupported}>使用 GPU（WebCodecs）</Radio>
-          </Radio.Group>
-          {!webCodecsSupported && (
-            <Alert type="warning" showIcon message="当前浏览器不支持 WebCodecs，GPU 模式不可用。" />
-          )}
+          <Text>当前：本机 CPU（{cpuInfo}），浏览器内 FFmpeg 转码</Text>
+          <Alert
+            type="info"
+            showIcon
+            message="GPU 加速转码"
+            description="开发中，后续将提供本地硬件加速（如桌面客户端等）。当前请使用上述 CPU 转码方式。"
+          />
           {ffmpegHint && <Alert type="info" showIcon message={ffmpegHint} />}
         </Space>
       </DeviceCard>
@@ -349,4 +300,3 @@ const VideoConvert: React.FC = () => {
 };
 
 export default VideoConvert;
-
