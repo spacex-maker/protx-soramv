@@ -11,6 +11,7 @@ import styled from 'styled-components';
 import ImageCompress from './components/ImageCompress';
 import VideoCompress from './components/VideoCompress';
 import AudioCompress from './components/AudioCompress';
+import VideoConvert from './components/VideoConvert';
 
 const { Content } = Layout;
 
@@ -159,16 +160,16 @@ const MediaTools: React.FC = () => {
       ),
       children: <AudioCompress />
     },
-    // {
-    //   key: 'formatConvert',
-    //   label: (
-    //     <Space>
-    //       <FileOutlined />
-    //       <FormattedMessage id="mediaTools.tab.formatConvert" defaultMessage="格式转换" />
-    //     </Space>
-    //   ),
-    //   children: <FormatConvert />
-    // }
+    {
+      key: 'videoConvert',
+      label: (
+        <Space>
+          <FileOutlined />
+          <FormattedMessage id="mediaTools.tab.videoConvert" defaultMessage="视频转换" />
+        </Space>
+      ),
+      children: <VideoConvert />
+    }
   ];
 
   return (
@@ -184,7 +185,7 @@ const MediaTools: React.FC = () => {
         activeKey={activeTab}
         onChange={setActiveTab}
         items={tabItems}
-        destroyInactiveTabPane={true}
+        destroyOnHidden={true}
         style={{ 
           flex: 1,
           display: 'flex',

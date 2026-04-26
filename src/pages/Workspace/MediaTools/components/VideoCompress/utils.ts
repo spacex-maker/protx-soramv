@@ -24,6 +24,22 @@ export interface VideoFileItem {
 let ffmpegInstance: FFmpeg | null = null;
 let isFFmpegLoaded = false;
 
+// 强制终止当前 FFmpeg 实例（用于“取消转换”）
+export const terminateFFmpegInstance = () => {
+  if (!ffmpegInstance) return;
+  try {
+    const anyInstance = ffmpegInstance as unknown as { terminate?: () => void };
+    if (typeof anyInstance.terminate === 'function') {
+      anyInstance.terminate();
+    }
+  } catch (error) {
+    console.warn('Terminate FFmpeg instance failed:', error);
+  } finally {
+    ffmpegInstance = null;
+    isFFmpegLoaded = false;
+  }
+};
+
 // 初始化 FFmpeg
 export const initFFmpeg = async (onProgress?: (progress: number) => void): Promise<FFmpeg> => {
   if (ffmpegInstance && isFFmpegLoaded) {
