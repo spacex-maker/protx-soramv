@@ -13,6 +13,11 @@ import {
 } from './utils';
 import ImageCompare from './ImageCompare';
 import CompressSettings from './CompressSettings';
+import {
+  createMediaToolUsageTimer,
+  getFileExtension,
+  logMediaToolUsage,
+} from '../../utils/mediaToolUsageLog';
 
 const { Text } = Typography;
 
@@ -395,6 +400,7 @@ const BatchImageCompress: React.FC = () => {
     }
     
     setIsCompressing(true);
+    const elapsed = createMediaToolUsageTimer();
     
     try {
       const img = new Image();
@@ -428,7 +434,32 @@ const BatchImageCompress: React.FC = () => {
           compressedSize: blob.size
         }
       }));
+
+      logMediaToolUsage({
+        toolCode: 'image_compress',
+        action: 'process',
+        inputFormat: getFileExtension(currentFile.file.name) || currentFile.file.type,
+        outputFormat: format === 'auto' ? getFileExtension(currentFile.file.name) : format,
+        inputSizeBytes: currentFile.file.size,
+        outputSizeBytes: blob.size,
+        durationMs: elapsed(),
+        batchCount: 1,
+        success: true,
+        metadata: { quality, resizeMode, scale, customWidth, customHeight, format },
+      });
     } catch (e) {
+      logMediaToolUsage({
+        toolCode: 'image_compress',
+        action: 'process',
+        inputFormat: getFileExtension(currentFile.file.name),
+        outputFormat: format,
+        inputSizeBytes: currentFile.file.size,
+        durationMs: elapsed(),
+        batchCount: 1,
+        success: false,
+        errorMessage: e instanceof Error ? e.message : 'compress failed',
+        metadata: { quality, resizeMode, scale, customWidth, customHeight, format },
+      });
       message.error(intl.formatMessage({ id: 'imageCompress.message.failed', defaultMessage: '压缩失败' }));
     }
     
@@ -438,6 +469,7 @@ const BatchImageCompress: React.FC = () => {
   const runBatchCompress = async () => {
     if (batchFiles.length === 0) return;
     setIsCompressing(true);
+    const elapsed = createMediaToolUsageTimer();
     
     const options: CompressOptions = {
       quality,
@@ -450,6 +482,8 @@ const BatchImageCompress: React.FC = () => {
 
     let successCount = 0;
     let failCount = 0;
+    let totalInputSize = 0;
+    let totalOutputSize = 0;
 
     for (const item of batchFiles) {
       try {
@@ -469,6 +503,8 @@ const BatchImageCompress: React.FC = () => {
             compressedSize: blob.size
           }
         }));
+        totalInputSize += item.file.size;
+        totalOutputSize += blob.size;
         successCount++;
       } catch (e) {
         failCount++;
@@ -476,12 +512,33 @@ const BatchImageCompress: React.FC = () => {
     }
 
     if (successCount > 0) {
+      logMediaToolUsage({
+        toolCode: 'image_compress',
+        action: 'process',
+        outputFormat: format,
+        inputSizeBytes: totalInputSize,
+        outputSizeBytes: totalOutputSize,
+        durationMs: elapsed(),
+        batchCount: successCount,
+        success: true,
+        metadata: { failCount, quality, resizeMode, scale, customWidth, customHeight, format },
+      });
       const failedText = failCount > 0 ? intl.formatMessage({ id: 'imageCompress.message.failed', defaultMessage: '压缩失败' }) : '';
       message.success(intl.formatMessage(
         { id: 'imageCompress.message.batchSuccess', defaultMessage: '成功压缩 {success} 张图片{failed}' },
         { success: successCount, failed: failCount > 0 ? `, ${failCount} ${failedText}` : '' }
       ));
     } else {
+      logMediaToolUsage({
+        toolCode: 'image_compress',
+        action: 'process',
+        outputFormat: format,
+        durationMs: elapsed(),
+        batchCount: batchFiles.length,
+        success: false,
+        errorMessage: 'all batch compress failed',
+        metadata: { failCount, quality, resizeMode, scale, customWidth, customHeight, format },
+      });
       message.error(intl.formatMessage({ id: 'imageCompress.message.batchFailed', defaultMessage: '所有压缩都失败了' }));
     }
     
@@ -517,6 +574,13 @@ const BatchImageCompress: React.FC = () => {
         { id: 'imageCompress.message.downloading', defaultMessage: '正在下载 {count} 张图片...' },
         { count: compressedFiles.length }
       ));
+      logMediaToolUsage({
+        toolCode: 'image_compress',
+        action: 'download',
+        batchCount: compressedFiles.length,
+        success: true,
+        metadata: { downloadAll: true, format },
+      });
       return;
     }
     
@@ -532,6 +596,18 @@ const BatchImageCompress: React.FC = () => {
     
     link.download = `min_${currentFile.file.name.split('.')[0]}.${ext}`;
     link.click();
+
+    logMediaToolUsage({
+      toolCode: 'image_compress',
+      action: 'download',
+      inputFormat: getFileExtension(currentFile.file.name),
+      outputFormat: format === 'auto' ? ext : format,
+      inputSizeBytes: currentFile.file.size,
+      outputSizeBytes: blob.size,
+      batchCount: 1,
+      success: true,
+      metadata: { format },
+    });
   };
 
   const handleReset = () => {

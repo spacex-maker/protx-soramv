@@ -13,6 +13,11 @@ import {
 } from './utils';
 import VideoCompare from './VideoCompare';
 import VideoCompressSettings from './VideoCompressSettings';
+import {
+  createMediaToolUsageTimer,
+  getFileExtension,
+  logMediaToolUsage,
+} from '../../utils/mediaToolUsageLog';
 
 const { Text } = Typography;
 
@@ -208,6 +213,7 @@ const BatchVideoCompress: React.FC = () => {
 
     setIsCompressing(true);
     setCompressionProgress(0);
+    const elapsed = createMediaToolUsageTimer();
 
     try {
       const options: VideoCompressOptions = {
@@ -243,8 +249,33 @@ const BatchVideoCompress: React.FC = () => {
         id: 'videoCompress.message.compressed', 
         defaultMessage: '压缩成功！' 
       }));
+
+      logMediaToolUsage({
+        toolCode: 'video_compress',
+        action: 'process',
+        inputFormat: getFileExtension(videoFile.file.name),
+        outputFormat: format,
+        inputSizeBytes: videoFile.file.size,
+        outputSizeBytes: blob.size,
+        durationMs: elapsed(),
+        batchCount: 1,
+        success: true,
+        metadata: { quality, bitrate, resolution, fps, crf, format },
+      });
     } catch (error) {
       console.error('Compression error:', error);
+      logMediaToolUsage({
+        toolCode: 'video_compress',
+        action: 'process',
+        inputFormat: getFileExtension(videoFile.file.name),
+        outputFormat: format,
+        inputSizeBytes: videoFile.file.size,
+        durationMs: elapsed(),
+        batchCount: 1,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : 'compress failed',
+        metadata: { quality, bitrate, resolution, fps, crf, format },
+      });
       message.error(intl.formatMessage({ 
         id: 'videoCompress.message.failed', 
         defaultMessage: '压缩失败，请重试' 
@@ -269,6 +300,18 @@ const BatchVideoCompress: React.FC = () => {
       id: 'videoCompress.message.downloading', 
       defaultMessage: '开始下载' 
     }));
+
+    logMediaToolUsage({
+      toolCode: 'video_compress',
+      action: 'download',
+      inputFormat: getFileExtension(videoFile.file.name),
+      outputFormat: format,
+      inputSizeBytes: videoFile.file.size,
+      outputSizeBytes: compressedBlob.size,
+      batchCount: 1,
+      success: true,
+      metadata: { format },
+    });
   };
 
   // 重置

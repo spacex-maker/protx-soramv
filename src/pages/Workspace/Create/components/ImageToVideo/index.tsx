@@ -71,6 +71,12 @@ import DoubaoSeedance20Params, {
   DOUBAO_SEEDANCE_20_I2V_FIRST_INPUT_ID,
   DOUBAO_SEEDANCE_20_I2V_END_INPUT_ID,
 } from './generationParams/DoubaoSeedance20Params';
+import EstimatedPriceHint from '../shared/EstimatedPriceHint';
+import { useTokenBalance } from '../shared/useTokenBalance';
+import { formatDurationEstimatedTooltip } from '../shared/estimatedPriceText';
+import { getVideoRequiredTokens } from '../shared/balanceUtils';
+import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
+import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -120,6 +126,15 @@ export interface ImageToVideoProps {
 
 const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => {
   const intl = useIntl();
+  const { tokenBalance, balanceLoading } = useTokenBalance();
+  const {
+    insufficientBalanceOpen,
+    insufficientBalanceRequired,
+    insufficientBalanceModalBalance,
+    closeInsufficientBalanceModal,
+    ensureSufficientBalance,
+    tryShowFromApiError,
+  } = useInsufficientBalanceGuard();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<VideoResult | null>(null);
@@ -784,19 +799,13 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                       const d = val as number;
                       const price = calculateEstimatedPrice(d);
                       if (price) {
-                        return `${intl.formatMessage(
-                          {
-                            id: 'create.duration.format',
-                            defaultMessage: '{duration}s',
-                          },
-                          { duration: d },
-                        )} | ${intl.formatMessage(
-                          {
-                            id: 'create.estimated.price',
-                            defaultMessage: '预估: {price}',
-                          },
-                          { price },
-                        )}`;
+                        return formatDurationEstimatedTooltip(
+                          intl,
+                          d,
+                          price,
+                          tokenBalance,
+                          balanceLoading,
+                        );
                       }
                       return intl.formatMessage(
                         {
@@ -1229,6 +1238,12 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
       return;
     }
 
+    const duration = Number(values.duration) || 8;
+    const requiredTokens = getVideoRequiredTokens(selectedModel.tokenCost, duration);
+    if (!(await ensureSufficientBalance(requiredTokens))) {
+      return;
+    }
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -1432,7 +1447,9 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                             id: 'create.video.generate.failed', 
                             defaultMessage: '视频生成失败，请重试' 
                           });
-      message.error(errorMessage);
+      if (!(await tryShowFromApiError(errorMessage))) {
+        message.error(errorMessage);
+      }
     } finally {
       if (!abortController.signal.aborted) {
         setLoading(false);
@@ -1945,16 +1962,13 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                           ? calculateEstimatedPrice(duration)
                           : null;
                         
-                        return estimatedPrice ? (
-                          <div style={{ textAlign: 'center', marginTop: 8 }}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              {intl.formatMessage({ 
-                                id: 'create.estimated.price', 
-                                defaultMessage: '预估: {price}' 
-                              }, { price: estimatedPrice })}
-                            </Text>
-                          </div>
-                        ) : null;
+                        return (
+                          <EstimatedPriceHint
+                            price={estimatedPrice}
+                            tokenBalance={tokenBalance}
+                            balanceLoading={balanceLoading}
+                          />
+                        );
                       }}
                     </Form.Item>
                   </div>
@@ -2176,6 +2190,13 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
         open={modelDetailModalVisible}
         onClose={handleCloseModelDetail}
         model={selectedModelForDetail}
+      />
+
+      <InsufficientBalanceModal
+        open={insufficientBalanceOpen}
+        onCancel={closeInsufficientBalanceModal}
+        requiredTokens={insufficientBalanceRequired}
+        tokenBalance={insufficientBalanceModalBalance}
       />
     </>
   );

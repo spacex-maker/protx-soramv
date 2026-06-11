@@ -13,6 +13,11 @@ import {
 } from './utils';
 import AudioCompressSettings from './AudioCompressSettings';
 import AudioWaveform from './AudioWaveform';
+import {
+  createMediaToolUsageTimer,
+  getFileExtension,
+  logMediaToolUsage,
+} from '../../utils/mediaToolUsageLog';
 
 const { Text } = Typography;
 
@@ -189,6 +194,7 @@ const BatchAudioCompress: React.FC = () => {
 
     setIsCompressing(true);
     setCompressionProgress(0);
+    const elapsed = createMediaToolUsageTimer();
 
     try {
       const options: AudioCompressOptions = {
@@ -222,8 +228,33 @@ const BatchAudioCompress: React.FC = () => {
         id: 'audioCompress.message.compressed', 
         defaultMessage: '压缩成功！' 
       }));
+
+      logMediaToolUsage({
+        toolCode: 'audio_compress',
+        action: 'process',
+        inputFormat: getFileExtension(audioFile.file.name),
+        outputFormat: format,
+        inputSizeBytes: audioFile.file.size,
+        outputSizeBytes: blob.size,
+        durationMs: elapsed(),
+        batchCount: 1,
+        success: true,
+        metadata: { bitrate, quality, sampleRate, format },
+      });
     } catch (error) {
       console.error('Compression error:', error);
+      logMediaToolUsage({
+        toolCode: 'audio_compress',
+        action: 'process',
+        inputFormat: getFileExtension(audioFile.file.name),
+        outputFormat: format,
+        inputSizeBytes: audioFile.file.size,
+        durationMs: elapsed(),
+        batchCount: 1,
+        success: false,
+        errorMessage: error instanceof Error ? error.message : 'compress failed',
+        metadata: { bitrate, quality, sampleRate, format },
+      });
       message.error(intl.formatMessage({ 
         id: 'audioCompress.message.failed', 
         defaultMessage: '压缩失败，请重试' 
@@ -246,6 +277,18 @@ const BatchAudioCompress: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+
+    logMediaToolUsage({
+      toolCode: 'audio_compress',
+      action: 'download',
+      inputFormat: getFileExtension(audioFile.file.name),
+      outputFormat: format,
+      inputSizeBytes: audioFile.file.size,
+      outputSizeBytes: compressedBlob.size,
+      batchCount: 1,
+      success: true,
+      metadata: { format },
+    });
   };
 
   // 重置

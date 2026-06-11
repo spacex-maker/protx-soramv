@@ -4,7 +4,8 @@ import {
   FileImageOutlined,
   VideoCameraOutlined,
   SoundOutlined,
-  FileOutlined
+  FileOutlined,
+  CustomerServiceOutlined
 } from '@ant-design/icons';
 import { FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
@@ -12,6 +13,8 @@ import ImageCompress from './components/ImageCompress';
 import VideoCompress from './components/VideoCompress';
 import AudioCompress from './components/AudioCompress';
 import VideoConvert from './components/VideoConvert';
+import AudioConvert from './components/AudioConvert';
+import { logMediaToolUsage } from './utils/mediaToolUsageLog';
 
 const { Content } = Layout;
 
@@ -169,6 +172,16 @@ const MediaTools: React.FC = () => {
         </Space>
       ),
       children: <VideoConvert />
+    },
+    {
+      key: 'audioConvert',
+      label: (
+        <Space>
+          <CustomerServiceOutlined />
+          <FormattedMessage id="mediaTools.tab.audioConvert" defaultMessage="音频转换" />
+        </Space>
+      ),
+      children: <AudioConvert />
     }
   ];
 
@@ -183,7 +196,20 @@ const MediaTools: React.FC = () => {
     }}>
       <StyledTabs
         activeKey={activeTab}
-        onChange={setActiveTab}
+        onChange={(key) => {
+          setActiveTab(key);
+          const toolCodeMap: Record<string, 'image_compress' | 'video_compress' | 'audio_compress' | 'video_convert' | 'audio_convert'> = {
+            imageCompress: 'image_compress',
+            videoCompress: 'video_compress',
+            audioCompress: 'audio_compress',
+            videoConvert: 'video_convert',
+            audioConvert: 'audio_convert',
+          };
+          const toolCode = toolCodeMap[key];
+          if (toolCode) {
+            logMediaToolUsage({ toolCode, action: 'tab_view' });
+          }
+        }}
         items={tabItems}
         destroyOnHidden={true}
         style={{ 

@@ -51,12 +51,26 @@ import WaitingTaskQueue from './WaitingTaskQueue';
 import ModelDetailModal from './ModelDetailModal';
 import ImageResultDisplay from './ImageResultDisplay';
 import ModelSelect from './ModelSelect';
+import EstimatedPriceHint from '../shared/EstimatedPriceHint';
+import { useTokenBalance } from '../shared/useTokenBalance';
+import { formatTokenAmount } from '../shared/estimatedPriceText';
+import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
+import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const ImageToImage: React.FC = () => {
   const intl = useIntl();
+  const { tokenBalance, balanceLoading } = useTokenBalance();
+  const {
+    insufficientBalanceOpen,
+    insufficientBalanceRequired,
+    insufficientBalanceModalBalance,
+    closeInsufficientBalanceModal,
+    ensureSufficientBalance,
+    tryShowFromApiError,
+  } = useInsufficientBalanceGuard();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<ImageResult | null>(null);
@@ -817,6 +831,11 @@ const ImageToImage: React.FC = () => {
       return;
     }
 
+    const requiredTokens = selectedModel.tokenCost ?? 0;
+    if (!(await ensureSufficientBalance(requiredTokens))) {
+      return;
+    }
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -992,7 +1011,9 @@ const ImageToImage: React.FC = () => {
                             id: 'create.image.generate.failed', 
                             defaultMessage: '图片生成失败，请重试' 
                           });
-      message.error(errorMessage);
+      if (!(await tryShowFromApiError(errorMessage))) {
+        message.error(errorMessage);
+      }
     } finally {
       if (!abortController.signal.aborted) {
         setLoading(false);
@@ -1360,16 +1381,17 @@ const ImageToImage: React.FC = () => {
                         <FormattedMessage id="create.generate.i2i" defaultMessage="开始生成图片" />
                       </Button>
                     )}
-                    {selectedModel && selectedModel.tokenCost !== null && selectedModel.tokenCost !== undefined && (
-                      <div style={{ textAlign: 'center', marginTop: 8 }}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                          {intl.formatMessage({ 
-                            id: 'create.estimated.price', 
-                            defaultMessage: '预估: {price}' 
-                          }, { price: `${selectedModel.tokenCost} Token` })}
-                        </Text>
-                      </div>
-                    )}
+                    <EstimatedPriceHint
+                      price={
+                        selectedModel &&
+                        selectedModel.tokenCost !== null &&
+                        selectedModel.tokenCost !== undefined
+                          ? formatTokenAmount(selectedModel.tokenCost)
+                          : null
+                      }
+                      tokenBalance={tokenBalance}
+                      balanceLoading={balanceLoading}
+                    />
                   </div>
                 </Form.Item>
               </Form>
@@ -1419,6 +1441,13 @@ const ImageToImage: React.FC = () => {
         open={modelDetailModalVisible}
         onClose={handleCloseModelDetail}
         model={selectedModelForDetail}
+      />
+
+      <InsufficientBalanceModal
+        open={insufficientBalanceOpen}
+        onCancel={closeInsufficientBalanceModal}
+        requiredTokens={insufficientBalanceRequired}
+        tokenBalance={insufficientBalanceModalBalance}
       />
     </>
   );

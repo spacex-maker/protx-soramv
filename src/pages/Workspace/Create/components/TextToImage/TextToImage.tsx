@@ -43,7 +43,13 @@ import {
   parseResolution,
   formatResolution,
   parseResponseImages,
+  isFree,
 } from './utils';
+import EstimatedPriceHint from '../shared/EstimatedPriceHint';
+import { useTokenBalance } from '../shared/useTokenBalance';
+import { getImageEstimatedPrice, getImageRequiredTokens } from '../shared/estimatedPriceText';
+import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
+import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import {
   VOLC_SEEDREAM_SIZE_ASPECT_MAP,
   VOLC_SEEDREAM_ASPECT_RATIOS,
@@ -71,6 +77,15 @@ const { Title, Text } = Typography;
 const TextToImage: React.FC = () => {
   const intl = useIntl();
   const { locale } = useLocale();
+  const { tokenBalance, balanceLoading } = useTokenBalance();
+  const {
+    insufficientBalanceOpen,
+    insufficientBalanceRequired,
+    insufficientBalanceModalBalance,
+    closeInsufficientBalanceModal,
+    ensureSufficientBalance,
+    tryShowFromApiError,
+  } = useInsufficientBalanceGuard();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
@@ -213,6 +228,7 @@ const TextToImage: React.FC = () => {
   const getEffectiveModel = () => selectedModel || selectedFamily || null;
 
   const resolution = Form.useWatch('resolution', form) || '2K';
+  const batchSize = Form.useWatch('batchSize', form) ?? 1;
 
   const isApiModel =
     (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
@@ -228,6 +244,21 @@ const TextToImage: React.FC = () => {
 
   // API 模型（非 Volc Seedream）：走异步接口
   const isApiModelAsync = isApiModel && !isVolcSeedream;
+
+  const effectiveModelForPrice = getEffectiveModel();
+  const textToImageEstimatedPrice =
+    effectiveModelForPrice &&
+    !isFree(
+      effectiveModelForPrice.outputPrice,
+      effectiveModelForPrice.currency,
+      effectiveModelForPrice.tokenCost,
+    )
+      ? getImageEstimatedPrice(
+          effectiveModelForPrice.tokenCost,
+          batchSize,
+          !isApiModel,
+        )
+      : null;
 
   // API 模型：从后端 imageMaxResolution（如 "1K,2K,4K"）解析可选分辨率，无则默认 1K,2K,4K
   const getApiResolutions = (model: Model | ModelFamily | null): string[] => {
@@ -506,6 +537,21 @@ const TextToImage: React.FC = () => {
       return;
     }
 
+    const modelForPrice = getEffectiveModel();
+    const requiredTokens =
+      modelForPrice &&
+      !isFree(
+        modelForPrice.outputPrice,
+        modelForPrice.currency,
+        modelForPrice.tokenCost,
+      )
+        ? getImageRequiredTokens(modelForPrice.tokenCost, batchSize, !isApiModel)
+        : 0;
+    if (!(await ensureSufficientBalance(requiredTokens))) {
+      clearSubmitting();
+      return;
+    }
+
     setLoading(true);
     setGeneratedImages([]);
 
@@ -542,7 +588,9 @@ const TextToImage: React.FC = () => {
             id: 'create.error',
             defaultMessage: '生成失败，请重试',
           });
-        message.error(errorMessage);
+        if (!(await tryShowFromApiError(errorMessage))) {
+          message.error(errorMessage);
+        }
       }
     } finally {
       clearSubmitting();
@@ -851,6 +899,11 @@ const TextToImage: React.FC = () => {
                       />
                     )}
                   </Button>
+                  <EstimatedPriceHint
+                    price={textToImageEstimatedPrice}
+                    tokenBalance={tokenBalance}
+                    balanceLoading={balanceLoading}
+                  />
                 </Form.Item>
               </Form>
             </Space>
@@ -933,6 +986,12 @@ const TextToImage: React.FC = () => {
         taskId={selectedTaskId}
       />
 
+      <InsufficientBalanceModal
+        open={insufficientBalanceOpen}
+        onCancel={closeInsufficientBalanceModal}
+        requiredTokens={insufficientBalanceRequired}
+        tokenBalance={insufficientBalanceModalBalance}
+      />
     </>
   );
 };

@@ -53,6 +53,11 @@ import {
   formatResolution,
 } from '../utils';
 import { checkAndSetSubmitting, clearSubmitting } from '../submitGuard';
+import EstimatedPriceHint from '../../shared/EstimatedPriceHint';
+import { useTokenBalance } from '../../shared/useTokenBalance';
+import { getImageEstimatedPrice, getImageRequiredTokens } from '../../shared/estimatedPriceText';
+import { useInsufficientBalanceGuard } from '../../shared/useInsufficientBalanceGuard';
+import InsufficientBalanceModal from '../../shared/InsufficientBalanceModal';
 import {
   MobileContainer,
   MobileFormSection,
@@ -123,6 +128,15 @@ const normalizeImageData = (image: any): string | null => {
 const TextToImageMobile: React.FC = () => {
   const intl = useIntl();
   const { locale } = useLocale();
+  const { tokenBalance, balanceLoading } = useTokenBalance();
+  const {
+    insufficientBalanceOpen,
+    insufficientBalanceRequired,
+    insufficientBalanceModalBalance,
+    closeInsufficientBalanceModal,
+    ensureSufficientBalance,
+    tryShowFromApiError,
+  } = useInsufficientBalanceGuard();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);
@@ -478,6 +492,22 @@ const TextToImageMobile: React.FC = () => {
   const isVolcSeedream = companyCode === 'Volc' && effectiveModelCode?.toLowerCase().includes('seedream');
   const useAsyncApi = isApiModel && !isVolcSeedream;
 
+  const batchSize = Form.useWatch('batchSize', form) ?? 1;
+  const effectiveModelForPrice = getEffectiveModel();
+  const textToImageEstimatedPrice =
+    effectiveModelForPrice &&
+    !isFree(
+      effectiveModelForPrice.outputPrice,
+      effectiveModelForPrice.currency,
+      effectiveModelForPrice.tokenCost,
+    )
+      ? getImageEstimatedPrice(
+          effectiveModelForPrice.tokenCost,
+          batchSize,
+          !isApiModel,
+        )
+      : null;
+
   const VOLC_SEEDREAM_SIZE_ASPECT_MAP: Record<string, Record<string, string>> = {
     '2K': { '1:1': '2048x2048', '4:3': '2304x1728', '3:4': '1728x2304', '16:9': '2560x1440', '9:16': '1440x2560', '3:2': '2496x1664', '2:3': '1664x2496', '21:9': '3024x1296' },
     '4K': { '1:1': '4096x4096', '4:3': '4704x3520', '3:4': '3520x4704', '16:9': '5504x3040', '9:16': '3040x5504', '3:2': '4992x3328', '2:3': '3328x4992', '21:9': '6240x2656' },
@@ -600,6 +630,28 @@ const TextToImageMobile: React.FC = () => {
           defaultMessage: '请输入提示词',
         })
       );
+      clearSubmitting();
+      return;
+    }
+
+    const modelForPrice = getEffectiveModel();
+    const isApiModelForPrice =
+      (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
+        .toUpperCase() === 'API';
+    const requiredTokens =
+      modelForPrice &&
+      !isFree(
+        modelForPrice.outputPrice,
+        modelForPrice.currency,
+        modelForPrice.tokenCost,
+      )
+        ? getImageRequiredTokens(
+            modelForPrice.tokenCost,
+            batchSize,
+            !isApiModelForPrice,
+          )
+        : 0;
+    if (!(await ensureSufficientBalance(requiredTokens))) {
       clearSubmitting();
       return;
     }
@@ -839,13 +891,16 @@ const TextToImageMobile: React.FC = () => {
       }
     } catch (error: any) {
       console.error('生成图片失败:', error);
-      message.error(
+      const errorMessage =
         error.response?.data?.message ||
-          intl.formatMessage({
-            id: 'create.generate.error',
-            defaultMessage: '生成失败，请检查网络连接或稍后重试',
-          })
-      );
+        error.response?.data?.error ||
+        intl.formatMessage({
+          id: 'create.generate.error',
+          defaultMessage: '生成失败，请检查网络连接或稍后重试',
+        });
+      if (!(await tryShowFromApiError(errorMessage))) {
+        message.error(errorMessage);
+      }
     } finally {
       clearSubmitting();
       if (!skipFinallyLoading) {
@@ -1428,6 +1483,11 @@ const TextToImageMobile: React.FC = () => {
                   defaultMessage="生成图片"
                 />
               </Button>
+              <EstimatedPriceHint
+                price={textToImageEstimatedPrice}
+                tokenBalance={tokenBalance}
+                balanceLoading={balanceLoading}
+              />
             </Form.Item>
           </Form>
         </MobileFormSection>
@@ -1963,6 +2023,13 @@ const TextToImageMobile: React.FC = () => {
           setDetailModel(null);
         }}
         model={detailModel}
+      />
+
+      <InsufficientBalanceModal
+        open={insufficientBalanceOpen}
+        onCancel={closeInsufficientBalanceModal}
+        requiredTokens={insufficientBalanceRequired}
+        tokenBalance={insufficientBalanceModalBalance}
       />
     </MobileContainer>
   );

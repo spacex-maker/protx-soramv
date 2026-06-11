@@ -5,6 +5,11 @@ import styled from 'styled-components';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
 import { initFFmpeg, formatSize, terminateFFmpegInstance } from '../VideoCompress/utils';
+import {
+  createMediaToolUsageTimer,
+  getFileExtension,
+  logMediaToolUsage,
+} from '../../utils/mediaToolUsageLog';
 
 const { Dragger } = Upload;
 const { Paragraph, Text } = Typography;
@@ -110,6 +115,7 @@ const VideoConvert: React.FC = () => {
     stopRequestedRef.current = false;
     setConvertProgress(0);
     setFfmpegHint('');
+    const elapsed = createMediaToolUsageTimer();
 
     try {
       setFfmpegHint('使用 FFmpeg.wasm 在本地执行转换。');
@@ -148,13 +154,49 @@ const VideoConvert: React.FC = () => {
       setOutputUrl(url);
       setConvertProgress(100);
       message.success('视频转换完成');
+
+      logMediaToolUsage({
+        toolCode: 'video_convert',
+        action: 'process',
+        inputFormat: getFileExtension(sourceFile.name),
+        outputFormat,
+        inputSizeBytes: sourceFile.size,
+        outputSizeBytes: blob.size,
+        durationMs: elapsed(),
+        batchCount: 1,
+        success: true,
+        metadata: { outputFormat },
+      });
     } catch (error) {
       if (!(error instanceof Error && error.message.includes('stopped by user'))) {
         console.error(error);
       }
       if (stopRequestedRef.current || (error instanceof Error && error.message.includes('stopped by user'))) {
         message.warning('已停止转换');
+        logMediaToolUsage({
+          toolCode: 'video_convert',
+          action: 'cancel',
+          inputFormat: getFileExtension(sourceFile.name),
+          outputFormat,
+          inputSizeBytes: sourceFile.size,
+          durationMs: elapsed(),
+          batchCount: 1,
+          success: false,
+          errorMessage: 'stopped by user',
+        });
       } else {
+        logMediaToolUsage({
+          toolCode: 'video_convert',
+          action: 'process',
+          inputFormat: getFileExtension(sourceFile.name),
+          outputFormat,
+          inputSizeBytes: sourceFile.size,
+          durationMs: elapsed(),
+          batchCount: 1,
+          success: false,
+          errorMessage: error instanceof Error ? error.message : 'convert failed',
+          metadata: { outputFormat },
+        });
         message.error(error instanceof Error ? error.message : '视频转换失败，请重试');
       }
     } finally {
@@ -280,7 +322,20 @@ const VideoConvert: React.FC = () => {
                 <>
                   <ResultPreview controls src={outputUrl} />
                   <Text type="secondary">导出大小：{formatSize(outputBlob.size)}</Text>
-                  <a href={outputUrl} download={`converted-${Date.now()}.${outputFormat}`}>
+                  <a href={outputUrl} download={`converted-${Date.now()}.${outputFormat}`} onClick={() => {
+                    if (sourceFile && outputBlob) {
+                      logMediaToolUsage({
+                        toolCode: 'video_convert',
+                        action: 'download',
+                        inputFormat: getFileExtension(sourceFile.name),
+                        outputFormat,
+                        inputSizeBytes: sourceFile.size,
+                        outputSizeBytes: outputBlob.size,
+                        batchCount: 1,
+                        success: true,
+                      });
+                    }
+                  }}>
                     <Button type="primary" icon={<DownloadOutlined />} block>
                       下载导出文件
                     </Button>

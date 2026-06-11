@@ -60,6 +60,12 @@ import HistorySection from './HistorySection';
 import TaskDetailModal from './TaskDetailModal';
 import WaitingTaskQueue, { WaitingTask } from './WaitingTaskQueue';
 import ModelDetailModal from './ModelDetailModal';
+import EstimatedPriceHint from '../shared/EstimatedPriceHint';
+import { useTokenBalance } from '../shared/useTokenBalance';
+import { formatDurationEstimatedTooltip } from '../shared/estimatedPriceText';
+import { getVideoRequiredTokens } from '../shared/balanceUtils';
+import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
+import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -67,6 +73,15 @@ const { TextArea } = Input;
 const TextToVideo: React.FC = () => {
   const intl = useIntl();
   const { locale } = useLocale();
+  const { tokenBalance, balanceLoading } = useTokenBalance();
+  const {
+    insufficientBalanceOpen,
+    insufficientBalanceRequired,
+    insufficientBalanceModalBalance,
+    closeInsufficientBalanceModal,
+    ensureSufficientBalance,
+    tryShowFromApiError,
+  } = useInsufficientBalanceGuard();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<VideoResult | null>(null);
@@ -799,6 +814,12 @@ const TextToVideo: React.FC = () => {
       return;
     }
 
+    const duration = Number(values.duration) || 8;
+    const requiredTokens = getVideoRequiredTokens(selectedModel.tokenCost, duration);
+    if (!(await ensureSufficientBalance(requiredTokens))) {
+      return;
+    }
+
     // 如果已有请求在进行，先取消
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -954,7 +975,9 @@ const TextToVideo: React.FC = () => {
                             id: 'create.video.generate.failed', 
                             defaultMessage: '视频生成失败，请重试' 
                           });
-      message.error(errorMessage);
+      if (!(await tryShowFromApiError(errorMessage))) {
+        message.error(errorMessage);
+      }
     } finally {
       // 只有在不是取消的情况下才清除 loading
       if (!abortController.signal.aborted) {
@@ -1614,13 +1637,13 @@ const TextToVideo: React.FC = () => {
                                       const duration = val as number;
                                       const price = calculateEstimatedPrice(duration);
                                       if (price) {
-                                        return `${intl.formatMessage({ 
-                                          id: 'create.duration.format', 
-                                          defaultMessage: '{duration}s' 
-                                        }, { duration })} | ${intl.formatMessage({ 
-                                          id: 'create.estimated.price', 
-                                          defaultMessage: '预估: {price}' 
-                                        }, { price })}`;
+                                        return formatDurationEstimatedTooltip(
+                                          intl,
+                                          duration,
+                                          price,
+                                          tokenBalance,
+                                          balanceLoading,
+                                        );
                                       }
                                       return intl.formatMessage({ 
                                         id: 'create.duration.format', 
@@ -1704,16 +1727,13 @@ const TextToVideo: React.FC = () => {
                           ? calculateEstimatedPrice(duration)
                           : null;
                         
-                        return estimatedPrice ? (
-                          <div style={{ textAlign: 'center', marginTop: 8 }}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                              {intl.formatMessage({ 
-                                id: 'create.estimated.price', 
-                                defaultMessage: '预估: {price}' 
-                              }, { price: estimatedPrice })}
-                            </Text>
-                          </div>
-                        ) : null;
+                        return (
+                          <EstimatedPriceHint
+                            price={estimatedPrice}
+                            tokenBalance={tokenBalance}
+                            balanceLoading={balanceLoading}
+                          />
+                        );
                       }}
                     </Form.Item>
                   </div>
@@ -1840,6 +1860,13 @@ const TextToVideo: React.FC = () => {
         open={modelDetailModalVisible}
         onClose={handleCloseModelDetail}
         model={selectedModelForDetail}
+      />
+
+      <InsufficientBalanceModal
+        open={insufficientBalanceOpen}
+        onCancel={closeInsufficientBalanceModal}
+        requiredTokens={insufficientBalanceRequired}
+        tokenBalance={insufficientBalanceModalBalance}
       />
     </>
   );
