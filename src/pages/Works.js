@@ -12,41 +12,48 @@ import {
   Empty,
   DatePicker,
   theme,
-  Dropdown,
-  Modal,
   message,
   Pagination,
-  Space,
   Tooltip,
   Popconfirm,
-  Image,
   Spin
 } from "antd";
 import { 
   AppstoreOutlined,
   UnorderedListOutlined,
   SearchOutlined,
-  FilterOutlined,
   DownloadOutlined,
   ShareAltOutlined,
   DeleteOutlined,
-  EditOutlined,
   EyeOutlined,
-  MoreOutlined,
   PlayCircleOutlined,
   FileImageOutlined,
   VideoCameraOutlined,
   AudioOutlined,
-  StarOutlined,
-  StarFilled,
+  SoundOutlined,
   ReloadOutlined,
   CalendarOutlined,
   SortAscendingOutlined,
-  SortDescendingOutlined
+  SortDescendingOutlined,
+  InfoCircleOutlined,
+  PictureOutlined,
 } from "@ant-design/icons";
 import { useIntl } from 'react-intl';
 import dayjs from "dayjs";
 import instance from "api/axios";
+import {
+  buildFetchParams,
+  filterWorks,
+  sortWorks,
+  paginateWorks,
+  mapTaskToWork,
+  isVideoUrl,
+  MEDIA_TYPE_TASK_TYPES,
+  CREATION_TASK_TYPES_PARAM,
+  SOURCE_TAB_OPTIONS,
+} from './Works/genTaskWorksUtils';
+import WorkTaskDetailModals from './Works/WorkTaskDetailModals';
+import WorkPreviewModal from './Works/WorkPreviewModal';
 
 const { RangePicker } = DatePicker;
 const { Option } = Select;
@@ -376,6 +383,7 @@ const WorkCard = styled(motion.div)`
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      position: relative;
     `}
 
     ${props => props.$viewMode === 'grid' && css`
@@ -383,10 +391,15 @@ const WorkCard = styled(motion.div)`
       bottom: 0;
       left: 0;
       right: 0;
-      background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
-      padding: 20px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.82), rgba(0, 0, 0, 0.35) 55%, transparent);
+      padding: 16px;
       color: #fff;
+      z-index: 2;
     `}
+
+    .work-info {
+      min-width: 0;
+    }
 
     .work-title {
       font-size: 16px;
@@ -412,54 +425,80 @@ const WorkCard = styled(motion.div)`
         gap: 4px;
       }
     }
-
-    .work-actions {
-      ${props => props.$viewMode === 'list' && css`
-        display: flex;
-        gap: 8px;
-        margin-top: 12px;
-      `}
-
-      ${props => props.$viewMode === 'grid' && css`
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        display: flex;
-        gap: 8px;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-      `}
-    }
-
-    &:hover .work-actions {
-      opacity: 1;
-    }
   }
 
-  .action-btn {
-    width: 32px;
-    height: 32px;
+  .work-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 5;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 10px;
+    opacity: ${props => props.$viewMode === 'list' ? 1 : 0};
+    transition: opacity 0.25s ease;
+    pointer-events: ${props => props.$viewMode === 'list' ? 'auto' : 'none'};
+
+    ${props => props.$viewMode === 'grid' ? css`
+      background: rgba(0, 0, 0, 0.52);
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    ` : css`
+      background: ${props.$token.colorBgContainer};
+      border: 1px solid ${props.$token.colorBorderSecondary};
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    `}
+  }
+
+  &:hover .work-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .work-actions .action-btn {
+    width: 30px;
+    height: 30px;
     border-radius: 8px;
     border: none;
-    background: rgba(255, 255, 255, 0.9);
-    color: ${props => props.$token.colorText};
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 14px;
 
-    &:hover {
-      background: #fff;
-      transform: scale(1.1);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-    }
+    ${props => props.$viewMode === 'grid' ? css`
+      background: rgba(255, 255, 255, 0.14);
+      color: rgba(255, 255, 255, 0.92);
 
-    &.danger:hover {
-      background: ${props => props.$token.colorErrorBg};
-      color: ${props => props.$token.colorError};
-    }
+      &:hover {
+        background: rgba(255, 255, 255, 0.28);
+        color: #fff;
+      }
+
+      &.danger {
+        color: #ffb4b4;
+      }
+
+      &.danger:hover {
+        background: rgba(255, 77, 79, 0.42);
+        color: #fff;
+      }
+    ` : css`
+      background: ${props.$token.colorFillSecondary};
+      color: ${props.$token.colorTextSecondary};
+
+      &:hover {
+        background: ${props.$token.colorPrimaryBg};
+        color: ${props.$token.colorPrimary};
+      }
+
+      &.danger:hover {
+        background: ${props.$token.colorErrorBg};
+        color: ${props.$token.colorError};
+      }
+    `}
   }
 `;
 
@@ -493,6 +532,57 @@ const PaginationWrapper = styled.div`
   margin-top: 32px;
 `;
 
+const SourceTabs = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+`;
+
+const SourceTab = styled.button`
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid ${props => props.$active ? props.$token.colorPrimary : props.$token.colorBorderSecondary};
+  background: ${props => props.$active ? props.$token.colorPrimary : props.$token.colorBgContainer};
+  color: ${props => props.$active ? '#fff' : props.$token.colorText};
+  cursor: pointer;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: ${props => props.$token.colorPrimary};
+    color: ${props => props.$active ? '#fff' : props.$token.colorPrimary};
+  }
+`;
+
+const AudioPreview = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(114, 46, 209, 0.15), rgba(19, 194, 194, 0.12));
+  color: ${props => props.$token.colorPrimary};
+
+  .anticon {
+    font-size: 42px;
+  }
+
+  span {
+    font-size: 12px;
+    opacity: 0.75;
+    max-width: 80%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+`;
+
 // ==========================================
 // 2. 主组件
 // ==========================================
@@ -502,170 +592,75 @@ const WorksPage = () => {
   const navigate = useNavigate();
   const intl = useIntl();
   
-  // 状态管理
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
+  const [viewMode, setViewMode] = useState('grid');
   const [loading, setLoading] = useState(false);
   const [works, setWorks] = useState([]);
   const [filteredWorks, setFilteredWorks] = useState([]);
-  const [selectedWorks, setSelectedWorks] = useState([]);
+  const [sourceTab, setSourceTab] = useState('all');
+  const [detailTask, setDetailTask] = useState(null);
+  const [previewWork, setPreviewWork] = useState(null);
   
-  // 筛选和搜索
   const [searchText, setSearchText] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all'); // 'all' | 'image' | 'video' | 'audio'
+  const [typeFilter, setTypeFilter] = useState('all');
   const [dateRange, setDateRange] = useState(null);
-  const [sortBy, setSortBy] = useState('date'); // 'date' | 'name' | 'size'
-  const [sortOrder, setSortOrder] = useState('desc'); // 'asc' | 'desc'
+  const [sortBy, setSortBy] = useState('date');
+  const [sortOrder, setSortOrder] = useState('desc');
   
-  // 分页
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [total, setTotal] = useState(0);
 
-  // 统计数据
   const [stats, setStats] = useState({
     total: 0,
     images: 0,
     videos: 0,
     audios: 0,
-    favorites: 0
   });
 
-  // 模拟数据 - 实际应该从 API 获取
-  const mockWorks = [
-    {
-      id: '1',
-      title: 'AI生成的风景视频',
-      type: 'video',
-      thumbnail: 'https://via.placeholder.com/400x225/4A90E2/ffffff?text=Video+1',
-      url: 'https://example.com/video1.mp4',
-      createdAt: dayjs().subtract(1, 'day'),
-      size: 1024 * 1024 * 15, // 15MB
-      duration: 30,
-      isFavorite: false,
-      model: 'Sora-1.0',
-      tags: ['风景', '自然']
-    },
-    {
-      id: '2',
-      title: '城市夜景图片',
-      type: 'image',
-      thumbnail: 'https://via.placeholder.com/400x225/50C878/ffffff?text=Image+1',
-      url: 'https://example.com/image1.jpg',
-      createdAt: dayjs().subtract(2, 'days'),
-      size: 1024 * 1024 * 2, // 2MB
-      isFavorite: true,
-      model: 'DALL-E-3',
-      tags: ['城市', '夜景']
-    },
-    {
-      id: '3',
-      title: '抽象艺术视频',
-      type: 'video',
-      thumbnail: 'https://via.placeholder.com/400x225/E94B3C/ffffff?text=Video+2',
-      url: 'https://example.com/video2.mp4',
-      createdAt: dayjs().subtract(3, 'days'),
-      size: 1024 * 1024 * 20, // 20MB
-      duration: 45,
-      isFavorite: false,
-      model: 'Sora-1.0',
-      tags: ['抽象', '艺术']
-    },
-    {
-      id: '4',
-      title: '人物肖像图片',
-      type: 'image',
-      thumbnail: 'https://via.placeholder.com/400x225/9B59B6/ffffff?text=Image+2',
-      url: 'https://example.com/image2.jpg',
-      createdAt: dayjs().subtract(5, 'days'),
-      size: 1024 * 1024 * 3, // 3MB
-      isFavorite: false,
-      model: 'Midjourney',
-      tags: ['人物', '肖像']
-    },
-    {
-      id: '5',
-      title: '科幻场景视频',
-      type: 'video',
-      thumbnail: 'https://via.placeholder.com/400x225/F39C12/ffffff?text=Video+3',
-      url: 'https://example.com/video3.mp4',
-      createdAt: dayjs().subtract(7, 'days'),
-      size: 1024 * 1024 * 25, // 25MB
-      duration: 60,
-      isFavorite: true,
-      model: 'Sora-1.0',
-      tags: ['科幻', '未来']
-    },
-    {
-      id: '6',
-      title: '自然风光图片',
-      type: 'image',
-      thumbnail: 'https://via.placeholder.com/400x225/1ABC9C/ffffff?text=Image+3',
-      url: 'https://example.com/image3.jpg',
-      createdAt: dayjs().subtract(10, 'days'),
-      size: 1024 * 1024 * 4, // 4MB
-      isFavorite: false,
-      model: 'DALL-E-3',
-      tags: ['自然', '风光']
-    },
-    {
-      id: '7',
-      title: '背景音乐音频',
-      type: 'audio',
-      thumbnail: 'https://via.placeholder.com/400x225/FF6B6B/ffffff?text=Audio+1',
-      url: 'https://example.com/audio1.mp3',
-      createdAt: dayjs().subtract(4, 'days'),
-      size: 1024 * 1024 * 5, // 5MB
-      duration: 180,
-      isFavorite: false,
-      model: 'MusicGen',
-      tags: ['音乐', '背景']
-    },
-    {
-      id: '8',
-      title: '环境音效',
-      type: 'audio',
-      thumbnail: 'https://via.placeholder.com/400x225/4ECDC4/ffffff?text=Audio+2',
-      url: 'https://example.com/audio2.mp3',
-      createdAt: dayjs().subtract(6, 'days'),
-      size: 1024 * 1024 * 3, // 3MB
-      duration: 120,
-      isFavorite: true,
-      model: 'AudioCraft',
-      tags: ['音效', '环境']
-    }
-  ];
+  const hasClientFilter = !!(searchText || dateRange);
 
-  // 加载作品列表
+  const fetchStats = async () => {
+    try {
+      const requests = [
+        { key: 'total', params: { currentPage: 1, pageSize: 1, taskTypes: CREATION_TASK_TYPES_PARAM, successOnly: true } },
+        { key: 'images', params: { currentPage: 1, pageSize: 1, taskTypes: MEDIA_TYPE_TASK_TYPES.image, successOnly: true } },
+        { key: 'videos', params: { currentPage: 1, pageSize: 1, taskTypes: MEDIA_TYPE_TASK_TYPES.video, successOnly: true } },
+        { key: 'audios', params: { currentPage: 1, pageSize: 1, taskTypes: MEDIA_TYPE_TASK_TYPES.audio, successOnly: true } },
+      ];
+      const results = await Promise.all(
+        requests.map(({ params }) => instance.get('/productx/sa-ai-gen-task/my-tasks/page', { params })),
+      );
+      setStats({
+        total: results[0]?.data?.data?.total || 0,
+        images: results[1]?.data?.data?.total || 0,
+        videos: results[2]?.data?.data?.total || 0,
+        audios: results[3]?.data?.data?.total || 0,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const loadWorks = async () => {
     setLoading(true);
     try {
-      // TODO: 替换为实际 API 调用
-      // const response = await instance.get('/api/works', {
-      //   params: {
-      //     page: currentPage,
-      //     pageSize,
-      //     type: typeFilter,
-      //     search: searchText,
-      //     sortBy,
-      //     sortOrder
-      //   }
-      // });
-      
-      // 模拟 API 延迟
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setWorks(mockWorks);
-      setFilteredWorks(mockWorks);
-      setTotal(mockWorks.length);
-      
-      // 更新统计数据
-      setStats({
-        total: mockWorks.length,
-        images: mockWorks.filter(w => w.type === 'image').length,
-        videos: mockWorks.filter(w => w.type === 'video').length,
-        audios: mockWorks.filter(w => w.type === 'audio').length,
-        favorites: mockWorks.filter(w => w.isFavorite).length
-      });
+      if (hasClientFilter) {
+        const params = buildFetchParams({ sourceTab, typeFilter, currentPage: 1, pageSize: 500 });
+        const response = await instance.get('/productx/sa-ai-gen-task/my-tasks/page', { params });
+        if (response.data.success && response.data.data) {
+          const mapped = (response.data.data.records || []).map((task) => mapTaskToWork(task, intl));
+          setWorks(mapped);
+        }
+      } else {
+        const params = buildFetchParams({ sourceTab, typeFilter, currentPage, pageSize });
+        const response = await instance.get('/productx/sa-ai-gen-task/my-tasks/page', { params });
+        if (response.data.success && response.data.data) {
+          const mapped = (response.data.data.records || []).map((task) => mapTaskToWork(task, intl));
+          setWorks(mapped);
+          setTotal(response.data.data.total || 0);
+        }
+      }
+      fetchStats();
     } catch (error) {
       message.error(intl.formatMessage({ 
         id: 'works.loadError', 
@@ -676,118 +671,67 @@ const WorksPage = () => {
     }
   };
 
-  // 初始加载
   useEffect(() => {
     loadWorks();
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, sourceTab, typeFilter, hasClientFilter]);
 
-  // 筛选和搜索
   useEffect(() => {
-    let filtered = [...works];
+    let next = filterWorks(works, { searchText, dateRange });
+    next = sortWorks(next, sortBy, sortOrder);
 
-    // 类型筛选
-    if (typeFilter !== 'all') {
-      filtered = filtered.filter(work => work.type === typeFilter);
+    if (hasClientFilter) {
+      setTotal(next.length);
+      next = paginateWorks(next, currentPage, pageSize);
     }
 
-    // 搜索
-    if (searchText) {
-      filtered = filtered.filter(work => 
-        work.title.toLowerCase().includes(searchText.toLowerCase()) ||
-        work.tags?.some(tag => tag.toLowerCase().includes(searchText.toLowerCase()))
-      );
-    }
+    setFilteredWorks(next);
+  }, [works, searchText, dateRange, sortBy, sortOrder, currentPage, pageSize, hasClientFilter]);
 
-    // 日期筛选
-    if (dateRange && dateRange.length === 2) {
-      filtered = filtered.filter(work => {
-        const workDate = work.createdAt;
-        return workDate.isAfter(dateRange[0].startOf('day')) && 
-               workDate.isBefore(dateRange[1].endOf('day'));
-      });
-    }
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sourceTab, typeFilter, searchText, dateRange, sortBy, sortOrder]);
 
-    // 排序
-    filtered.sort((a, b) => {
-      let comparison = 0;
-      
-      switch (sortBy) {
-        case 'date':
-          comparison = a.createdAt.diff(b.createdAt);
-          break;
-        case 'name':
-          comparison = a.title.localeCompare(b.title);
-          break;
-        case 'size':
-          comparison = a.size - b.size;
-          break;
-        default:
-          comparison = 0;
-      }
-      
-      return sortOrder === 'asc' ? comparison : -comparison;
-    });
-
-    setFilteredWorks(filtered);
-    setTotal(filtered.length);
-  }, [works, typeFilter, searchText, dateRange, sortBy, sortOrder]);
-
-  // 格式化文件大小
-  const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-  };
-
-  // 切换收藏
-  const toggleFavorite = async (workId) => {
-    try {
-      // TODO: API 调用
-      setWorks(prev => prev.map(work => 
-        work.id === workId 
-          ? { ...work, isFavorite: !work.isFavorite }
-          : work
-      ));
-      
-      message.success(intl.formatMessage({ 
-        id: 'works.favoriteUpdated', 
-        defaultMessage: '收藏状态已更新' 
-      }));
-    } catch (error) {
-      message.error(intl.formatMessage({ 
-        id: 'works.favoriteError', 
-        defaultMessage: '更新收藏失败' 
-      }));
-    }
-  };
-
-  // 下载作品
   const handleDownload = (work) => {
-    // TODO: 实现下载逻辑
-    message.info(intl.formatMessage({ 
-      id: 'works.downloading', 
-      defaultMessage: '正在下载...' 
-    }));
+    if (!work.url) {
+      message.warning(intl.formatMessage({ id: 'works.noDownloadUrl', defaultMessage: '暂无可下载文件' }));
+      return;
+    }
+    const link = document.createElement('a');
+    link.href = work.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.click();
   };
 
-  // 分享作品
-  const handleShare = (work) => {
-    // TODO: 实现分享逻辑
-    message.info(intl.formatMessage({ 
-      id: 'works.sharing', 
-      defaultMessage: '正在生成分享链接...' 
-    }));
+  const handleShare = async (work) => {
+    if (!work.url) {
+      message.warning(intl.formatMessage({ id: 'works.noShareUrl', defaultMessage: '暂无可分享链接' }));
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(work.url);
+      message.success(intl.formatMessage({ id: 'works.linkCopied', defaultMessage: '链接已复制' }));
+    } catch {
+      message.info(work.url);
+    }
   };
 
-  // 删除作品
   const handleDelete = async (workId) => {
     try {
-      // TODO: API 调用
-      setWorks(prev => prev.filter(work => work.id !== workId));
-      message.success(intl.formatMessage({ 
-        id: 'works.deleted', 
-        defaultMessage: '作品已删除' 
-      }));
+      const response = await instance.delete(`/productx/sa-ai-gen-task/${workId}`);
+      if (response.data.success) {
+        setWorks((prev) => prev.filter((work) => work.id !== workId));
+        message.success(intl.formatMessage({ 
+          id: 'works.deleted', 
+          defaultMessage: '作品已删除' 
+        }));
+        fetchStats();
+      } else {
+        message.error(response.data.message || intl.formatMessage({ 
+          id: 'works.deleteError', 
+          defaultMessage: '删除失败，请稍后重试' 
+        }));
+      }
     } catch (error) {
       message.error(intl.formatMessage({ 
         id: 'works.deleteError', 
@@ -796,56 +740,32 @@ const WorksPage = () => {
     }
   };
 
-  // 预览作品
   const handlePreview = (work) => {
-    Modal.info({
-      title: work.title,
-      width: 800,
-      content: (
-        <div style={{ textAlign: 'center', marginTop: 20 }}>
-          {work.type === 'video' ? (
-            <video 
-              src={work.url} 
-              controls 
-              style={{ width: '100%', maxHeight: '500px' }}
-            />
-          ) : work.type === 'audio' ? (
-            <audio 
-              src={work.url} 
-              controls 
-              style={{ width: '100%' }}
-            />
-          ) : (
-            <Image 
-              src={work.url} 
-              alt={work.title}
-              style={{ maxHeight: '500px' }}
-            />
-          )}
-        </div>
-      ),
-    });
+    setPreviewWork(work);
   };
 
-  // 渲染作品卡片
   const renderWorkCard = (work) => {
     const isVideo = work.type === 'video';
     const isAudio = work.type === 'audio';
-    const isImage = work.type === 'image';
+    const previewIsVideo = isVideo && work.thumbnail && isVideoUrl(work.thumbnail);
     
     return (
       <WorkCard
         key={work.id}
         $token={token}
         $viewMode={viewMode}
-        $isFavorite={work.isFavorite}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         onClick={() => handlePreview(work)}
       >
         <div className="media-wrapper">
-          {isVideo ? (
+          {isAudio ? (
+            <AudioPreview $token={token}>
+              <SoundOutlined />
+              <span title={work.voiceName || work.title}>{work.voiceName || work.title}</span>
+            </AudioPreview>
+          ) : isVideo && previewIsVideo ? (
             <video 
               className="media-content"
               src={work.thumbnail}
@@ -855,13 +775,18 @@ const WorksPage = () => {
               onMouseOver={e => e.currentTarget.play()}
               onMouseOut={e => e.currentTarget.pause()}
             />
-          ) : (
+          ) : work.thumbnail ? (
             <img 
               className="media-content"
               src={work.thumbnail}
               alt={work.title}
               loading="lazy"
             />
+          ) : (
+            <AudioPreview $token={token}>
+              <PictureOutlined />
+              <span>{work.title}</span>
+            </AudioPreview>
           )}
           
           <div className="play-overlay">
@@ -873,93 +798,99 @@ const WorksPage = () => {
             color={isVideo ? 'blue' : isAudio ? 'purple' : 'green'}
             icon={isVideo ? <VideoCameraOutlined /> : isAudio ? <AudioOutlined /> : <FileImageOutlined />}
           >
-            {isVideo ? intl.formatMessage({ id: 'works.type.video', defaultMessage: '视频' }) : 
-             isAudio ? intl.formatMessage({ id: 'works.type.audio', defaultMessage: '音频' }) :
-                      intl.formatMessage({ id: 'works.type.image', defaultMessage: '图片' })}
+            {work.taskTypeLabel}
           </Tag>
+        </div>
 
-          <button 
-            className="favorite-btn"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleFavorite(work.id);
+        <div className="work-actions">
+          {work.taskType !== 't2a' && (
+            <Tooltip title={intl.formatMessage({ id: 'works.detail', defaultMessage: '详情' })}>
+              <button 
+                className="action-btn"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDetailTask({ id: work.id, taskType: work.taskType });
+                }}
+              >
+                <InfoCircleOutlined />
+              </button>
+            </Tooltip>
+          )}
+          <Tooltip title={intl.formatMessage({ id: 'works.preview', defaultMessage: '预览' })}>
+            <button 
+              className="action-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePreview(work);
+              }}
+            >
+              <EyeOutlined />
+            </button>
+          </Tooltip>
+          <Tooltip title={intl.formatMessage({ id: 'works.download', defaultMessage: '下载' })}>
+            <button 
+              className="action-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownload(work);
+              }}
+            >
+              <DownloadOutlined />
+            </button>
+          </Tooltip>
+          <Tooltip title={intl.formatMessage({ id: 'works.share', defaultMessage: '分享' })}>
+            <button 
+              className="action-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleShare(work);
+              }}
+            >
+              <ShareAltOutlined />
+            </button>
+          </Tooltip>
+          <Popconfirm
+            title={intl.formatMessage({ id: 'works.deleteConfirm', defaultMessage: '确定要删除这个作品吗？' })}
+            onConfirm={(e) => {
+              e?.stopPropagation();
+              handleDelete(work.id);
             }}
+            onClick={(e) => e.stopPropagation()}
           >
-            {work.isFavorite ? <StarFilled /> : <StarOutlined />}
-          </button>
+            <Tooltip title={intl.formatMessage({ id: 'works.delete', defaultMessage: '删除' })}>
+              <button 
+                className="action-btn danger"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <DeleteOutlined />
+              </button>
+            </Tooltip>
+          </Popconfirm>
         </div>
 
         <div className="card-content">
-          <div>
+          <div className="work-info">
             <div className="work-title">{work.title}</div>
             <div className="work-meta">
               <span className="meta-item">
                 <CalendarOutlined />
                 {work.createdAt.format('YYYY-MM-DD')}
               </span>
-              {(isVideo || isAudio) && work.duration && (
+              {work.model && (
+                <span className="meta-item">{work.model}</span>
+              )}
+              {work.voiceName && (
                 <span className="meta-item">
-                  <PlayCircleOutlined />
-                  {work.duration}秒
+                  <SoundOutlined />
+                  {work.voiceName}
                 </span>
               )}
-              <span className="meta-item">
-                {formatFileSize(work.size)}
-              </span>
+              {work.creditsCost != null && (
+                <span className="meta-item">
+                  {work.creditsCost} Token
+                </span>
+              )}
             </div>
-          </div>
-
-          <div className="work-actions">
-            <Tooltip title={intl.formatMessage({ id: 'works.preview', defaultMessage: '预览' })}>
-              <button 
-                className="action-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePreview(work);
-                }}
-              >
-                <EyeOutlined />
-              </button>
-            </Tooltip>
-            <Tooltip title={intl.formatMessage({ id: 'works.download', defaultMessage: '下载' })}>
-              <button 
-                className="action-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDownload(work);
-                }}
-              >
-                <DownloadOutlined />
-              </button>
-            </Tooltip>
-            <Tooltip title={intl.formatMessage({ id: 'works.share', defaultMessage: '分享' })}>
-              <button 
-                className="action-btn"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleShare(work);
-                }}
-              >
-                <ShareAltOutlined />
-              </button>
-            </Tooltip>
-            <Popconfirm
-              title={intl.formatMessage({ id: 'works.deleteConfirm', defaultMessage: '确定要删除这个作品吗？' })}
-              onConfirm={(e) => {
-                e?.stopPropagation();
-                handleDelete(work.id);
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Tooltip title={intl.formatMessage({ id: 'works.delete', defaultMessage: '删除' })}>
-                <button 
-                  className="action-btn danger"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <DeleteOutlined />
-                </button>
-              </Tooltip>
-            </Popconfirm>
           </div>
         </div>
       </WorkCard>
@@ -982,7 +913,7 @@ const WorksPage = () => {
               {intl.formatMessage({ id: 'works.title', defaultMessage: '我的作品' })}
             </h1>
             <p>
-              {intl.formatMessage({ id: 'works.description', defaultMessage: '管理和查看您生成的所有作品' })}
+              {intl.formatMessage({ id: 'works.description', defaultMessage: '集中查看文生图、文生视频、图生图、图生视频与语音生成的全部记录' })}
             </p>
           </div>
           <div className="action-group">
@@ -1034,16 +965,26 @@ const WorksPage = () => {
               <div className="value">{stats.audios}</div>
             </div>
           </div>
-          <div className="stat-item">
-            <div className="icon">
-              <StarFilled />
-            </div>
-            <div className="content">
-              <div className="label">{intl.formatMessage({ id: 'works.stats.favorites', defaultMessage: '收藏' })}</div>
-              <div className="value">{stats.favorites}</div>
-            </div>
-          </div>
         </StatsBar>
+
+        <SourceTabs>
+          {SOURCE_TAB_OPTIONS.map((tab) => (
+            <SourceTab
+              key={tab.key}
+              type="button"
+              $token={token}
+              $active={sourceTab === tab.key}
+              onClick={() => setSourceTab(tab.key)}
+            >
+              {tab.key === 'all'
+                ? intl.formatMessage({ id: 'works.source.all', defaultMessage: '全部来源' })
+                : intl.formatMessage({
+                  id: `works.source.${tab.key}`,
+                  defaultMessage: tab.key,
+                })}
+            </SourceTab>
+          ))}
+        </SourceTabs>
 
         {/* 工具栏 */}
         <Toolbar $token={token}>
@@ -1085,7 +1026,7 @@ const WorksPage = () => {
             >
               <Option value="date">{intl.formatMessage({ id: 'works.sort.date', defaultMessage: '按日期' })}</Option>
               <Option value="name">{intl.formatMessage({ id: 'works.sort.name', defaultMessage: '按名称' })}</Option>
-              <Option value="size">{intl.formatMessage({ id: 'works.sort.size', defaultMessage: '按大小' })}</Option>
+              <Option value="model">{intl.formatMessage({ id: 'works.sort.model', defaultMessage: '按模型' })}</Option>
             </Select>
 
             <Button
@@ -1162,16 +1103,31 @@ const WorksPage = () => {
                 }}
                 showSizeChanger
                 showQuickJumper
-                showTotal={(total, range) => 
+                showTotal={(totalCount, range) => 
                   intl.formatMessage(
                     { id: 'works.pagination.total', defaultMessage: '共 {total} 项，显示第 {start}-{end} 项' },
-                    { total, start: range[0], end: range[1] }
+                    { total: totalCount, start: range[0], end: range[1] }
                   )
                 }
               />
             </PaginationWrapper>
           </>
         )}
+
+        <WorkTaskDetailModals
+          taskId={detailTask?.id}
+          taskType={detailTask?.taskType}
+          onClose={() => setDetailTask(null)}
+        />
+
+        <WorkPreviewModal
+          open={!!previewWork}
+          work={previewWork}
+          onClose={() => setPreviewWork(null)}
+          onDownload={handleDownload}
+          onShare={handleShare}
+          intl={intl}
+        />
       </ContentContainer>
     </PageLayout>
   );

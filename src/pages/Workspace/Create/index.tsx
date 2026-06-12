@@ -9,6 +9,7 @@ import {
   FileImageOutlined,
   ApartmentOutlined,
   QuestionCircleOutlined,
+  CustomerServiceOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -19,6 +20,7 @@ import TextToVideo from './components/TextToVideo';
 import ImageToImage from './components/ImageToImage';
 import ImageToVideo from './components/ImageToVideo';
 import Workflow from './components/Workflow';
+import SpeechGeneration from './components/SpeechGeneration';
 
 // 路由路径到 Tab key 的映射
 const pathToTabKey: Record<string, string> = {
@@ -26,6 +28,7 @@ const pathToTabKey: Record<string, string> = {
   '/workspace/create/text-to-video': 'textToVideo',
   '/workspace/create/image-to-image': 'imageToImage',
   '/workspace/create/image-to-video': 'imageToVideo',
+  '/workspace/create/speech-generation': 'speechGeneration',
   '/workspace/create/workflow': 'workflow',
 };
 
@@ -35,6 +38,7 @@ const tabKeyToPath: Record<string, string> = {
   'textToVideo': '/workspace/create/text-to-video',
   'imageToImage': '/workspace/create/image-to-image',
   'imageToVideo': '/workspace/create/image-to-video',
+  'speechGeneration': '/workspace/create/speech-generation',
   'workflow': '/workspace/create/workflow',
 };
 
@@ -177,7 +181,7 @@ const Create: React.FC = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(['textToImage', 'textToVideo', 'imageToImage', 'imageToVideo', 'workflow']));
+  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(['textToImage', 'textToVideo', 'imageToImage', 'imageToVideo', 'speechGeneration', 'workflow']));
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
   
   // 根据当前路由获取 activeTab
@@ -243,6 +247,7 @@ const Create: React.FC = () => {
     textToVideo: <TextToVideo />,
     imageToImage: <ImageToImage />,
     imageToVideo: <ImageToVideo />,
+    speechGeneration: <SpeechGeneration />,
     workflow: <Workflow />,
   }), []);
 
@@ -293,6 +298,16 @@ const Create: React.FC = () => {
         </Space>
       ),
       children: loading ? loadingPlaceholder : tabContentMap.imageToVideo,
+    },
+    {
+      key: 'speechGeneration',
+      label: (
+        <Space>
+          <CustomerServiceOutlined />
+          <FormattedMessage id="create.tab.speechGeneration" defaultMessage="语音生成" />
+        </Space>
+      ),
+      children: loading ? loadingPlaceholder : tabContentMap.speechGeneration,
     },
     {
       key: 'workflow',

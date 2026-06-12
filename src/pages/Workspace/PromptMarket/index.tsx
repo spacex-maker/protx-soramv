@@ -253,11 +253,11 @@ const FooterRow = styled.div`
   }
 `;
 
-const SortButton = styled(Button)<{ $active?: boolean }>`
-  color: ${props => props.$active ? props.theme.colorPrimary : 'inherit'} !important;
+const SortButton = styled(Button)<{ $active?: boolean; $primary?: string }>`
+  color: ${props => props.$active ? props.$primary : 'inherit'} !important;
   font-weight: ${props => props.$active ? '600' : '400'};
   
-  &:hover { color: ${props => props.theme.colorPrimary} !important; }
+  &:hover { color: ${props => props.$primary} !important; }
 `;
 
 // --- Main Component ---
@@ -425,9 +425,9 @@ const PromptMarket: React.FC = () => {
             
             <Space size={16}>
               <Space size={4}>
-                <SortButton type="text" $active={sort === 'latest'} onClick={() => setSort('latest')}><FormattedMessage id="promptMarket.sortLatest" defaultMessage="最新上架" /></SortButton>
-                <SortButton type="text" $active={sort === 'hot'} onClick={() => setSort('hot')}><FormattedMessage id="promptMarket.sortHot" defaultMessage="热门收藏" /></SortButton>
-                <SortButton type="text" $active={sort === 'sales'} onClick={() => setSort('sales')}><FormattedMessage id="promptMarket.sortSales" defaultMessage="销量榜" /></SortButton>
+                <SortButton type="text" $primary={token.colorPrimary} $active={sort === 'latest'} onClick={() => setSort('latest')}><FormattedMessage id="promptMarket.sortLatest" defaultMessage="最新上架" /></SortButton>
+                <SortButton type="text" $primary={token.colorPrimary} $active={sort === 'hot'} onClick={() => setSort('hot')}><FormattedMessage id="promptMarket.sortHot" defaultMessage="热门收藏" /></SortButton>
+                <SortButton type="text" $primary={token.colorPrimary} $active={sort === 'sales'} onClick={() => setSort('sales')}><FormattedMessage id="promptMarket.sortSales" defaultMessage="销量榜" /></SortButton>
               </Space>
               <Button type="primary" shape="round" icon={<PlusOutlined />} onClick={() => setCreateModalVisible(true)} size="large">
                 <FormattedMessage id="promptMarket.publish" defaultMessage="发布作品" />

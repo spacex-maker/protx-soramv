@@ -3,6 +3,7 @@ import SimpleHeader from 'components/headers/simple';
 import { PageContainer } from './styles';
 import HeroSection from './components/HeroSection';
 import FeaturesSection from './components/FeaturesSection';
+import SpeechGenerationSection from './components/SpeechGenerationSection';
 import PricingSection from './components/PricingSection';
 import MediaToolsSection from './components/MediaToolsSection';
 import CommunitySection from './components/CommunitySection';
@@ -18,6 +19,7 @@ const HomePage = () => {
       <SimpleHeader />
       <HeroSection />
       <FeaturesSection />
+      <SpeechGenerationSection />
       <CommunitySection />
       <PromptMarketSection />
       <PricingSection />

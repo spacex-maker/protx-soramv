@@ -1,65 +1,56 @@
 import React from 'react';
-import { 
-  Slider, InputNumber, Select, Button, 
-  Typography, Switch, Tooltip, Input
+import {
+  Button,
+  InputNumber,
+  Progress,
+  Segmented,
+  Select,
+  Slider,
+  Space,
+  Tag,
+  Tooltip,
+  Typography,
 } from 'antd';
-import { 
-  DeleteOutlined, 
-  LoadingOutlined,
+import {
   CompressOutlined,
   DownloadOutlined,
-  QuestionCircleOutlined
+  LoadingOutlined,
+  QuestionCircleOutlined,
+  ReloadOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { formatSize } from './utils';
 
-const { Title } = Typography;
+const { Text } = Typography;
 
-const ControlPanel = styled.div`
-  background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#fff'};
-  border-radius: 24px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : '#e0e0e0'};
-  overflow-y: auto;
-  max-height: 100%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+const THEME_COLOR = '#1890ff';
 
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.mode === 'dark' ? '#444' : '#d9d9d9'};
-    border-radius: 3px;
-
-    &:hover {
-      background: ${props => props.theme.mode === 'dark' ? '#555' : '#bfbfbf'};
-    }
-  }
-
-  @media (max-width: 1024px) {
-    max-height: none;
-  }
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 `;
 
-const PanelSection = styled.div`
-  margin-bottom: 24px;
-  &:last-child { margin-bottom: 0; }
+const pulse = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+`;
+
+const SidePanelInner = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
 `;
 
 const SectionTitle = styled.div`
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
+  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.55)'};
+  margin-bottom: 10px;
   text-transform: uppercase;
-  color: ${props => props.theme.mode === 'dark' ? '#888' : '#999'};
-  margin-bottom: 12px;
+  letter-spacing: 0.04em;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -68,29 +59,129 @@ const SectionTitle = styled.div`
 const StatsGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 24px;
-  background: ${props => props.theme.mode === 'dark' ? '#141414' : '#f8f9fa'};
-  padding: 20px;
-  border-radius: 16px;
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#2a2a2a' : '#e9ecef'};
+  gap: 10px;
 `;
 
-const StatItem = styled.div`
+const StatCard = styled.div<{ $color?: string }>`
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#e8ecf1'};
+
+  .label {
+    font-size: 11px;
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)'};
+    margin-bottom: 4px;
+  }
+
+  .value {
+    font-size: 18px;
+    font-weight: 700;
+    color: ${props => props.$color || (props.theme.mode === 'dark' ? '#fff' : '#1f1f1f')};
+  }
+`;
+
+const FormatGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+`;
+
+const FormatChip = styled.button<{ $active: boolean; $disabled?: boolean }>`
   display: flex;
   flex-direction: column;
-  .label { font-size: 12px; color: #888; margin-bottom: 4px; }
-  .value { font-size: 16px; font-weight: 600; color: ${props => props.theme.mode === 'dark' ? '#e8eaed' : '#1f1f1f'}; }
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: ${props => (props.$disabled ? 'not-allowed' : 'pointer')};
+  opacity: ${props => (props.$disabled ? 0.5 : 1)};
+  border: 1.5px solid ${props =>
+    props.$active
+      ? THEME_COLOR
+      : props.theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#e5e7eb'};
+  background: ${props =>
+    props.$active
+      ? props.theme.mode === 'dark' ? 'rgba(24, 144, 255, 0.18)' : 'rgba(24, 144, 255, 0.08)'
+      : props.theme.mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#fff'};
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    border-color: ${THEME_COLOR};
+  }
+
+  .label {
+    font-size: 14px;
+    font-weight: 600;
+    color: ${props => props.$active ? THEME_COLOR : 'inherit'};
+  }
+
+  .desc {
+    font-size: 11px;
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)'};
+  }
 `;
 
-const ActionFooter = styled.div`
+const InfoRow = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const HintText = styled.div`
+  font-size: 11px;
+  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'};
+  margin-top: 6px;
+`;
+
+const ProgressBox = styled.div`
+  padding: 14px;
+  border-radius: 14px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(24, 144, 255, 0.1)' : 'rgba(24, 144, 255, 0.06)'};
+  animation: ${pulse} 2s ease-in-out infinite;
+`;
+
+const ResultBox = styled.div`
+  padding: 14px;
+  border-radius: 14px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(34, 197, 94, 0.06)'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.15)'};
+  animation: ${fadeIn} 0.35s ease-out;
+`;
+
+const ActionGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin-top: auto;
-  padding-top: 24px;
-  border-top: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : '#f0f0f0'};
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px dashed ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#e5e7eb'};
 `;
+
+const OUTPUT_FORMATS: Array<{
+  value: 'mp4' | 'webm' | 'avi';
+  label: string;
+  desc: string;
+}> = [
+  { value: 'mp4', label: 'MP4', desc: '通用推荐' },
+  { value: 'webm', label: 'WebM', desc: '网页开源' },
+  { value: 'avi', label: 'AVI', desc: '经典容器' },
+];
+
+const BITRATE_OPTIONS = [
+  { label: 'Auto', value: 'auto' },
+  { label: '500k', value: '500k' },
+  { label: '1M', value: '1M' },
+  { label: '2M', value: '2M' },
+  { label: '5M', value: '5M' },
+];
+
+const RESOLUTION_OPTIONS = [
+  { label: 'Original', value: 'original' },
+  { label: '1080p', value: '1920:1080' },
+  { label: '720p', value: '1280:720' },
+  { label: '480p', value: '854:480' },
+];
 
 export interface VideoCompressSettingsProps {
   singleSavings: number;
@@ -108,6 +199,7 @@ export interface VideoCompressSettingsProps {
   crf: number;
   setCrf: (value: number) => void;
   isCompressing: boolean;
+  compressionProgress: number;
   onCompress: () => void;
   onDownload: () => void;
   onReset: () => void;
@@ -115,26 +207,6 @@ export interface VideoCompressSettingsProps {
   hasCompressedResult: boolean;
   videoInfo?: { width: number; height: number; duration: number };
 }
-
-// 预设分辨率
-const PRESET_RESOLUTIONS = [
-  { label: 'Original', value: '' },
-  { label: '4K UHD (3840×2160)', value: '3840:2160' },
-  { label: '2K QHD (2560×1440)', value: '2560:1440' },
-  { label: 'Full HD (1920×1080)', value: '1920:1080' },
-  { label: 'HD (1280×720)', value: '1280:720' },
-  { label: 'SD (854×480)', value: '854:480' },
-];
-
-// 预设比特率
-const PRESET_BITRATES = [
-  { label: 'Auto (CRF)', value: '' },
-  { label: 'Very High (10M)', value: '10M' },
-  { label: 'High (5M)', value: '5M' },
-  { label: 'Medium (2M)', value: '2M' },
-  { label: 'Low (1M)', value: '1M' },
-  { label: 'Very Low (500k)', value: '500k' },
-];
 
 const VideoCompressSettings: React.FC<VideoCompressSettingsProps> = ({
   singleSavings,
@@ -152,220 +224,254 @@ const VideoCompressSettings: React.FC<VideoCompressSettingsProps> = ({
   crf,
   setCrf,
   isCompressing,
+  compressionProgress,
   onCompress,
   onDownload,
   onReset,
   singleFile,
   hasCompressedResult,
-  videoInfo
+  videoInfo,
 }) => {
   const intl = useIntl();
+  const hasFile = !!singleFile;
+  const bitrateValue = bitrate || 'auto';
+  const resolutionValue = resolution || 'original';
 
   return (
-    <ControlPanel>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Title level={4} style={{ margin: 0 }}>
-          <FormattedMessage id="videoCompress.settings" defaultMessage="设置" />
-        </Title>
-        <Button 
-          type="text" 
-          icon={<DeleteOutlined />} 
-          onClick={onReset} 
-          danger
-          style={{ borderRadius: 999 }}
-        >
-          <FormattedMessage id="videoCompress.clearAll" defaultMessage="清空全部" />
-        </Button>
-      </div>
-
+    <SidePanelInner>
       <StatsGrid>
-        <StatItem>
-          <span className="label">
+        <StatCard $color={singleSavings >= 0 ? '#22c55e' : '#ef4444'}>
+          <div className="label">
             <FormattedMessage id="videoCompress.totalSavings" defaultMessage="节省空间" />
-          </span>
-          <span className="value" style={{ color: singleSavings >= 0 ? '#52c41a' : '#ff4d4f' }}>
-            {singleMeta.originalSize > 0 ? `${singleSavings.toFixed(1)}%` : '-'}
-          </span>
-        </StatItem>
-        <StatItem>
-          <span className="label">
-            <FormattedMessage id="videoCompress.totalSize" defaultMessage="总大小" />
-          </span>
-          <span className="value">
-            {singleMeta.originalSize > 0 ? formatSize(singleMeta.compressedSize || singleMeta.originalSize) : '-'}
-          </span>
-        </StatItem>
+          </div>
+          <div className="value">
+            {singleMeta.originalSize > 0 ? `${singleSavings.toFixed(1)}%` : '—'}
+          </div>
+        </StatCard>
+        <StatCard>
+          <div className="label">
+            <FormattedMessage id="videoCompress.totalSize" defaultMessage="输出大小" />
+          </div>
+          <div className="value">
+            {singleMeta.originalSize > 0
+              ? formatSize(singleMeta.compressedSize || singleMeta.originalSize)
+              : '—'}
+          </div>
+        </StatCard>
       </StatsGrid>
 
       {videoInfo && (
-        <PanelSection>
+        <div>
           <SectionTitle>
             <FormattedMessage id="videoCompress.videoInfo" defaultMessage="视频信息" />
           </SectionTitle>
-          <div style={{ fontSize: 12, color: '#888' }}>
-            <div>{videoInfo.width} × {videoInfo.height}</div>
-            <div>{Math.floor(videoInfo.duration)}s</div>
-          </div>
-        </PanelSection>
+          <InfoRow>
+            <Tag color="blue">{videoInfo.width} × {videoInfo.height}</Tag>
+            <Tag bordered={false}>{Math.floor(videoInfo.duration)}s</Tag>
+            {singleMeta.originalSize > 0 && (
+              <Tag bordered={false}>{formatSize(singleMeta.originalSize)}</Tag>
+            )}
+          </InfoRow>
+        </div>
       )}
 
-      <PanelSection>
+      <div>
         <SectionTitle>
-          <span>
-            <FormattedMessage id="videoCompress.quality" defaultMessage="质量" />
-          </span>
-          <span>{Math.round(quality * 100)}%</span>
+          <FormattedMessage id="videoCompress.format" defaultMessage="输出格式" />
         </SectionTitle>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Slider
-            style={{ flex: 1 }} min={0.1} max={1.0} step={0.05}
-            value={quality} onChange={setQuality}
-          />
-          <InputNumber
-            min={10} max={100} value={Math.round(quality * 100)}
-            onChange={(val) => setQuality((val || 100) / 100)}
-            formatter={value => `${value}%`}
-            parser={value => value?.replace('%', '') as unknown as number}
-            style={{ width: 70 }} size="small"
-          />
-        </div>
-      </PanelSection>
+        <FormatGrid>
+          {OUTPUT_FORMATS.map((item) => (
+            <FormatChip
+              key={item.value}
+              type="button"
+              $active={format === item.value}
+              $disabled={isCompressing}
+              disabled={isCompressing}
+              onClick={() => setFormat(item.value)}
+            >
+              <span className="label">{item.label}</span>
+              <span className="desc">{item.desc}</span>
+            </FormatChip>
+          ))}
+        </FormatGrid>
+      </div>
 
-      <PanelSection>
+      <div>
+        <SectionTitle>
+          <FormattedMessage id="videoCompress.resolution" defaultMessage="分辨率" />
+        </SectionTitle>
+        <Segmented
+          block
+          value={resolutionValue}
+          options={RESOLUTION_OPTIONS}
+          onChange={(val) => setResolution(val === 'original' ? '' : String(val))}
+          disabled={isCompressing}
+        />
+      </div>
+
+      <div>
         <SectionTitle>
           <span>
-            <FormattedMessage id="videoCompress.crf" defaultMessage="CRF (质量)" />
+            <FormattedMessage id="videoCompress.crf" defaultMessage="CRF 质量" />
           </span>
-          <Tooltip title={intl.formatMessage({ 
-            id: 'videoCompress.crfTooltip', 
-            defaultMessage: 'CRF值越小质量越好，18-28为常用范围' 
+          <Tooltip title={intl.formatMessage({
+            id: 'videoCompress.crfTooltip',
+            defaultMessage: 'CRF 值越小质量越好，18-28 为常用范围',
           })}>
-            <QuestionCircleOutlined style={{ fontSize: 12, color: '#888', cursor: 'help', marginLeft: 4 }} />
+            <QuestionCircleOutlined style={{ fontSize: 12, cursor: 'help', textTransform: 'none' }} />
           </Tooltip>
         </SectionTitle>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Slider
-            style={{ flex: 1 }} min={18} max={32} step={1}
-            value={crf} onChange={setCrf}
+            style={{ flex: 1 }}
+            min={18}
+            max={32}
+            step={1}
+            value={crf}
+            onChange={setCrf}
+            disabled={isCompressing || !!bitrate}
           />
           <InputNumber
-            min={18} max={32} value={crf}
+            min={18}
+            max={32}
+            value={crf}
             onChange={(val) => setCrf(val ?? 23)}
-            style={{ width: 70 }} size="small"
+            style={{ width: 70 }}
+            size="small"
+            disabled={isCompressing || !!bitrate}
           />
         </div>
-      </PanelSection>
+      </div>
 
-      <PanelSection>
-        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 16 }}>
-          <div>
-            <SectionTitle>
-              <FormattedMessage id="videoCompress.resolution" defaultMessage="分辨率" />
-            </SectionTitle>
-            <Select
-              value={resolution || 'original'}
-              onChange={(val) => setResolution(val === 'original' ? '' : val)}
-              style={{ width: '100%' }}
-              options={PRESET_RESOLUTIONS.map(res => ({
-                label: res.label,
-                value: res.value || 'original'
-              }))}
-            />
-          </div>
-          <div>
-            <SectionTitle>
-              <FormattedMessage id="videoCompress.fps" defaultMessage="帧率" />
-            </SectionTitle>
-            <InputNumber
-              value={fps}
-              onChange={(val) => setFps(val || undefined)}
-              placeholder={intl.formatMessage({ id: 'videoCompress.fpsPlaceholder', defaultMessage: '保持原帧率' })}
-              min={1}
-              max={120}
-              style={{ width: '100%' }}
-            />
-          </div>
+      <div>
+        <SectionTitle>
+          <FormattedMessage id="videoCompress.bitrate" defaultMessage="视频比特率" />
+        </SectionTitle>
+        <Segmented
+          block
+          value={bitrateValue}
+          options={BITRATE_OPTIONS}
+          onChange={(val) => setBitrate(val === 'auto' ? '' : String(val))}
+          disabled={isCompressing}
+        />
+        <HintText>
+          <FormattedMessage
+            id="videoCompress.bitrateNote"
+            defaultMessage="选择比特率将覆盖 CRF 设置"
+          />
+        </HintText>
+      </div>
+
+      <div>
+        <SectionTitle>
+          <span>
+            <FormattedMessage id="videoCompress.quality" defaultMessage="质量系数" />
+          </span>
+          <Text type="secondary" style={{ fontSize: 12, textTransform: 'none', letterSpacing: 0 }}>
+            {Math.round(quality * 100)}%
+          </Text>
+        </SectionTitle>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Slider
+            style={{ flex: 1 }}
+            min={0.1}
+            max={1.0}
+            step={0.05}
+            value={quality}
+            onChange={setQuality}
+            disabled={isCompressing}
+          />
+          <InputNumber
+            min={10}
+            max={100}
+            value={Math.round(quality * 100)}
+            onChange={(val) => setQuality((val || 100) / 100)}
+            formatter={(value) => `${value}%`}
+            parser={(value) => value?.replace('%', '') as unknown as number}
+            style={{ width: 70 }}
+            size="small"
+            disabled={isCompressing}
+          />
         </div>
-      </PanelSection>
+      </div>
 
-      <PanelSection>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 16 }}>
-          <div>
-            <SectionTitle>
-              <FormattedMessage id="videoCompress.format" defaultMessage="格式" />
-            </SectionTitle>
-            <Select
-              value={format} onChange={setFormat} style={{ width: '100%' }}
-              options={[
-                { value: 'mp4', label: 'MP4 (推荐)' },
-                { value: 'webm', label: 'WebM' },
-                { value: 'avi', label: 'AVI' },
-              ]}
-            />
-          </div>
-          <div>
-            <SectionTitle>
-              <FormattedMessage id="videoCompress.bitrate" defaultMessage="比特率" />
-            </SectionTitle>
-            <Select
-              value={bitrate || 'auto'}
-              onChange={(val) => setBitrate(val === 'auto' ? '' : val)}
-              style={{ width: '100%' }}
-              options={PRESET_BITRATES.map(bitrate => ({
-                label: bitrate.label,
-                value: bitrate.value || 'auto'
-              }))}
-            />
-            <div style={{ marginTop: 8, fontSize: 12, color: '#888' }}>
-              <FormattedMessage 
-                id="videoCompress.bitrateNote" 
-                defaultMessage="选择比特率将覆盖CRF设置" 
-              />
-            </div>
-          </div>
-        </div>
-      </PanelSection>
+      <div>
+        <SectionTitle>
+          <FormattedMessage id="videoCompress.fps" defaultMessage="帧率" />
+        </SectionTitle>
+        <Select
+          value={fps ?? 'auto'}
+          onChange={(val) => setFps(val === 'auto' ? undefined : Number(val))}
+          style={{ width: '100%' }}
+          disabled={isCompressing}
+          options={[
+            {
+              value: 'auto',
+              label: intl.formatMessage({ id: 'videoCompress.fpsPlaceholder', defaultMessage: '保持原帧率' }),
+            },
+            { value: 24, label: '24 fps' },
+            { value: 30, label: '30 fps' },
+            { value: 60, label: '60 fps' },
+          ]}
+        />
+      </div>
 
-      <ActionFooter>
+      {isCompressing && (
+        <ProgressBox>
+          <Text style={{ display: 'block', marginBottom: 10 }}>
+            <FormattedMessage id="videoCompress.compressingProgress" defaultMessage="正在压缩视频，请稍候..." />
+          </Text>
+          <Progress percent={compressionProgress} status="active" strokeColor={THEME_COLOR} />
+        </ProgressBox>
+      )}
+
+      {hasCompressedResult && !isCompressing && (
+        <ResultBox>
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <Space>
+              <SafetyCertificateOutlined style={{ color: '#22c55e' }} />
+              <Text strong>
+                <FormattedMessage id="videoCompress.message.compressed" defaultMessage="压缩成功！" />
+              </Text>
+            </Space>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {formatSize(singleMeta.originalSize)} → {formatSize(singleMeta.compressedSize)}
+              {singleSavings > 0 && ` · 节省 ${singleSavings.toFixed(1)}%`}
+            </Text>
+          </Space>
+        </ResultBox>
+      )}
+
+      <ActionGroup>
         <Button
-          type="primary" block size="large"
+          type="primary"
+          size="large"
+          block
           icon={isCompressing ? <LoadingOutlined /> : <CompressOutlined />}
           onClick={onCompress}
-          disabled={isCompressing || !singleFile}
-          style={{
-            height: 50, 
-            borderRadius: 999,
-            background: 'linear-gradient(135deg, #8338ec 0%, #3a86ff 100%)',
-            border: 'none', 
-            fontSize: 16, 
-            fontWeight: 600,
-            boxShadow: '0 4px 12px rgba(131, 56, 236, 0.3)',
-            transition: 'all 0.3s'
-          }}
+          disabled={isCompressing || !hasFile}
+          style={{ height: 44, borderRadius: 10 }}
         >
-          {isCompressing 
+          {isCompressing
             ? intl.formatMessage({ id: 'videoCompress.compressing', defaultMessage: '压缩中...' })
-            : intl.formatMessage({ id: 'videoCompress.compress', defaultMessage: '开始压缩' })
-          }
+            : intl.formatMessage({ id: 'videoCompress.compress', defaultMessage: '开始压缩' })}
         </Button>
-        <Button
-          block size="large" 
-          icon={<DownloadOutlined />}
-          onClick={onDownload}
-          disabled={!hasCompressedResult}
-          style={{ 
-            height: 50, 
-            borderRadius: 999, 
-            fontWeight: 600,
-            transition: 'all 0.3s'
-          }}
-        >
-          <FormattedMessage id="videoCompress.download" defaultMessage="下载视频" />
-        </Button>
-      </ActionFooter>
-    </ControlPanel>
+        <Space style={{ width: '100%' }}>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={onDownload}
+            disabled={!hasCompressedResult}
+            block
+          >
+            <FormattedMessage id="videoCompress.download" defaultMessage="下载" />
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={onReset} disabled={isCompressing} block>
+            <FormattedMessage id="videoCompress.clearAll" defaultMessage="重置" />
+          </Button>
+        </Space>
+      </ActionGroup>
+    </SidePanelInner>
   );
 };
 
 export default VideoCompressSettings;
-

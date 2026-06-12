@@ -1,64 +1,53 @@
 import React from 'react';
-import { 
-  Slider, InputNumber, Select, Button, 
-  Typography, Progress
+import {
+  Button,
+  InputNumber,
+  Progress,
+  Segmented,
+  Slider,
+  Space,
+  Tag,
+  Typography,
 } from 'antd';
-import { 
-  DeleteOutlined, 
-  LoadingOutlined,
+import {
   CompressOutlined,
-  DownloadOutlined
+  DownloadOutlined,
+  LoadingOutlined,
+  ReloadOutlined,
+  SafetyCertificateOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { formatSize } from './utils';
 
-const { Title } = Typography;
+const { Text } = Typography;
 
-const ControlPanel = styled.div`
-  background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#fff'};
-  border-radius: 24px;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : '#e0e0e0'};
-  overflow-y: auto;
-  max-height: 100%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+const THEME_COLOR = '#8338ec';
 
-  &::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.mode === 'dark' ? '#444' : '#d9d9d9'};
-    border-radius: 3px;
-
-    &:hover {
-      background: ${props => props.theme.mode === 'dark' ? '#555' : '#bfbfbf'};
-    }
-  }
-
-  @media (max-width: 1024px) {
-    max-height: none;
-  }
+const fadeIn = keyframes`
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 `;
 
-const PanelSection = styled.div`
-  margin-bottom: 24px;
-  &:last-child { margin-bottom: 0; }
+const pulse = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+`;
+
+const SidePanelInner = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
 `;
 
 const SectionTitle = styled.div`
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
+  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.55)'};
+  margin-bottom: 10px;
   text-transform: uppercase;
-  color: ${props => props.theme.mode === 'dark' ? '#888' : '#999'};
-  margin-bottom: 12px;
+  letter-spacing: 0.04em;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -67,29 +56,126 @@ const SectionTitle = styled.div`
 const StatsGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 24px;
-  background: ${props => props.theme.mode === 'dark' ? '#141414' : '#f8f9fa'};
-  padding: 20px;
-  border-radius: 16px;
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#2a2a2a' : '#e9ecef'};
+  gap: 10px;
 `;
 
-const StatItem = styled.div`
+const StatCard = styled.div`
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#e8ecf1'};
+
+  .label {
+    font-size: 11px;
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)'};
+    margin-bottom: 4px;
+  }
+
+  .value {
+    font-size: 18px;
+    font-weight: 700;
+    color: ${props => props.color || (props.theme.mode === 'dark' ? '#fff' : '#1f1f1f')};
+  }
+`;
+
+const FormatGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+`;
+
+const FormatChip = styled.button<{ $active: boolean; $disabled?: boolean }>`
   display: flex;
   flex-direction: column;
-  .label { font-size: 12px; color: #888; margin-bottom: 4px; }
-  .value { font-size: 16px; font-weight: 600; color: ${props => props.theme.mode === 'dark' ? '#e8eaed' : '#1f1f1f'}; }
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: ${props => (props.$disabled ? 'not-allowed' : 'pointer')};
+  opacity: ${props => (props.$disabled ? 0.5 : 1)};
+  border: 1.5px solid ${props =>
+    props.$active
+      ? THEME_COLOR
+      : props.theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#e5e7eb'};
+  background: ${props =>
+    props.$active
+      ? props.theme.mode === 'dark' ? 'rgba(131, 56, 236, 0.18)' : 'rgba(131, 56, 236, 0.08)'
+      : props.theme.mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#fff'};
+  transition: all 0.2s ease;
+
+  &:hover:not(:disabled) {
+    border-color: ${THEME_COLOR};
+  }
+
+  .label {
+    font-size: 14px;
+    font-weight: 600;
+    color: ${props => props.$active ? THEME_COLOR : 'inherit'};
+  }
+
+  .desc {
+    font-size: 11px;
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)'};
+  }
 `;
 
-const ActionFooter = styled.div`
+const InfoRow = styled.div`
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const ProgressBox = styled.div`
+  padding: 14px;
+  border-radius: 14px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(131, 56, 236, 0.1)' : 'rgba(131, 56, 236, 0.06)'};
+  animation: ${pulse} 2s ease-in-out infinite;
+`;
+
+const ResultBox = styled.div`
+  padding: 14px;
+  border-radius: 14px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(34, 197, 94, 0.08)' : 'rgba(34, 197, 94, 0.06)'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.15)'};
+  animation: ${fadeIn} 0.35s ease-out;
+`;
+
+const ActionGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin-top: auto;
-  padding-top: 24px;
-  border-top: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : '#f0f0f0'};
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px dashed ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : '#e5e7eb'};
 `;
+
+const OUTPUT_FORMATS: Array<{
+  value: 'mp3' | 'ogg' | 'aac' | 'wav';
+  label: string;
+  desc: string;
+  lossless?: boolean;
+}> = [
+  { value: 'mp3', label: 'MP3', desc: '通用推荐' },
+  { value: 'ogg', label: 'OGG', desc: '开源压缩' },
+  { value: 'aac', label: 'AAC', desc: '流媒体' },
+  { value: 'wav', label: 'WAV', desc: '无损 PCM', lossless: true },
+];
+
+const BITRATE_SEGMENT_OPTIONS = [
+  { label: 'Auto', value: 'auto' },
+  { label: '320k', value: '320' },
+  { label: '192k', value: '192' },
+  { label: '128k', value: '128' },
+  { label: '64k', value: '64' },
+];
+
+const SAMPLE_RATE_OPTIONS = [
+  { label: 'Auto', value: 'auto' },
+  { label: '48k', value: '48000' },
+  { label: '44.1k', value: '44100' },
+  { label: '32k', value: '32000' },
+  { label: '22k', value: '22050' },
+];
 
 export interface AudioCompressSettingsProps {
   singleSavings: number;
@@ -112,27 +198,6 @@ export interface AudioCompressSettingsProps {
   audioInfo?: { duration: number; sampleRate: number };
 }
 
-// 预设比特率（将在组件中使用 intl 动态生成）
-const PRESET_BITRATE_VALUES = [
-  { key: 'auto', value: undefined },
-  { key: '320', value: 320 },
-  { key: '256', value: 256 },
-  { key: '192', value: 192 },
-  { key: '128', value: 128 },
-  { key: '96', value: 96 },
-  { key: '64', value: 64 },
-];
-
-// 预设采样率（将在组件中使用 intl 动态生成）
-const PRESET_SAMPLE_RATE_VALUES = [
-  { key: 'auto', value: undefined },
-  { key: '48000', value: 48000 },
-  { key: '44100', value: 44100 },
-  { key: '32000', value: 32000 },
-  { key: '22050', value: 22050 },
-  { key: '16000', value: 16000 },
-];
-
 const AudioCompressSettings: React.FC<AudioCompressSettingsProps> = ({
   singleSavings,
   singleMeta,
@@ -151,238 +216,208 @@ const AudioCompressSettings: React.FC<AudioCompressSettingsProps> = ({
   onReset,
   singleFile,
   hasCompressedResult,
-  audioInfo
+  audioInfo,
 }) => {
   const intl = useIntl();
-
-  // 动态生成比特率选项
-  const PRESET_BITRATES = PRESET_BITRATE_VALUES.map(item => ({
-    label: item.key === 'auto' 
-      ? 'Auto'
-      : intl.formatMessage({ 
-          id: `audioCompress.bitrate.${item.key}`, 
-          defaultMessage: `${item.value} kbps` 
-        }),
-    value: item.value
-  }));
-
-  // 动态生成采样率选项
-  const PRESET_SAMPLE_RATES = PRESET_SAMPLE_RATE_VALUES.map(item => ({
-    label: item.key === 'auto'
-      ? 'Auto'
-      : intl.formatMessage({ 
-          id: `audioCompress.sampleRate.${item.key}`, 
-          defaultMessage: `${item.value} Hz` 
-        }),
-    value: item.value
-  }));
+  const hasFile = !!singleFile;
+  const bitrateSegmentValue = bitrate ? String(bitrate) : 'auto';
+  const sampleRateSegmentValue = sampleRate ? String(sampleRate) : 'auto';
 
   return (
-    <ControlPanel>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Title level={4} style={{ margin: 0 }}>
-          <FormattedMessage id="audioCompress.settings" defaultMessage="设置" />
-        </Title>
-        <Button 
-          type="text" 
-          icon={<DeleteOutlined />} 
-          onClick={onReset} 
-          danger
-          style={{ borderRadius: 999 }}
-        >
-          <FormattedMessage id="audioCompress.clearAll" defaultMessage="清空全部" />
-        </Button>
-      </div>
-
+    <SidePanelInner>
       <StatsGrid>
-        <StatItem>
-          <span className="label">
+        <StatCard color={singleSavings >= 0 ? '#22c55e' : '#ef4444'}>
+          <div className="label">
             <FormattedMessage id="audioCompress.totalSavings" defaultMessage="节省空间" />
-          </span>
-          <span className="value" style={{ color: singleSavings >= 0 ? '#52c41a' : '#ff4d4f' }}>
-            {singleMeta.originalSize > 0 ? `${singleSavings.toFixed(1)}%` : '-'}
-          </span>
-        </StatItem>
-        <StatItem>
-          <span className="label">
-            <FormattedMessage id="audioCompress.totalSize" defaultMessage="总大小" />
-          </span>
-          <span className="value">
-            {singleMeta.originalSize > 0 ? formatSize(singleMeta.compressedSize || singleMeta.originalSize) : '-'}
-          </span>
-        </StatItem>
+          </div>
+          <div className="value">
+            {singleMeta.originalSize > 0 ? `${singleSavings.toFixed(1)}%` : '—'}
+          </div>
+        </StatCard>
+        <StatCard>
+          <div className="label">
+            <FormattedMessage id="audioCompress.totalSize" defaultMessage="输出大小" />
+          </div>
+          <div className="value">
+            {singleMeta.originalSize > 0
+              ? formatSize(singleMeta.compressedSize || singleMeta.originalSize)
+              : '—'}
+          </div>
+        </StatCard>
       </StatsGrid>
 
       {audioInfo && (
-        <PanelSection>
+        <div>
           <SectionTitle>
             <FormattedMessage id="audioCompress.audioInfo" defaultMessage="音频信息" />
           </SectionTitle>
-          <div style={{ fontSize: 12, color: '#888' }}>
-            <div>{Math.floor(audioInfo.duration)}s</div>
-            <div>{audioInfo.sampleRate} Hz</div>
-          </div>
-        </PanelSection>
+          <InfoRow>
+            <Tag color="purple">{Math.floor(audioInfo.duration)}s</Tag>
+            <Tag bordered={false}>{audioInfo.sampleRate} Hz</Tag>
+            {singleMeta.originalSize > 0 && (
+              <Tag bordered={false}>{formatSize(singleMeta.originalSize)}</Tag>
+            )}
+          </InfoRow>
+        </div>
       )}
 
-      <PanelSection>
+      <div>
+        <SectionTitle>
+          <FormattedMessage id="audioCompress.format" defaultMessage="输出格式" />
+        </SectionTitle>
+        <FormatGrid>
+          {OUTPUT_FORMATS.map((item) => (
+            <FormatChip
+              key={item.value}
+              type="button"
+              $active={format === item.value}
+              $disabled={isCompressing}
+              disabled={isCompressing}
+              onClick={() => setFormat(item.value)}
+            >
+              <span className="label">
+                {item.label}
+                {item.lossless && (
+                  <Tag color="green" bordered={false} style={{ marginLeft: 6, fontSize: 10, padding: '0 4px' }}>
+                    无损
+                  </Tag>
+                )}
+              </span>
+              <span className="desc">{item.desc}</span>
+            </FormatChip>
+          ))}
+        </FormatGrid>
+      </div>
+
+      <div>
         <SectionTitle>
           <FormattedMessage id="audioCompress.bitrate" defaultMessage="比特率" />
         </SectionTitle>
-        <Select
-          value={bitrate || 'auto'}
+        <Segmented
+          block
+          value={bitrateSegmentValue}
+          options={BITRATE_SEGMENT_OPTIONS}
           onChange={(val) => {
-            if (val === 'auto' || val === undefined) {
+            if (val === 'auto') {
               setBitrate(undefined);
             } else {
-              setBitrate(typeof val === 'number' ? val : Number(val));
+              setBitrate(Number(val));
             }
           }}
-          style={{ width: '100%' }}
-          options={PRESET_BITRATES.map(bitrate => ({
-            label: bitrate.label,
-            value: bitrate.value ?? 'auto'
-          }))}
+          disabled={isCompressing}
         />
-      </PanelSection>
+      </div>
 
-      {!bitrate && (
-        <PanelSection>
+      {!bitrate && format !== 'wav' && (
+        <div>
           <SectionTitle>
             <span>
               <FormattedMessage id="audioCompress.quality" defaultMessage="质量" />
             </span>
-            <span>{Math.round(quality * 100)}%</span>
+            <Text type="secondary" style={{ fontSize: 12, textTransform: 'none', letterSpacing: 0 }}>
+              {Math.round(quality * 100)}%
+            </Text>
           </SectionTitle>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Slider
-              style={{ flex: 1 }} min={0.1} max={1.0} step={0.05}
-              value={quality} onChange={setQuality}
+              style={{ flex: 1 }}
+              min={0.1}
+              max={1.0}
+              step={0.05}
+              value={quality}
+              onChange={setQuality}
+              disabled={isCompressing}
             />
             <InputNumber
-              min={10} max={100} value={Math.round(quality * 100)}
+              min={10}
+              max={100}
+              value={Math.round(quality * 100)}
               onChange={(val) => setQuality((val || 100) / 100)}
-              formatter={value => `${value}%`}
-              parser={value => value?.replace('%', '') as unknown as number}
-              style={{ width: 70 }} size="small"
-            />
-          </div>
-        </PanelSection>
-      )}
-
-      <PanelSection>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-          <div>
-            <SectionTitle>
-              <FormattedMessage id="audioCompress.format" defaultMessage="格式" />
-            </SectionTitle>
-            <Select
-              value={format} onChange={setFormat} style={{ width: '100%' }}
-              options={[
-                { 
-                  value: 'mp3', 
-                  label: intl.formatMessage({ 
-                    id: 'audioCompress.format.mp3', 
-                    defaultMessage: 'MP3 (推荐)' 
-                  }) 
-                },
-                { 
-                  value: 'ogg', 
-                  label: intl.formatMessage({ 
-                    id: 'audioCompress.format.ogg', 
-                    defaultMessage: 'OGG' 
-                  }) 
-                },
-                { 
-                  value: 'aac', 
-                  label: intl.formatMessage({ 
-                    id: 'audioCompress.format.aac', 
-                    defaultMessage: 'AAC' 
-                  }) 
-                },
-                { 
-                  value: 'wav', 
-                  label: intl.formatMessage({ 
-                    id: 'audioCompress.format.wav', 
-                    defaultMessage: 'WAV' 
-                  }) 
-                },
-              ]}
-            />
-          </div>
-          <div>
-            <SectionTitle>
-              <FormattedMessage id="audioCompress.sampleRate" defaultMessage="采样率" />
-            </SectionTitle>
-            <Select
-              value={sampleRate || 'auto'}
-              onChange={(val) => {
-                if (val === 'auto' || val === undefined) {
-                  setSampleRate(undefined);
-                } else {
-                  setSampleRate(typeof val === 'number' ? val : Number(val));
-                }
-              }}
-              style={{ width: '100%' }}
-              options={PRESET_SAMPLE_RATES.map(rate => ({
-                label: rate.label,
-                value: rate.value ?? 'auto'
-              }))}
+              formatter={(value) => `${value}%`}
+              parser={(value) => value?.replace('%', '') as unknown as number}
+              style={{ width: 70 }}
+              size="small"
+              disabled={isCompressing}
             />
           </div>
         </div>
-      </PanelSection>
-
-      {isCompressing && (
-        <PanelSection>
-          <Progress 
-            percent={compressionProgress} 
-            status="active"
-            format={(percent) => `${Math.round(percent || 0)}%`}
-          />
-        </PanelSection>
       )}
 
-      <ActionFooter>
+      <div>
+        <SectionTitle>
+          <FormattedMessage id="audioCompress.sampleRate" defaultMessage="采样率" />
+        </SectionTitle>
+        <Segmented
+          block
+          value={sampleRateSegmentValue}
+          options={SAMPLE_RATE_OPTIONS}
+          onChange={(val) => {
+            if (val === 'auto') {
+              setSampleRate(undefined);
+            } else {
+              setSampleRate(Number(val));
+            }
+          }}
+          disabled={isCompressing}
+        />
+      </div>
+
+      {isCompressing && (
+        <ProgressBox>
+          <Text style={{ display: 'block', marginBottom: 10 }}>
+            <FormattedMessage id="audioCompress.compressing" defaultMessage="压缩中..." />
+          </Text>
+          <Progress percent={compressionProgress} status="active" strokeColor={THEME_COLOR} />
+        </ProgressBox>
+      )}
+
+      {hasCompressedResult && !isCompressing && (
+        <ResultBox>
+          <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <Space>
+              <SafetyCertificateOutlined style={{ color: '#22c55e' }} />
+              <Text strong>
+                <FormattedMessage id="audioCompress.message.compressed" defaultMessage="压缩成功！" />
+              </Text>
+            </Space>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              {formatSize(singleMeta.originalSize)} → {formatSize(singleMeta.compressedSize)}
+              {singleSavings > 0 && ` · 节省 ${singleSavings.toFixed(1)}%`}
+            </Text>
+          </Space>
+        </ResultBox>
+      )}
+
+      <ActionGroup>
         <Button
-          type="primary" block size="large"
+          type="primary"
+          size="large"
+          block
           icon={isCompressing ? <LoadingOutlined /> : <CompressOutlined />}
           onClick={onCompress}
-          disabled={isCompressing || !singleFile}
-          style={{
-            height: 50, 
-            borderRadius: 999,
-            background: 'linear-gradient(135deg, #8338ec 0%, #3a86ff 100%)',
-            border: 'none', 
-            fontSize: 16, 
-            fontWeight: 600,
-            boxShadow: '0 4px 12px rgba(131, 56, 236, 0.3)',
-            transition: 'all 0.3s'
-          }}
+          disabled={isCompressing || !hasFile}
+          style={{ height: 44, borderRadius: 10 }}
         >
-          {isCompressing 
+          {isCompressing
             ? intl.formatMessage({ id: 'audioCompress.compressing', defaultMessage: '压缩中...' })
-            : intl.formatMessage({ id: 'audioCompress.compress', defaultMessage: '开始压缩' })
-          }
+            : intl.formatMessage({ id: 'audioCompress.compress', defaultMessage: '开始压缩' })}
         </Button>
-        <Button
-          block size="large" 
-          icon={<DownloadOutlined />}
-          onClick={onDownload}
-          disabled={!hasCompressedResult}
-          style={{ 
-            height: 50, 
-            borderRadius: 999, 
-            fontWeight: 600,
-            transition: 'all 0.3s'
-          }}
-        >
-          <FormattedMessage id="audioCompress.download" defaultMessage="下载音频" />
-        </Button>
-      </ActionFooter>
-    </ControlPanel>
+        <Space style={{ width: '100%' }}>
+          <Button
+            icon={<DownloadOutlined />}
+            onClick={onDownload}
+            disabled={!hasCompressedResult}
+            block
+          >
+            <FormattedMessage id="audioCompress.download" defaultMessage="下载" />
+          </Button>
+          <Button icon={<ReloadOutlined />} onClick={onReset} disabled={isCompressing} block>
+            <FormattedMessage id="audioCompress.clearAll" defaultMessage="重置" />
+          </Button>
+        </Space>
+      </ActionGroup>
+    </SidePanelInner>
   );
 };
 
 export default AudioCompressSettings;
-

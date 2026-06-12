@@ -20,6 +20,12 @@ import {
 } from 'api/community';
 import { TaskDetail } from './types';
 import PublishToCommunityMobile from './PublishToCommunityMobile';
+import {
+  attachHorizontalWheelScroll,
+  getPublishCoverUrl,
+  isVideoMediaFile,
+  resolvePublishMediaType,
+} from './publishCommunityUtils';
 
 const { Text, Title, Paragraph } = Typography;
 
@@ -53,18 +59,40 @@ const StyledModalWrapper = styled.div`
     background: ${props => props.theme.mode === 'dark' ? 'rgba(28, 28, 30, 0.9)' : 'rgba(255, 255, 255, 0.95)'} !important;
     backdrop-filter: blur(20px);
     border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
   }
   
   .ant-modal-header {
     background: transparent !important;
-    padding: 32px 40px 16px !important;
+    padding: 28px 40px 12px !important;
     border-bottom: none !important;
+    flex-shrink: 0;
+  }
+
+  .ant-modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 !important;
+
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(128, 128, 128, 0.35);
+      border-radius: 3px;
+    }
   }
 
   .ant-modal-footer {
-    padding: 24px 40px 32px !important;
+    padding: 20px 40px 28px !important;
     border-top: none !important;
     background: ${props => props.theme.mode === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.02)'};
+    flex-shrink: 0;
   }
 `;
 
@@ -81,9 +109,20 @@ const SectionLabel = styled.div`
 const CoverScrollContainer = styled.div`
   display: flex;
   gap: 16px;
-  padding: 0 40px 24px;
+  padding: 0 40px 20px;
   overflow-x: auto;
-  &::-webkit-scrollbar { display: none; }
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.35);
+    border-radius: 3px;
+  }
 `;
 
 const CoverItem = styled.div<{ $isSelected: boolean }>`
@@ -103,42 +142,54 @@ const CoverItem = styled.div<{ $isSelected: boolean }>`
 
 const ChannelScrollContainer = styled.div`
   position: relative;
-  margin-bottom: 32px;
-  &::before, &::after {
-    content: '';
-    position: absolute;
-    top: 0; bottom: 0; width: 40px; z-index: 2; pointer-events: none;
-  }
-  &::before { left: 0; background: linear-gradient(to right, ${props => props.theme.mode === 'dark' ? '#1c1c1e' : '#fff'}, transparent); }
-  &::after { right: 0; background: linear-gradient(to left, ${props => props.theme.mode === 'dark' ? '#1c1c1e' : '#fff'}, transparent); }
+  margin-bottom: 24px;
 `;
 
 const ChannelScrollWrapper = styled.div`
   display: flex;
-  gap: 20px;
-  padding: 10px 40px 30px;
+  gap: 16px;
+  padding: 16px 40px 20px;
   overflow-x: auto;
-  scroll-snap-type: x proximity;
-  &::-webkit-scrollbar { display: none; }
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.35);
+    border-radius: 3px;
+  }
 `;
 
 const ChannelCard = styled.div<{ $isSelected: boolean; $themeColor?: string; $coverUrl?: string }>`
-  flex: 0 0 280px;
-  height: 360px;
-  border-radius: 28px;
+  flex: 0 0 252px;
+  width: 252px;
+  height: 280px;
+  border-radius: 24px;
   position: relative;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.45s cubic-bezier(0.16, 1, 0.3, 1);
   background: #000;
   scroll-snap-align: start;
+  flex-shrink: 0;
   
   background-image: ${props => props.$coverUrl ? `url(${props.$coverUrl})` : `linear-gradient(210deg, ${props.$themeColor || '#1890ff'} 0%, #000 100%)`};
   background-size: cover;
   background-position: center;
 
-  transform: ${props => props.$isSelected ? 'scale(1.02) translateY(-8px)' : 'scale(0.96)'};
-  box-shadow: ${props => props.$isSelected ? '0 20px 40px rgba(0,0,0,0.3)' : '0 8px 20px rgba(0,0,0,0.1)'};
+  transform: ${props => props.$isSelected ? 'scale(1.02)' : 'scale(1)'};
+  box-shadow: ${props => props.$isSelected ? '0 16px 32px rgba(0,0,0,0.28)' : '0 8px 20px rgba(0,0,0,0.1)'};
+  border: 2px solid ${props => props.$isSelected ? '#0071e3' : 'transparent'};
   
   ${props => props.$isSelected ? css`
     animation: ${pulseSelection} 2s infinite;
@@ -206,6 +257,17 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
   const [loadingChallenges, setLoadingChallenges] = useState(false);
   const [selectedCoverIndex, setSelectedCoverIndex] = useState<number>(0);
   const scrollWrapperRef = useRef<HTMLDivElement>(null);
+  const coverScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const cleanupChannels = attachHorizontalWheelScroll(scrollWrapperRef.current);
+    const cleanupCovers = attachHorizontalWheelScroll(coverScrollRef.current);
+    return () => {
+      cleanupChannels?.();
+      cleanupCovers?.();
+    };
+  }, [open, channels.length, taskDetail?.outputFiles?.length]);
 
   useEffect(() => {
     if (open) loadChannels();
@@ -253,11 +315,15 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
     setPublishLoading(true);
     try {
       const mediaUrls = taskDetail.outputFiles.map((file) => file.fileUrl);
+      const mediaType = resolvePublishMediaType(taskDetail);
+      const coverUrl = mediaType === 'VIDEO'
+        ? getPublishCoverUrl(taskDetail.outputFiles[selectedCoverIndex], taskDetail, selectedCoverIndex)
+        : mediaUrls[selectedCoverIndex];
       await createPost({
         title: taskDetail.modelName || undefined,
-        mediaType: 'IMAGE',
+        mediaType,
         mediaUrls,
-        coverUrl: mediaUrls[selectedCoverIndex],
+        coverUrl,
         channelId: selectedChannelId,
         challengeId: selectedChallengeId,
         taskId: taskId, // 添加 taskId
@@ -279,6 +345,7 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
         onCancel={onCancel}
         onSuccess={onSuccess}
         taskDetail={taskDetail}
+        taskId={taskId}
       />
     );
   }
@@ -302,21 +369,35 @@ const PublishToCommunityModal: React.FC<PublishToCommunityModalProps> = ({
         <div style={{ padding: '20px 0' }}>
           {/* 1. 封面选择 */}
           <SectionLabel>1. <FormattedMessage id="create.taskDetail.selectCover" /></SectionLabel>
-          <CoverScrollContainer>
-            {taskDetail?.outputFiles?.map((file, index: number) => (
+          <CoverScrollContainer ref={coverScrollRef}>
+            {taskDetail?.outputFiles?.map((file, index: number) => {
+              const isVideo = isVideoMediaFile(file.fileUrl, file.fileType);
+              const previewUrl = getPublishCoverUrl(file, taskDetail, index);
+              return (
               <CoverItem 
                 key={file.id} 
                 $isSelected={selectedCoverIndex === index}
                 onClick={() => setSelectedCoverIndex(index)}
               >
-                <img src={file.fileUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                {isVideo ? (
+                  <video
+                    src={file.fileUrl}
+                    poster={previewUrl !== file.fileUrl ? previewUrl : undefined}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', pointerEvents: 'none' }}
+                  />
+                ) : (
+                  <img src={previewUrl} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+                )}
                 {selectedCoverIndex === index && (
                   <div style={{ position: 'absolute', top: 8, right: 8, color: '#0071e3', background: '#fff', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <CheckCircleFilled />
                   </div>
                 )}
               </CoverItem>
-            ))}
+            )})}
           </CoverScrollContainer>
 
           {/* 2. 频道选择 */}

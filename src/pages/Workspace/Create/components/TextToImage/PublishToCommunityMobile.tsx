@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { Typography, Tag, Image, Spin, message, Button } from 'antd';
+import React, { useEffect, useRef, useState } from 'react';
+import { Typography, Tag, Image, message, Button } from 'antd';
 import {
   CheckCircleFilled,
-  ThunderboltOutlined,
   CloseOutlined,
   ArrowLeftOutlined,
+  PlayCircleOutlined,
 } from '@ant-design/icons';
 import styled, { keyframes } from 'styled-components';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -17,6 +17,12 @@ import {
   DailyChallenge,
 } from 'api/community';
 import { TaskDetail } from './types';
+import {
+  attachHorizontalWheelScroll,
+  getPublishCoverUrl,
+  isVideoMediaFile,
+  resolvePublishMediaType,
+} from './publishCommunityUtils';
 
 const { Text, Paragraph } = Typography;
 
@@ -81,34 +87,70 @@ const CoverScroll = styled.div`
   display: flex;
   gap: 12px;
   overflow-x: auto;
+  overflow-y: hidden;
   padding-bottom: 8px;
-  &::-webkit-scrollbar { display: none; }
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.35);
+    border-radius: 3px;
+  }
 `;
 
 const CoverItem = styled.div<{ $isSelected: boolean }>`
   flex: 0 0 100px;
+  width: 100px;
   aspect-ratio: 1;
   border-radius: 12px;
   overflow: hidden;
   position: relative;
   border: 2px solid ${props => props.$isSelected ? '#3b82f6' : 'transparent'};
+  scroll-snap-align: start;
+  flex-shrink: 0;
   
-  img { width: 100%; height: 100%; object-fit: cover; }
+  img, video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
 `;
 
-const ChannelGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
+const ChannelScroll = styled.div`
+  display: flex;
   gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 0 8px;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
+
+  &::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(128, 128, 128, 0.35);
+    border-radius: 3px;
+  }
 `;
 
 const ChannelCard = styled.div<{ $isSelected: boolean; $themeColor?: string; $coverUrl?: string }>`
-  height: 120px;
+  flex: 0 0 220px;
+  width: 220px;
+  height: 132px;
   border-radius: 16px;
   position: relative;
   overflow: hidden;
   background: #000;
   border: 2px solid ${props => props.$isSelected ? '#3b82f6' : 'transparent'};
+  scroll-snap-align: start;
+  flex-shrink: 0;
   
   background-image: ${props => props.$coverUrl ? `url(${props.$coverUrl})` : `linear-gradient(135deg, ${props.$themeColor || '#3b82f6'} 0%, #000 100%)`};
   background-size: cover;
@@ -118,7 +160,7 @@ const ChannelCard = styled.div<{ $isSelected: boolean; $themeColor?: string; $co
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.7) 100%);
+    background: linear-gradient(to bottom, transparent 20%, rgba(0,0,0,0.75) 100%);
   }
 `;
 
@@ -188,6 +230,18 @@ const PublishToCommunityMobile: React.FC<PublishToCommunityMobileProps> = ({
   const [availableChallenges, setAvailableChallenges] = useState<DailyChallenge[]>([]);
   const [selectedChallengeId, setSelectedChallengeId] = useState<number | undefined>(undefined);
   const [selectedCoverIndex, setSelectedCoverIndex] = useState<number>(0);
+  const coverScrollRef = useRef<HTMLDivElement>(null);
+  const channelScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const cleanupCovers = attachHorizontalWheelScroll(coverScrollRef.current);
+    const cleanupChannels = attachHorizontalWheelScroll(channelScrollRef.current);
+    return () => {
+      cleanupCovers?.();
+      cleanupChannels?.();
+    };
+  }, [open, channels.length, taskDetail?.outputFiles?.length]);
 
   useEffect(() => {
     if (open) {
@@ -234,11 +288,15 @@ const PublishToCommunityMobile: React.FC<PublishToCommunityMobileProps> = ({
     setPublishLoading(true);
     try {
       const mediaUrls = taskDetail.outputFiles.map((file) => file.fileUrl);
+      const mediaType = resolvePublishMediaType(taskDetail);
+      const coverUrl = mediaType === 'VIDEO'
+        ? getPublishCoverUrl(taskDetail.outputFiles[selectedCoverIndex], taskDetail, selectedCoverIndex)
+        : mediaUrls[selectedCoverIndex];
       await createPost({
         title: taskDetail.modelName || undefined,
-        mediaType: 'IMAGE',
+        mediaType,
         mediaUrls,
-        coverUrl: mediaUrls[selectedCoverIndex],
+        coverUrl,
         channelId: selectedChannelId,
         challengeId: selectedChallengeId,
         taskId: taskId, // 添加 taskId
@@ -264,27 +322,45 @@ const PublishToCommunityMobile: React.FC<PublishToCommunityMobileProps> = ({
 
       <SectionContainer>
         <SectionTitle>1. <FormattedMessage id="create.taskDetail.selectCover" /></SectionTitle>
-        <CoverScroll>
-          {taskDetail?.outputFiles?.map((file, index) => (
+        <CoverScroll ref={coverScrollRef}>
+          {taskDetail?.outputFiles?.map((file, index) => {
+            const isVideo = isVideoMediaFile(file.fileUrl, file.fileType);
+            const previewUrl = getPublishCoverUrl(file, taskDetail, index);
+            return (
             <CoverItem 
               key={file.id} 
               $isSelected={selectedCoverIndex === index}
               onClick={() => setSelectedCoverIndex(index)}
             >
-              <img src={file.fileUrl} alt="" />
+              {isVideo ? (
+                <>
+                  <video
+                    src={file.fileUrl}
+                    poster={previewUrl !== file.fileUrl ? previewUrl : undefined}
+                    muted
+                    playsInline
+                    preload="metadata"
+                  />
+                  <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 22, background: 'rgba(0,0,0,0.18)' }}>
+                    <PlayCircleOutlined />
+                  </div>
+                </>
+              ) : (
+                <img src={previewUrl} alt="" />
+              )}
               {selectedCoverIndex === index && (
                 <div style={{ position: 'absolute', top: 6, right: 6, color: '#3b82f6', background: '#fff', borderRadius: '50%', width: 18, height: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <CheckCircleFilled />
                 </div>
               )}
             </CoverItem>
-          ))}
+          )})}
         </CoverScroll>
       </SectionContainer>
 
       <SectionContainer>
         <SectionTitle>2. <FormattedMessage id="create.taskDetail.selectChannel" /></SectionTitle>
-        <ChannelGrid>
+        <ChannelScroll ref={channelScrollRef}>
           {channels.map(channel => (
             <ChannelCard
               key={channel.id}
@@ -295,21 +371,21 @@ const PublishToCommunityMobile: React.FC<PublishToCommunityMobileProps> = ({
             >
               <ChannelInfo>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                  <Text strong style={{ color: '#fff', fontSize: 16 }}>{channel.name}</Text>
+                  <Text strong style={{ color: '#fff', fontSize: 15 }}>{channel.name}</Text>
                   {channel.isVipOnly && <Tag color="#FFD700" style={{ color: '#000', border: 'none', borderRadius: '4px', fontWeight: 800, fontSize: 10 }}>VIP</Tag>}
                 </div>
-                <Paragraph style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12, marginBottom: 0 }} ellipsis={{ rows: 1 }}>
+                <Paragraph style={{ color: 'rgba(255,255,255,0.82)', fontSize: 12, marginBottom: 0 }} ellipsis={{ rows: 2 }}>
                   {channel.description}
                 </Paragraph>
               </ChannelInfo>
               {selectedChannelId === channel.id && (
                 <div style={{ position: 'absolute', top: 12, right: 12 }}>
-                  <CheckCircleFilled style={{ color: '#3b82f6', fontSize: 24 }} />
+                  <CheckCircleFilled style={{ color: '#3b82f6', fontSize: 22 }} />
                 </div>
               )}
             </ChannelCard>
           ))}
-        </ChannelGrid>
+        </ChannelScroll>
       </SectionContainer>
 
       {availableChallenges.length > 0 && (
