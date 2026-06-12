@@ -23,6 +23,7 @@ import {
   getFileExtension,
   logMediaToolUsage,
 } from '../../utils/mediaToolUsageLog';
+import SpeechGenerationMediaLibrary from '../shared/SpeechGenerationMediaLibrary';
 
 const { Dragger } = Upload;
 const { Text, Title } = Typography;
@@ -428,6 +429,10 @@ const BatchAudioCompress: React.FC = () => {
         <MainPanel>
           {!audioFile ? (
             <>
+              <SpeechGenerationMediaLibrary
+                disabled={isCompressing}
+                onSelect={handleFileSelect}
+              />
               <StyledDragger
                 multiple={false}
                 accept="audio/*"

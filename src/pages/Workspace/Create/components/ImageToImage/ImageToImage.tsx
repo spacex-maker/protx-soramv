@@ -56,6 +56,8 @@ import { useTokenBalance } from '../shared/useTokenBalance';
 import { formatTokenAmount } from '../shared/estimatedPriceText';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
+import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
+import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -870,11 +872,11 @@ const ImageToImage: React.FC = () => {
         );
       
         // 构建请求参数
-        const requestData: any = {
+        const requestData: any = appendTranslatePromptFlag({
           prompt: values.prompt,
           modelCode: selectedModel.modelCode,
           imageUrls: [imageUrl],
-        };
+        }, values);
 
         // 添加图片比例
         if (values.aspectRatio) {
@@ -1183,9 +1185,10 @@ const ImageToImage: React.FC = () => {
                   name="prompt"
                   label={
                     <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                      <Space>
+                      <Space wrap align="center">
                         <EditOutlined style={{ color: '#1890ff' }} />
                         <FormattedMessage id="create.prompt" defaultMessage="提示词 (Prompt)" />
+                        <PromptTranslateEnSwitch />
                       </Space>
                       <Space size="small">
                         {originalPrompt && (

@@ -1,9 +1,27 @@
 import React from 'react';
-import { Button, Empty, Pagination, Spin, Tag } from 'antd';
-import { DownloadOutlined, PlayCircleOutlined, ReloadOutlined, SoundOutlined, UserOutlined } from '@ant-design/icons';
+import { Button, Empty, Modal, Pagination, Spin, Tag, Tooltip, message } from 'antd';
+import {
+  CustomerServiceOutlined,
+  DeleteOutlined,
+  DownloadOutlined,
+  PlayCircleOutlined,
+  ReloadOutlined,
+  SoundOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { HistoryCard, HistoryContainer, HistoryGrid, HistoryHeader } from './styles';
+import instance from 'api/axios';
+import {
+  HistoryCard,
+  HistoryContainer,
+  HistoryGrid,
+  HistoryHeader,
+  HistoryQuickLink,
+  HistoryQuickLinks,
+  HistoryTitleGroup,
+} from './styles';
 
 export interface SpeechHistoryTask {
   id: number;
@@ -25,6 +43,7 @@ interface SpeechHistorySectionProps {
   onPlay: (url: string) => void;
   onRefresh: () => void;
   onPageChange: (page: number, pageSize: number) => void;
+  onDeleted?: (task: SpeechHistoryTask) => void;
 }
 
 const SpeechHistorySection: React.FC<SpeechHistorySectionProps> = ({
@@ -36,8 +55,48 @@ const SpeechHistorySection: React.FC<SpeechHistorySectionProps> = ({
   onPlay,
   onRefresh,
   onPageChange,
+  onDeleted,
 }) => {
   const intl = useIntl();
+  const navigate = useNavigate();
+
+  const goToMediaTool = (tab: 'audioConvert' | 'audioCompress') => {
+    navigate(`/workspace/media-tools?tab=${tab}`);
+  };
+
+  const handleDelete = (e: React.MouseEvent, task: SpeechHistoryTask) => {
+    e.stopPropagation();
+    Modal.confirm({
+      title: intl.formatMessage({ id: 'create.history.deleteConfirm.title', defaultMessage: '确认删除' }),
+      content: intl.formatMessage({
+        id: 'create.history.deleteConfirm.content',
+        defaultMessage: '确定要删除这个任务吗？删除后将无法恢复。',
+      }),
+      okText: intl.formatMessage({ id: 'common.confirm', defaultMessage: '确定' }),
+      cancelText: intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' }),
+      okButtonProps: { danger: true },
+      onOk: async () => {
+        try {
+          const response = await instance.delete(`/productx/sa-ai-gen-task/${task.id}`);
+          if (response.data?.success) {
+            message.success(intl.formatMessage({ id: 'create.history.deleteSuccess', defaultMessage: '删除成功' }));
+            onDeleted?.(task);
+            onRefresh();
+          } else {
+            message.error(
+              response.data?.message
+              || intl.formatMessage({ id: 'create.history.deleteFailed', defaultMessage: '删除失败' }),
+            );
+          }
+        } catch (error: any) {
+          message.error(
+            error?.response?.data?.message
+            || intl.formatMessage({ id: 'create.history.deleteFailed', defaultMessage: '删除失败' }),
+          );
+        }
+      },
+    });
+  };
 
   const resolveVoiceLabel = (task: SpeechHistoryTask) => {
     const label = getVoiceName?.(task)?.trim();
@@ -48,14 +107,26 @@ const SpeechHistorySection: React.FC<SpeechHistorySectionProps> = ({
   return (
     <HistoryContainer>
       <HistoryHeader>
-        <h3>
-          <FormattedMessage id="create.speech.history" defaultMessage="生成记录" />
-          {pagination.total > 0 && (
-            <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 500, opacity: 0.55 }}>
-              {pagination.total}
-            </span>
-          )}
-        </h3>
+        <HistoryTitleGroup>
+          <h3>
+            <FormattedMessage id="create.speech.history" defaultMessage="生成记录" />
+            {pagination.total > 0 && (
+              <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 500, opacity: 0.55 }}>
+                {pagination.total}
+              </span>
+            )}
+          </h3>
+          <HistoryQuickLinks>
+            <HistoryQuickLink type="button" onClick={() => goToMediaTool('audioConvert')}>
+              <CustomerServiceOutlined />
+              <FormattedMessage id="mediaTools.tab.audioConvert" defaultMessage="音频转换" />
+            </HistoryQuickLink>
+            <HistoryQuickLink type="button" onClick={() => goToMediaTool('audioCompress')}>
+              <SoundOutlined />
+              <FormattedMessage id="mediaTools.tab.audioCompress" defaultMessage="音频压缩" />
+            </HistoryQuickLink>
+          </HistoryQuickLinks>
+        </HistoryTitleGroup>
         <Button
           type="text"
           size="small"
@@ -125,6 +196,15 @@ const SpeechHistorySection: React.FC<SpeechHistorySectionProps> = ({
                             />
                           </>
                         )}
+                        <Tooltip title={intl.formatMessage({ id: 'create.history.delete', defaultMessage: '删除' })}>
+                          <Button
+                            type="text"
+                            size="small"
+                            danger
+                            icon={<DeleteOutlined />}
+                            onClick={(e) => handleDelete(e, task)}
+                          />
+                        </Tooltip>
                       </div>
                     </div>
                   </HistoryCard>

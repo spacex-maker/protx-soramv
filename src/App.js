@@ -20,6 +20,7 @@ import RechargeAgreementPage from "pages/RechargeAgreement";
 import PrivacyPreferencesPage from "pages/PrivacyPreferences";
 import OrdersPage from "pages/Orders";
 import WorksPage from "pages/Works";
+import WorkSharePage from "pages/Works/WorkSharePage";
 import NotificationsPage from "pages/Notifications";
 import InvitePage from "pages/Invite";
 import FeedbackPage from "pages/Feedback";
@@ -410,6 +411,7 @@ export default function App() {
               <Route path="/help" element={<HelpPage />} />
               <Route path="/about" element={<AboutPage />} />
               <Route path="/join-us" element={<JoinUs />} />
+              <Route path="/works/s/:shareCode" element={<WorkSharePage />} />
               <Route path="/works" element={
                 <PrivateRoute>
                   <WorksPage />

@@ -41,6 +41,7 @@ import {
 import { useIntl } from 'react-intl';
 import dayjs from "dayjs";
 import instance from "api/axios";
+import { buildWorkShareUrl, createWorkShareLink } from 'api/genTaskShare';
 import {
   buildFetchParams,
   filterWorks,
@@ -704,15 +705,30 @@ const WorksPage = () => {
   };
 
   const handleShare = async (work) => {
-    if (!work.url) {
-      message.warning(intl.formatMessage({ id: 'works.noShareUrl', defaultMessage: '暂无可分享链接' }));
-      return;
-    }
     try {
-      await navigator.clipboard.writeText(work.url);
-      message.success(intl.formatMessage({ id: 'works.linkCopied', defaultMessage: '链接已复制' }));
-    } catch {
-      message.info(work.url);
+      const res = await createWorkShareLink(work.id);
+      if (!res.success || !res.data?.shareCode) {
+        message.error(res.message || intl.formatMessage({ id: 'works.shareFailed', defaultMessage: '生成分享链接失败' }));
+        return;
+      }
+      const { shareCode, viewCount } = res.data;
+      const url = buildWorkShareUrl(shareCode);
+      setWorks((prev) => prev.map((item) => (
+        item.id === work.id
+          ? { ...item, shareCode, viewCount: viewCount ?? item.viewCount ?? 0 }
+          : item
+      )));
+      try {
+        await navigator.clipboard.writeText(url);
+        message.success(intl.formatMessage({ id: 'works.shareLinkCopied', defaultMessage: '分享链接已复制' }));
+      } catch {
+        message.info(url);
+      }
+    } catch (error) {
+      message.error(
+        error?.response?.data?.message
+        || intl.formatMessage({ id: 'works.shareFailed', defaultMessage: '生成分享链接失败' }),
+      );
     }
   };
 
@@ -888,6 +904,15 @@ const WorksPage = () => {
               {work.creditsCost != null && (
                 <span className="meta-item">
                   {work.creditsCost} Token
+                </span>
+              )}
+              {(work.viewCount ?? 0) > 0 && (
+                <span className="meta-item">
+                  <EyeOutlined />
+                  {intl.formatMessage(
+                    { id: 'works.playCount', defaultMessage: '{count} 次播放' },
+                    { count: work.viewCount },
+                  )}
                 </span>
               )}
             </div>

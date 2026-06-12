@@ -58,6 +58,8 @@ import { useTokenBalance } from '../../shared/useTokenBalance';
 import { getImageEstimatedPrice, getImageRequiredTokens } from '../../shared/estimatedPriceText';
 import { useInsufficientBalanceGuard } from '../../shared/useInsufficientBalanceGuard';
 import InsufficientBalanceModal from '../../shared/InsufficientBalanceModal';
+import PromptTranslateEnSwitch from '../../shared/PromptTranslateEnSwitch';
+import { appendTranslatePromptFlag } from '../../shared/promptTranslateUtils';
 import {
   MobileContainer,
   MobileFormSection,
@@ -669,12 +671,12 @@ const TextToImageMobile: React.FC = () => {
     try {
       if (isVolcSeedreamGen) {
         const modelCode = selectedModel?.modelCode || selectedFamily?.modelCode || '';
-        const requestData: any = {
+        const requestData: any = appendTranslatePromptFlag({
           prompt: values.prompt || allValues.prompt,
           sdModelCheckpoint: selectedFamily?.modelCode || modelCode,
           size: allValues.resolution || '2K',
           seedreamWatermark: allValues.seedreamWatermark === true,
-        };
+        }, allValues);
         if (allValues.aspectRatio && allValues.resolution) {
           const sizeKey = (allValues.resolution || '2K').toUpperCase();
           const map = VOLC_SEEDREAM_SIZE_ASPECT_MAP[sizeKey];
@@ -701,10 +703,10 @@ const TextToImageMobile: React.FC = () => {
       } else if (useAsyncApiGen) {
         const modelCode =
           selectedModel?.modelCode || selectedFamily.modelCode || '';
-        const asyncPayload: any = {
+        const asyncPayload: any = appendTranslatePromptFlag({
           prompt: values.prompt || allValues.prompt,
           modelCode,
-        };
+        }, allValues);
         if (allValues.aspectRatio) asyncPayload.aspectRatio = allValues.aspectRatio;
         if (allValues.resolution) asyncPayload.resolution = allValues.resolution;
         if (allValues.imageFormat) asyncPayload.outputFormat = allValues.imageFormat;
@@ -805,9 +807,9 @@ const TextToImageMobile: React.FC = () => {
         return;
       }
 
-      const requestData: any = {
+      const requestData: any = appendTranslatePromptFlag({
         prompt: values.prompt || allValues.prompt,
-      };
+      }, allValues);
 
       if (selectedModel?.modelCode) {
         requestData.modelCode = selectedModel.modelCode;
@@ -1313,12 +1315,13 @@ const TextToImageMobile: React.FC = () => {
               className="prompt-form-item"
               label={
                 <div className="prompt-label-wrapper">
-                  <Space>
+                  <Space wrap align="center">
                     <EditOutlined style={{ color: '#1890ff', fontSize: 14 }} />
                     <FormattedMessage
                       id="create.prompt"
                       defaultMessage="提示词 (Prompt)"
                     />
+                    <PromptTranslateEnSwitch />
                   </Space>
                   <div className="prompt-button-wrapper">
                     <Space size={6}>

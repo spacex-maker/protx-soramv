@@ -9,6 +9,7 @@ import {
   Spin,
   Alert,
   Tag,
+  Space,
 } from 'antd';
 import {
   ThunderboltOutlined,
@@ -28,6 +29,8 @@ import {
 import { useTokenBalance } from '../shared/useTokenBalance';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
+import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
+import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 import AudioResultPanel from './AudioResultPanel';
 import SpeechHistorySection, { SpeechHistoryTask } from './SpeechHistorySection';
 import VoiceSelectModal from './VoiceSelectModal';
@@ -309,7 +312,7 @@ const SpeechGeneration: React.FC = () => {
       setLoading(true);
       setAudioUrl(null);
 
-      const payload: Record<string, unknown> = {
+      const payload: Record<string, unknown> = appendTranslatePromptFlag({
         modelCode: values.modelCode,
         voiceCode: values.voiceCode,
         text: values.text?.trim(),
@@ -318,7 +321,7 @@ const SpeechGeneration: React.FC = () => {
         speechRate: values.speechRate,
         loudnessRate: values.loudnessRate,
         enableSubtitle: values.enableSubtitle,
-      };
+      }, values);
       if (values.ttsModel) payload.ttsModel = values.ttsModel;
       const contextInstruction = resolveSpeechContextInstruction(
         values.speechTone as SpeechToneKey | undefined,
@@ -504,7 +507,12 @@ const SpeechGeneration: React.FC = () => {
                 <TextAreaWrap>
                   <Form.Item
                     name="text"
-                    label={<FormattedMessage id="create.speech.text" defaultMessage="合成文本" />}
+                    label={(
+                      <Space wrap align="center">
+                        <FormattedMessage id="create.speech.text" defaultMessage="合成文本" />
+                        <PromptTranslateEnSwitch />
+                      </Space>
+                    )}
                     rules={[{ required: true, message: intl.formatMessage({ id: 'create.speech.textRequired', defaultMessage: '请输入合成文本' }) }]}
                     style={{ marginTop: 20, marginBottom: 0 }}
                   >
@@ -597,6 +605,12 @@ const SpeechGeneration: React.FC = () => {
           onPlay={triggerAudioPlay}
           onRefresh={() => fetchHistoryTasks(historyPagination.current, historyPagination.pageSize)}
           onPageChange={(page, pageSize) => fetchHistoryTasks(page, pageSize)}
+          onDeleted={(task) => {
+            const deletedUrl = task.resultUrls?.[0];
+            if (deletedUrl && deletedUrl === audioUrl) {
+              setAudioUrl(null);
+            }
+          }}
         />
       </StyledCard>
 

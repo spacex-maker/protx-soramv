@@ -50,6 +50,7 @@ import { useTokenBalance } from '../shared/useTokenBalance';
 import { getImageEstimatedPrice, getImageRequiredTokens } from '../shared/estimatedPriceText';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
+import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 import {
   VOLC_SEEDREAM_SIZE_ASPECT_MAP,
   VOLC_SEEDREAM_ASPECT_RATIOS,
@@ -381,12 +382,12 @@ const TextToImage: React.FC = () => {
   /** 路线一：Volc Seedream 同步文生图 */
   const runSeedreamSync = async (values: any) => {
     const modelCode = selectedModel?.modelCode || selectedFamily?.modelCode || '';
-    const requestData: any = {
+    const requestData: any = appendTranslatePromptFlag({
       prompt: values.prompt,
       sdModelCheckpoint: selectedFamily?.modelCode || modelCode,
       size: values.resolution || '2K',
       seedreamWatermark: values.seedreamWatermark === true,
-    };
+    }, values);
     if (values.aspectRatio && values.resolution) {
       const sizeKey = (values.resolution || '2K').toUpperCase();
       const map = VOLC_SEEDREAM_SIZE_ASPECT_MAP[sizeKey];
@@ -412,7 +413,7 @@ const TextToImage: React.FC = () => {
   /** 路线二：API 异步文生图（提交任务 + 轮询状态） */
   const runApiAsync = async (values: any) => {
     const modelCode = selectedModel?.modelCode || selectedFamily?.modelCode || '';
-    const asyncPayload: any = { prompt: values.prompt, modelCode };
+    const asyncPayload: any = appendTranslatePromptFlag({ prompt: values.prompt, modelCode }, values);
     if (values.aspectRatio) asyncPayload.aspectRatio = values.aspectRatio;
     if (values.resolution) asyncPayload.resolution = values.resolution;
     if (values.imageFormat) asyncPayload.outputFormat = values.imageFormat;
@@ -477,7 +478,7 @@ const TextToImage: React.FC = () => {
 
   /** 路线三：非 API 模型同步文生图（LOCAL） */
   const runLocalSync = async (values: any) => {
-    const requestData: any = { prompt: values.prompt };
+    const requestData: any = appendTranslatePromptFlag({ prompt: values.prompt }, values);
     if (selectedModel?.modelCode) requestData.modelCode = selectedModel.modelCode;
     if (selectedFamily?.modelCode) requestData.sdModelCheckpoint = selectedFamily.modelCode;
     if (values.negativePrompt) requestData.negativePrompt = values.negativePrompt;

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Layout, Tabs, Space } from 'antd';
+import { useSearchParams } from 'react-router-dom';
 import { 
   FileImageOutlined,
   VideoCameraOutlined,
@@ -119,8 +120,26 @@ const StyledTabs = styled(Tabs)`
   }
 `;
 
+const MEDIA_TOOL_TAB_KEYS = [
+  'imageCompress',
+  'videoCompress',
+  'audioCompress',
+  'videoConvert',
+  'audioConvert',
+] as const;
+
+type MediaToolTabKey = typeof MEDIA_TOOL_TAB_KEYS[number];
+
+const resolveTabKey = (value: string | null): MediaToolTabKey => {
+  if (value && MEDIA_TOOL_TAB_KEYS.includes(value as MediaToolTabKey)) {
+    return value as MediaToolTabKey;
+  }
+  return 'imageCompress';
+};
+
 const MediaTools: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>('imageCompress');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<MediaToolTabKey>(() => resolveTabKey(searchParams.get('tab')));
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
   
   useEffect(() => {
@@ -130,6 +149,11 @@ const MediaTools: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    const tabFromUrl = resolveTabKey(searchParams.get('tab'));
+    setActiveTab((prev) => (prev === tabFromUrl ? prev : tabFromUrl));
+  }, [searchParams]);
 
   // 所有可用的工具 tab 定义
   const tabItems = [
@@ -197,7 +221,9 @@ const MediaTools: React.FC = () => {
       <StyledTabs
         activeKey={activeTab}
         onChange={(key) => {
-          setActiveTab(key);
+          const nextTab = resolveTabKey(key);
+          setActiveTab(nextTab);
+          setSearchParams({ tab: nextTab }, { replace: true });
           const toolCodeMap: Record<string, 'image_compress' | 'video_compress' | 'audio_compress' | 'video_convert' | 'audio_convert'> = {
             imageCompress: 'image_compress',
             videoCompress: 'video_compress',

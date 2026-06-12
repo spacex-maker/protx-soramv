@@ -4,6 +4,7 @@ import { EditOutlined, HistoryOutlined, BulbOutlined, UndoOutlined } from '@ant-
 import { FormattedMessage, useIntl } from 'react-intl';
 import instance from 'api/axios';
 import PromptVersionHistoryModal from 'components/common/PromptVersionHistoryModal';
+import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 
 const { TextArea } = Input;
 
@@ -116,9 +117,10 @@ const AIPromptSection: React.FC<AIPromptSectionProps> = ({ form, locale }) => {
         className="prompt-form-item"
         label={
           <div className="prompt-label-wrapper">
-            <Space>
+            <Space wrap align="center">
               <EditOutlined style={{ color: '#1890ff' }} />
               <FormattedMessage id="create.prompt" defaultMessage="提示词 (Prompt)" />
+              <PromptTranslateEnSwitch />
               <Tooltip
                 title={intl.formatMessage({
                   id: 'create.prompt.version.history.tooltip',

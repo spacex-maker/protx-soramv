@@ -132,6 +132,8 @@ export const mapTaskToWork = (task, intl) => {
     creditsCost: task.creditsCost,
     prompt: task.prompt,
     status: task.status,
+    shareCode: task.shareCode,
+    viewCount: task.viewCount ?? 0,
     raw: task,
   };
 };

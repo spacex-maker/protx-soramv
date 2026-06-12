@@ -14,7 +14,6 @@ import {
   Spin,
   Tooltip,
   Modal,
-  Switch,
 } from 'antd';
 import { 
   ThunderboltOutlined,
@@ -77,6 +76,8 @@ import { formatDurationEstimatedTooltip } from '../shared/estimatedPriceText';
 import { getVideoRequiredTokens } from '../shared/balanceUtils';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
+import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
+import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -1284,12 +1285,11 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
         );
       
         // 构建请求参数
-        const requestData: any = {
+        const requestData: any = appendTranslatePromptFlag({
         prompt: values.prompt,
         modelCode: selectedModel.modelCode,
         imageUrls,
-        translatePromptToEnglish: values.translatePromptToEnglish === true,
-      };
+      }, values);
 
       // 添加视频比例
       if (values.aspectRatio) {
@@ -1697,30 +1697,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                       <Space wrap align="center">
                         <EditOutlined style={{ color: '#1890ff' }} />
                         <FormattedMessage id="create.prompt" defaultMessage="运动引导提示词 (Prompt)" />
-                        <Form.Item
-                          name="translatePromptToEnglish"
-                          valuePropName="checked"
-                          initialValue={false}
-                          noStyle
-                        >
-                          <Tooltip
-                            title={intl.formatMessage({
-                              id: 'create.prompt.translateEn.tooltip',
-                              defaultMessage:
-                                '部分模型对英文提示词支持更好，若中文或其它语言效果不理想可开启。开启后会在提交前将提示词译为英文再调用模型（会消耗翻译服务）；关闭则直接使用您输入的原文。',
-                            })}
-                          >
-                            <Space size={6} style={{ marginLeft: 4 }}>
-                              <Switch size="small" />
-                              <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-                                <FormattedMessage
-                                  id="create.prompt.translateEn"
-                                  defaultMessage="译为英文"
-                                />
-                              </Text>
-                            </Space>
-                          </Tooltip>
-                        </Form.Item>
+                        <PromptTranslateEnSwitch />
                       </Space>
                       <Space size="small">
                         {originalPrompt && (

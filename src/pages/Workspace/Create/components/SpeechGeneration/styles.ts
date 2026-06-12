@@ -1120,12 +1120,54 @@ export const HistoryHeader = styled.div`
   justify-content: space-between;
   margin-bottom: 16px;
   gap: 12px;
+  flex-wrap: wrap;
+`;
+
+export const HistoryTitleGroup = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
 
   h3 {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
     color: ${props => props.theme.mode === 'dark' ? '#fff' : '#111'};
+  }
+`;
+
+export const HistoryQuickLinks = styled.div`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+`;
+
+export const HistoryQuickLink = styled.button`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(19, 194, 194, 0.35)' : 'rgba(19, 194, 194, 0.25)'};
+  border-radius: 999px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(19, 194, 194, 0.08)' : 'rgba(19, 194, 194, 0.06)'};
+  color: #13c2c2;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #36cfc9;
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(19, 194, 194, 0.16)' : 'rgba(19, 194, 194, 0.12)'};
+    color: #08979c;
+  }
+
+  .anticon {
+    font-size: 12px;
   }
 `;
 
@@ -1235,5 +1277,11 @@ export const HistoryCard = styled.div<{ $active?: boolean }>`
   .card-actions {
     display: flex;
     gap: 4px;
+    align-items: center;
+
+    .ant-btn-dangerous:hover {
+      color: #ff4d4f;
+      background: rgba(255, 77, 79, 0.08);
+    }
   }
 `;

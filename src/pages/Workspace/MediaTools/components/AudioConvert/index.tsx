@@ -29,6 +29,7 @@ import {
   createMediaToolUsageTimer,
   logMediaToolUsage,
 } from '../../utils/mediaToolUsageLog';
+import SpeechGenerationMediaLibrary from '../shared/SpeechGenerationMediaLibrary';
 
 const { Dragger } = Upload;
 const { Text, Title } = Typography;
@@ -621,6 +622,10 @@ const AudioConvert: React.FC = () => {
         <MainPanel>
           {!sourceFile ? (
             <>
+              <SpeechGenerationMediaLibrary
+                disabled={isConverting}
+                onSelect={handleFileSelect}
+              />
               <StyledDragger
                 multiple={false}
                 accept={ACCEPT_TYPES}
