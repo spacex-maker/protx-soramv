@@ -58,6 +58,10 @@ import EngineSelectionModal from './EngineSelectionModal';
 import EngineDetailModal from './EngineDetailModal';
 import { EngineModel } from './engineTypes';
 import { getEngineDescription } from './engineUtils';
+import { VoiceModel } from './voiceTypes';
+
+const { Title, Text } = Typography;
+const { TextArea } = Input;
 
 interface GenerationTask {
   id: number;
@@ -121,6 +125,8 @@ const SpeechGeneration: React.FC = () => {
   const [enginesLoading, setEnginesLoading] = useState(false);
   const [voicesLoading, setVoicesLoading] = useState(false);
   const [voiceModalOpen, setVoiceModalOpen] = useState(false);
+  const [engineModalOpen, setEngineModalOpen] = useState(false);
+  const [engineDetail, setEngineDetail] = useState<EngineModel | null>(null);
   const [advancedModalOpen, setAdvancedModalOpen] = useState(false);
   const [detailVoice, setDetailVoice] = useState<VoiceModel | null>(null);
   const [favoriteLoadingId, setFavoriteLoadingId] = useState<number | null>(null);
@@ -137,9 +143,6 @@ const SpeechGeneration: React.FC = () => {
     () => getSpeechTextHint(textValue, selectedVoice?.language),
     [textValue, selectedVoice?.language],
   );
-
-  const getEngineName = (model: EngineModel) =>
-    locale === 'zh' || locale === 'zh-CN' ? model.modelName : (model.modelNameEn || model.modelName);
 
   const getVoiceName = (model: VoiceModel) =>
     locale === 'zh' || locale === 'zh-CN' ? model.voiceName : (model.voiceNameEn || model.voiceName);
@@ -269,10 +272,9 @@ const SpeechGeneration: React.FC = () => {
     }
   }, [selectedEngine?.modelCode, fetchVoices]);
 
-  const handleEngineChange = (modelCode: string) => {
-    const engine = engines.find(e => e.modelCode === modelCode) || null;
+  const handleEngineChange = (engine: EngineModel) => {
     setSelectedEngine(engine);
-    form.setFieldsValue({ modelCode });
+    form.setFieldsValue({ modelCode: engine.modelCode });
   };
 
   const handleVoiceChange = (voiceCode: string) => {
@@ -430,26 +432,16 @@ const SpeechGeneration: React.FC = () => {
                 }}
               >
                 <EngineSelectWrap>
-                  <Form.Item
-                    name="modelCode"
-                    label={<FormattedMessage id="create.speech.engine" defaultMessage="TTS 引擎" />}
-                    rules={[{ required: true }]}
-                    style={{ marginBottom: 0 }}
-                  >
-                    <Select
-                      value={selectedEngine?.modelCode}
-                      onChange={handleEngineChange}
-                      options={engines.map(e => ({
-                        value: e.modelCode,
-                        label: getEngineName(e),
-                      }))}
-                    />
-                  </Form.Item>
-                  {selectedEngine?.description && (
+                  <EngineSelectField
+                    engines={engines}
+                    selectedEngine={selectedEngine}
+                    enginesLoading={enginesLoading}
+                    locale={locale}
+                    onOpenModal={() => setEngineModalOpen(true)}
+                  />
+                  {selectedEngine && getEngineDescription(selectedEngine, locale) && (
                     <Text type="secondary" style={{ fontSize: 12, marginTop: 6, display: 'block' }}>
-                      {locale === 'zh' || locale === 'zh-CN'
-                        ? selectedEngine.description
-                        : (selectedEngine.descriptionEn || selectedEngine.description)}
+                      {getEngineDescription(selectedEngine, locale)}
                     </Text>
                   )}
                 </EngineSelectWrap>
@@ -607,6 +599,28 @@ const SpeechGeneration: React.FC = () => {
           onPageChange={(page, pageSize) => fetchHistoryTasks(page, pageSize)}
         />
       </StyledCard>
+
+      <EngineSelectionModal
+        open={engineModalOpen}
+        onClose={() => setEngineModalOpen(false)}
+        engines={engines}
+        selectedEngine={selectedEngine}
+        locale={locale}
+        loading={enginesLoading}
+        onSelect={handleEngineChange}
+        onShowDetail={(engine) => setEngineDetail(engine)}
+      />
+
+      <EngineDetailModal
+        open={!!engineDetail}
+        engine={engineDetail}
+        locale={locale}
+        onClose={() => setEngineDetail(null)}
+        onSelect={(engine) => {
+          handleEngineChange(engine);
+          setEngineModalOpen(false);
+        }}
+      />
 
       <VoiceSelectModal
         open={voiceModalOpen}

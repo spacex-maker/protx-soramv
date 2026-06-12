@@ -3,32 +3,72 @@ import { Card, Input } from 'antd';
 
 export const GlobalSpeechStyles = createGlobalStyle`
   .speech-generation-page {
+    .ant-form-item-control-input,
+    .ant-form-item-control-input-content {
+      width: 100%;
+    }
+
     .ant-select .ant-select-selector {
       border-radius: 12px !important;
     }
     .speech-engine-select {
+      width: 100% !important;
       margin-bottom: 0 !important;
 
+      &.ant-select {
+        width: 100% !important;
+      }
+
       .ant-select-selector {
+        width: 100% !important;
         padding: 0 !important;
         min-height: 75px !important;
         display: flex !important;
-        align-items: center !important;
+        align-items: stretch !important;
         border-radius: 12px !important;
         overflow: hidden !important;
+      }
+
+      &.ant-select-focused .ant-select-selector,
+      &:hover .ant-select-selector {
+        border-radius: 12px !important;
+        overflow: hidden !important;
+      }
+
+      .ant-select-selection-wrap,
+      .ant-select-selection-search {
+        width: 100% !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
       }
 
       .ant-select-selection-item {
         padding: 0 !important;
         height: auto !important;
+        min-height: 75px !important;
         line-height: normal !important;
         display: flex !important;
-        align-items: center !important;
+        align-items: stretch !important;
         width: 100% !important;
+        max-width: 100% !important;
+        overflow: visible !important;
+        flex: 1 1 auto !important;
+      }
+
+      .ant-select-selection-item > * {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
       }
 
       .ant-select-selection-placeholder {
-        padding: 12px 16px !important;
+        padding: 0 16px !important;
+        line-height: 75px !important;
+      }
+
+      .ant-select-arrow {
+        inset-inline-end: 12px;
       }
     }
     .ant-input,
@@ -153,6 +193,17 @@ export const VoiceSearchInput = styled(Input)`
 
 export const EngineSelectWrap = styled.div`
   margin-bottom: 20px;
+  width: 100%;
+`;
+
+export const EngineSelectTrigger = styled.div`
+  width: 100%;
+  cursor: pointer;
+
+  &[data-disabled='true'] {
+    cursor: not-allowed;
+    opacity: 0.65;
+  }
 `;
 
 export const TextAreaWrap = styled.div`
