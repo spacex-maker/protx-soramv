@@ -86,11 +86,11 @@ const PrivacyBadge = styled.div`
 
 const Workspace = styled.div`
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 20px;
 
   @media (max-width: 960px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 `;
 
@@ -106,6 +106,7 @@ const Panel = styled.div`
 
 const MainPanel = styled(Panel)`
   min-height: 420px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 `;
@@ -427,12 +428,15 @@ const BatchAudioCompress: React.FC = () => {
 
       <Workspace>
         <MainPanel>
+          <SpeechGenerationMediaLibrary
+            disabled={isCompressing}
+            showOrUploadDivider={!audioFile}
+            onSelect={async (file) => {
+              await handleFileSelect(file);
+            }}
+          />
           {!audioFile ? (
             <>
-              <SpeechGenerationMediaLibrary
-                disabled={isCompressing}
-                onSelect={handleFileSelect}
-              />
               <StyledDragger
                 multiple={false}
                 accept="audio/*"

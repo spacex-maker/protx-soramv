@@ -30,6 +30,7 @@ import {
   logMediaToolUsage,
 } from '../../utils/mediaToolUsageLog';
 import SpeechGenerationMediaLibrary from '../shared/SpeechGenerationMediaLibrary';
+import AudioWaveform from '../AudioCompress/AudioWaveform';
 
 const { Dragger } = Upload;
 const { Text, Title } = Typography;
@@ -144,11 +145,11 @@ const PrivacyBadge = styled.div`
 
 const Workspace = styled.div`
   display: grid;
-  grid-template-columns: 1fr 360px;
+  grid-template-columns: minmax(0, 1fr) 360px;
   gap: 20px;
 
   @media (max-width: 960px) {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 `;
 
@@ -164,6 +165,7 @@ const Panel = styled.div`
 
 const MainPanel = styled(Panel)`
   min-height: 420px;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 `;
@@ -278,6 +280,7 @@ const FlowArrow = styled.span`
 const AudioPlayer = styled.audio`
   width: 100%;
   height: 40px;
+  margin-bottom: 12px;
   border-radius: 8px;
 `;
 
@@ -620,12 +623,15 @@ const AudioConvert: React.FC = () => {
 
       <Workspace>
         <MainPanel>
+          <SpeechGenerationMediaLibrary
+            disabled={isConverting}
+            showOrUploadDivider={!sourceFile}
+            onSelect={(file) => {
+              handleFileSelect(file);
+            }}
+          />
           {!sourceFile ? (
             <>
-              <SpeechGenerationMediaLibrary
-                disabled={isConverting}
-                onSelect={handleFileSelect}
-              />
               <StyledDragger
                 multiple={false}
                 accept={ACCEPT_TYPES}
@@ -676,7 +682,17 @@ const AudioConvert: React.FC = () => {
               </ConvertFlow>
 
               <SectionTitle style={{ marginTop: 8 }}>源文件预览</SectionTitle>
-              <AudioPlayer controls src={sourcePreview} />
+              {sourcePreview && (
+                <>
+                  <AudioPlayer controls src={sourcePreview} />
+                  <AudioWaveform
+                    audioUrl={sourcePreview}
+                    height={100}
+                    barWidth={2}
+                    gap={1}
+                  />
+                </>
+              )}
             </FileCard>
           )}
 
@@ -781,6 +797,12 @@ const AudioConvert: React.FC = () => {
                     <Tag color="purple">{outputFormatMeta?.label}</Tag>
                   </Space>
                   <AudioPlayer controls src={outputUrl} />
+                  <AudioWaveform
+                    audioUrl={outputUrl}
+                    height={100}
+                    barWidth={2}
+                    gap={1}
+                  />
                   <Text type="secondary" style={{ fontSize: 12 }}>
                     文件大小：{formatSize(outputBlob.size)}
                   </Text>

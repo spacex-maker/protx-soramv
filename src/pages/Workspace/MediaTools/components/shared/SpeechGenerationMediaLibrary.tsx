@@ -23,6 +23,9 @@ const THEME_COLOR = '#8338ec';
 
 const LibraryWrap = styled.div`
   margin-bottom: 20px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 `;
 
 const LibraryHeader = styled.div`
@@ -46,12 +49,29 @@ const LibraryTitle = styled.div`
   }
 `;
 
+const LibraryContent = styled.div`
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+
+  .ant-spin-nested-loading,
+  .ant-spin-container {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+`;
+
 const LibraryScroll = styled.div`
   display: flex;
   gap: 10px;
   overflow-x: auto;
-  padding-bottom: 4px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  padding: 4px 2px 6px;
   scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
     height: 6px;
@@ -78,7 +98,6 @@ const LibraryCard = styled.button<{ $loading?: boolean; $disabled?: boolean }>`
   &:hover:not(:disabled) {
     border-color: ${THEME_COLOR};
     box-shadow: 0 6px 18px -8px rgba(131, 56, 236, 0.35);
-    transform: translateY(-1px);
   }
 
   &:disabled {
@@ -166,11 +185,13 @@ const LoadMoreWrap = styled.div`
 interface SpeechGenerationMediaLibraryProps {
   onSelect: (file: File) => void | Promise<void>;
   disabled?: boolean;
+  showOrUploadDivider?: boolean;
 }
 
 const SpeechGenerationMediaLibrary: React.FC<SpeechGenerationMediaLibraryProps> = ({
   onSelect,
   disabled = false,
+  showOrUploadDivider = true,
 }) => {
   const intl = useIntl();
   const { locale } = useLocale();
@@ -257,7 +278,8 @@ const SpeechGenerationMediaLibrary: React.FC<SpeechGenerationMediaLibraryProps> 
         </Button>
       </LibraryHeader>
 
-      <Spin spinning={loading && tasks.length === 0}>
+      <LibraryContent>
+        <Spin spinning={loading && tasks.length === 0}>
         {tasks.length === 0 && !loading ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -339,14 +361,17 @@ const SpeechGenerationMediaLibrary: React.FC<SpeechGenerationMediaLibraryProps> 
             )}
           </>
         )}
-      </Spin>
+        </Spin>
+      </LibraryContent>
 
-      <DividerRow>
-        <FormattedMessage
-          id="mediaTools.speechLibrary.orUpload"
-          defaultMessage="或从本地上传"
-        />
-      </DividerRow>
+      {showOrUploadDivider && (
+        <DividerRow>
+          <FormattedMessage
+            id="mediaTools.speechLibrary.orUpload"
+            defaultMessage="或从本地上传"
+          />
+        </DividerRow>
+      )}
     </LibraryWrap>
   );
 };
