@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from "react";
 import styled, { keyframes, css } from "styled-components";
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
-import { Avatar, theme, Tag, Divider } from "antd";
+import { Avatar, theme, Tag, Divider, Badge } from "antd";
 import { useIntl } from 'react-intl';
+import { getUnreadNotificationCount } from 'api/notifications';
 import AchievementModal from 'components/modals/AchievementModal';
 import MemberLevelModal from 'components/modals/MemberLevelModal';
 import { 
@@ -614,7 +615,28 @@ const UserMenu = ({ userInfo, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [achievementModalOpen, setAchievementModalOpen] = useState(false);
   const [memberLevelModalOpen, setMemberLevelModalOpen] = useState(false);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const menuRef = useRef(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchUnreadCount = async () => {
+      try {
+        const res = await getUnreadNotificationCount();
+        if (mounted && res?.data?.success) {
+          setUnreadNotificationCount(Number(res.data.data?.unreadCount || 0));
+        }
+      } catch (error) {
+        // ignore unread badge errors
+      }
+    };
+    fetchUnreadCount();
+    const timer = setInterval(fetchUnreadCount, 60000);
+    return () => {
+      mounted = false;
+      clearInterval(timer);
+    };
+  }, []);
 
   // 点击外部关闭
   useEffect(() => {
@@ -856,7 +878,16 @@ const UserMenu = ({ userInfo, onLogout }) => {
                       onClick={() => handleNavigate(item.path)}
                     >
                       <div className="icon-wrapper">{item.icon}</div>
-                      <span className="label">{item.label}</span>
+                      <span className="label">
+                        {item.label}
+                        {item.path === '/notifications' && unreadNotificationCount > 0 && (
+                          <Badge
+                            count={unreadNotificationCount}
+                            size="small"
+                            style={{ marginLeft: 8 }}
+                          />
+                        )}
+                      </span>
                       <RightOutlined className="arrow" />
                     </MenuItem>
                   ))}

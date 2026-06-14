@@ -24,6 +24,7 @@ import {
 import { message } from 'antd';
 import { base } from '../../../../api/base';
 import { auth } from '../../../../api/auth';
+import { saveRememberedLogin } from '../../../../utils/loginRemember';
 
 import {
   RightSectionWrapper,
@@ -44,6 +45,8 @@ import {
   SocialButton,
   Footer,
   ErrorText,
+  FormOptionsRow,
+  RememberLabel,
   ForgotPasswordLink
 } from './styles';
 
@@ -85,6 +88,8 @@ export const RightSection = ({
   setEmail,
   password,
   setPassword,
+  rememberPassword,
+  setRememberPassword,
   error,
   loading,
   handleSubmit,
@@ -280,9 +285,25 @@ export const RightSection = ({
                 {showPassword ? <EyeInvisibleOutlined /> : <EyeOutlined />}
               </PasswordToggle>
             </InputWrapper>
-            <ForgotPasswordLink to="/reset-password">
-              <FormattedMessage id="login.forgotPassword" defaultMessage="忘记密码？" />
-            </ForgotPasswordLink>
+            <FormOptionsRow>
+              <RememberLabel>
+                <input
+                  type="checkbox"
+                  checked={rememberPassword}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setRememberPassword(checked);
+                    if (!checked) {
+                      saveRememberedLogin('', '', false);
+                    }
+                  }}
+                />
+                <FormattedMessage id="login.rememberPassword" defaultMessage="记住密码" />
+              </RememberLabel>
+              <ForgotPasswordLink to="/reset-password">
+                <FormattedMessage id="login.forgotPassword" defaultMessage="忘记密码？" />
+              </ForgotPasswordLink>
+            </FormOptionsRow>
           </FormItem>
 
           {error && <ErrorText>{error}</ErrorText>}

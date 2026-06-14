@@ -432,17 +432,42 @@ export const ErrorText = styled.div`
   margin-top: 0.5rem;
 `;
 
+export const FormOptionsRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+`;
+
+export const RememberLabel = styled.label`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--ant-color-text-secondary);
+  cursor: pointer;
+  user-select: none;
+
+  input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--ant-color-primary);
+  }
+`;
+
 export const ForgotPasswordLink = styled(Link)`
-  text-align: right;
   font-size: 0.875rem;
   color: var(--ant-color-text-secondary);
   text-decoration: none;
-  margin-top: 0.5rem;
-  display: block;
   padding: 0.25rem 0;
   transition: color 0.3s ease;
-  
+  white-space: nowrap;
+
   &:hover {
     color: var(--ant-color-primary);
   }
-`; 
+`;

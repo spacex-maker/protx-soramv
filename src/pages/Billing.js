@@ -13,6 +13,7 @@ import {
   Empty,
   DatePicker,
   Select,
+  Tabs,
   theme,
   Statistic,
   Drawer,
@@ -28,9 +29,13 @@ import {
   CreditCardOutlined,
   FilterOutlined,
   CheckOutlined,
-  DollarOutlined
+  DollarOutlined,
+  ThunderboltOutlined,
+  UnorderedListOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import TokenUsageTimelineBoard from "./Billing/components/TokenUsageTimelineBoard";
+import { getChangeTypeMap, getQuickDateRange } from "./Billing/billingUtils";
 
 // ==========================================
 // 1. 样式系统 (Styled System)
@@ -130,6 +135,33 @@ const StatsGrid = styled.div`
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+`;
+
+const BillingTabs = styled(Tabs)`
+  .ant-tabs-nav {
+    margin-bottom: 20px;
+
+    &::before {
+      border-bottom: 1px solid ${props => props.$token.colorBorderSecondary};
+    }
+  }
+
+  .ant-tabs-tab {
+    padding: 10px 4px;
+    font-size: 15px;
+    font-weight: 500;
+  }
+
+  .ant-tabs-tab-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ant-tabs-ink-bar {
+    height: 3px;
+    border-radius: 999px;
   }
 `;
 
@@ -411,21 +443,6 @@ const FilterChip = styled.div`
 // 2. 逻辑组件
 // ==========================================
 
-const getChangeTypeMap = (intl) => ({
-  DEPOSIT: { label: intl.formatMessage({ id: 'billing.type.deposit' }), color: 'green', icon: <ArrowUpOutlined /> },
-  WITHDRAWAL: { label: intl.formatMessage({ id: 'billing.type.withdrawal' }), color: 'red', icon: <ArrowDownOutlined /> },
-  TRANSFER: { label: intl.formatMessage({ id: 'billing.type.transfer' }), color: 'blue', icon: <CreditCardOutlined /> },
-  REFUND: { label: intl.formatMessage({ id: 'billing.type.refund' }), color: 'cyan', icon: <ReloadOutlined /> },
-  PAYMENT: { label: intl.formatMessage({ id: 'billing.type.payment' }), color: 'purple', icon: <DollarOutlined /> },
-  FROZEN: { label: intl.formatMessage({ id: 'billing.type.frozen' }), color: 'orange', icon: <BankOutlined /> },
-  FEE: { label: intl.formatMessage({ id: 'billing.type.fee' }), color: 'default', icon: <DollarOutlined /> },
-  REWARD: { label: intl.formatMessage({ id: 'billing.type.reward' }), color: 'gold', icon: <WalletOutlined /> },
-  ADJUSTMENT: { label: intl.formatMessage({ id: 'billing.type.adjustment' }), color: 'default', icon: <CreditCardOutlined /> },
-  AI_MODEL_FEE: { label: intl.formatMessage({ id: 'billing.type.aiModelFee' }), color: 'blue', icon: <CreditCardOutlined /> },
-  PROMPT_MARKET_PURCHASE: { label: intl.formatMessage({ id: 'billing.type.promptMarketPurchase' }), color: 'volcano', icon: <CreditCardOutlined /> },
-  PROMPT_MARKET_INCOME: { label: intl.formatMessage({ id: 'billing.type.promptMarketIncome' }), color: 'green', icon: <WalletOutlined /> },
-});
-
 const COIN_TYPE_MAP = {
   USDT_ERC20: 'USDT',
   USDT_TRC20: 'USDT',
@@ -463,6 +480,7 @@ const BillingContent = () => {
   });
 
   const [quickDatePreset, setQuickDatePreset] = useState('30'); // 快捷时间下拉当前项：'today'|'week'|'month'|'year'|'7'|'30'|'90'|null 为自定义
+  const [activeTab, setActiveTab] = useState('records');
   const [tempDateRange, setTempDateRange] = useState(dateRange);
   const [tempChangeTypeFilter, setTempChangeTypeFilter] = useState(changeTypeFilter);
   const [tempCoinTypeFilter, setTempCoinTypeFilter] = useState(coinTypeFilter);
@@ -546,26 +564,6 @@ const BillingContent = () => {
   };
 
   /** 快捷时间范围：preset 为 'today'|'week'|'month'|'year'|'7'|'30'|'90' 或数字 */
-  const getQuickDateRange = (preset) => {
-    const end = dayjs();
-    const p = typeof preset === 'string' && /^\d+$/.test(preset) ? parseInt(preset, 10) : preset;
-    if (p === 'today') {
-      return [dayjs().startOf('day'), dayjs().endOf('day')];
-    }
-    if (p === 'week') {
-      return [dayjs().startOf('week'), end];
-    }
-    if (p === 'month') {
-      return [dayjs().startOf('month'), end];
-    }
-    if (p === 'year') {
-      return [dayjs().startOf('year'), end];
-    }
-    if (typeof p === 'number') {
-      return [dayjs().subtract(p, 'day'), end];
-    }
-    return [dayjs().subtract(30, 'day'), end];
-  };
 
   /** 筛选抽屉内：仅更新临时日期，需点击「应用」生效 */
   const handleQuickDate = (preset) => {
@@ -721,7 +719,22 @@ const BillingContent = () => {
           </div>
         </PageHeader>
 
-        <StatsGrid>
+        <BillingTabs
+          $token={token}
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          items={[
+            {
+              key: 'records',
+              label: (
+                <>
+                  <UnorderedListOutlined />
+                  {intl.formatMessage({ id: 'billing.tab.records', defaultMessage: '账单明细' })}
+                </>
+              ),
+              children: (
+                <>
+                  <StatsGrid>
           <StatCard $token={token} $variant="primary">
             <div className="header">
               <span className="stat-label" style={{ opacity: 0.9 }}>{intl.formatMessage({ id: 'billing.balance.cny' })}</span>
@@ -1036,6 +1049,21 @@ const BillingContent = () => {
             </div>
           </DrawerSection>
         </Drawer>
+                </>
+              ),
+            },
+            {
+              key: 'token',
+              label: (
+                <>
+                  <ThunderboltOutlined />
+                  {intl.formatMessage({ id: 'billing.tab.tokenBoard', defaultMessage: 'Token 看板' })}
+                </>
+              ),
+              children: <TokenUsageTimelineBoard />,
+            },
+          ]}
+        />
 
       </ContentContainer>
     </PageLayout>

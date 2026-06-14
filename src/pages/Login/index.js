@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../../api/auth";
 import { base } from "../../api/base";
+import { loadRememberedLogin, saveRememberedLogin } from "../../utils/loginRemember";
 import { message } from "antd";
 import { ThemeContext } from "styled-components";
 import { useLocale } from 'contexts/LocaleContext';
@@ -17,6 +18,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberPassword, setRememberPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const theme = React.useContext(ThemeContext);
@@ -37,6 +39,15 @@ const LoginPage = () => {
     fetchLanguages();
   }, []);
 
+  useEffect(() => {
+    const saved = loadRememberedLogin();
+    if (saved.remember) {
+      setEmail(saved.email);
+      setPassword(saved.password);
+      setRememberPassword(true);
+    }
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -45,6 +56,7 @@ const LoginPage = () => {
     try {
       const result = await auth.login({ email, password });
       if (result.success) {
+        saveRememberedLogin(email, password, rememberPassword);
         message.success("登录成功");
         navigate("/workspace");
       } else {
@@ -103,6 +115,8 @@ const LoginPage = () => {
           setEmail={setEmail}
           password={password}
           setPassword={setPassword}
+          rememberPassword={rememberPassword}
+          setRememberPassword={setRememberPassword}
           error={error}
           loading={loading}
           handleSubmit={handleSubmit}
