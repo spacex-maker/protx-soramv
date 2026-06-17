@@ -5,7 +5,9 @@ export type MediaToolCode =
   | 'video_compress'
   | 'audio_compress'
   | 'video_convert'
-  | 'audio_convert';
+  | 'video_clip'
+  | 'audio_convert'
+  | 'audio_clip';
 
 export type MediaToolAction = 'process' | 'download' | 'cancel' | 'tab_view';
 

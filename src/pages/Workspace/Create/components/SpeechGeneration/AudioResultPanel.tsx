@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Typography } from 'antd';
 import {
   AudioOutlined,
-  CheckCircleOutlined,
   DownloadOutlined,
   LoadingOutlined,
   PauseCircleOutlined,
@@ -11,6 +10,7 @@ import {
   SoundOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage } from 'react-intl';
+import AudioSpectrumVisualizer from './AudioSpectrumVisualizer';
 import {
   HiddenAudio,
   ResultActions,
@@ -29,11 +29,9 @@ import {
   ResultPlayerCard,
   ResultProgressFill,
   ResultProgressTrack,
-  ResultStatusBadge,
-  ResultStatusRow,
   ResultTimeRow,
   ResultVoiceName,
-  WaveBars,
+  SpectrumVisualizerWrap,
 } from './styles';
 
 const { Text } = Typography;
@@ -138,19 +136,21 @@ const AudioResultPanel: React.FC<AudioResultPanelProps> = ({
             <LoadingOutlined spin />
           </ResultLoadingRing>
           <ResultLoadingText>{generatingTip}</ResultLoadingText>
-          <WaveBars $active>
-            <span /><span /><span /><span /><span /><span /><span />
-          </WaveBars>
+          <SpectrumVisualizerWrap aria-hidden style={{ opacity: 0.45 }} />
         </ResultLoadingState>
       ) : audioUrl ? (
         <ResultPlayerCard>
-          <ResultStatusRow>
-            <ResultStatusBadge>
-              <CheckCircleOutlined />
-              <FormattedMessage id="create.speech.resultReady" defaultMessage="合成完成" />
-            </ResultStatusBadge>
-            <ResultFormatTag>{formatLabel}</ResultFormatTag>
-          </ResultStatusRow>
+          <HiddenAudio
+            ref={audioRef}
+            src={audioUrl}
+            preload="metadata"
+            crossOrigin="anonymous"
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            onEnded={() => setPlaying(false)}
+            onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+            onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
+          />
 
           <ResultPlayRow>
             <ResultPlayButton
@@ -164,6 +164,7 @@ const AudioResultPanel: React.FC<AudioResultPanelProps> = ({
             <ResultMeta>
               <ResultVoiceName title={voiceName}>
                 {voiceName || <FormattedMessage id="create.speech.untitled" defaultMessage="未命名语音" />}
+                <ResultFormatTag>{formatLabel}</ResultFormatTag>
               </ResultVoiceName>
               <ResultPlayStatus $playing={playing}>
                 {playing ? (
@@ -175,9 +176,11 @@ const AudioResultPanel: React.FC<AudioResultPanelProps> = ({
             </ResultMeta>
           </ResultPlayRow>
 
-          <WaveBars $active={playing}>
-            <span /><span /><span /><span /><span /><span /><span />
-          </WaveBars>
+          <AudioSpectrumVisualizer
+            audioRef={audioRef}
+            audioUrl={audioUrl}
+            playing={playing}
+          />
 
           <ResultProgressTrack onClick={handleProgressClick}>
             <ResultProgressFill $percent={progressPercent} />
@@ -186,17 +189,6 @@ const AudioResultPanel: React.FC<AudioResultPanelProps> = ({
             <span>{formatTime(currentTime)}</span>
             <span>{formatTime(duration)}</span>
           </ResultTimeRow>
-
-          <HiddenAudio
-            ref={audioRef}
-            src={audioUrl}
-            preload="metadata"
-            onPlay={() => setPlaying(true)}
-            onPause={() => setPlaying(false)}
-            onEnded={() => setPlaying(false)}
-            onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
-            onLoadedMetadata={() => setDuration(audioRef.current?.duration || 0)}
-          />
 
           <ResultActions>
             <Button icon={<RedoOutlined />} onClick={handleReplay}>
@@ -227,8 +219,8 @@ const AudioResultPanel: React.FC<AudioResultPanelProps> = ({
               defaultMessage="选择音色、输入文本后，点击「生成语音」即可在此预览与下载"
             />
           </ResultEmptyHint>
-          <ResultEmptyHint style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-            <AudioOutlined style={{ color: '#13c2c2' }} />
+          <ResultEmptyHint style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 4, fontSize: 12 }}>
+            <AudioOutlined />
             <FormattedMessage id="create.speech.resultEmptyTip" defaultMessage="支持 MP3 / PCM / OGG 等格式" />
           </ResultEmptyHint>
         </ResultEmptyState>

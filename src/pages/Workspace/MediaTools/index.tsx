@@ -5,16 +5,22 @@ import {
   FileImageOutlined,
   VideoCameraOutlined,
   SoundOutlined,
-  FileOutlined,
-  CustomerServiceOutlined
 } from '@ant-design/icons';
 import { FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
 import ImageCompress from './components/ImageCompress';
-import VideoCompress from './components/VideoCompress';
-import AudioCompress from './components/AudioCompress';
-import VideoConvert from './components/VideoConvert';
-import AudioConvert from './components/AudioConvert';
+import VideoTools from './components/VideoTools';
+import AudioTools from './components/AudioTools';
+import {
+  AudioToolMode,
+  LEGACY_AUDIO_TAB_TO_MODE,
+  resolveAudioToolMode,
+} from './components/AudioTools/types';
+import {
+  VideoToolMode,
+  LEGACY_VIDEO_TAB_TO_MODE,
+  resolveVideoToolMode,
+} from './components/VideoTools/types';
 import { logMediaToolUsage } from './utils/mediaToolUsageLog';
 
 const { Content } = Layout;
@@ -122,24 +128,54 @@ const StyledTabs = styled(Tabs)`
 
 const MEDIA_TOOL_TAB_KEYS = [
   'imageCompress',
-  'videoCompress',
-  'audioCompress',
-  'videoConvert',
-  'audioConvert',
+  'audioTools',
+  'videoTools',
 ] as const;
 
 type MediaToolTabKey = typeof MEDIA_TOOL_TAB_KEYS[number];
 
 const resolveTabKey = (value: string | null): MediaToolTabKey => {
+  if (value === 'audioCompress' || value === 'audioConvert') {
+    return 'audioTools';
+  }
+  if (value === 'videoCompress' || value === 'videoConvert') {
+    return 'videoTools';
+  }
   if (value && MEDIA_TOOL_TAB_KEYS.includes(value as MediaToolTabKey)) {
     return value as MediaToolTabKey;
   }
   return 'imageCompress';
 };
 
+const AUDIO_TOOL_CODE_MAP: Record<AudioToolMode, 'audio_compress' | 'audio_convert' | 'audio_clip'> = {
+  compress: 'audio_compress',
+  convert: 'audio_convert',
+  clip: 'audio_clip',
+};
+
+const VIDEO_TOOL_CODE_MAP: Record<VideoToolMode, 'video_compress' | 'video_convert' | 'video_clip'> = {
+  compress: 'video_compress',
+  convert: 'video_convert',
+  clip: 'video_clip',
+};
+
 const MediaTools: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<MediaToolTabKey>(() => resolveTabKey(searchParams.get('tab')));
+  const [audioToolMode, setAudioToolMode] = useState<AudioToolMode>(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && LEGACY_AUDIO_TAB_TO_MODE[tabParam]) {
+      return LEGACY_AUDIO_TAB_TO_MODE[tabParam];
+    }
+    return resolveAudioToolMode(searchParams.get('mode'));
+  });
+  const [videoToolMode, setVideoToolMode] = useState<VideoToolMode>(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam && LEGACY_VIDEO_TAB_TO_MODE[tabParam]) {
+      return LEGACY_VIDEO_TAB_TO_MODE[tabParam];
+    }
+    return resolveVideoToolMode(searchParams.get('mode'));
+  });
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
   
   useEffect(() => {
@@ -151,11 +187,56 @@ const MediaTools: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const tabFromUrl = resolveTabKey(searchParams.get('tab'));
-    setActiveTab((prev) => (prev === tabFromUrl ? prev : tabFromUrl));
-  }, [searchParams]);
+    const tabParam = searchParams.get('tab');
 
-  // 所有可用的工具 tab 定义
+    if (tabParam && LEGACY_AUDIO_TAB_TO_MODE[tabParam]) {
+      const mode = LEGACY_AUDIO_TAB_TO_MODE[tabParam];
+      setActiveTab('audioTools');
+      setAudioToolMode(mode);
+      setSearchParams({ tab: 'audioTools', mode }, { replace: true });
+      return;
+    }
+
+    if (tabParam && LEGACY_VIDEO_TAB_TO_MODE[tabParam]) {
+      const mode = LEGACY_VIDEO_TAB_TO_MODE[tabParam];
+      setActiveTab('videoTools');
+      setVideoToolMode(mode);
+      setSearchParams({ tab: 'videoTools', mode }, { replace: true });
+      return;
+    }
+
+    const tabFromUrl = resolveTabKey(tabParam);
+    setActiveTab((prev) => (prev === tabFromUrl ? prev : tabFromUrl));
+
+    if (tabFromUrl === 'audioTools') {
+      const modeFromUrl = resolveAudioToolMode(searchParams.get('mode'));
+      setAudioToolMode((prev) => (prev === modeFromUrl ? prev : modeFromUrl));
+
+      if (!searchParams.get('mode')) {
+        setSearchParams({ tab: 'audioTools', mode: modeFromUrl }, { replace: true });
+      }
+    }
+
+    if (tabFromUrl === 'videoTools') {
+      const modeFromUrl = resolveVideoToolMode(searchParams.get('mode'));
+      setVideoToolMode((prev) => (prev === modeFromUrl ? prev : modeFromUrl));
+
+      if (!searchParams.get('mode')) {
+        setSearchParams({ tab: 'videoTools', mode: modeFromUrl }, { replace: true });
+      }
+    }
+  }, [searchParams, setSearchParams]);
+
+  const handleAudioToolModeChange = (mode: AudioToolMode) => {
+    setAudioToolMode(mode);
+    setSearchParams({ tab: 'audioTools', mode }, { replace: true });
+  };
+
+  const handleVideoToolModeChange = (mode: VideoToolMode) => {
+    setVideoToolMode(mode);
+    setSearchParams({ tab: 'videoTools', mode }, { replace: true });
+  };
+
   const tabItems = [
     {
       key: 'imageCompress',
@@ -168,45 +249,35 @@ const MediaTools: React.FC = () => {
       children: <ImageCompress />
     },
     {
-      key: 'videoCompress',
-      label: (
-        <Space>
-          <VideoCameraOutlined />
-          <FormattedMessage id="mediaTools.tab.videoCompress" defaultMessage="视频压缩" />
-        </Space>
-      ),
-      children: <VideoCompress />
-    },
-    {
-      key: 'audioCompress',
+      key: 'audioTools',
       label: (
         <Space>
           <SoundOutlined />
-          <FormattedMessage id="mediaTools.tab.audioCompress" defaultMessage="音频压缩" />
+          <FormattedMessage id="mediaTools.tab.audioTools" defaultMessage="音频工具" />
         </Space>
       ),
-      children: <AudioCompress />
+      children: (
+        <AudioTools
+          mode={audioToolMode}
+          onModeChange={handleAudioToolModeChange}
+        />
+      ),
     },
     {
-      key: 'videoConvert',
+      key: 'videoTools',
       label: (
         <Space>
-          <FileOutlined />
-          <FormattedMessage id="mediaTools.tab.videoConvert" defaultMessage="视频转换" />
+          <VideoCameraOutlined />
+          <FormattedMessage id="mediaTools.tab.videoTools" defaultMessage="视频工具" />
         </Space>
       ),
-      children: <VideoConvert />
+      children: (
+        <VideoTools
+          mode={videoToolMode}
+          onModeChange={handleVideoToolModeChange}
+        />
+      ),
     },
-    {
-      key: 'audioConvert',
-      label: (
-        <Space>
-          <CustomerServiceOutlined />
-          <FormattedMessage id="mediaTools.tab.audioConvert" defaultMessage="音频转换" />
-        </Space>
-      ),
-      children: <AudioConvert />
-    }
   ];
 
   return (
@@ -223,17 +294,22 @@ const MediaTools: React.FC = () => {
         onChange={(key) => {
           const nextTab = resolveTabKey(key);
           setActiveTab(nextTab);
+
+          if (nextTab === 'audioTools') {
+            setSearchParams({ tab: 'audioTools', mode: audioToolMode }, { replace: true });
+            logMediaToolUsage({ toolCode: AUDIO_TOOL_CODE_MAP[audioToolMode], action: 'tab_view' });
+            return;
+          }
+
+          if (nextTab === 'videoTools') {
+            setSearchParams({ tab: 'videoTools', mode: videoToolMode }, { replace: true });
+            logMediaToolUsage({ toolCode: VIDEO_TOOL_CODE_MAP[videoToolMode], action: 'tab_view' });
+            return;
+          }
+
           setSearchParams({ tab: nextTab }, { replace: true });
-          const toolCodeMap: Record<string, 'image_compress' | 'video_compress' | 'audio_compress' | 'video_convert' | 'audio_convert'> = {
-            imageCompress: 'image_compress',
-            videoCompress: 'video_compress',
-            audioCompress: 'audio_compress',
-            videoConvert: 'video_convert',
-            audioConvert: 'audio_convert',
-          };
-          const toolCode = toolCodeMap[key];
-          if (toolCode) {
-            logMediaToolUsage({ toolCode, action: 'tab_view' });
+          if (nextTab === 'imageCompress') {
+            logMediaToolUsage({ toolCode: 'image_compress', action: 'tab_view' });
           }
         }}
         items={tabItems}

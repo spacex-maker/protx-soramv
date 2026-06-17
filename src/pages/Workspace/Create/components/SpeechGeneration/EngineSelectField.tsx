@@ -13,6 +13,11 @@ export interface EngineSelectFieldProps {
   enginesLoading: boolean;
   locale: string;
   onOpenModal: () => void;
+  labelMessageId?: string;
+  labelDefaultMessage?: string;
+  placeholderMessageId?: string;
+  placeholderDefaultMessage?: string;
+  iconColor?: string;
 }
 
 function renderEngineSelectDisplay(model: EngineModel | null, locale: string) {
@@ -63,6 +68,11 @@ const EngineSelectField: React.FC<EngineSelectFieldProps> = ({
   enginesLoading,
   locale,
   onOpenModal,
+  labelMessageId = 'create.speech.engine',
+  labelDefaultMessage = 'TTS 引擎',
+  placeholderMessageId = 'create.speech.enginePlaceholder',
+  placeholderDefaultMessage = '请选择 TTS 引擎',
+  iconColor = '#13c2c2',
 }) => {
   const intl = useIntl();
 
@@ -71,8 +81,8 @@ const EngineSelectField: React.FC<EngineSelectFieldProps> = ({
       name="modelCode"
       label={(
         <Space>
-          <SoundOutlined style={{ color: '#13c2c2' }} />
-          <FormattedMessage id="create.speech.engine" defaultMessage="TTS 引擎" />
+          <SoundOutlined style={{ color: iconColor }} />
+          <FormattedMessage id={labelMessageId} defaultMessage={labelDefaultMessage} />
         </Space>
       )}
       rules={[{ required: true }]}
@@ -86,8 +96,8 @@ const EngineSelectField: React.FC<EngineSelectFieldProps> = ({
           value={selectedEngine?.modelCode}
           open={false}
           placeholder={intl.formatMessage({
-            id: 'create.speech.enginePlaceholder',
-            defaultMessage: '请选择 TTS 引擎',
+            id: placeholderMessageId,
+            defaultMessage: placeholderDefaultMessage,
           })}
           loading={enginesLoading}
           style={{ width: '100%', pointerEvents: 'none' }}

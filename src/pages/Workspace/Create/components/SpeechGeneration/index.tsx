@@ -49,6 +49,8 @@ import {
   MainGrid,
   FormColumn,
   ResultColumn,
+  ResultSection,
+  ResultSectionTitle,
   StyledCard,
   EngineSelectWrap,
   TextAreaWrap,
@@ -579,10 +581,10 @@ const SpeechGeneration: React.FC = () => {
         </FormColumn>
 
         <ResultColumn ref={resultPanelRef}>
-          <StyledCard
-            bordered={false}
-            title={<FormattedMessage id="create.speech.result" defaultMessage="生成结果" />}
-          >
+          <ResultSection>
+            <ResultSectionTitle>
+              <FormattedMessage id="create.speech.result" defaultMessage="生成结果" />
+            </ResultSectionTitle>
             <AudioResultPanel
               loading={loading}
               audioUrl={audioUrl}
@@ -591,7 +593,7 @@ const SpeechGeneration: React.FC = () => {
               outputFormat={outputFormat}
               generatingTip={intl.formatMessage({ id: 'create.speech.generating', defaultMessage: '正在合成语音...' })}
             />
-          </StyledCard>
+          </ResultSection>
         </ResultColumn>
       </MainGrid>
 

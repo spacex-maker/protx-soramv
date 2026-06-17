@@ -520,6 +520,51 @@ const DetailRow = styled.div`
   }
 `;
 
+const WechatModalSummary = styled.div`
+  background: ${props => props.$token?.colorFillQuaternary};
+  border: 1px solid ${props => props.$token?.colorBorderSecondary};
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+  text-align: left;
+`;
+
+const WechatModalRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 6px 0;
+
+  &:not(:last-child) {
+    border-bottom: 1px dashed ${props => props.$token?.colorBorderSecondary};
+  }
+
+  .label {
+    flex-shrink: 0;
+    color: ${props => props.$token?.colorTextSecondary};
+  }
+
+  .value {
+    text-align: right;
+    color: ${props => props.$token?.colorText};
+    font-weight: 500;
+    word-break: break-all;
+  }
+
+  &.amount-row .value {
+    font-size: 18px;
+    font-weight: 700;
+    color: ${props => props.$token?.colorPrimary};
+  }
+
+  &.credit-row .value {
+    color: ${props => props.$token?.colorSuccess};
+  }
+`;
+
 // 动画按钮
 const shine = keyframes`
   0% { left: -100%; }
@@ -633,6 +678,7 @@ const RechargeContent = ({ embedded = false }) => {
   const [cnyPackages, setCnyPackages] = useState([]);
   const [cnyPackagesLoading, setCnyPackagesLoading] = useState(false);
   const [selectedCnyPackage, setSelectedCnyPackage] = useState(null);
+  const [cnyRechargeMode, setCnyRechargeMode] = useState('token');
   const [wechatQrUrl, setWechatQrUrl] = useState('');
   const [wechatPayModalVisible, setWechatPayModalVisible] = useState(false);
   const orderPollingIntervalRef = useRef(null);
@@ -806,30 +852,37 @@ const RechargeContent = ({ embedded = false }) => {
       setSelectedCreemProduct(null);
       setSelectedCnyPackage(null);
       if (coinType === 'CNY') {
-        fetchCnyRechargePackages();
+        fetchCnyPackages(cnyRechargeMode);
       } else {
         setCnyPackages([]);
       }
     }
-  }, [coinType]);
+  }, [coinType, cnyRechargeMode]);
 
-  const fetchCnyRechargePackages = async () => {
+  const fetchCnyPackages = async (mode = cnyRechargeMode) => {
     setCnyPackagesLoading(true);
     try {
-      const result = await payment.getCnyRechargePackages();
+      const result = mode === 'balance'
+        ? await payment.getCnyBalanceRechargePackages()
+        : await payment.getCnyRechargePackages();
       if (result.success && Array.isArray(result.data)) {
         setCnyPackages(result.data);
         if (result.data.length > 0) {
           setSelectedCnyPackage(result.data[0]);
           setAmount(Number(result.data[0].price));
           setCustomAmount('');
+        } else {
+          setSelectedCnyPackage(null);
+          setAmount(0);
         }
       } else {
         setCnyPackages([]);
+        setSelectedCnyPackage(null);
       }
     } catch (error) {
       console.error(intl.formatMessage({ id: 'recharge.message.fetchBalanceError' }), error);
       setCnyPackages([]);
+      setSelectedCnyPackage(null);
     } finally {
       setCnyPackagesLoading(false);
     }
@@ -862,6 +915,67 @@ const RechargeContent = ({ embedded = false }) => {
   const getCurrentAmount = () => {
     if (coinType === 'CNY' && selectedCnyPackage) return Number(selectedCnyPackage.price);
     return amount || parseFloat(customAmount) || 0;
+  };
+
+  const isCnyBalanceMode = coinType === 'CNY' && cnyRechargeMode === 'balance';
+
+  const getCnyPackageCreditAmount = (pkg) => {
+    const base = Number(pkg?.price || 0);
+    const gift = Number(pkg?.giftPoints || pkg?.gift_points || 0);
+    return base + gift;
+  };
+
+  const getRechargeTypeLabel = () => {
+    if (isCnyBalanceMode) {
+      return intl.formatMessage({ id: 'recharge.order.typeCnyBalance', defaultMessage: '人民币余额充值' });
+    }
+    if (coinType === 'CNY' && cnyRechargeMode === 'token') {
+      return intl.formatMessage({ id: 'recharge.order.typeToken', defaultMessage: 'Token 充值' });
+    }
+    return intl.formatMessage({ id: 'recharge.order.typeValue', defaultMessage: '账户余额充值' });
+  };
+
+  const getSelectedPackageName = () => {
+    if (!selectedCnyPackage) return null;
+    const isZh = locale && String(locale).toLowerCase().startsWith('zh');
+    return isZh
+      ? (selectedCnyPackage.name || selectedCnyPackage.nameEn)
+      : (selectedCnyPackage.nameEn || selectedCnyPackage.name);
+  };
+
+  const getRechargeCreditSummary = () => {
+    if (isCnyBalanceMode && selectedCnyPackage) {
+      const credit = getCnyPackageCreditAmount(selectedCnyPackage);
+      const gift = Number(selectedCnyPackage.giftPoints || selectedCnyPackage.gift_points || 0);
+      if (gift > 0) {
+        return intl.formatMessage(
+          { id: 'recharge.wechat.creditCnyWithGift', defaultMessage: '到账 ¥{amount}（含赠送 ¥{gift}）' },
+          {
+            amount: Number(selectedCnyPackage.price || 0).toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
+            gift: gift.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
+          }
+        );
+      }
+      return intl.formatMessage(
+        { id: 'recharge.balance.credit', defaultMessage: '到账 ¥{amount}' },
+        { amount: credit.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }
+      );
+    }
+    if (coinType === 'CNY' && selectedCnyPackage && cnyRechargeMode === 'token') {
+      const base = selectedCnyPackage.points || 0;
+      const gift = selectedCnyPackage.giftPoints || 0;
+      if (gift > 0) {
+        return intl.formatMessage(
+          { id: 'recharge.wechat.creditTokenWithGift', defaultMessage: '到账 {base} + {gift} Token' },
+          { base: base.toLocaleString(), gift: gift.toLocaleString() }
+        );
+      }
+      return intl.formatMessage(
+        { id: 'recharge.wechat.creditToken', defaultMessage: '到账 {amount} Token' },
+        { amount: base.toLocaleString() }
+      );
+    }
+    return null;
   };
 
   const getSymbol = (currencyCode) => {
@@ -1106,6 +1220,32 @@ const RechargeContent = ({ embedded = false }) => {
                 </Spin>
               </section>
 
+              {coinType === 'CNY' && (
+                <section>
+                  <SectionTitle $token={token}>
+                    {intl.formatMessage({ id: 'recharge.section.rechargeType', defaultMessage: '充值类型' })}
+                  </SectionTitle>
+                  <CoinSwitchContainer $token={token}>
+                    <CoinTab
+                      $token={token}
+                      $active={cnyRechargeMode === 'token'}
+                      onClick={() => setCnyRechargeMode('token')}
+                    >
+                      <GiftFilled />
+                      {intl.formatMessage({ id: 'recharge.rechargeType.token', defaultMessage: '充值 Token' })}
+                    </CoinTab>
+                    <CoinTab
+                      $token={token}
+                      $active={cnyRechargeMode === 'balance'}
+                      onClick={() => setCnyRechargeMode('balance')}
+                    >
+                      <FaYenSign />
+                      {intl.formatMessage({ id: 'recharge.rechargeType.cnyBalance', defaultMessage: '充值人民币余额' })}
+                    </CoinTab>
+                  </CoinSwitchContainer>
+                </section>
+              )}
+
               {/* 2. 支付方式 */}
               <section>
                 <SectionTitle $token={token}>{intl.formatMessage({ id: 'recharge.section.paymentMethod' })}</SectionTitle>
@@ -1188,8 +1328,8 @@ const RechargeContent = ({ embedded = false }) => {
                                   {intl.formatMessage({ id: 'recharge.empty.noProducts' })}
                                 </div>
                             )
-                        ) : coinType === 'CNY' && cnyPackages.length > 0 ? (
-                            // CNY Packages
+                        ) : coinType === 'CNY' ? (
+                            cnyPackages.length > 0 ? (
                             cnyPackages.map((pkg) => {
                               const isZh = locale && String(locale).toLowerCase().startsWith('zh');
                               const name = isZh ? (pkg.name || pkg.nameEn) : (pkg.nameEn || pkg.name);
@@ -1209,7 +1349,17 @@ const RechargeContent = ({ embedded = false }) => {
                                     {tag && <div className="corner-badge">{tag}</div>}
                                     <div className="amount-val"><small>{symbol}</small>{Number(pkg.price)}</div>
                                     <div style={{fontSize: 13, marginBottom: 4, fontWeight: 500}}>{name}</div>
-                                    {totalToken > 0 && (
+                                    {isCnyBalanceMode ? (
+                                        <div className="bonus-tag token-breakdown">
+                                          <WalletOutlined />
+                                          <span>
+                                            {intl.formatMessage(
+                                              { id: 'recharge.balance.credit', defaultMessage: '到账 ¥{amount}' },
+                                              { amount: getCnyPackageCreditAmount(pkg).toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) }
+                                            )}
+                                          </span>
+                                        </div>
+                                    ) : totalToken > 0 && (
                                         <div className="bonus-tag token-breakdown">
                                           <GiftFilled />
                                           {giftPoints > 0 ? (
@@ -1224,6 +1374,11 @@ const RechargeContent = ({ embedded = false }) => {
                                   </AmountOption>
                               );
                             })
+                            ) : (
+                                <div style={{ gridColumn: '1/-1', textAlign: 'center', color: token.colorTextSecondary }}>
+                                  {intl.formatMessage({ id: 'recharge.empty.noProducts' })}
+                                </div>
+                            )
                         ) : (
                             // Presets
                             (PRESETS[coinType] || []).map((item, i) => (
@@ -1311,6 +1466,16 @@ const RechargeContent = ({ embedded = false }) => {
                 </div>
 
                 <DetailRow $token={token}>
+                  <span>{intl.formatMessage({ id: 'recharge.order.type' })}</span>
+                  <span className="main">
+                    {isCnyBalanceMode
+                      ? intl.formatMessage({ id: 'recharge.order.typeCnyBalance', defaultMessage: '人民币余额充值' })
+                      : (coinType === 'CNY' && cnyRechargeMode === 'token'
+                        ? intl.formatMessage({ id: 'recharge.order.typeToken', defaultMessage: 'Token 充值' })
+                        : intl.formatMessage({ id: 'recharge.order.typeValue' }))}
+                  </span>
+                </DetailRow>
+                <DetailRow $token={token}>
                   <span>{intl.formatMessage({ id: 'recharge.order.account' })}</span>
                   <span className="main">{username || '...'}</span>
                 </DetailRow>
@@ -1365,12 +1530,43 @@ const RechargeContent = ({ embedded = false }) => {
               </Button>
             </div>
           }
-          width={360}
+          width={400}
           centered
         >
-          <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          <WechatModalSummary $token={token}>
+            <WechatModalRow $token={token}>
+              <span className="label">{intl.formatMessage({ id: 'recharge.order.type', defaultMessage: '充值类型' })}</span>
+              <span className="value">{getRechargeTypeLabel()}</span>
+            </WechatModalRow>
+            {getSelectedPackageName() && (
+              <WechatModalRow $token={token}>
+                <span className="label">{intl.formatMessage({ id: 'recharge.wechat.packageName', defaultMessage: '充值套餐' })}</span>
+                <span className="value">{getSelectedPackageName()}</span>
+              </WechatModalRow>
+            )}
+            <WechatModalRow $token={token} className="amount-row">
+              <span className="label">{intl.formatMessage({ id: 'recharge.wechat.payAmount', defaultMessage: '支付金额' })}</span>
+              <span className="value">
+                {symbol}{getCurrentAmount().toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </WechatModalRow>
+            {getRechargeCreditSummary() && (
+              <WechatModalRow $token={token} className="credit-row">
+                <span className="label">{intl.formatMessage({ id: 'recharge.wechat.creditAmount', defaultMessage: '到账说明' })}</span>
+                <span className="value">{getRechargeCreditSummary()}</span>
+              </WechatModalRow>
+            )}
+            {currentOrderNo && (
+              <WechatModalRow $token={token}>
+                <span className="label">{intl.formatMessage({ id: 'recharge.wechat.orderNo', defaultMessage: '订单号' })}</span>
+                <span className="value">{currentOrderNo}</span>
+              </WechatModalRow>
+            )}
+          </WechatModalSummary>
+
+          <div style={{ textAlign: 'center', padding: '0 0 8px' }}>
             {wechatQrUrl && (
-              <img src={wechatQrUrl} alt="微信支付二维码" style={{ width: 240, height: 240, display: 'block', margin: '0 auto 16px' }} />
+              <img src={wechatQrUrl} alt="微信支付二维码" style={{ width: 240, height: 240, display: 'block', margin: '0 auto 16px', borderRadius: 8 }} />
             )}
             <span style={{ color: token.colorTextSecondary, fontSize: 13 }}>
               {intl.formatMessage({ id: 'recharge.wechat.qrTip', defaultMessage: '请使用微信扫描二维码完成支付' })}

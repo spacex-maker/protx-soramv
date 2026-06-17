@@ -394,14 +394,13 @@ export const ModelSelectDisplay = styled.div<{ coverImage?: string | null; isVid
     }
   `
       : ''}
-  
-  /* 确保内容在背景图之上 */
-  > * {
+
+  > *:not(.cover-video) {
     position: relative;
     z-index: 1;
   }
-  
-  /* 视频元素样式 */
+
+  /* 单路封面视频可用 mask 渐隐，视觉效果与静态图一致 */
   .cover-video {
     position: absolute;
     top: 0;
@@ -409,6 +408,7 @@ export const ModelSelectDisplay = styled.div<{ coverImage?: string | null; isVid
     bottom: 0;
     width: 40%;
     object-fit: cover;
+    object-position: center right;
     z-index: 0;
     border-radius: 0 12px 12px 0;
     mask-image: linear-gradient(to left, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0) 100%);
@@ -417,6 +417,8 @@ export const ModelSelectDisplay = styled.div<{ coverImage?: string | null; isVid
   }
   
   .model-display-header {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     gap: 8px;

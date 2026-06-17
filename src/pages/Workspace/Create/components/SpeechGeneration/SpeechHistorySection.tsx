@@ -44,6 +44,10 @@ interface SpeechHistorySectionProps {
   onRefresh: () => void;
   onPageChange: (page: number, pageSize: number) => void;
   onDeleted?: (task: SpeechHistoryTask) => void;
+  titleMessageId?: string;
+  titleDefaultMessage?: string;
+  emptyMessageId?: string;
+  emptyDefaultMessage?: string;
 }
 
 const SpeechHistorySection: React.FC<SpeechHistorySectionProps> = ({
@@ -56,12 +60,16 @@ const SpeechHistorySection: React.FC<SpeechHistorySectionProps> = ({
   onRefresh,
   onPageChange,
   onDeleted,
+  titleMessageId = 'create.speech.history',
+  titleDefaultMessage = '生成记录',
+  emptyMessageId = 'create.speech.historyEmpty',
+  emptyDefaultMessage = '暂无记录',
 }) => {
   const intl = useIntl();
   const navigate = useNavigate();
 
-  const goToMediaTool = (tab: 'audioConvert' | 'audioCompress') => {
-    navigate(`/workspace/media-tools?tab=${tab}`);
+  const goToMediaTool = (mode: 'convert' | 'compress') => {
+    navigate(`/workspace/media-tools?tab=audioTools&mode=${mode}`);
   };
 
   const handleDelete = (e: React.MouseEvent, task: SpeechHistoryTask) => {
@@ -109,7 +117,7 @@ const SpeechHistorySection: React.FC<SpeechHistorySectionProps> = ({
       <HistoryHeader>
         <HistoryTitleGroup>
           <h3>
-            <FormattedMessage id="create.speech.history" defaultMessage="生成记录" />
+            <FormattedMessage id={titleMessageId} defaultMessage={titleDefaultMessage} />
             {pagination.total > 0 && (
               <span style={{ marginLeft: 8, fontSize: 12, fontWeight: 500, opacity: 0.55 }}>
                 {pagination.total}
@@ -117,13 +125,13 @@ const SpeechHistorySection: React.FC<SpeechHistorySectionProps> = ({
             )}
           </h3>
           <HistoryQuickLinks>
-            <HistoryQuickLink type="button" onClick={() => goToMediaTool('audioConvert')}>
+            <HistoryQuickLink type="button" onClick={() => goToMediaTool('convert')}>
               <CustomerServiceOutlined />
-              <FormattedMessage id="mediaTools.tab.audioConvert" defaultMessage="音频转换" />
+              <FormattedMessage id="mediaTools.audioTools.mode.convert" defaultMessage="音频转换" />
             </HistoryQuickLink>
-            <HistoryQuickLink type="button" onClick={() => goToMediaTool('audioCompress')}>
+            <HistoryQuickLink type="button" onClick={() => goToMediaTool('compress')}>
               <SoundOutlined />
-              <FormattedMessage id="mediaTools.tab.audioCompress" defaultMessage="音频压缩" />
+              <FormattedMessage id="mediaTools.audioTools.mode.compress" defaultMessage="音频压缩" />
             </HistoryQuickLink>
           </HistoryQuickLinks>
         </HistoryTitleGroup>
@@ -140,7 +148,7 @@ const SpeechHistorySection: React.FC<SpeechHistorySectionProps> = ({
 
       <Spin spinning={loading}>
         {tasks.length === 0 ? (
-          <Empty description={<FormattedMessage id="create.speech.historyEmpty" defaultMessage="暂无记录" />} />
+          <Empty description={<FormattedMessage id={emptyMessageId} defaultMessage={emptyDefaultMessage} />} />
         ) : (
           <>
             <HistoryGrid>

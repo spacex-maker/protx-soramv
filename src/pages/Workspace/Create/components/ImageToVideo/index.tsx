@@ -45,8 +45,6 @@ import {
   VideoPlaceholder,
   ActionOverlay,
   AspectRatioOption,
-  InputImageContainer,
-  OverlayActions,
   CustomUploadArea,
   UploadIcon,
   UploadText,
@@ -78,6 +76,9 @@ import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGua
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
+import ImageGenPickerModal, { type ImagePickerTarget } from '../shared/ImageGenPickerModal';
+import SelectedImagePreviewOverlay from '../shared/SelectedImagePreviewOverlay';
+import { preloadVideoModelCovers } from '../shared/videoModelCoverPreload';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -155,9 +156,13 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
   // 图片上传状态
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
+  const [originalImageRemoteUrl, setOriginalImageRemoteUrl] = useState<string | null>(null);
   /** Seedance 2.x 可选尾帧图（上传后作为 imageUrls 第二项） */
   const [endFrameImageUrl, setEndFrameImageUrl] = useState<string | null>(null);
   const [endFrameImageFile, setEndFrameImageFile] = useState<File | null>(null);
+  const [endFrameImageRemoteUrl, setEndFrameImageRemoteUrl] = useState<string | null>(null);
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
+  const [imagePickerTarget, setImagePickerTarget] = useState<ImagePickerTarget>('first');
   const [isDragging, setIsDragging] = useState(false);
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
   
@@ -219,6 +224,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
             form.setFieldsValue({ modelId: firstModel.id });
             updateFormByModelRef.current(firstModel);
           }
+          preloadVideoModelCovers(list, { priorityModelId: firstModel?.id });
           if (seedancePage && list.length === 0) {
             message.warning(
               intl.formatMessage({
@@ -285,6 +291,12 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 与历史一致：intl / seedance 页切换时重拉
   }, [intl, seedancePage]);
+
+  useEffect(() => {
+    if (selectedModel && models.length > 0) {
+      preloadVideoModelCovers(models, { priorityModelId: selectedModel.id });
+    }
+  }, [selectedModel?.id, models]);
 
   // 生成成功后刷新记录
   useEffect(() => {
@@ -463,10 +475,16 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     if (!isSeedance2Model(model)) {
       setEndFrameImageUrl(null);
       setEndFrameImageFile(null);
+      setEndFrameImageRemoteUrl(null);
     }
     setSelectedModel(model);
     form.setFieldsValue({ modelId: model.id });
     updateFormByModel(model);
+  };
+
+  const openImagePicker = (target: ImagePickerTarget) => {
+    setImagePickerTarget(target);
+    setImagePickerOpen(true);
   };
 
   // 处理文件选择
@@ -474,6 +492,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     if (!file) {
       setOriginalImageUrl(null);
       setOriginalImageFile(null);
+      setOriginalImageRemoteUrl(null);
       form.setFieldsValue({ inputFile: undefined });
       return;
     }
@@ -494,6 +513,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
       const url = await getBase64(file);
       setOriginalImageUrl(url);
       setOriginalImageFile(file);
+      setOriginalImageRemoteUrl(null);
       form.setFieldsValue({ inputFile: file.name });
     } catch (error) {
       message.error(intl.formatMessage({ id: 'create.i2v.fileRead.error', defaultMessage: '图片读取失败' }));
@@ -532,6 +552,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     e.stopPropagation();
     setOriginalImageUrl(null);
     setOriginalImageFile(null);
+    setOriginalImageRemoteUrl(null);
     form.setFieldsValue({ inputFile: undefined });
     const fileInput = document.getElementById('i2v-upload-input') as HTMLInputElement;
     if (fileInput) {
@@ -545,6 +566,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     if (!file) {
       setEndFrameImageUrl(null);
       setEndFrameImageFile(null);
+      setEndFrameImageRemoteUrl(null);
       return;
     }
     if (!file.type.startsWith('image/')) {
@@ -559,6 +581,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
       const url = await getBase64(file);
       setEndFrameImageUrl(url);
       setEndFrameImageFile(file);
+      setEndFrameImageRemoteUrl(null);
     } catch {
       message.error(intl.formatMessage({ id: 'create.i2v.fileRead.error', defaultMessage: '图片读取失败' }));
     }
@@ -573,10 +596,44 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     e.stopPropagation();
     setEndFrameImageUrl(null);
     setEndFrameImageFile(null);
+    setEndFrameImageRemoteUrl(null);
     const el = document.getElementById('i2v-endframe-upload-input') as HTMLInputElement;
     if (el) el.value = '';
     const seedance20End = document.getElementById(DOUBAO_SEEDANCE_20_I2V_END_INPUT_ID) as HTMLInputElement;
     if (seedance20End) seedance20End.value = '';
+  };
+
+  const applyRemoteImageSelection = (
+    target: ImagePickerTarget,
+    remoteUrl: string,
+  ) => {
+    if (target === 'first') {
+      setOriginalImageUrl(remoteUrl);
+      setOriginalImageFile(null);
+      setOriginalImageRemoteUrl(remoteUrl);
+      form.setFieldsValue({ inputFile: 'library' });
+      return;
+    }
+    setEndFrameImageUrl(remoteUrl);
+    setEndFrameImageFile(null);
+    setEndFrameImageRemoteUrl(remoteUrl);
+  };
+
+  const handlePickerSelectLocal = async (file: File) => {
+    if (imagePickerTarget === 'first') {
+      await handleFileSelect(file);
+      return;
+    }
+    await handleEndFrameFileSelect(file);
+  };
+
+  const handlePickerSelectRemote = async (remoteUrl: string) => {
+    applyRemoteImageSelection(imagePickerTarget, remoteUrl);
+  };
+
+  const handleQuickSelectEndFrame = async (remoteUrl: string) => {
+    if (!isSeedance2Model(selectedModel)) return;
+    applyRemoteImageSelection('end', remoteUrl);
   };
 
   // 获取支持的视频比例选项
@@ -1231,7 +1288,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
       return;
     }
 
-    if (!originalImageUrl || !originalImageFile) {
+    if (!originalImageUrl || (!originalImageFile && !originalImageRemoteUrl)) {
       message.warning(intl.formatMessage({ 
         id: 'create.i2v.upload.warning', 
         defaultMessage: '请先上传一张图片作为生成参考。' 
@@ -1266,12 +1323,22 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
       );
       
       try {
-        // 上传图片到COS
-        const imageUrl = await uploadImageToServer(originalImageFile);
-        let imageUrls: string[] = [imageUrl];
-        if (isSeedance2Model(selectedModel) && endFrameImageFile) {
-          const endUrl = await uploadImageToServer(endFrameImageFile);
-          imageUrls.push(endUrl);
+        let imageUrl = originalImageRemoteUrl;
+        if (!imageUrl) {
+          if (!originalImageFile) {
+            throw new Error('missing image file');
+          }
+          imageUrl = await uploadImageToServer(originalImageFile);
+        }
+        const imageUrls: string[] = [imageUrl];
+        if (isSeedance2Model(selectedModel)) {
+          let endUrl = endFrameImageRemoteUrl;
+          if (!endUrl && endFrameImageFile) {
+            endUrl = await uploadImageToServer(endFrameImageFile);
+          }
+          if (endUrl) {
+            imageUrls.push(endUrl);
+          }
         }
         
         // 关闭上传提示
@@ -1588,6 +1655,8 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                         onRemoveFirstFrame={handleRemoveImage}
                         onEndFrameFileChange={handleEndFrameFileInputChange}
                         onRemoveEndFrame={handleRemoveEndFrame}
+                        onOpenFirstFramePicker={() => openImagePicker('first')}
+                        onOpenEndFramePicker={() => openImagePicker('end')}
                         onFirstFrameDropFile={(file) => {
                           void handleFileSelect(file);
                         }}
@@ -1646,19 +1715,12 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                   style={{ marginBottom: 20, marginTop: 0 }}
                 >
                   {originalImageUrl ? (
-                    <InputImageContainer>
-                      <img src={originalImageUrl} alt="Original" />
-                      <OverlayActions className="overlay-actions">
-                        <Button 
-                          type="primary" 
-                          danger 
-                          icon={<DeleteOutlined />}
-                          onClick={handleRemoveImage}
-                        >
-                          <FormattedMessage id="create.i2v.replaceImage" defaultMessage="更换图片" />
-                        </Button>
-                      </OverlayActions>
-                    </InputImageContainer>
+                    <SelectedImagePreviewOverlay
+                      imageUrl={originalImageUrl}
+                      alt="Original"
+                      onRemove={handleRemoveImage}
+                      onReselect={() => openImagePicker('first')}
+                    />
                   ) : (
                     <CustomUploadArea
                       $isDark={isDark}
@@ -1666,7 +1728,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      onClick={() => document.getElementById('i2v-upload-input')?.click()}
+                      onClick={() => openImagePicker('first')}
                     >
                       <input
                         id="i2v-upload-input"
@@ -1679,10 +1741,13 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                         <InboxOutlined style={{ fontSize: 48 }} />
                       </UploadIcon>
                       <UploadText $isDark={isDark}>
-                        <FormattedMessage id="create.i2v.upload.click" defaultMessage="点击或拖拽上传" />
+                        <FormattedMessage id="create.i2v.upload.click" defaultMessage="点击选择图片" />
                       </UploadText>
                       <UploadHint $isDark={isDark}>
-                        <FormattedMessage id="create.i2v.upload.supportedFormats" defaultMessage="支持 JPG, PNG, WebP" />
+                        <FormattedMessage
+                          id="create.i2v.imagePicker.uploadHint"
+                          defaultMessage="本地上传，或从文生图/图生图记录选用"
+                        />
                       </UploadHint>
                     </CustomUploadArea>
                   )}
@@ -2174,6 +2239,16 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
         onCancel={closeInsufficientBalanceModal}
         requiredTokens={insufficientBalanceRequired}
         tokenBalance={insufficientBalanceModalBalance}
+      />
+
+      <ImageGenPickerModal
+        open={imagePickerOpen}
+        target={imagePickerTarget}
+        supportsEndFrame={isSeedance2Model(selectedModel)}
+        onClose={() => setImagePickerOpen(false)}
+        onSelectLocal={handlePickerSelectLocal}
+        onSelectRemote={({ remoteUrl }) => handlePickerSelectRemote(remoteUrl)}
+        onQuickSelectEndFrame={handleQuickSelectEndFrame}
       />
     </>
   );

@@ -6,12 +6,10 @@ import {
   InboxOutlined,
   InfoCircleOutlined,
   VideoCameraOutlined,
-  DeleteOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
+import SelectedImagePreviewOverlay from '../../shared/SelectedImagePreviewOverlay';
 import {
-  InputImageContainer,
-  OverlayActions,
   CustomUploadArea,
   UploadIcon,
   UploadText,
@@ -37,6 +35,8 @@ export interface DoubaoSeedance20ParamsProps {
   onRemoveFirstFrame: (e: React.MouseEvent) => void;
   onEndFrameFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemoveEndFrame: (e: React.MouseEvent) => void;
+  onOpenFirstFramePicker: () => void;
+  onOpenEndFramePicker: () => void;
   onFirstFrameDropFile: (file: File | null) => void;
   onEndFrameDropFile: (file: File | null) => void;
   ratioAndFormatRow: React.ReactNode;
@@ -54,6 +54,8 @@ const DoubaoSeedance20Params: React.FC<DoubaoSeedance20ParamsProps> = ({
   onRemoveFirstFrame,
   onEndFrameFileChange,
   onRemoveEndFrame,
+  onOpenFirstFramePicker,
+  onOpenEndFramePicker,
   onFirstFrameDropFile,
   onEndFrameDropFile,
   ratioAndFormatRow,
@@ -91,18 +93,17 @@ const DoubaoSeedance20Params: React.FC<DoubaoSeedance20ParamsProps> = ({
     onFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void,
     onRemove: (e: React.MouseEvent) => void,
     onDropFile: (file: File | null) => void,
+    onOpenPicker: () => void,
   ) => {
     const dropHandlers = bindDropZone(slot, onDropFile);
     if (imageUrl) {
       return (
-        <InputImageContainer {...dropHandlers}>
-          <img src={imageUrl} alt="" />
-          <OverlayActions className="overlay-actions">
-            <Button type="primary" danger icon={<DeleteOutlined />} onClick={onRemove}>
-              <FormattedMessage id="create.i2v.replaceImage" defaultMessage="更换图片" />
-            </Button>
-          </OverlayActions>
-        </InputImageContainer>
+        <SelectedImagePreviewOverlay
+          imageUrl={imageUrl}
+          onRemove={onRemove}
+          onReselect={() => onOpenPicker()}
+          containerProps={dropHandlers}
+        />
       );
     }
     return (
@@ -112,17 +113,20 @@ const DoubaoSeedance20Params: React.FC<DoubaoSeedance20ParamsProps> = ({
         onDragOver={dropHandlers.onDragOver}
         onDragLeave={dropHandlers.onDragLeave}
         onDrop={dropHandlers.onDrop}
-        onClick={() => document.getElementById(inputId)?.click()}
+        onClick={onOpenPicker}
       >
         <input id={inputId} type="file" accept="image/*" onChange={onFileChange} style={{ display: 'none' }} />
         <UploadIcon $isDark={isDark}>
           <InboxOutlined style={{ fontSize: 48 }} />
         </UploadIcon>
         <UploadText $isDark={isDark}>
-          <FormattedMessage id="create.i2v.upload.click" defaultMessage="点击或拖拽上传" />
+          <FormattedMessage id="create.i2v.upload.click" defaultMessage="点击选择图片" />
         </UploadText>
         <UploadHint $isDark={isDark}>
-          <FormattedMessage id="create.i2v.upload.supportedFormats" defaultMessage="支持 JPG, PNG, WebP" />
+          <FormattedMessage
+            id="create.i2v.imagePicker.uploadHint"
+            defaultMessage="本地上传，或从文生图/图生图记录选用"
+          />
         </UploadHint>
       </CustomUploadArea>
     );
@@ -158,6 +162,7 @@ const DoubaoSeedance20Params: React.FC<DoubaoSeedance20ParamsProps> = ({
               onFirstFrameFileChange,
               onRemoveFirstFrame,
               onFirstFrameDropFile,
+              onOpenFirstFramePicker,
             )}
           </Form.Item>
         </Col>
@@ -178,6 +183,7 @@ const DoubaoSeedance20Params: React.FC<DoubaoSeedance20ParamsProps> = ({
               onEndFrameFileChange,
               onRemoveEndFrame,
               onEndFrameDropFile,
+              onOpenEndFramePicker,
             )}
           </Form.Item>
         </Col>

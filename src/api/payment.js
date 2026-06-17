@@ -164,7 +164,7 @@ export const payment = {
   },
 
   /**
-   * 获取 CNY 充值套餐列表（currency=CNY, type=充值, 上架）
+   * 获取 CNY Token 充值套餐列表（currency=CNY, type=充值, 上架）
    * @returns {Promise} 套餐列表
    */
   getCnyRechargePackages: async () => {
@@ -175,6 +175,24 @@ export const payment = {
       return {
         success: false,
         message: error.response?.data?.message || '获取套餐列表失败',
+        data: [],
+        error: error,
+      };
+    }
+  },
+
+  /**
+   * 获取 CNY 人民币余额充值套餐列表（currency=CNY, type=余额充值, 上架）
+   * @returns {Promise} 套餐列表
+   */
+  getCnyBalanceRechargePackages: async () => {
+    try {
+      const { data } = await instance.get('/productx/app-product-packages/cny-balance-recharge');
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '获取余额充值套餐失败',
         data: [],
         error: error,
       };

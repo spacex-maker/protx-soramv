@@ -1,4 +1,4 @@
-import styled, { createGlobalStyle, keyframes } from 'styled-components';
+import styled, { createGlobalStyle } from 'styled-components';
 import { Card, Input } from 'antd';
 
 export const GlobalSpeechStyles = createGlobalStyle`
@@ -129,6 +129,20 @@ export const ResultColumn = styled.div`
   @media (max-width: 991px) {
     position: static;
   }
+`;
+
+export const ResultSection = styled.section`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+export const ResultSectionTitle = styled.h3`
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: ${props => props.theme.mode === 'dark' ? '#e8e8e8' : '#262626'};
 `;
 
 export const StyledCard = styled(Card)`
@@ -355,73 +369,54 @@ export const GenerateButton = styled.div`
   }
 `;
 
-const wavePulse = keyframes`
-  0%, 100% { transform: scaleY(0.35); opacity: 0.5; }
-  50% { transform: scaleY(1); opacity: 1; }
+export const SpectrumVisualizerWrap = styled.div`
+  width: 100%;
+  height: 72px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: ${props => props.theme.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(19, 194, 194, 0.08) 0%, rgba(15, 23, 42, 0.35) 100%)'
+    : 'linear-gradient(180deg, rgba(236, 254, 255, 0.9) 0%, rgba(241, 245, 249, 0.95) 100%)'};
 `;
 
-const resultGlow = keyframes`
-  0%, 100% { opacity: 0.45; transform: scale(1); }
-  50% { opacity: 0.85; transform: scale(1.04); }
+export const SpectrumCanvas = styled.canvas`
+  display: block;
+  width: 100%;
+  height: 100%;
 `;
 
 export const ResultArea = styled.div`
-  background: ${props => props.theme.mode === 'dark'
-    ? 'linear-gradient(165deg, #111827 0%, #0f172a 55%, #134e4a 100%)'
-    : 'linear-gradient(165deg, #f8fffe 0%, #ecfeff 55%, #e0f2fe 100%)'};
-  border-radius: 14px;
-  padding: 20px;
-  min-height: 320px;
+  min-height: 240px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   justify-content: center;
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#334155' : '#bae6fd'};
-  position: relative;
-  overflow: hidden;
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(circle at 85% 15%, rgba(19, 194, 194, 0.14), transparent 42%),
-      radial-gradient(circle at 10% 90%, rgba(59, 130, 246, 0.08), transparent 40%);
-    pointer-events: none;
-  }
+  padding: 4px 0;
 `;
 
 export const ResultEmptyState = styled.div`
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 28px 16px;
-  gap: 10px;
+  padding: 32px 12px;
+  gap: 8px;
 `;
 
 export const ResultEmptyIcon = styled.div`
-  width: 72px;
-  height: 72px;
-  border-radius: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: 4px;
-  background: ${props => props.theme.mode === 'dark'
-    ? 'rgba(19, 194, 194, 0.12)'
-    : 'rgba(255, 255, 255, 0.85)'};
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#334155' : '#bae6fd'};
-  box-shadow: ${props => props.theme.mode === 'dark'
-    ? '0 8px 24px rgba(0, 0, 0, 0.25)'
-    : '0 8px 24px rgba(14, 165, 233, 0.08)'};
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'};
 
   .anticon {
-    font-size: 32px;
-    color: #13c2c2;
+    font-size: 24px;
+    color: ${props => props.theme.mode === 'dark' ? '#13c2c2' : '#0891b2'};
   }
 `;
 
@@ -433,28 +428,20 @@ export const ResultEmptyHint = styled.div`
 `;
 
 export const ResultLoadingState = styled.div`
-  position: relative;
-  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  padding: 36px 16px;
+  gap: 14px;
+  padding: 40px 12px;
 `;
 
 export const ResultLoadingRing = styled.div`
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${props => props.theme.mode === 'dark'
-    ? 'rgba(19, 194, 194, 0.12)'
-    : 'rgba(255, 255, 255, 0.9)'};
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#334155' : '#bae6fd'};
-  animation: ${resultGlow} 1.6s ease-in-out infinite;
 
   .anticon {
     font-size: 28px;
@@ -469,29 +456,14 @@ export const ResultLoadingText = styled.div`
 `;
 
 export const ResultPlayerCard = styled.div`
-  position: relative;
-  z-index: 1;
   width: 100%;
-  border-radius: 14px;
-  padding: 16px;
-  background: ${props => props.theme.mode === 'dark'
-    ? 'rgba(15, 23, 42, 0.92)'
-    : 'rgba(255, 255, 255, 0.92)'};
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#334155' : '#e2e8f0'};
-  box-shadow: ${props => props.theme.mode === 'dark'
-    ? '0 12px 32px rgba(0, 0, 0, 0.28)'
-    : '0 12px 32px rgba(15, 23, 42, 0.06)'};
-  backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 `;
 
 export const ResultStatusRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid ${props => props.theme.mode === 'dark' ? '#334155' : '#f1f5f9'};
+  display: none;
 `;
 
 export const ResultStatusBadge = styled.span`
@@ -510,30 +482,22 @@ export const ResultStatusBadge = styled.span`
 export const ResultFormatTag = styled.span`
   display: inline-flex;
   align-items: center;
-  padding: 2px 10px;
-  border-radius: 999px;
+  margin-left: 8px;
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: ${props => props.theme.mode === 'dark' ? '#7dd3fc' : '#0369a1'};
-  background: ${props => props.theme.mode === 'dark'
-    ? 'rgba(56, 189, 248, 0.12)'
-    : 'rgba(224, 242, 254, 0.95)'};
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#334155' : '#bae6fd'};
+  font-weight: 500;
+  color: ${props => props.theme.mode === 'dark' ? '#94a3b8' : '#64748b'};
 `;
 
 export const ResultPlayRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 14px;
-  margin-bottom: 14px;
+  gap: 12px;
 `;
 
 export const ResultPlayButton = styled.button<{ $playing?: boolean }>`
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   border: none;
   border-radius: 50%;
   display: flex;
@@ -542,21 +506,15 @@ export const ResultPlayButton = styled.button<{ $playing?: boolean }>`
   cursor: pointer;
   color: #fff;
   background: linear-gradient(135deg, #13c2c2 0%, #0891b2 100%);
-  box-shadow: ${props => props.$playing
-    ? '0 0 0 6px rgba(19, 194, 194, 0.18), 0 8px 20px rgba(8, 145, 178, 0.35)'
-    : '0 8px 20px rgba(8, 145, 178, 0.25)'};
+  box-shadow: ${props => props.$playing ? '0 0 0 4px rgba(19, 194, 194, 0.15)' : 'none'};
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 
   .anticon {
-    font-size: 26px;
+    font-size: 22px;
   }
 
   &:hover {
-    transform: scale(1.04);
-  }
-
-  &:active {
-    transform: scale(0.98);
+    transform: scale(1.03);
   }
 `;
 
@@ -580,33 +538,6 @@ export const ResultPlayStatus = styled.div<{ $playing?: boolean }>`
   color: ${props => props.$playing
     ? (props.theme.mode === 'dark' ? '#5eead4' : '#0d9488')
     : (props.theme.mode === 'dark' ? '#94a3b8' : '#64748b')};
-`;
-
-export const WaveBars = styled.div<{ $active?: boolean }>`
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 3px;
-  height: 24px;
-  margin-bottom: 12px;
-  opacity: ${props => (props.$active ? 1 : 0.25)};
-  transition: opacity 0.25s ease;
-
-  span {
-    width: 3px;
-    height: 100%;
-    border-radius: 999px;
-    background: linear-gradient(180deg, #36cfc9, #1890ff);
-    transform-origin: bottom;
-    animation: ${props => (props.$active ? wavePulse : 'none')} 0.9s ease-in-out infinite;
-
-    &:nth-child(2) { animation-delay: 0.1s; }
-    &:nth-child(3) { animation-delay: 0.2s; }
-    &:nth-child(4) { animation-delay: 0.15s; }
-    &:nth-child(5) { animation-delay: 0.25s; }
-    &:nth-child(6) { animation-delay: 0.05s; }
-    &:nth-child(7) { animation-delay: 0.18s; }
-  }
 `;
 
 export const ResultProgressTrack = styled.div`
@@ -644,15 +575,15 @@ export const HiddenAudio = styled.audio`
 
 export const ResultActions = styled.div`
   display: flex;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 8px;
+  margin-top: 4px;
   flex-wrap: wrap;
 
   .ant-btn {
     flex: 1;
-    min-width: 120px;
-    border-radius: 10px;
-    height: 38px;
+    min-width: 108px;
+    border-radius: 8px;
+    height: 36px;
   }
 `;
 

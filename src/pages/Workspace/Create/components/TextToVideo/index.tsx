@@ -22,13 +22,11 @@ import {
   PlayCircleOutlined,
   InfoCircleOutlined,
   EditOutlined,
-  EyeOutlined,
   FileImageOutlined,
   ClockCircleOutlined,
   CameraOutlined,
   CheckCircleOutlined,
   SwapOutlined,
-  RobotOutlined,
   CloseOutlined,
   StopOutlined,
   SyncOutlined,
@@ -47,18 +45,14 @@ import {
   VideoPlaceholder,
   ActionOverlay,
   AspectRatioOption,
-  ModelOptionWrapper,
-  ModelSelectDisplay,
-  AspectRatioTag,
-  ResolutionTag,
-  DetailButton,
 } from './styles';
-import { getModelDescription } from '../modelUtils';
-import { getAspectRatioOption, getCameraMotions, isVideoUrl, normalizeUrl, getModelAspectRatios, getModelDurationOptions } from './utils';
+import { getAspectRatioOption, getCameraMotions, getModelAspectRatios, getModelDurationOptions } from './utils';
 import HistorySection from './HistorySection';
 import TaskDetailModal from './TaskDetailModal';
 import WaitingTaskQueue, { WaitingTask } from './WaitingTaskQueue';
 import ModelDetailModal from './ModelDetailModal';
+import VideoModelSelectionModal from '../ImageToVideo/VideoModelSelectionModal';
+import VideoModelSelectField from '../ImageToVideo/VideoModelSelectField';
 import EstimatedPriceHint from '../shared/EstimatedPriceHint';
 import { useTokenBalance } from '../shared/useTokenBalance';
 import { formatDurationEstimatedTooltip } from '../shared/estimatedPriceText';
@@ -67,6 +61,7 @@ import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGua
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
+import { preloadVideoModelCovers } from '../shared/videoModelCoverPreload';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -118,6 +113,7 @@ const TextToVideo: React.FC = () => {
   // 模型详情模态框相关状态
   const [modelDetailModalVisible, setModelDetailModalVisible] = useState(false);
   const [selectedModelForDetail, setSelectedModelForDetail] = useState<Model | null>(null);
+  const [modelPickerVisible, setModelPickerVisible] = useState(false);
 
   // 初始化时确保标志为 false
   useEffect(() => {
@@ -140,6 +136,7 @@ const TextToVideo: React.FC = () => {
           // 同步更新表单的 modelId 字段
           form.setFieldsValue({ modelId: firstModel.id });
           updateFormByModel(firstModel);
+          preloadVideoModelCovers(response.data.data, { priorityModelId: firstModel.id });
         } else {
           message.warning(intl.formatMessage({ 
             id: 'create.model.loadFailed', 
@@ -178,6 +175,13 @@ const TextToVideo: React.FC = () => {
       pollingTasksRef.current.clear();
     };
   }, [intl]);
+
+  // 切换模型时优先预加载当前选中封面
+  useEffect(() => {
+    if (selectedModel && models.length > 0) {
+      preloadVideoModelCovers(models, { priorityModelId: selectedModel.id });
+    }
+  }, [selectedModel?.id, models]);
 
   // 生成成功后刷新记录
   useEffect(() => {
@@ -252,63 +256,10 @@ const TextToVideo: React.FC = () => {
   };
 
   // 处理模型选择变化
-  const handleModelChange = (modelId: number) => {
-    const model = models.find(m => m.id === modelId);
-    if (model) {
-      setSelectedModel(model);
-      form.setFieldsValue({ modelId: modelId });
-      updateFormByModel(model);
-    }
-  };
-
-  // 自定义模型选择框显示内容
-  const renderModelSelectDisplay = (model: Model | null) => {
-    if (!model) return null;
-    
-    const coverImage = (model as any).coverImage ? normalizeUrl((model as any).coverImage) : null;
-    const isVideo = coverImage ? isVideoUrl(coverImage) : false;
-    
-    return (
-      <ModelSelectDisplay coverImage={coverImage} isVideo={isVideo}>
-        {/* 如果是视频，显示视频标签 */}
-        {isVideo && coverImage && (
-          <video 
-            className="cover-video"
-            src={coverImage}
-            autoPlay
-            loop
-            muted
-            playsInline
-          />
-        )}
-        <div className="model-display-header">
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="model-display-name">
-              {model.modelName}
-            </div>
-            {model.modelCode && (
-              <div className="model-display-code">{model.modelCode}</div>
-            )}
-          </div>
-          {model.tokenCost !== null && model.tokenCost !== undefined && (
-            <div className="model-display-price">
-              <span className="model-display-price-amount">
-                {model.tokenCost}
-              </span>
-              <span className="model-display-price-currency">
-                Token
-              </span>
-              <span className="model-display-price-unit">
-                {intl.formatMessage({ 
-                  id: 'create.model.price.perSecond', 
-                  defaultMessage: '/秒' 
-                })}
-              </span>
-            </div>
-          )}
-        </div>
-      </ModelSelectDisplay>
-    );
+  const applySelectedModel = (model: Model) => {
+    setSelectedModel(model);
+    form.setFieldsValue({ modelId: model.id });
+    updateFormByModel(model);
   };
 
   // 获取支持的视频比例选项（根据选中的模型）
@@ -688,13 +639,6 @@ const TextToVideo: React.FC = () => {
   const handleCloseTaskDetail = () => {
     setTaskDetailModalVisible(false);
     setSelectedTaskId(null);
-  };
-
-  // 显示模型详情
-  const handleShowModelDetail = (e: React.MouseEvent, model: Model) => {
-    e.stopPropagation(); // 阻止触发选择
-    setSelectedModelForDetail(model);
-    setModelDetailModalVisible(true);
   };
 
   // 关闭模型详情模态框
@@ -1088,126 +1032,11 @@ const TextToVideo: React.FC = () => {
                   modelId: null,
                 }}
               >
-                {/* 模型选择 */}
-                <Form.Item
-                  name="modelId"
-                  label={
-                    <Space>
-                      <RobotOutlined style={{ color: '#1890ff' }} />
-                      <FormattedMessage id="create.model.select" defaultMessage="选择模型" />
-                    </Space>
-                  }
-                  style={{ marginBottom: 28 }}
-                >
-                  <Select
-                    value={selectedModel?.id}
-                    onChange={handleModelChange}
-                    placeholder={intl.formatMessage({ 
-                      id: 'create.model.select.placeholder', 
-                      defaultMessage: '请选择要使用的视频生成模型' 
-                    })}
-                    loading={modelsLoading}
-                    style={{ width: '100%' }}
-                    optionLabelProp="label"
-                    dropdownStyle={{ maxHeight: 400, overflow: 'auto' }}
-                    dropdownClassName="model-select-dropdown"
-                    className="model-video-select"
-                  >
-                    {models.map(model => (
-                      <Select.Option 
-                        key={model.id} 
-                        value={model.id}
-                        label={
-                          <div style={{ width: '100%' }}>
-                            {renderModelSelectDisplay(model)}
-                          </div>
-                        }
-                      >
-                        {(() => {
-                          const coverImage = (model as any).coverImage ? normalizeUrl((model as any).coverImage) : null;
-                          const isVideo = coverImage ? isVideoUrl(coverImage) : false;
-                          return (
-                            <ModelOptionWrapper coverImage={coverImage} isVideo={isVideo}>
-                              {/* 如果是视频，显示视频标签 */}
-                              {isVideo && coverImage && (
-                                <video 
-                                  className="cover-video"
-                                  src={coverImage}
-                                  autoPlay
-                                  loop
-                                  muted
-                                  playsInline
-                                />
-                              )}
-                              <div className="model-header">
-                                <VideoCameraOutlined style={{ color: '#1890ff', fontSize: 18, flexShrink: 0 }} />
-                                <div style={{ flex: 1, minWidth: 0 }}>
-                                  <div className="model-name">
-                                    {model.modelName}
-                                  </div>
-                                  {model.modelCode && (
-                                    <div className="model-code">
-                                      {model.modelCode}
-                                    </div>
-                                  )}
-                                </div>
-                                {model.tokenCost !== null && model.tokenCost !== undefined && (
-                                  <div className="model-price">
-                                    <span className="model-price-amount">{model.tokenCost}</span>
-                                    <span className="model-price-currency">Token</span>
-                                    <span className="model-price-unit">
-                                      {intl.formatMessage({ 
-                                        id: 'create.model.price.perSecond', 
-                                        defaultMessage: '/秒' 
-                                      })}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                              {getModelDescription(model, intl.locale || '') && (
-                                <div className="model-description" style={{ marginTop: 6, paddingLeft: 26 }}>
-                                  {getModelDescription(model, intl.locale || '')}
-                                </div>
-                              )}
-                              {/* 显示支持的比例和详情按钮 */}
-                              <div className="model-bottom-row">
-                                {(getModelAspectRatios(model).length > 0 || model.videoAspectResolution) && (
-                                  <div className="model-aspect-ratios">
-                                    {getModelAspectRatios(model).map((ratio, index) => {
-                                      const ratioOption = getAspectRatioOption(ratio, intl);
-                                      return (
-                                        <AspectRatioTag key={index}>
-                                          {ratioOption.icon}
-                                          <span>{ratio}</span>
-                                        </AspectRatioTag>
-                                      );
-                                    })}
-                                    {model.videoAspectResolution && model.videoAspectResolution.split(',').map((resolution, index) => (
-                                      <ResolutionTag key={index}>
-                                        {resolution.trim()}
-                                      </ResolutionTag>
-                                    ))}
-                                  </div>
-                                )}
-                                <DetailButton
-                                  className="model-detail-button"
-                                  size="small"
-                                  icon={<EyeOutlined />}
-                                  onClick={(e: React.MouseEvent) => handleShowModelDetail(e, model)}
-                                >
-                                  <FormattedMessage
-                                    id="create.model.detail"
-                                    defaultMessage="详情"
-                                  />
-                                </DetailButton>
-                              </div>
-                            </ModelOptionWrapper>
-                          );
-                        })()}
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+                <VideoModelSelectField
+                  selectedModel={selectedModel}
+                  modelsLoading={modelsLoading}
+                  onOpenModal={() => setModelPickerVisible(true)}
+                />
 
                 {/* 提示词输入 */}
                 <Form.Item
@@ -1833,6 +1662,24 @@ const TextToVideo: React.FC = () => {
       />
 
       {/* 模型详情模态框 */}
+      <VideoModelSelectionModal
+        open={modelPickerVisible}
+        onClose={() => setModelPickerVisible(false)}
+        type="family"
+        title={intl.formatMessage({
+          id: 'create.model.select',
+          defaultMessage: '选择模型',
+        })}
+        models={models}
+        selectedModel={selectedModel}
+        onSelect={(m) => applySelectedModel(m as Model)}
+        onShowDetail={(m) => {
+          setSelectedModelForDetail(m as Model);
+          setModelDetailModalVisible(true);
+        }}
+        loading={modelsLoading}
+      />
+
       <ModelDetailModal
         open={modelDetailModalVisible}
         onClose={handleCloseModelDetail}

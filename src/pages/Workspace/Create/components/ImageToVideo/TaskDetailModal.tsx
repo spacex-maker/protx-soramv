@@ -35,6 +35,7 @@ import {
   ModelInteractionResponse,
 } from 'api/modelInteraction';
 import { getModelDescription } from '../modelUtils';
+import { formatFileSize } from '../shared/fileSizeUtils';
 
 // ==========================================
 // 1. 样式系统
@@ -723,6 +724,12 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
               <label>{intl.formatMessage({ id: 'create.taskDetail.modelCode', defaultMessage: '模型代号' })}</label>
               <div className="val" style={{fontFamily: 'monospace', fontSize: 12}}>{task.modelCode}</div>
             </div>
+            {hasOutputVideo && (
+              <div className="info-item">
+                <label>{intl.formatMessage({ id: 'create.taskDetail.fileSize', defaultMessage: '大小' })}</label>
+                <div className="val">{formatFileSize(task.outputFiles?.[0]?.size)}</div>
+              </div>
+            )}
           </InfoList>
         </div>
       </ContentGrid>

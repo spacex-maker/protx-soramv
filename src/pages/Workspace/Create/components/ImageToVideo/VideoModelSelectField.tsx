@@ -5,6 +5,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { Model } from './types';
 import { ModelSelectDisplay } from './styles';
 import { isVideoUrl, modelCoverUrl } from './utils';
+import CoverPreviewVideo from '../shared/CoverPreviewVideo';
 
 export interface VideoModelSelectFieldProps {
   selectedModel: Model | null;
@@ -12,7 +13,6 @@ export interface VideoModelSelectFieldProps {
   onOpenModal: () => void;
 }
 
-/** 与 ModelDetailModal 相同：normalize + isVideo + video 标签 */
 function renderModelSelectDisplay(model: Model | null) {
   if (!model) return null;
 
@@ -22,15 +22,7 @@ function renderModelSelectDisplay(model: Model | null) {
   return (
     <ModelSelectDisplay coverImage={cover} isVideo={isVideo}>
       {isVideo && cover && (
-        <video
-          className="cover-video"
-          src={cover}
-          autoPlay
-          loop
-          muted
-          playsInline
-          preload="metadata"
-        />
+        <CoverPreviewVideo className="cover-video" src={cover} playMode="always" />
       )}
       <div className="model-display-header">
         <div style={{ flex: 1, minWidth: 0 }}>

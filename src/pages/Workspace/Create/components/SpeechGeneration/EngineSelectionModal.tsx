@@ -271,6 +271,16 @@ interface EngineSelectionModalProps {
   onSelect: (engine: EngineModel) => void;
   onShowDetail?: (engine: EngineModel) => void;
   loading?: boolean;
+  titleMessageId?: string;
+  titleDefaultMessage?: string;
+  searchPlaceholderMessageId?: string;
+  searchPlaceholderDefaultMessage?: string;
+  searchEmptyMessageId?: string;
+  searchEmptyDefaultMessage?: string;
+  detailMessageId?: string;
+  detailDefaultMessage?: string;
+  badgeText?: string;
+  badgeBg?: string;
 }
 
 const EngineSelectionModal: React.FC<EngineSelectionModalProps> = ({
@@ -282,6 +292,16 @@ const EngineSelectionModal: React.FC<EngineSelectionModalProps> = ({
   onSelect,
   onShowDetail,
   loading = false,
+  titleMessageId = 'create.speech.selectEngine',
+  titleDefaultMessage = '选择 TTS 引擎',
+  searchPlaceholderMessageId = 'create.speech.engineSearch',
+  searchPlaceholderDefaultMessage = '搜索引擎名称或描述...',
+  searchEmptyMessageId = 'create.speech.engineSearchEmpty',
+  searchEmptyDefaultMessage = '未找到匹配的引擎',
+  detailMessageId = 'create.speech.engineDetail',
+  detailDefaultMessage = '查看详情',
+  badgeText = 'TTS',
+  badgeBg = 'rgba(19, 194, 194, 0.85)',
 }) => {
   const { token } = theme.useToken();
   const intl = useIntl();
@@ -348,8 +368,8 @@ const EngineSelectionModal: React.FC<EngineSelectionModalProps> = ({
         )}
 
         <TopBadges>
-          <TagBadge $bg="rgba(19, 194, 194, 0.85)" $color="#fff">
-            <SoundOutlined /> TTS
+          <TagBadge $bg={badgeBg} $color="#fff">
+            <SoundOutlined /> {badgeText}
           </TagBadge>
           {isSelected && (
             <SelectIndicator $primary={token.colorPrimary}>
@@ -368,7 +388,7 @@ const EngineSelectionModal: React.FC<EngineSelectionModalProps> = ({
               }}
             >
               <EyeOutlined />
-              <FormattedMessage id="create.speech.engineDetail" defaultMessage="查看详情" />
+              <FormattedMessage id={detailMessageId} defaultMessage={detailDefaultMessage} />
             </GlassButton>
           </DetailButtonOverlay>
         )}
@@ -406,7 +426,7 @@ const EngineSelectionModal: React.FC<EngineSelectionModalProps> = ({
       <HeaderSection $bg={token.colorBgContainer}>
         <HeaderTitleRow>
           <h2 style={{ color: token.colorTextHeading }}>
-            <FormattedMessage id="create.speech.selectEngine" defaultMessage="选择 TTS 引擎" />
+            <FormattedMessage id={titleMessageId} defaultMessage={titleDefaultMessage} />
           </h2>
           <CloseButton $hoverBg={token.colorFillSecondary} onClick={onClose}>
             ✕ <FormattedMessage id="common.close" defaultMessage="关闭" />
@@ -416,8 +436,8 @@ const EngineSelectionModal: React.FC<EngineSelectionModalProps> = ({
         <Input
           prefix={<SearchOutlined style={{ color: token.colorTextDescription }} />}
           placeholder={intl.formatMessage({
-            id: 'create.speech.engineSearch',
-            defaultMessage: '搜索引擎名称或描述...',
+            id: searchPlaceholderMessageId,
+            defaultMessage: searchPlaceholderDefaultMessage,
           })}
           variant="filled"
           allowClear
@@ -433,7 +453,7 @@ const EngineSelectionModal: React.FC<EngineSelectionModalProps> = ({
           </div>
         ) : filteredEngines.length === 0 ? (
           <div style={{ gridColumn: '1/-1', padding: '100px 0' }}>
-            <Empty description={intl.formatMessage({ id: 'create.speech.engineSearchEmpty', defaultMessage: '未找到匹配的引擎' })} />
+            <Empty description={intl.formatMessage({ id: searchEmptyMessageId, defaultMessage: searchEmptyDefaultMessage })} />
           </div>
         ) : (
           filteredEngines.map((engine, index) => renderEngineCard(engine, index))

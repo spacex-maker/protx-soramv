@@ -30,7 +30,7 @@ import {
   logMediaToolUsage,
 } from '../../utils/mediaToolUsageLog';
 import SpeechGenerationMediaLibrary from '../shared/SpeechGenerationMediaLibrary';
-import AudioWaveform from '../AudioCompress/AudioWaveform';
+import AudioPlaybackPanel from '../shared/AudioPlaybackPanel';
 
 const { Dragger } = Upload;
 const { Text, Title } = Typography;
@@ -217,20 +217,27 @@ const FormatTagRow = styled.div`
   justify-content: center;
 `;
 
-const FileCard = styled.div`
-  margin-top: 20px;
-  padding: 16px;
-  border-radius: 14px;
-  background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.04)' : '#f8fafc'};
-  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : '#e8ecf1'};
-  animation: ${fadeIn} 0.3s ease-out;
+const SourceWorkspace = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 `;
 
-const FileMeta = styled.div`
+const SourceFileHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : '#f8fafc'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#eef2f7'};
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
 `;
 
 const FileIcon = styled.div`
@@ -265,23 +272,15 @@ const ConvertFlow = styled.div`
   align-items: center;
   justify-content: center;
   gap: 12px;
-  margin: 16px 0 4px;
   padding: 12px;
   border-radius: 12px;
-  background: ${props => props.theme.mode === 'dark' ? 'rgba(24, 144, 255, 0.08)' : 'rgba(24, 144, 255, 0.06)'};
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(131, 56, 236, 0.08)' : 'rgba(131, 56, 236, 0.06)'};
   animation: ${fadeIn} 0.3s ease-out;
 `;
 
 const FlowArrow = styled.span`
   color: #8338ec;
   font-size: 16px;
-`;
-
-const AudioPlayer = styled.audio`
-  width: 100%;
-  height: 40px;
-  margin-bottom: 12px;
-  border-radius: 8px;
 `;
 
 const SectionTitle = styled.div`
@@ -623,13 +622,15 @@ const AudioConvert: React.FC = () => {
 
       <Workspace>
         <MainPanel>
-          <SpeechGenerationMediaLibrary
-            disabled={isConverting}
-            showOrUploadDivider={!sourceFile}
-            onSelect={(file) => {
-              handleFileSelect(file);
-            }}
-          />
+          {!sourceFile && (
+            <SpeechGenerationMediaLibrary
+              disabled={isConverting}
+              showOrUploadDivider
+              onSelect={(file) => {
+                handleFileSelect(file);
+              }}
+            />
+          )}
           {!sourceFile ? (
             <>
               <StyledDragger
@@ -652,28 +653,30 @@ const AudioConvert: React.FC = () => {
               </FormatTagRow>
             </>
           ) : (
-            <FileCard>
-              <FileMeta>
+            <SourceWorkspace>
+              <SourceFileHeader>
                 <FileIcon>
                   <CustomerServiceOutlined />
                 </FileIcon>
                 <FileInfo>
                   <Text className="name" title={sourceFile.name}>{sourceFile.name}</Text>
-                  <Space size={8} style={{ marginTop: 4 }}>
+                  <Space size={8} style={{ marginTop: 4 }} wrap>
                     <Tag color="blue">{inputExtLabel}</Tag>
                     <Text type="secondary" style={{ fontSize: 12 }}>{formatSize(sourceFile.size)}</Text>
                   </Space>
                 </FileInfo>
-                <Button
-                  type="text"
-                  size="small"
-                  icon={<ReloadOutlined />}
-                  disabled={isConverting}
-                  onClick={handleResetAll}
-                >
-                  更换
-                </Button>
-              </FileMeta>
+                <HeaderActions>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<ReloadOutlined />}
+                    disabled={isConverting}
+                    onClick={handleResetAll}
+                  >
+                    更换
+                  </Button>
+                </HeaderActions>
+              </SourceFileHeader>
 
               <ConvertFlow>
                 <Tag color="processing">{inputExtLabel}</Tag>
@@ -681,19 +684,14 @@ const AudioConvert: React.FC = () => {
                 <Tag color="purple">{outputExtLabel}</Tag>
               </ConvertFlow>
 
-              <SectionTitle style={{ marginTop: 8 }}>源文件预览</SectionTitle>
               {sourcePreview && (
-                <>
-                  <AudioPlayer controls src={sourcePreview} />
-                  <AudioWaveform
-                    audioUrl={sourcePreview}
-                    height={100}
-                    barWidth={2}
-                    gap={1}
-                  />
-                </>
+                <AudioPlaybackPanel
+                  audioUrl={sourcePreview}
+                  accentColor="#8338ec"
+                  waveformHeight={120}
+                />
               )}
-            </FileCard>
+            </SourceWorkspace>
           )}
 
           {ffmpegHint && (
@@ -796,12 +794,10 @@ const AudioConvert: React.FC = () => {
                     <Text strong>转换成功</Text>
                     <Tag color="purple">{outputFormatMeta?.label}</Tag>
                   </Space>
-                  <AudioPlayer controls src={outputUrl} />
-                  <AudioWaveform
+                  <AudioPlaybackPanel
                     audioUrl={outputUrl}
-                    height={100}
-                    barWidth={2}
-                    gap={1}
+                    accentColor="#8338ec"
+                    waveformHeight={96}
                   />
                   <Text type="secondary" style={{ fontSize: 12 }}>
                     文件大小：{formatSize(outputBlob.size)}

@@ -1,13 +1,13 @@
 import dayjs from 'dayjs';
 
-export const CREATION_TASK_TYPES = ['t2i', 't2v', 'i2i', 'i2v', 't2a'];
+export const CREATION_TASK_TYPES = ['t2i', 't2v', 'i2i', 'i2v', 't2a', 'vclone'];
 
 export const CREATION_TASK_TYPES_PARAM = CREATION_TASK_TYPES.join(',');
 
 export const MEDIA_TYPE_TASK_TYPES = {
   image: 't2i,i2i',
   video: 't2v,i2v',
-  audio: 't2a',
+  audio: 't2a,vclone',
 };
 
 export const SOURCE_TAB_OPTIONS = [
@@ -17,6 +17,7 @@ export const SOURCE_TAB_OPTIONS = [
   { key: 'i2i', taskType: 'i2i' },
   { key: 'i2v', taskType: 'i2v' },
   { key: 't2a', taskType: 't2a' },
+  { key: 'vclone', taskType: 'vclone' },
 ];
 
 export const isVideoUrl = (url) => /\.(mp4|webm|mov|ogg|mkv)(\?|$)/i.test(url || '');
@@ -53,7 +54,7 @@ export const addImageCompressSuffix = (url, width = 480) => {
 };
 
 export const resolveMediaType = (task) => {
-  if (task.outputType === 'audio' || task.taskType === 't2a') return 'audio';
+  if (task.outputType === 'audio' || task.taskType === 't2a' || task.taskType === 'vclone') return 'audio';
   if (task.outputType === 'video' || task.taskType === 't2v' || task.taskType === 'i2v') return 'video';
   return 'image';
 };
@@ -75,6 +76,7 @@ export const getTaskTypeLabel = (taskType, intl) => {
     i2i: intl.formatMessage({ id: 'works.source.i2i', defaultMessage: '图生图' }),
     i2v: intl.formatMessage({ id: 'works.source.i2v', defaultMessage: '图生视频' }),
     t2a: intl.formatMessage({ id: 'works.source.t2a', defaultMessage: '语音生成' }),
+    vclone: intl.formatMessage({ id: 'works.source.vclone', defaultMessage: '语音复刻' }),
   };
   return labels[taskType] || taskType;
 };

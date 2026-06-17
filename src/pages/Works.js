@@ -819,7 +819,7 @@ const WorksPage = () => {
         </div>
 
         <div className="work-actions">
-          {work.taskType !== 't2a' && (
+          {work.taskType !== 't2a' && work.taskType !== 'vclone' && (
             <Tooltip title={intl.formatMessage({ id: 'works.detail', defaultMessage: '详情' })}>
               <button 
                 className="action-btn"

@@ -12,6 +12,18 @@ export async function fetchTokenBalance(): Promise<number> {
   return 0;
 }
 
+export async function fetchCnyBalance(): Promise<number> {
+  try {
+    const res = await base.getUserBalance();
+    if (res?.success && res?.data?.balance != null) {
+      return Number(res.data.balance);
+    }
+  } catch {
+    /* ignore */
+  }
+  return 0;
+}
+
 /** 从 "120 Token" 等文案解析数量 */
 export function parseTokenAmountFromPrice(price: string | null | undefined): number {
   if (!price) return 0;
