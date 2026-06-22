@@ -24,7 +24,13 @@ export const auth = {
       }
       return data;
     } catch (error) {
-      return { success: false, message: error.response?.data?.message || '登录失败' };
+      return {
+        success: false,
+        message: error.response?.data?.message || '登录失败',
+        code: error.response?.data?.code,
+        isUserDisabled: error.isUserDisabled,
+        isIpBlocked: error.isIpBlocked,
+      };
     }
   },
 
@@ -79,6 +85,16 @@ export const auth = {
       return data;
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '获取实名认证信息失败' };
+    }
+  },
+
+  // 获取用户实名认证历史记录
+  getUserKycRecords: async () => {
+    try {
+      const { data } = await axios.get('/productx/user/realname-records');
+      return data;
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || '获取认证记录失败' };
     }
   },
 

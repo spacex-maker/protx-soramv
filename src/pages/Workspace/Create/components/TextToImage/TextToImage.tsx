@@ -65,6 +65,7 @@ import { useDownloadImage } from './useDownloadImage';
 import {
   GlobalSelectStyles,
   StyledCard,
+  EmbedControlPanel,
   ModelOptionWrapper,
   DetailButton,
   AspectRatioTag,
@@ -72,10 +73,16 @@ import {
   TitleSection,
   SelectLikeButton,
 } from './styles';
+import type { TextToImageProps } from './embedTypes';
+import { resolvePreferredT2iModel } from './resolvePreferredT2iModel';
 
 const { Title, Text } = Typography;
 
-const TextToImage: React.FC = () => {
+const TextToImage: React.FC<TextToImageProps> = ({
+  variant = 'page',
+  embedConfig,
+  embedActive = true,
+}) => {
   const intl = useIntl();
   const { locale } = useLocale();
   const { tokenBalance, balanceLoading } = useTokenBalance();
@@ -136,6 +143,19 @@ const TextToImage: React.FC = () => {
 
   // API 模型异步任务轮询
   const pollingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const embedInitialAppliedRef = useRef(false);
+  const embedPreferredAppliedRef = useRef(false);
+  const embedUserPickedModelRef = useRef(false);
+
+  const isEmbed = variant === 'embed';
+  const embedReady = !isEmbed || embedActive;
+  const LeftPanel = isEmbed ? EmbedControlPanel : 'div';
+  const paramColProps = isEmbed
+    ? ({ xs: 24 as const, sm: 12 as const })
+    : ({ flex: '1' as const, style: { minWidth: 0 } });
+  const nestedModalProps = isEmbed
+    ? { zIndex: 2100, getContainer: () => document.body }
+    : {};
 
   // 根据模型更新表单参数
   const updateFormByModel = (model: Model | ModelFamily | null) => {
@@ -195,6 +215,9 @@ const TextToImage: React.FC = () => {
   updateFormByModelRef.current = updateFormByModel;
 
   onFirstFamilySelectedRef.current = (family: ModelFamily) => {
+    if (isEmbed && embedConfig?.preferredModelCode && !embedUserPickedModelRef.current) {
+      return;
+    }
     if (family.modelCode) {
       fetchStyleModels(family.modelCode, family);
     }
@@ -202,6 +225,9 @@ const TextToImage: React.FC = () => {
 
   // 处理模型家族选择变化
   const handleFamilyChange = (family: ModelFamily) => {
+    if (isEmbed) {
+      embedUserPickedModelRef.current = true;
+    }
     setSelectedFamily(family);
     form.setFieldsValue({ familyId: family.id });
     // 获取该家族下的风格模型列表
@@ -212,6 +238,9 @@ const TextToImage: React.FC = () => {
 
   // 处理风格模型选择变化
   const handleStyleModelChange = (model: Model | ModelFamily) => {
+    if (isEmbed) {
+      embedUserPickedModelRef.current = true;
+    }
     // 判断是否是家族默认（通过检查是否是 ModelFamily 类型）
     const isFamily = 'modelCode' in model && !styleModels.find(m => m.id === model.id);
     
@@ -589,7 +618,7 @@ const TextToImage: React.FC = () => {
             id: 'create.error',
             defaultMessage: '生成失败，请重试',
           });
-        if (!(await tryShowFromApiError(errorMessage))) {
+        if (!(await tryShowFromApiError(errorMessage, error))) {
           message.error(errorMessage);
         }
       }
@@ -620,6 +649,79 @@ const TextToImage: React.FC = () => {
       }, 1000);
     }
   }, [generatedImages.length, loading]);
+
+  useEffect(() => {
+    if (!embedActive) {
+      embedInitialAppliedRef.current = false;
+      embedPreferredAppliedRef.current = false;
+      embedUserPickedModelRef.current = false;
+    }
+  }, [embedActive]);
+
+  useEffect(() => {
+    if (!isEmbed || !embedReady || !embedConfig || embedInitialAppliedRef.current) return;
+    const updates: Record<string, unknown> = {};
+    if (embedConfig.initialPrompt) updates.prompt = embedConfig.initialPrompt;
+    if (embedConfig.initialAspectRatio) updates.aspectRatio = embedConfig.initialAspectRatio;
+    if (embedConfig.initialBatchSize != null) updates.batchSize = embedConfig.initialBatchSize;
+    if (Object.keys(updates).length > 0) {
+      form.setFieldsValue(updates);
+    }
+    embedInitialAppliedRef.current = true;
+  }, [
+    isEmbed,
+    embedReady,
+    embedConfig?.initialPrompt,
+    embedConfig?.initialAspectRatio,
+    embedConfig?.initialBatchSize,
+    form,
+    embedConfig,
+  ]);
+
+  useEffect(() => {
+    if (
+      !isEmbed ||
+      !embedReady ||
+      !embedConfig?.preferredModelCode ||
+      modelFamilies.length === 0 ||
+      embedPreferredAppliedRef.current ||
+      embedUserPickedModelRef.current
+    ) {
+      return;
+    }
+    let cancelled = false;
+    const applyPreferredModel = async () => {
+      embedPreferredAppliedRef.current = true;
+      const restored = await resolvePreferredT2iModel({
+        modelCode: embedConfig.preferredModelCode!,
+        families: modelFamilies,
+        form,
+        setSelectedFamily,
+        setSelectedModel,
+        setStyleModels,
+        fetchStyleModels,
+      });
+      if (!cancelled && !restored && modelFamilies[0] && !embedUserPickedModelRef.current) {
+        setSelectedFamily(modelFamilies[0]);
+        form.setFieldsValue({ familyId: modelFamilies[0].id });
+        await fetchStyleModels(modelFamilies[0].modelCode, modelFamilies[0]);
+      }
+    };
+    applyPreferredModel();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isEmbed,
+    embedReady,
+    embedConfig?.preferredModelCode,
+    modelFamilies,
+    form,
+    setSelectedFamily,
+    setSelectedModel,
+    setStyleModels,
+    fetchStyleModels,
+  ]);
 
   // 下载所有图片
   const downloadAllImages = () => {
@@ -678,11 +780,24 @@ const TextToImage: React.FC = () => {
   return (
     <>
       <GlobalSelectStyles />
-      <StyledCard>
-        <Row gutter={[32, 24]}>
+      <StyledCard
+        style={
+          isEmbed
+            ? {
+                boxShadow: 'none',
+                border: 'none',
+                background: 'transparent',
+                padding: 0,
+              }
+            : undefined
+        }
+      >
+        <Row gutter={isEmbed ? [28, 28] : [32, 24]}>
           {/* --- 左侧：控制面板 --- */}
-          <Col xs={24} lg={9}>
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Col xs={24} lg={isEmbed ? 13 : 9}>
+            <LeftPanel style={isEmbed ? undefined : { width: '100%' }}>
+            <Space direction="vertical" size={isEmbed ? 'large' : 'middle'} style={{ width: '100%' }}>
+              {!isEmbed || !embedConfig?.hideHeader ? (
               <TitleSection>
                 <Title
                   level={3}
@@ -711,6 +826,7 @@ const TextToImage: React.FC = () => {
                   />
                 </Text>
               </TitleSection>
+              ) : null}
 
               <Form
                 form={form}
@@ -772,9 +888,9 @@ const TextToImage: React.FC = () => {
                   </Form.Item>
                 )}
 
-                {/* 参数设置：自适应宽度 */}
-                <Row gutter={16} style={{ marginBottom: 20 }}>
-                  <Col flex="1" style={{ minWidth: 0 }}>
+                {/* 参数设置：embed 模式双列换行，页面模式单行自适应 */}
+                <Row gutter={isEmbed ? [16, 16] : [16, 16]} style={{ marginBottom: isEmbed ? 24 : 20 }}>
+                  <Col {...paramColProps}>
                     <Form.Item
                       name="aspectRatio"
                       label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.ratio" defaultMessage="画面比例" /></Space>}
@@ -795,7 +911,7 @@ const TextToImage: React.FC = () => {
                       </Select>
                     </Form.Item>
                   </Col>
-                  <Col flex="1" style={{ minWidth: 0 }}>
+                  <Col {...paramColProps}>
                     <Form.Item
                       name="imageFormat"
                       label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.image.format" defaultMessage="输出格式" /></Space>}
@@ -807,7 +923,7 @@ const TextToImage: React.FC = () => {
                     </Form.Item>
                   </Col>
                   {availableResolutions.length > 0 && (
-                    <Col flex="1" style={{ minWidth: 0 }}>
+                    <Col {...paramColProps}>
                       <Form.Item
                         name="resolution"
                         label={<Space><DesktopOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.resolution" defaultMessage="分辨率" /><Tooltip title={intl.formatMessage({ id: 'create.resolution.tooltip', defaultMessage: '选择图片的分辨率，优先级高于画面比例' })}><InfoCircleOutlined style={{ color: '#999' }} /></Tooltip></Space>}
@@ -820,7 +936,7 @@ const TextToImage: React.FC = () => {
                     </Col>
                   )}
                   {isVolcSeedream && (
-                    <Col flex="1" style={{ minWidth: 0 }}>
+                    <Col {...paramColProps}>
                       <Form.Item
                         name="seedreamWatermark"
                         label={<Space><InfoCircleOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.seedream.watermark" defaultMessage="添加水印" /></Space>}
@@ -908,26 +1024,31 @@ const TextToImage: React.FC = () => {
                 </Form.Item>
               </Form>
             </Space>
+            </LeftPanel>
           </Col>
 
           {/* --- 右侧：结果展示区 --- */}
-          <Col xs={24} lg={15}>
+          <Col xs={24} lg={isEmbed ? 11 : 15}>
             <ResultSection
               loading={loading}
               generatedImages={generatedImages}
               downloadImage={downloadImage}
               downloadAllImages={downloadAllImages}
+              onApplyImage={embedConfig?.onApplyImage}
+              applyingImageUrl={embedConfig?.applyingImageUrl}
+              applyButtonLabel={embedConfig?.applyButtonLabel}
             />
 
-            {/* 生成记录区域 */}
-            <HistorySection
-              refreshTrigger={historyRefreshTrigger}
-              onTaskDetailClick={(taskId) => {
-                setSelectedTaskId(taskId);
-                setTaskDetailModalVisible(true);
-              }}
-              downloadImage={downloadImage}
-            />
+            {(!isEmbed || !embedConfig?.hideHistory) ? (
+              <HistorySection
+                refreshTrigger={historyRefreshTrigger}
+                onTaskDetailClick={(taskId) => {
+                  setSelectedTaskId(taskId);
+                  setTaskDetailModalVisible(true);
+                }}
+                downloadImage={downloadImage}
+              />
+            ) : null}
           </Col>
         </Row>
       </StyledCard>
@@ -949,6 +1070,7 @@ const TextToImage: React.FC = () => {
           setDetailModalVisible(true);
         }}
         loading={familiesLoading}
+        {...nestedModalProps}
       />
 
       {/* 艺术风格选择模态框 */}
@@ -968,6 +1090,7 @@ const TextToImage: React.FC = () => {
           setDetailModalVisible(true);
         }}
         loading={styleModelsLoading}
+        {...nestedModalProps}
       />
 
       {/* 模型详情弹窗 */}

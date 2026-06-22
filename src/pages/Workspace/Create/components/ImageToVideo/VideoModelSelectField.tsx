@@ -11,6 +11,8 @@ export interface VideoModelSelectFieldProps {
   selectedModel: Model | null;
   modelsLoading: boolean;
   onOpenModal: () => void;
+  formItemName?: string;
+  label?: React.ReactNode;
 }
 
 function renderModelSelectDisplay(model: Model | null) {
@@ -47,18 +49,21 @@ const VideoModelSelectField: React.FC<VideoModelSelectFieldProps> = ({
   selectedModel,
   modelsLoading,
   onOpenModal,
+  formItemName = 'modelId',
+  label,
 }) => {
   const intl = useIntl();
+  const defaultLabel = (
+    <Space>
+      <RobotOutlined style={{ color: '#1890ff' }} />
+      <FormattedMessage id="create.model.select" defaultMessage="选择模型" />
+    </Space>
+  );
 
   return (
     <Form.Item
-      name="modelId"
-      label={
-        <Space>
-          <RobotOutlined style={{ color: '#1890ff' }} />
-          <FormattedMessage id="create.model.select" defaultMessage="选择模型" />
-        </Space>
-      }
+      name={formItemName}
+      label={label ?? defaultLabel}
       style={{ marginBottom: 28 }}
     >
       <div

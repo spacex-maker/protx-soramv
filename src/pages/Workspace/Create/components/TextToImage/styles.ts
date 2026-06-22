@@ -91,6 +91,60 @@ export const GlobalSelectStyles = createGlobalStyle`
     }
   }
   
+  /* 紧凑模式（如导演项目设置）：与图生视频选择框等高 */
+  .model-family-select-compact,
+  .model-style-select-compact {
+    .ant-select-selector {
+      padding: 0 !important;
+      min-height: 75px !important;
+      height: 75px !important;
+      display: flex !important;
+      align-items: center !important;
+      border-radius: 12px !important;
+      overflow: hidden !important;
+    }
+
+    &.ant-select-focused .ant-select-selector,
+    &:hover .ant-select-selector {
+      border-radius: 12px !important;
+      overflow: hidden !important;
+    }
+
+    .ant-select-selection-item {
+      padding: 0 !important;
+      height: auto !important;
+      line-height: normal !important;
+      display: flex !important;
+      align-items: center !important;
+      width: 100% !important;
+      overflow: visible !important;
+    }
+
+    .ant-select-selection-placeholder {
+      padding: 0 11px !important;
+      line-height: 75px !important;
+    }
+
+    .ant-select-selection-item > * {
+      width: 100%;
+    }
+
+    .model-select-display-compact {
+      min-height: 75px !important;
+      height: 75px !important;
+      padding: 12px 12px !important;
+      border-radius: 12px;
+
+      .model-display-brand {
+        display: none;
+      }
+
+      .model-display-name {
+        font-size: 14px;
+      }
+    }
+  }
+
   /* 艺术风格选择框显示区域样式 */
   .model-style-select {
     .ant-select-selector {
@@ -222,6 +276,19 @@ export const StyledCard = styled(Card)`
   
   .ant-card-body {
     padding: 24px;
+  }
+`;
+
+export const EmbedControlPanel = styled.div`
+  padding: 8px 16px 12px 8px;
+
+  .ant-form-item {
+    margin-bottom: 22px;
+  }
+
+  .ant-form-item-label > label {
+    height: auto;
+    white-space: normal;
   }
 `;
 

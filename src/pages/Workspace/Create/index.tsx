@@ -11,6 +11,7 @@ import {
   QuestionCircleOutlined,
   CustomerServiceOutlined,
   SoundOutlined,
+  FundProjectionScreenOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -23,6 +24,7 @@ import ImageToVideo from './components/ImageToVideo';
 import Workflow from './components/Workflow';
 import SpeechGeneration from './components/SpeechGeneration';
 import VoiceClone from './components/VoiceClone';
+import Director from './components/Director';
 
 // 路由路径到 Tab key 的映射
 const pathToTabKey: Record<string, string> = {
@@ -33,6 +35,14 @@ const pathToTabKey: Record<string, string> = {
   '/workspace/create/speech-generation': 'speechGeneration',
   '/workspace/create/voice-clone': 'voiceClone',
   '/workspace/create/workflow': 'workflow',
+  '/workspace/create/director': 'director',
+};
+
+const resolveActiveTab = (pathname: string): string => {
+  if (pathname.startsWith('/workspace/create/director')) {
+    return 'director';
+  }
+  return pathToTabKey[pathname] || 'textToImage';
 };
 
 // Tab key 到路由路径的映射
@@ -44,6 +54,7 @@ const tabKeyToPath: Record<string, string> = {
   'speechGeneration': '/workspace/create/speech-generation',
   'voiceClone': '/workspace/create/voice-clone',
   'workflow': '/workspace/create/workflow',
+  'director': '/workspace/create/director',
 };
 
 const { Content } = Layout;
@@ -185,11 +196,11 @@ const Create: React.FC = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(['textToImage', 'textToVideo', 'imageToImage', 'imageToVideo', 'speechGeneration', 'voiceClone', 'workflow']));
+  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(['textToImage', 'textToVideo', 'imageToImage', 'imageToVideo', 'speechGeneration', 'voiceClone', 'workflow', 'director']));
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
   
   // 根据当前路由获取 activeTab
-  const activeTab = pathToTabKey[location.pathname] || 'textToImage';
+  const activeTab = resolveActiveTab(location.pathname);
   
   useEffect(() => {
     const handleResize = () => {
@@ -222,7 +233,7 @@ const Create: React.FC = () => {
         setEnabledTypes(enabled);
         
         // 如果当前选中的 tab 被禁用，则导航到第一个启用的 tab
-        const currentTab = pathToTabKey[location.pathname] || 'textToImage';
+        const currentTab = resolveActiveTab(location.pathname);
         if (enabled.size > 0 && !enabled.has(currentTab)) {
           const firstEnabled = settings.find(s => s.enabled);
           if (firstEnabled && tabKeyToPath[firstEnabled.key]) {
@@ -254,6 +265,7 @@ const Create: React.FC = () => {
     speechGeneration: <SpeechGeneration />,
     voiceClone: <VoiceClone />,
     workflow: <Workflow />,
+    director: <Director />,
   }), []);
 
   const loadingPlaceholder = React.useMemo(() => (
@@ -323,6 +335,16 @@ const Create: React.FC = () => {
         </Space>
       ),
       children: loading ? loadingPlaceholder : tabContentMap.voiceClone,
+    },
+    {
+      key: 'director',
+      label: (
+        <Space>
+          <FundProjectionScreenOutlined />
+          <FormattedMessage id="create.tab.director" defaultMessage="导演系统" />
+        </Space>
+      ),
+      children: loading ? loadingPlaceholder : tabContentMap.director,
     },
     {
       key: 'workflow',

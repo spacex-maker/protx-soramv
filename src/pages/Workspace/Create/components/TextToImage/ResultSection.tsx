@@ -11,6 +11,7 @@ import {
   CheckCircleOutlined,
   DownloadOutlined,
   EyeOutlined,
+  CheckOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage } from 'react-intl';
 import {
@@ -27,6 +28,9 @@ interface ResultSectionProps {
   generatedImages: string[];
   downloadImage: (url: string, index?: number) => void;
   downloadAllImages: () => void;
+  onApplyImage?: (imageUrl: string) => void | Promise<void>;
+  applyingImageUrl?: string | null;
+  applyButtonLabel?: React.ReactNode;
 }
 
 const ResultSection: React.FC<ResultSectionProps> = ({
@@ -34,6 +38,9 @@ const ResultSection: React.FC<ResultSectionProps> = ({
   generatedImages,
   downloadImage,
   downloadAllImages,
+  onApplyImage,
+  applyingImageUrl,
+  applyButtonLabel,
 }) => {
   return (
     <ResultArea>
@@ -110,6 +117,20 @@ const ResultSection: React.FC<ResultSectionProps> = ({
                     }}
                   />
                   <ImageActions className="image-actions">
+                    {onApplyImage ? (
+                      <Button
+                        type="primary"
+                        size="small"
+                        icon={<CheckOutlined />}
+                        loading={applyingImageUrl === src}
+                        onClick={() => onApplyImage(src)}
+                        style={{ border: 'none' }}
+                      >
+                        {applyButtonLabel || (
+                          <FormattedMessage id="common.apply" defaultMessage="应用" />
+                        )}
+                      </Button>
+                    ) : null}
                     <Button
                       shape="circle"
                       icon={<DownloadOutlined />}

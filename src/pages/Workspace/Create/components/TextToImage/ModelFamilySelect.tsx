@@ -13,6 +13,10 @@ export interface ModelFamilySelectProps {
   familiesLoading: boolean;
   /** 点击选择框时打开模型家族选择弹窗 */
   onOpenModal: () => void;
+  formItemName?: string;
+  label?: React.ReactNode;
+  /** 紧凑展示（隐藏品牌/编码，降低高度） */
+  compact?: boolean;
 }
 
 /**
@@ -20,12 +24,16 @@ export interface ModelFamilySelectProps {
  */
 function renderFamilyDisplay(
   family: ModelFamily | null,
-  intl: ReturnType<typeof useIntl>
+  intl: ReturnType<typeof useIntl>,
+  compact?: boolean
 ) {
   if (!family) return null;
 
   return (
-    <ModelSelectDisplay coverImage={family.coverImage}>
+    <ModelSelectDisplay
+      coverImage={family.coverImage}
+      className={compact ? 'model-select-display-compact' : undefined}
+    >
       <div className="model-display-header">
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="model-display-name">{family.modelName}</div>
@@ -59,7 +67,8 @@ function renderFamilyDisplay(
           )
         )}
       </div>
-      {(family.companyName || (family.modelName === 'Nano Banana Pro' ? 'Google' : null)) && (
+      {!compact &&
+        (family.companyName || (family.modelName === 'Nano Banana Pro' ? 'Google' : null)) && (
         <span className="model-display-brand">{family.companyName || 'Google'}</span>
       )}
     </ModelSelectDisplay>
@@ -74,22 +83,26 @@ const ModelFamilySelect: React.FC<ModelFamilySelectProps> = ({
   selectedFamily,
   familiesLoading,
   onOpenModal,
+  formItemName = 'familyId',
+  label,
+  compact = false,
 }) => {
   const intl = useIntl();
+  const defaultLabel = (
+    <Space>
+      <RobotOutlined style={{ color: '#1890ff' }} />
+      <FormattedMessage
+        id="create.model.family.select"
+        defaultMessage="选择模型家族"
+      />
+    </Space>
+  );
 
   return (
     <Form.Item
-      name="familyId"
-      label={
-        <Space>
-          <RobotOutlined style={{ color: '#1890ff' }} />
-          <FormattedMessage
-            id="create.model.family.select"
-            defaultMessage="选择模型家族"
-          />
-        </Space>
-      }
-      style={{ marginBottom: 20 }}
+      name={formItemName}
+      label={label ?? defaultLabel}
+      style={{ marginBottom: compact ? 28 : 20 }}
     >
       <div
         onClick={() => !familiesLoading && onOpenModal()}
@@ -105,13 +118,13 @@ const ModelFamilySelect: React.FC<ModelFamilySelectProps> = ({
           loading={familiesLoading}
           style={{ width: '100%', pointerEvents: 'none' }}
           optionLabelProp="label"
-          className="model-family-select"
+          className={compact ? 'model-family-select model-family-select-compact' : 'model-family-select'}
         >
           {selectedFamily && (
             <Select.Option
               key={selectedFamily.id}
               value={selectedFamily.id}
-              label={renderFamilyDisplay(selectedFamily, intl)}
+              label={renderFamilyDisplay(selectedFamily, intl, compact)}
             >
               {selectedFamily.modelName}
             </Select.Option>

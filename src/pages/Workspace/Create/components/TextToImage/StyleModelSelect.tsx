@@ -15,6 +15,10 @@ export interface StyleModelSelectProps {
   styleModelsLoading: boolean;
   /** 点击选择框时打开艺术风格选择弹窗 */
   onOpenModal: () => void;
+  formItemName?: string;
+  label?: React.ReactNode;
+  /** 紧凑展示（隐藏品牌/编码，降低高度） */
+  compact?: boolean;
 }
 
 /**
@@ -23,12 +27,16 @@ export interface StyleModelSelectProps {
 function renderStyleModelDisplay(
   model: Model | ModelFamily | null,
   isDefault: boolean,
-  intl: ReturnType<typeof useIntl>
+  intl: ReturnType<typeof useIntl>,
+  compact?: boolean
 ) {
   if (!model) return null;
 
   return (
-    <ModelSelectDisplay coverImage={model.coverImage}>
+    <ModelSelectDisplay
+      coverImage={model.coverImage}
+      className={compact ? 'model-select-display-compact' : undefined}
+    >
       <div className="model-display-header">
         <div style={{ flex: 1, minWidth: 0 }}>
           <div className="model-display-name">
@@ -64,7 +72,8 @@ function renderStyleModelDisplay(
           )
         )}
       </div>
-      {(model.companyName || (model.modelName === 'Nano Banana Pro' ? 'Google' : null)) && (
+      {!compact &&
+        (model.companyName || (model.modelName === 'Nano Banana Pro' ? 'Google' : null)) && (
         <span className="model-display-brand">{model.companyName || 'Google'}</span>
       )}
     </ModelSelectDisplay>
@@ -80,20 +89,24 @@ const StyleModelSelect: React.FC<StyleModelSelectProps> = ({
   selectedModel,
   styleModelsLoading,
   onOpenModal,
+  formItemName = 'styleModelId',
+  label,
+  compact = false,
 }) => {
   const intl = useIntl();
+  const defaultLabel = (
+    <Space>
+      <AppstoreOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+      <FormattedMessage id="create.style" defaultMessage="艺术风格" />
+    </Space>
+  );
 
   return (
-    <Row gutter={16} style={{ marginBottom: 32 }}>
+    <Row gutter={16} style={{ marginBottom: compact ? 0 : 32 }}>
       <Col span={24}>
         <Form.Item
-          name="styleModelId"
-          label={
-            <Space>
-              <AppstoreOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-              <FormattedMessage id="create.style" defaultMessage="艺术风格" />
-            </Space>
-          }
+          name={formItemName}
+          label={label ?? defaultLabel}
           style={{ marginBottom: 0 }}
         >
           <div
@@ -114,7 +127,7 @@ const StyleModelSelect: React.FC<StyleModelSelectProps> = ({
               allowClear={false}
               style={{ width: '100%', pointerEvents: 'none' }}
               optionLabelProp="label"
-              className="model-style-select"
+              className={compact ? 'model-style-select model-style-select-compact' : 'model-style-select'}
             >
               {(selectedModel || selectedFamily) && (
                 <Select.Option
@@ -122,9 +135,9 @@ const StyleModelSelect: React.FC<StyleModelSelectProps> = ({
                   value={selectedModel?.id ?? null}
                   label={
                     selectedModel
-                      ? renderStyleModelDisplay(selectedModel, false, intl)
+                      ? renderStyleModelDisplay(selectedModel, false, intl, compact)
                       : selectedFamily
-                        ? renderStyleModelDisplay(selectedFamily, true, intl)
+                        ? renderStyleModelDisplay(selectedFamily, true, intl, compact)
                         : null
                   }
                 >

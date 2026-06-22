@@ -59,11 +59,13 @@ const LoginPage = () => {
         saveRememberedLogin(email, password, rememberPassword);
         message.success("登录成功");
         navigate("/workspace");
-      } else {
+      } else if (!result.isUserDisabled && !result.isIpBlocked) {
         setError(result.message || "登录失败");
       }
     } catch (error) {
-      setError("登录失败，请稍后重试");
+      if (!error?.isUserDisabled && !error?.isIpBlocked) {
+        setError(error.response?.data?.message || '登录失败，请稍后重试');
+      }
     } finally {
       setLoading(false);
     }

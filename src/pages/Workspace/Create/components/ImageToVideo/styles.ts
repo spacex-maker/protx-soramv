@@ -174,6 +174,19 @@ export const StyledCard = styled(Card)`
   }
 `;
 
+export const EmbedControlPanel = styled.div`
+  padding: 8px 16px 12px 8px;
+
+  .ant-form-item {
+    margin-bottom: 22px;
+  }
+
+  .ant-form-item-label > label {
+    height: auto;
+    white-space: normal;
+  }
+`;
+
 export const ResultArea = styled.div`
   background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#f9f9f9'};
   border-radius: 12px;

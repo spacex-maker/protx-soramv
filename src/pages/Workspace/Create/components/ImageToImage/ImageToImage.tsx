@@ -1013,7 +1013,7 @@ const ImageToImage: React.FC = () => {
                             id: 'create.image.generate.failed', 
                             defaultMessage: '图片生成失败，请重试' 
                           });
-      if (!(await tryShowFromApiError(errorMessage))) {
+      if (!(await tryShowFromApiError(errorMessage, error))) {
         message.error(errorMessage);
       }
     } finally {

@@ -35,7 +35,18 @@ export const isFree = (
   return false;
 };
 
-// 根据比例值获取对应的图标和标签
+export type T2iPriceFields = {
+  outputPrice?: number | null;
+  currency?: string | null;
+  tokenCost?: number | null;
+};
+
+/** 收费文生图模型（排除免费 LOCAL 模型） */
+export const isPaidT2iModel = (model: T2iPriceFields) =>
+  !isFree(model.outputPrice, model.currency, model.tokenCost);
+
+export const filterPaidT2iModels = <T extends T2iPriceFields>(models: T[]) =>
+  models.filter(isPaidT2iModel);
 export const getAspectRatioOption = (ratio: string, intl: any) => {
   const ratioMap: {
     [key: string]: { labelKey: string; defaultLabel: string; icon: React.ReactNode };

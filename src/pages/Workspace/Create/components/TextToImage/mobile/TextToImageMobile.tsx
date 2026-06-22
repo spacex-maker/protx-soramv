@@ -900,7 +900,7 @@ const TextToImageMobile: React.FC = () => {
           id: 'create.generate.error',
           defaultMessage: '生成失败，请检查网络连接或稍后重试',
         });
-      if (!(await tryShowFromApiError(errorMessage))) {
+      if (!(await tryShowFromApiError(errorMessage, error))) {
         message.error(errorMessage);
       }
     } finally {

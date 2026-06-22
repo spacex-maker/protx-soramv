@@ -259,6 +259,8 @@ interface ModelSelectionModalProps {
   onSelect: (model: any) => void;
   onShowDetail?: (model: any) => void;
   loading?: boolean;
+  zIndex?: number;
+  getContainer?: () => HTMLElement;
 }
 
 const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
@@ -271,6 +273,8 @@ const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
   onSelect,
   onShowDetail,
   loading = false,
+  zIndex,
+  getContainer,
 }) => {
   const { token } = theme.useToken();
   const intl = useIntl();
@@ -374,6 +378,8 @@ const ModelSelectionModal: React.FC<ModelSelectionModalProps> = ({
       centered
       closeIcon={null}
       footer={null}
+      zIndex={zIndex}
+      getContainer={getContainer}
       styles={{
         mask: {
           backdropFilter: 'blur(12px)',

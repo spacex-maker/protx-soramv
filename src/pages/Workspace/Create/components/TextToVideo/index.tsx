@@ -919,7 +919,7 @@ const TextToVideo: React.FC = () => {
                             id: 'create.video.generate.failed', 
                             defaultMessage: '视频生成失败，请重试' 
                           });
-      if (!(await tryShowFromApiError(errorMessage))) {
+      if (!(await tryShowFromApiError(errorMessage, error))) {
         message.error(errorMessage);
       }
     } finally {

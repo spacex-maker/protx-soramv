@@ -49,6 +49,7 @@ import {
   UploadIcon,
   UploadText,
   UploadHint,
+  EmbedControlPanel,
 } from './styles';
 import VideoModelSelectionModal from './VideoModelSelectionModal';
 import VideoModelSelectField from './VideoModelSelectField';
@@ -58,6 +59,7 @@ import {
   getModelAspectRatios, 
   getModelDurationOptions,
   getBase64,
+  normalizeUrl,
 } from './utils';
 import HistorySection from './HistorySection';
 import TaskDetailModal from './TaskDetailModal';
@@ -79,6 +81,9 @@ import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 import ImageGenPickerModal, { type ImagePickerTarget } from '../shared/ImageGenPickerModal';
 import SelectedImagePreviewOverlay from '../shared/SelectedImagePreviewOverlay';
 import { preloadVideoModelCovers } from '../shared/videoModelCoverPreload';
+import { filterPaidT2iModels } from '../TextToImage/utils';
+import type { ImageToVideoProps } from './embedTypes';
+import { resolvePreferredI2vModel } from './resolvePreferredI2vModel';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -121,12 +126,14 @@ function normalizeSeedance2ResolutionFromModel(model: Model | null | undefined):
   return '720p';
 }
 
-export interface ImageToVideoProps {
-  /** 是否为 Seedance 专用页（仅展示 Seedance 模型、独立路由） */
-  seedancePage?: boolean;
-}
+export type { ImageToVideoEmbedConfig, ImageToVideoEmbedTaskPayload, ImageToVideoProps } from './embedTypes';
 
-const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => {
+const ImageToVideo: React.FC<ImageToVideoProps> = ({
+  seedancePage = false,
+  variant = 'page',
+  embedConfig,
+  embedActive = true,
+}) => {
   const intl = useIntl();
   const { tokenBalance, balanceLoading } = useTokenBalance();
   const {
@@ -188,6 +195,27 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
   const [modelDetailModalVisible, setModelDetailModalVisible] = useState(false);
   const [selectedModelForDetail, setSelectedModelForDetail] = useState<Model | null>(null);
 
+  const isEmbed = variant === 'embed';
+  const embedReady = !isEmbed || embedActive;
+  const LeftPanel = isEmbed ? EmbedControlPanel : 'div';
+  const paramColProps = isEmbed
+    ? ({ xs: 24 as const, sm: 12 as const })
+    : ({ flex: '1' as const, style: { minWidth: 0 } });
+  const nestedModalProps = isEmbed
+    ? { zIndex: 2100, getContainer: () => document.body }
+    : {};
+  const embedInitialAppliedRef = useRef(false);
+  const embedPreferredAppliedRef = useRef(false);
+  const embedUserPickedModelRef = useRef(false);
+  const embedConfigRef = useRef(embedConfig);
+  embedConfigRef.current = embedConfig;
+
+  const notifyEmbedTask = async (taskId: string, videoUrl?: string) => {
+    const handler = embedConfigRef.current?.onTaskSubmitted;
+    if (!isEmbed || !handler) return;
+    await handler({ taskId, videoUrl });
+  };
+
   // 初始化时确保标志为 false
   useEffect(() => {
     isUserSubmitRef.current = false;
@@ -217,9 +245,12 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
           if (seedancePage) {
             list = list.filter((m: Model) => (m.modelCode || '').toLowerCase().includes('seedance'));
           }
+          if (isEmbed && embedConfig?.excludeFreeModels) {
+            list = filterPaidT2iModels(list);
+          }
           setModels(list);
           const firstModel = list[0];
-          if (firstModel) {
+          if (firstModel && !(isEmbed && embedConfig?.preferredModelCode && !embedUserPickedModelRef.current)) {
             setSelectedModel(firstModel);
             form.setFieldsValue({ modelId: firstModel.id });
             updateFormByModelRef.current(firstModel);
@@ -272,8 +303,10 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     };
 
     fetchModels();
-    fetchHistoryTasks();
-    fetchPendingTasks();
+    if (!isEmbed) {
+      fetchHistoryTasks();
+      fetchPendingTasks();
+    }
 
     return () => {
       if (abortControllerRef.current) {
@@ -290,7 +323,69 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
       pollingTasksRef.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 与历史一致：intl / seedance 页切换时重拉
-  }, [intl, seedancePage]);
+  }, [intl, seedancePage, isEmbed, embedConfig?.excludeFreeModels]);
+
+  useEffect(() => {
+    if (!embedActive) {
+      embedInitialAppliedRef.current = false;
+      embedPreferredAppliedRef.current = false;
+      embedUserPickedModelRef.current = false;
+    }
+  }, [embedActive]);
+
+  useEffect(() => {
+    if (!isEmbed || !embedReady || !embedConfig || embedInitialAppliedRef.current) return;
+    const updates: Record<string, unknown> = {};
+    if (embedConfig.initialPrompt) updates.prompt = embedConfig.initialPrompt;
+    if (embedConfig.initialAspectRatio) updates.aspectRatio = embedConfig.initialAspectRatio;
+    if (embedConfig.initialDuration != null) updates.duration = embedConfig.initialDuration;
+    if (embedConfig.initialSeedanceCameraFixed != null) {
+      updates.seedanceCameraFixed = embedConfig.initialSeedanceCameraFixed;
+    }
+    if (Object.keys(updates).length > 0) {
+      form.setFieldsValue(updates);
+      if (typeof updates.prompt === 'string') {
+        setPromptValue(updates.prompt);
+      }
+    }
+    if (embedConfig.initialStartFrameUrl) {
+      setOriginalImageRemoteUrl(embedConfig.initialStartFrameUrl);
+      setOriginalImageUrl(normalizeUrl(embedConfig.initialStartFrameUrl));
+      setOriginalImageFile(null);
+    }
+    if (embedConfig.initialEndFrameUrl) {
+      setEndFrameImageRemoteUrl(embedConfig.initialEndFrameUrl);
+      setEndFrameImageUrl(normalizeUrl(embedConfig.initialEndFrameUrl));
+      setEndFrameImageFile(null);
+    }
+    embedInitialAppliedRef.current = true;
+  }, [isEmbed, embedReady, embedConfig, form]);
+
+  useEffect(() => {
+    if (
+      !isEmbed ||
+      !embedReady ||
+      !embedConfig?.preferredModelCode ||
+      models.length === 0 ||
+      embedPreferredAppliedRef.current ||
+      embedUserPickedModelRef.current
+    ) {
+      return;
+    }
+    embedPreferredAppliedRef.current = true;
+    const restored = resolvePreferredI2vModel({
+      modelCode: embedConfig.preferredModelCode,
+      models,
+      form,
+      setSelectedModel,
+      updateFormByModel: (model) => updateFormByModelRef.current(model),
+    });
+    if (!restored && models[0] && !embedUserPickedModelRef.current) {
+      setSelectedModel(models[0]);
+      form.setFieldsValue({ modelId: models[0].id });
+      updateFormByModelRef.current(models[0]);
+    }
+  }, [isEmbed, embedReady, embedConfig?.preferredModelCode, models, form]);
 
   useEffect(() => {
     if (selectedModel && models.length > 0) {
@@ -472,6 +567,9 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
   updateFormByModelRef.current = updateFormByModel;
 
   const applySelectedModel = (model: Model) => {
+    if (isEmbed) {
+      embedUserPickedModelRef.current = true;
+    }
     if (!isSeedance2Model(model)) {
       setEndFrameImageUrl(null);
       setEndFrameImageFile(null);
@@ -500,12 +598,6 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     // 验证文件类型
     if (!file.type.startsWith('image/')) {
       message.error(intl.formatMessage({ id: 'create.i2v.fileType.error', defaultMessage: '请选择图片文件' }));
-      return;
-    }
-
-    // 验证文件大小（例如限制为10MB）
-    if (file.size > 10 * 1024 * 1024) {
-      message.error(intl.formatMessage({ id: 'create.i2v.fileSize.error', defaultMessage: '图片文件大小不能超过10MB' }));
       return;
     }
 
@@ -571,10 +663,6 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
     }
     if (!file.type.startsWith('image/')) {
       message.error(intl.formatMessage({ id: 'create.i2v.fileType.error', defaultMessage: '请选择图片文件' }));
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      message.error(intl.formatMessage({ id: 'create.i2v.fileSize.error', defaultMessage: '图片文件大小不能超过10MB' }));
       return;
     }
     try {
@@ -995,6 +1083,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
               id: 'create.video.generate.success', 
               defaultMessage: '视频生成成功' 
             }));
+            await notifyEmbedTask(taskId, taskData.videoUrl);
           } else {
             throw new Error(intl.formatMessage({ 
               id: 'create.video.generate.noUrl', 
@@ -1331,6 +1420,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
           imageUrl = await uploadImageToServer(originalImageFile);
         }
         const imageUrls: string[] = [imageUrl];
+        let seedanceContentMode: 'first_last_frame' | 'multimodal_reference' | undefined;
         if (isSeedance2Model(selectedModel)) {
           let endUrl = endFrameImageRemoteUrl;
           if (!endUrl && endFrameImageFile) {
@@ -1339,6 +1429,10 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
           if (endUrl) {
             imageUrls.push(endUrl);
           }
+          const hasExtraRefs =
+            splitSeedanceRefLines(values.seedanceVideoRefsRaw).length > 0 ||
+            splitSeedanceRefLines(values.seedanceAudioRefsRaw).length > 0;
+          seedanceContentMode = hasExtraRefs ? 'multimodal_reference' : 'first_last_frame';
         }
         
         // 关闭上传提示
@@ -1400,6 +1494,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
           const aRefs = splitSeedanceRefLines(values.seedanceAudioRefsRaw);
           if (vRefs.length) requestData.seedanceVideoReferenceUrls = vRefs;
           if (aRefs.length) requestData.seedanceAudioReferenceUrls = aRefs;
+          if (seedanceContentMode) requestData.seedanceContentMode = seedanceContentMode;
         } else {
           requestData.seedanceCameraFixed = values.seedanceCameraFixed === true;
           requestData.seedanceWatermark = values.seedanceWatermark !== false;
@@ -1429,6 +1524,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
             defaultMessage: '视频生成任务已提交，正在排队中...' 
           }));
           
+          await notifyEmbedTask(String(result.id));
           startPolling(
             result.id, 
             values.aspectRatio || '16:9', 
@@ -1451,6 +1547,9 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
             id: 'create.video.generate.success', 
             defaultMessage: '视频生成成功' 
           }));
+          if (result.id) {
+            await notifyEmbedTask(String(result.id), result.videoUrl);
+          }
         }
         // 如果任务失败
         else if (status === 'failed' || status === 'error') {
@@ -1469,6 +1568,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
           }));
           
           if (result.id) {
+            await notifyEmbedTask(String(result.id));
             startPolling(
               result.id, 
               values.aspectRatio || '16:9', 
@@ -1514,7 +1614,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                             id: 'create.video.generate.failed', 
                             defaultMessage: '视频生成失败，请重试' 
                           });
-      if (!(await tryShowFromApiError(errorMessage))) {
+      if (!(await tryShowFromApiError(errorMessage, error))) {
         message.error(errorMessage);
       }
     } finally {
@@ -1534,11 +1634,24 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
   return (
     <>
       <GlobalSelectStyles />
-      <StyledCard>
-        <Row gutter={[32, 24]}>
+      <StyledCard
+        style={
+          isEmbed
+            ? {
+                boxShadow: 'none',
+                border: 'none',
+                background: 'transparent',
+                padding: 0,
+              }
+            : undefined
+        }
+      >
+        <Row gutter={isEmbed ? [28, 28] : [32, 24]}>
           {/* --- 左侧：控制面板 --- */}
-          <Col xs={24} lg={9}>
+          <Col xs={24} lg={isEmbed ? 13 : 9}>
+            <LeftPanel style={isEmbed ? undefined : { width: '100%' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
+              {(!isEmbed || !embedConfig?.hideHeader) && (
               <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1558,6 +1671,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                     )}
                   </Text>
                 </div>
+                {(!isEmbed || !embedConfig?.hideTaskQueue) && (
                 <Button
                   type="default"
                   icon={<UnorderedListOutlined />}
@@ -1595,7 +1709,9 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
                     </span>
                   )}
                 </Button>
+                )}
               </div>
+              )}
 
               <div
                 onKeyDown={(e) => {
@@ -2018,10 +2134,11 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
               </Form>
               </div>
             </Space>
+            </LeftPanel>
           </Col>
 
           {/* --- 右侧：结果展示区 --- */}
-          <Col xs={24} lg={15}>
+          <Col xs={24} lg={isEmbed ? 11 : 15}>
             <ResultArea>
               {loading ? (
                 <Space direction="vertical" align="center">
@@ -2183,15 +2300,17 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
         </Modal>
 
         {/* 生成记录 */}
-        <HistorySection
-          historyTasks={historyTasks}
-          historyLoading={historyLoading}
-          historyPagination={historyPagination}
-          onRefresh={() => fetchHistoryTasks(historyPagination.current, historyPagination.pageSize)}
-          onPageChange={handleHistoryPageChange}
-          onTaskClick={handleShowTaskDetail}
-          getStatusText={getStatusText}
-        />
+        {(!isEmbed || !embedConfig?.hideHistory) ? (
+          <HistorySection
+            historyTasks={historyTasks}
+            historyLoading={historyLoading}
+            historyPagination={historyPagination}
+            onRefresh={() => fetchHistoryTasks(historyPagination.current, historyPagination.pageSize)}
+            onPageChange={handleHistoryPageChange}
+            onTaskClick={handleShowTaskDetail}
+            getStatusText={getStatusText}
+          />
+        ) : null}
       </StyledCard>
 
       <VideoModelSelectionModal
@@ -2210,6 +2329,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({ seedancePage = false }) => 
           setModelDetailModalVisible(true);
         }}
         loading={modelsLoading}
+        {...nestedModalProps}
       />
 
       {/* 任务详情模态框 */}

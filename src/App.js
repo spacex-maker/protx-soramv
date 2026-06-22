@@ -5,6 +5,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ConfigProvider, theme, message } from 'antd';
 import { ThemeProvider } from 'styled-components';
 import LoginPage from "./pages/Login";
+import IpBlockedPage from "./pages/IpBlocked";
 import SignupPage from "./pages/Signup";
 import OpenRobotXLoginPage from "./pages/OpenRobotX/auth/OpenRobotXLoginPage";
 import OpenRobotXSignupPage from "./pages/OpenRobotX/auth/OpenRobotXSignupPage";
@@ -350,6 +351,7 @@ export default function App() {
               <Route path="/media-tools" element={<MediaToolsPage />} />
               <Route path="/tools" element={<MediaToolsPage />} />
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/blocked" element={<IpBlockedPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/auth/google/callback" element={<GoogleCallback />} />
@@ -359,7 +361,7 @@ export default function App() {
                   <ProfilePage />
                 </PrivateRoute>
               } />
-              <Route path="/verification" element={
+              <Route path="/verification/*" element={
                 <PrivateRoute>
                   <VerificationPage />
                 </PrivateRoute>

@@ -1,5 +1,8 @@
 import { useState, useCallback } from 'react';
 import { fetchTokenBalance, isInsufficientBalanceMessage } from './balanceUtils';
+import { isKycRequiredApiResponse } from 'utils/kycRequired';
+import { isIpBlockedApiResponse } from 'utils/ipBlocked';
+import { isUserDisabledApiResponse } from 'utils/userDisabled';
 
 export function useInsufficientBalanceGuard() {
   const [open, setOpen] = useState(false);
@@ -28,9 +31,26 @@ export function useInsufficientBalanceGuard() {
     [openInsufficientModal],
   );
 
-  /** 接口错误文案为余额不足时弹出对话框 */
+  /** 接口错误文案为余额不足时弹出对话框；实名认证错误由全局拦截器处理 */
   const tryShowFromApiError = useCallback(
-    async (message: string | null | undefined): Promise<boolean> => {
+    async (message: string | null | undefined, error?: unknown): Promise<boolean> => {
+      if (error && typeof error === 'object') {
+        const err = error as {
+          isKycRequired?: boolean;
+          isUserDisabled?: boolean;
+          isIpBlocked?: boolean;
+          response?: { data?: unknown };
+        };
+        if (err.isKycRequired || isKycRequiredApiResponse(err.response?.data)) {
+          return true;
+        }
+        if (err.isIpBlocked || isIpBlockedApiResponse(err.response?.data)) {
+          return true;
+        }
+        if (err.isUserDisabled || isUserDisabledApiResponse(err.response?.data)) {
+          return true;
+        }
+      }
       if (!isInsufficientBalanceMessage(message)) return false;
       const balance = await fetchTokenBalance();
       openInsufficientModal(0, balance);

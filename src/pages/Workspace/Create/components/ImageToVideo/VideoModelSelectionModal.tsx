@@ -29,6 +29,8 @@ interface VideoModelSelectionModalProps {
   onSelect: (model: any) => void;
   onShowDetail?: (model: any) => void;
   loading?: boolean;
+  zIndex?: number;
+  getContainer?: () => HTMLElement;
 }
 
 const VideoModelSelectionModal: React.FC<VideoModelSelectionModalProps> = ({
@@ -40,6 +42,8 @@ const VideoModelSelectionModal: React.FC<VideoModelSelectionModalProps> = ({
   selectedModel,
   onSelect,
   onShowDetail,
+  zIndex,
+  getContainer,
 }) => {
   const { token } = theme.useToken();
   const intl = useIntl();
@@ -89,6 +93,8 @@ const VideoModelSelectionModal: React.FC<VideoModelSelectionModalProps> = ({
       closeIcon={null}
       footer={null}
       destroyOnClose={false}
+      zIndex={zIndex}
+      getContainer={getContainer}
       styles={{
         mask: {
           backgroundColor: 'rgba(0, 0, 0, 0.55)',

@@ -1,8 +1,15 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { FormInstance, message } from 'antd';
 import { useIntl } from 'react-intl';
 import instance from 'api/axios';
 import { ModelFamily, Model } from './types';
+import { filterPaidT2iModels } from './utils';
+
+export interface FetchStyleModelsOptions {
+  autoSelectFirst?: boolean;
+  preferredStyleModelId?: number;
+  excludeFree?: boolean;
+}
 
 export interface UseStyleModelsOptions {
   form: FormInstance;
@@ -17,7 +24,11 @@ export interface UseStyleModelsResult {
   selectedModel: Model | null;
   setSelectedModel: React.Dispatch<React.SetStateAction<Model | null>>;
   styleModelsLoading: boolean;
-  fetchStyleModels: (parentModelCode: string, family?: ModelFamily | null) => Promise<void>;
+  fetchStyleModels: (
+    parentModelCode: string,
+    family?: ModelFamily | null,
+    options?: FetchStyleModelsOptions
+  ) => Promise<void>;
 }
 
 function mapItemToModel(item: Record<string, unknown>): Model {
@@ -62,10 +73,12 @@ export function useStyleModels({
   const [selectedModel, setSelectedModel] = useState<Model | null>(null);
   const [styleModelsLoading, setStyleModelsLoading] = useState(false);
 
-  const fetchStyleModels = async (
+  const fetchStyleModels = useCallback(async (
     parentModelCode: string,
-    family: ModelFamily | null = null
+    family: ModelFamily | null = null,
+    options: FetchStyleModelsOptions = {}
   ) => {
+    const { autoSelectFirst = true, preferredStyleModelId, excludeFree = false } = options;
     setStyleModelsLoading(true);
     try {
       const response = await instance.get(
@@ -81,15 +94,36 @@ export function useStyleModels({
         response.data.data &&
         response.data.data.length > 0
       ) {
-        const styleModelsList = (response.data.data as Record<string, unknown>[]).map(
-          mapItemToModel
+        const styleModelsList = filterPaidT2iModels(
+          (response.data.data as Record<string, unknown>[]).map(mapItemToModel)
         );
+        if (excludeFree && styleModelsList.length === 0) {
+          setStyleModels([]);
+          setSelectedModel(null);
+          form.setFieldsValue({ styleModelId: null });
+          onAfterLoadRef.current?.(targetFamily ?? null);
+          return;
+        }
         setStyleModels(styleModelsList);
         if (styleModelsList.length > 0) {
-          const firstStyleModel = styleModelsList[0];
-          setSelectedModel(firstStyleModel);
-          form.setFieldsValue({ styleModelId: firstStyleModel.id });
-          onAfterLoadRef.current?.(firstStyleModel);
+          const preferredStyle =
+            preferredStyleModelId != null
+              ? styleModelsList.find((item) => item.id === preferredStyleModelId)
+              : undefined;
+          if (preferredStyle) {
+            setSelectedModel(preferredStyle);
+            form.setFieldsValue({ styleModelId: preferredStyle.id });
+            onAfterLoadRef.current?.(preferredStyle);
+          } else if (autoSelectFirst) {
+            const firstStyleModel = styleModelsList[0];
+            setSelectedModel(firstStyleModel);
+            form.setFieldsValue({ styleModelId: firstStyleModel.id });
+            onAfterLoadRef.current?.(firstStyleModel);
+          } else {
+            setSelectedModel(null);
+            form.setFieldsValue({ styleModelId: null });
+            onAfterLoadRef.current?.(targetFamily ?? null);
+          }
         } else {
           setSelectedModel(null);
           form.setFieldsValue({ styleModelId: null });
@@ -118,7 +152,7 @@ export function useStyleModels({
     } finally {
       setStyleModelsLoading(false);
     }
-  };
+  }, [form, intl, modelFamilies]);
 
   return {
     styleModels,

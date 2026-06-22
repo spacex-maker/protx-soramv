@@ -19,6 +19,7 @@
     "@testing-library/user-event": "^14.4.3",
     "@xyflow/react": "^12.9.3",
     "antd": "^5.23.2",
+    "antd-img-crop": "^4.30.0",
     "aos": "^2.3.4",
     "axios": "^1.7.9",
     "bootstrap": "^5.3.3",

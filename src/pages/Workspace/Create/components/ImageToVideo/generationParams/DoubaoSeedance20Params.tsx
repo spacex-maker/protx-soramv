@@ -186,14 +186,14 @@ const DoubaoSeedance20Params: React.FC<DoubaoSeedance20ParamsProps> = ({
               onOpenEndFramePicker,
             )}
           </Form.Item>
+          <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
+            <FormattedMessage
+              id="create.seedance2.endFrame.hint"
+              defaultMessage="可选。作为视频结束画面，与首帧一起限定片头片尾"
+            />
+          </Text>
         </Col>
       </Row>
-      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 20 }}>
-        <FormattedMessage
-          id="create.seedance2.endFrame.hint"
-          defaultMessage="上传后作为第二帧传入，与首帧共同约束视频起止画面"
-        />
-      </Text>
 
       {ratioAndFormatRow}
 

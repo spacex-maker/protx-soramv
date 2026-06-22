@@ -12,6 +12,10 @@ import pt_PT from '../locales/pt_PT';
 import ru_RU from '../locales/ru_RU';
 import ar_SA from '../locales/ar_SA';
 
+import { isKycRequiredApiResponse } from '../utils/kycRequired';
+import { extractIpBlockReason, isIpBlockedApiResponse, redirectToIpBlockedPage } from '../utils/ipBlocked';
+import { extractDisabledReason, isUserDisabledApiResponse } from '../utils/userDisabled';
+
 const AUTH_MODAL_LOCALES = {
   zh: zh_CN,
   en: en_US,
@@ -36,6 +40,33 @@ const getAuthModalMessages = () => {
     content: t['auth.modal.content'] || 'Your session has expired or you are not logged in. Please log in to continue.',
     okText: t['auth.modal.ok'] || 'Go to Login',
     cancelText: t['auth.modal.cancel'] || 'Later',
+  };
+};
+
+const getKycModalMessages = () => {
+  const locale = (typeof localStorage !== 'undefined' && localStorage.getItem('locale')) || '';
+  const key = String(locale).toLowerCase().split('-')[0];
+  const t = AUTH_MODAL_LOCALES[key] || en_US;
+  return {
+    title: t['kyc.modal.title'] || 'Real-name verification required',
+    content:
+      t['kyc.modal.content'] ||
+      'This model requires identity verification. Please complete real-name verification before use.',
+    okText: t['kyc.modal.ok'] || 'Go to Verification',
+    cancelText: t['kyc.modal.cancel'] || 'Later',
+  };
+};
+
+const getUserDisabledModalMessages = (reason) => {
+  const locale = (typeof localStorage !== 'undefined' && localStorage.getItem('locale')) || '';
+  const key = String(locale).toLowerCase().split('-')[0];
+  const t = AUTH_MODAL_LOCALES[key] || en_US;
+  return {
+    title: t['userDisabled.modal.title'] || 'Account Disabled',
+    content:
+      (t['userDisabled.modal.contentPrefix'] || 'Your account has been disabled. Reason: ') + (reason || t['userDisabled.modal.defaultReason'] || 'Please contact support.'),
+    okText: t['userDisabled.modal.ok'] || 'OK',
+    cancelText: t['userDisabled.modal.cancel'] || 'Close',
   };
 };
 
@@ -85,6 +116,9 @@ instance.interceptors.request.use(
 
 // 防止重复弹框的标记
 let isShowingModal = false;
+let isShowingKycModal = false;
+let isShowingDisabledModal = false;
+let isRedirectingIpBlocked = false;
 
 // 处理401/403提示：使用主题色、居中、主按钮强调
 const handle401Error = () => {
@@ -120,13 +154,106 @@ const handle401Error = () => {
   });
 };
 
+const handleKycRequiredError = () => {
+  if (isShowingKycModal) return;
+  isShowingKycModal = true;
+
+  const msg = getKycModalMessages();
+  Modal.confirm({
+    type: 'warning',
+    title: msg.title,
+    content: msg.content,
+    okText: msg.okText,
+    okType: 'primary',
+    cancelText: msg.cancelText,
+    centered: true,
+    maskClosable: false,
+    closable: true,
+    width: 420,
+    styles: {
+      body: { paddingTop: 8 },
+      footer: { marginTop: 16 },
+    },
+    onOk: () => {
+      isShowingKycModal = false;
+      window.location.href = '/verification';
+    },
+    onCancel: () => {
+      isShowingKycModal = false;
+    },
+  });
+};
+
+const handleIpBlockedError = (payload) => {
+  if (isRedirectingIpBlocked) return;
+  if (typeof window !== 'undefined' && window.location.pathname === '/blocked') return;
+  isRedirectingIpBlocked = true;
+  delete instance.defaults.headers.common.Authorization;
+  const reason = extractIpBlockReason(payload);
+  redirectToIpBlockedPage(reason);
+};
+
+const handleUserDisabledError = (payload) => {
+  if (isShowingDisabledModal) return;
+  isShowingDisabledModal = true;
+
+  localStorage.removeItem('token');
+  localStorage.removeItem('userInfo');
+  delete instance.defaults.headers.common.Authorization;
+
+  const reason = extractDisabledReason(payload);
+  const msg = getUserDisabledModalMessages(reason);
+  Modal.warning({
+    title: msg.title,
+    content: msg.content,
+    okText: msg.okText,
+    centered: true,
+    maskClosable: false,
+    closable: true,
+    width: 440,
+    onOk: () => {
+      isShowingDisabledModal = false;
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+    },
+    onCancel: () => {
+      isShowingDisabledModal = false;
+    },
+  });
+};
+
 // 响应拦截器
 instance.interceptors.response.use(
-  response => response,
+  (response) => {
+    if (isKycRequiredApiResponse(response?.data)) {
+      handleKycRequiredError();
+      const message = response?.data?.message || 'KYC required';
+      return Promise.reject(Object.assign(new Error(message), { isKycRequired: true, response }));
+    }
+    return response;
+  },
   error => {
     const { response } = error;
+
+    if (isIpBlockedApiResponse(response?.data)) {
+      handleIpBlockedError(response?.data);
+      error.isIpBlocked = true;
+      return Promise.reject(error);
+    }
+
+    if (isUserDisabledApiResponse(response?.data)) {
+      handleUserDisabledError(response?.data);
+      error.isUserDisabled = true;
+      return Promise.reject(error);
+    }
+
+    if (isKycRequiredApiResponse(response?.data)) {
+      handleKycRequiredError();
+      error.isKycRequired = true;
+      return Promise.reject(error);
+    }
     
-    // 只有在明确收到 401 或 403 状态码时才提示登录过期
     if (response?.status === 401 || response?.status === 403) {
       handle401Error();
     }

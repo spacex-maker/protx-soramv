@@ -23,11 +23,6 @@ export const useFileUpload = (
       return;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      message.error('图片文件大小不能超过10MB');
-      return;
-    }
-
     try {
       const url = await getBase64(file);
       setOriginalImageUrl(url);
