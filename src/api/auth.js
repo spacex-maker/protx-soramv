@@ -98,6 +98,21 @@ export const auth = {
     }
   },
 
+  // 提交实名解绑申请
+  submitUnbindRequest: async (reason) => {
+    try {
+      const { data } = await axios.post('/productx/user/verification/unbind', null, {
+        params: { reason },
+      });
+      return data;
+    } catch (error) {
+      return {
+        success: false,
+        message: error.response?.data?.message || '提交解绑申请失败',
+      };
+    }
+  },
+
   // 刷新 token
   refreshToken: () => {
     return axios.post('/auth/refresh-token');

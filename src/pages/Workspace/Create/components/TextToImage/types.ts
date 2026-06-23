@@ -25,6 +25,8 @@ export interface ModelFamily {
   modelSource?: string | null;
   /** 每次生成消耗的 token 数，>0 表示收费 */
   tokenCost?: number | null;
+  /** 是否需要实名认证 */
+  requireKyc?: boolean | null;
   /** 默认分辨率（如 1080p/1K），用于 Resolution 配置默认值 */
   videoDefaultResolution?: string | null;
   /** 可选分辨率列表（逗号分隔，如 1K,2K,4K），用于 Resolution 配置选项 */
@@ -53,6 +55,8 @@ export interface Model {
   modelSource?: string | null;
   /** 每次生成消耗的 token 数，>0 表示收费 */
   tokenCost?: number | null;
+  /** 是否需要实名认证 */
+  requireKyc?: boolean | null;
   /** 默认分辨率（如 1080p/1K），用于 Resolution 配置默认值 */
   videoDefaultResolution?: string | null;
   /** 可选分辨率列表（逗号分隔，如 1K,2K,4K），用于 Resolution 配置选项 */

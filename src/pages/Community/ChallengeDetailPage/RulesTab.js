@@ -22,15 +22,12 @@ const RulesTab = ({ challenge }) => {
       <Title level={4}><FormattedMessage id="challenge.requirements" defaultMessage="Requirements" /></Title>
       <ul style={{ lineHeight: 2, fontSize: 15 }}>
         <li><FormattedMessage id="challenge.req.original" defaultMessage="Original creations only." /></li>
-        {challenge.requiredModel && (
-          <li>
-            <FormattedMessage 
-              id="challenge.req.model" 
-              defaultMessage="Must use model: {model}" 
-              values={{model: <strong>{challenge.requiredModel}</strong>}} 
-            />
-          </li>
-        )}
+        <li>
+          <FormattedMessage
+            id="challenge.req.modelsAll"
+            defaultMessage="All platform model types are supported — text-to-image, image-to-image, image-to-video, and more."
+          />
+        </li>
         {tags.length > 0 && (
           <li style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <span><FormattedMessage id="challenge.req.tags" defaultMessage="Must include tags:" /></span>
@@ -53,7 +50,6 @@ const RulesTab = ({ challenge }) => {
             </div>
           </li>
         )}
-        <li><FormattedMessage id="challenge.req.resolution" defaultMessage="Resolution must be at least 1024x1024." /></li>
         <li><FormattedMessage id="challenge.req.nsfw" defaultMessage="No NSFW content." /></li>
       </ul>
     </DetailCard>

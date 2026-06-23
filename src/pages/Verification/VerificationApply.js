@@ -76,6 +76,10 @@ const VerificationApply = () => {
       navigate(VERIFICATION_ROUTES.pending, { replace: true });
     } else if (kycStatus === 2) {
       navigate(VERIFICATION_ROUTES.verified, { replace: true });
+    } else if (kycStatus === 5) {
+      navigate(VERIFICATION_ROUTES.unbindPending, { replace: true });
+    } else if (kycStatus === 6) {
+      navigate(VERIFICATION_ROUTES.unbindRejected, { replace: true });
     }
   }, [statusLoading, kycStatus, navigate]);
 

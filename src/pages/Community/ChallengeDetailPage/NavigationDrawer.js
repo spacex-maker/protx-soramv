@@ -1,85 +1,55 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Drawer, Input, Empty, Badge, Spin } from 'antd';
+import { Drawer, Input, Empty, Spin } from 'antd';
 import { FormattedMessage, useIntl } from 'react-intl';
-import { 
-  SearchOutlined, 
-  TrophyFilled, 
-  ThunderboltFilled, 
-  CheckCircleFilled,
+import {
+  SearchOutlined,
+  TrophyFilled,
   FireFilled,
-  ClockCircleOutlined,
   CloseOutlined,
   ReloadOutlined
 } from '@ant-design/icons';
-import { 
+import {
   DrawerContainer,
   DrawerHeader,
   DrawerSearchWrapper,
   DrawerStats,
   DrawerContent,
-  ChallengeCard,
-  ChallengeThumb,
-  ChallengeInfo,
-  ChallengeMeta,
-  DrawerChallengeTitle,
-  ChallengeTags,
-  ChallengeTag,
-  ActiveIndicator,
   EmptyState
 } from './styled';
-import { getStatusInfo, calculateTotalPrize, getChallengeCoverUrl, generateDefaultChallengeBackground, addTencentImageCompression } from './utils';
+import ChallengeCardItem from './ChallengeCardItem';
+import { isChallengeLive, sortChallengesByPhase, calculateTotalPrize } from './utils';
 
-// 挑战图片组件，处理加载失败
-const ChallengeImage = ({ challenge }) => {
-  const [imageError, setImageError] = useState(false);
-  const coverUrl = getChallengeCoverUrl(challenge);
-  const [imageSrc, setImageSrc] = useState(() => {
-    // 如果是真实图片URL则压缩，如果是SVG则直接使用
-    if (coverUrl.startsWith('data:image/svg')) {
-      return coverUrl;
-    }
-    return addTencentImageCompression(coverUrl, { quality: 5 });
-  });
-  
-  const handleImageError = () => {
-    if (!imageError) {
-      setImageError(true);
-      setImageSrc(generateDefaultChallengeBackground(challenge.id, 120, 80));
-    }
-  };
-  
-  return (
-    <img 
-      src={imageSrc} 
-      alt={challenge.title}
-      onError={handleImageError}
-    />
-  );
-};
-
-const NavigationDrawer = ({ visible, onClose, challenges, currentChallengeId, searchTerm, onSearchChange, onRefresh, loading }) => {
+const NavigationDrawer = ({
+  visible,
+  onClose,
+  challenges,
+  currentChallengeId,
+  searchTerm,
+  onSearchChange,
+  onRefresh,
+  loading,
+  detailBasePath = '/community/challenge',
+}) => {
   const navigate = useNavigate();
   const intl = useIntl();
 
   const filteredChallenges = useMemo(() => {
-    return challenges.filter(c => 
+    const filtered = challenges.filter(c =>
       c.title?.toLowerCase().includes(searchTerm.toLowerCase())
     );
+    return sortChallengesByPhase(filtered);
   }, [challenges, searchTerm]);
 
   const stats = useMemo(() => {
     const total = challenges.length;
-    const active = challenges.filter(c => {
-      const statusInfo = getStatusInfo(c.status, intl);
-      return statusInfo.label === intl.formatMessage({ id: 'challenge.status.live', defaultMessage: 'Live Now' });
-    }).length;
+    const active = challenges.filter((c) => isChallengeLive(c)).length;
     const totalPrize = challenges.reduce((sum, c) => sum + calculateTotalPrize(c.rewardsConfig), 0);
     return { total, active, totalPrize };
-  }, [challenges, intl]);
+  }, [challenges]);
 
   const handleChallengeClick = (challengeId) => {
-    navigate(`/community/challenge/${challengeId}`);
+    navigate(`${detailBasePath}/${challengeId}`);
     onClose();
   };
 
@@ -104,9 +74,9 @@ const NavigationDrawer = ({ visible, onClose, challenges, currentChallengeId, se
               <FormattedMessage id="challenge.allChallenges" defaultMessage="All Challenges" />
             </h2>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                className="close-btn" 
-                onClick={onRefresh} 
+              <button
+                className="close-btn"
+                onClick={onRefresh}
                 title={intl.formatMessage({ id: 'common.refresh', defaultMessage: 'Refresh' })}
               >
                 <ReloadOutlined />
@@ -116,7 +86,7 @@ const NavigationDrawer = ({ visible, onClose, challenges, currentChallengeId, se
               </button>
             </div>
           </div>
-          
+
           <DrawerSearchWrapper>
             <Input
               prefix={<SearchOutlined style={{ color: '#999' }} />}
@@ -168,76 +138,15 @@ const NavigationDrawer = ({ visible, onClose, challenges, currentChallengeId, se
               </div>
             </div>
           ) : filteredChallenges.length > 0 ? (
-            filteredChallenges.map((item, index) => {
-              const statusInfo = getStatusInfo(item.status, intl);
-              const totalPrize = calculateTotalPrize(item.rewardsConfig);
-              const isActive = item.id === currentChallengeId;
-              
-              return (
-                <ChallengeCard
-                  key={item.id}
-                  active={isActive}
-                  onClick={() => handleChallengeClick(item.id)}
-                  style={{ animationDelay: `${index * 0.05}s` }}
-                >
-                  <ChallengeThumb>
-                    <ChallengeImage challenge={item} />
-                    {isActive && <ActiveIndicator />}
-                    <div className="thumb-overlay">
-                      <div className="status-badge" style={{ 
-                        color: statusInfo.color, 
-                        background: `${statusInfo.color}20`,
-                        borderColor: statusInfo.color
-                      }}>
-                        <div className="dot" style={{ background: statusInfo.dot }} />
-                        {statusInfo.label}
-                      </div>
-                    </div>
-                  </ChallengeThumb>
-                  
-                  <ChallengeInfo>
-                    <ChallengeMeta>
-                      <div className="meta-left">
-                        <span className="challenge-id">#{item.id}</span>
-                        <ClockCircleOutlined style={{ fontSize: 12, margin: '0 4px', opacity: 0.6 }} />
-                        <span className="date">
-                          {new Date(item.endTime).toLocaleDateString(undefined, {
-                            month: 'short', 
-                            day: 'numeric',
-                            year: 'numeric'
-                          })}
-                        </span>
-                      </div>
-                    </ChallengeMeta>
-                    
-                    <DrawerChallengeTitle title={item.title}>
-                      {item.title}
-                    </DrawerChallengeTitle>
-                    
-                    <ChallengeTags>
-                      {totalPrize > 0 && (
-                        <ChallengeTag className="prize">
-                          <TrophyFilled />
-                          <span>{totalPrize.toLocaleString()} PTS</span>
-                        </ChallengeTag>
-                      )}
-                      {item.requiredModel && (
-                        <ChallengeTag className="model" title={item.requiredModel}>
-                          <ThunderboltFilled />
-                          <span>{item.requiredModel}</span>
-                        </ChallengeTag>
-                      )}
-                    </ChallengeTags>
-                  </ChallengeInfo>
-                  
-                  {isActive && (
-                    <div className="active-mark">
-                      <CheckCircleFilled />
-                    </div>
-                  )}
-                </ChallengeCard>
-              );
-            })
+            filteredChallenges.map((item, index) => (
+              <ChallengeCardItem
+                key={item.id}
+                challenge={item}
+                isActive={item.id === currentChallengeId}
+                index={index}
+                onClick={() => handleChallengeClick(item.id)}
+              />
+            ))
           ) : (
             <EmptyState>
               <div className="empty-icon">
@@ -247,9 +156,9 @@ const NavigationDrawer = ({ visible, onClose, challenges, currentChallengeId, se
                 <FormattedMessage id="challenge.noChallenges" defaultMessage="No challenges found" />
               </div>
               <div className="empty-description">
-                <FormattedMessage 
-                  id="challenge.noChallenges.desc" 
-                  defaultMessage="Try adjusting your search terms" 
+                <FormattedMessage
+                  id="challenge.noChallenges.desc"
+                  defaultMessage="Try adjusting your search terms"
                 />
               </div>
             </EmptyState>
@@ -261,4 +170,3 @@ const NavigationDrawer = ({ visible, onClose, challenges, currentChallengeId, se
 };
 
 export default NavigationDrawer;
-

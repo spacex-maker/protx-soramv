@@ -49,6 +49,7 @@ import EstimatedPriceHint from '../shared/EstimatedPriceHint';
 import { useTokenBalance } from '../shared/useTokenBalance';
 import { getImageEstimatedPrice, getImageRequiredTokens } from '../shared/estimatedPriceText';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
+import { handleGenerationApiFailure } from '../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 import {
@@ -93,6 +94,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
     closeInsufficientBalanceModal,
     ensureSufficientBalance,
     tryShowFromApiError,
+    ensureKycForModel,
   } = useInsufficientBalanceGuard();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
@@ -404,8 +406,13 @@ const TextToImage: React.FC<TextToImageProps> = ({
     }
     setHistoryRefreshTrigger((t) => t + 1);
   };
-  const applyError = (err?: string) => {
-    message.error(err || intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' }));
+  const applyError = async (payload?: unknown, err?: string) => {
+    const handled = await handleGenerationApiFailure(payload, tryShowFromApiError, {
+      fallbackMessage: err || intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' }),
+    });
+    if (!handled) {
+      message.error(err || intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' }));
+    }
   };
 
   /** 路线一：Volc Seedream 同步文生图 */
@@ -435,7 +442,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
         [];
       applySuccess(parseResponseImages(rawList));
     } else {
-      applyError(response.data?.error || response.data?.message);
+      await applyError(response.data, response.data?.error || response.data?.message);
     }
   };
 
@@ -454,7 +461,8 @@ const TextToImage: React.FC<TextToImageProps> = ({
     );
     const taskId = createRes.data?.data?.id ?? createRes.data?.data?.taskId;
     if (!taskId) {
-      applyError(
+      await applyError(
+        createRes.data,
         createRes.data?.error ||
           createRes.data?.message ||
           intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' })
@@ -492,7 +500,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
             clearInterval(pollingIntervalRef.current);
             pollingIntervalRef.current = null;
           }
-          applyError(data?.error);
+          await applyError(data, data?.error);
           setLoading(false);
           return;
         }
@@ -545,7 +553,8 @@ const TextToImage: React.FC<TextToImageProps> = ({
         else message.warning(intl.formatMessage({ id: 'create.noResult', defaultMessage: '未生成图片，请重试' }));
       }
     } else {
-      applyError(
+      await applyError(
+        response.data,
         response.data?.error ||
           response.data?.message ||
           intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' })
@@ -578,6 +587,12 @@ const TextToImage: React.FC<TextToImageProps> = ({
         ? getImageRequiredTokens(modelForPrice.tokenCost, batchSize, !isApiModel)
         : 0;
     if (!(await ensureSufficientBalance(requiredTokens))) {
+      clearSubmitting();
+      return;
+    }
+
+    const modelForKyc = getEffectiveModel() || selectedFamily;
+    if (!(await ensureKycForModel(modelForKyc, selectedFamily, selectedModel))) {
       clearSubmitting();
       return;
     }

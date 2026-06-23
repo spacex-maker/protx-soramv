@@ -206,10 +206,13 @@ export const getPostInteractionStatus = async (postId: number): Promise<Communit
 /**
  * 获取当前进行中的挑战
  */
-export const getCurrentChallenge = async (): Promise<DailyChallenge> => {
+export const getCurrentChallenge = async (): Promise<DailyChallenge | null> => {
   const response = await instance.get<ApiResponse<DailyChallenge>>(
     '/productx/community/challenge/current'
   );
+  if (!response.data?.success || !response.data?.data?.id) {
+    return null;
+  }
   return response.data.data;
 };
 
@@ -251,6 +254,39 @@ export const listAllChallenges = async (limit?: number): Promise<DailyChallenge[
     '/productx/community/challenge/list',
     { params: limit ? { limit } : {} }
   );
+  return response.data.data;
+};
+
+export interface DailyChallengeUpdateRequest {
+  id: number;
+  title?: string;
+  description?: string;
+  coverUrl?: string;
+  requiredTags?: string;
+  requiredModel?: string;
+  referenceImageUrl?: string;
+  startTime?: string;
+  endTime?: string;
+  votingEndTime?: string;
+  rewardsConfig?: string;
+  status?: number;
+}
+
+export const checkChallengeManagePermission = async (): Promise<boolean> => {
+  const response = await instance.get<ApiResponse<boolean>>(
+    '/productx/community/challenge/check-manage-permission'
+  );
+  return Boolean(response.data.data);
+};
+
+export const updateChallenge = async (request: DailyChallengeUpdateRequest): Promise<DailyChallenge> => {
+  const response = await instance.post<ApiResponse<DailyChallenge>>(
+    '/productx/community/challenge/update',
+    request
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '更新失败');
+  }
   return response.data.data;
 };
 

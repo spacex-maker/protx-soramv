@@ -418,12 +418,13 @@ const SubmitChallengeMobile = ({ open, onCancel, onSuccess, challenge }) => {
         </ChallengeBadge>
         <ChallengeTitle>{challenge?.title}</ChallengeTitle>
         <MetaRow>
-          {challenge?.requiredModel && (
-            <MetaItem>
-              <ThunderboltOutlined style={{ color: '#fbbf24' }} />
-              {challenge.requiredModel}
-            </MetaItem>
-          )}
+          <MetaItem>
+            <ThunderboltOutlined style={{ color: '#fbbf24' }} />
+            <FormattedMessage
+              id="challenge.modelsSupportedShort"
+              defaultMessage="支持所有模型"
+            />
+          </MetaItem>
           <MetaItem>Daily Challenge</MetaItem>
         </MetaRow>
       </Header>

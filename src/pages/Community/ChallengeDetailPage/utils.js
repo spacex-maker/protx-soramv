@@ -54,15 +54,95 @@ export const calculateTotalPrize = (config) => {
     return r.first + r.second + r.third;
 };
 
-// 获取状态信息
-export const getStatusInfo = (status, intl) => {
-    switch(status) {
-        case 0: return { label: intl.formatMessage({ id: 'challenge.status.upcoming', defaultMessage: 'Upcoming' }), color: '#1890ff', dot: '#1890ff' };
-        case 1: return { label: intl.formatMessage({ id: 'challenge.status.live', defaultMessage: 'Live Now' }), color: '#52c41a', dot: '#52c41a' };
-        case 2: return { label: intl.formatMessage({ id: 'challenge.status.voting', defaultMessage: 'Voting' }), color: '#722ed1', dot: '#722ed1' };
-        case 3: return { label: intl.formatMessage({ id: 'challenge.status.ended', defaultMessage: 'Ended' }), color: '#888', dot: '#888' };
-        default: return { label: intl.formatMessage({ id: 'challenge.status.unknown', defaultMessage: 'Unknown' }), color: '#888', dot: '#888' };
-    }
+// 获取挑战时间阶段（与详情页逻辑一致，优先于数据库 status 字段）
+export const getChallengeTimeFlags = (challenge) => {
+  if (!challenge?.startTime || !challenge?.endTime) {
+    return {
+      isNotStarted: false,
+      isOngoing: false,
+      isVoting: false,
+      isEnded: true,
+    };
+  }
+
+  const now = Date.now();
+  const startTime = new Date(challenge.startTime).getTime();
+  const deadline = new Date(challenge.endTime).getTime();
+  const votingEndTime = challenge.votingEndTime
+    ? new Date(challenge.votingEndTime).getTime()
+    : deadline;
+
+  return {
+    isNotStarted: now < startTime,
+    isOngoing: now >= startTime && now < deadline,
+    isVoting: now >= deadline && now < votingEndTime,
+    isEnded: now >= votingEndTime,
+  };
+};
+
+export const getChallengePhase = (challenge) => {
+  const { isNotStarted, isOngoing, isVoting, isEnded } = getChallengeTimeFlags(challenge);
+  if (isNotStarted) return 'upcoming';
+  if (isOngoing) return 'live';
+  if (isVoting) return 'voting';
+  if (isEnded) return 'ended';
+  return 'unknown';
+};
+
+const PHASE_STATUS_MAP = {
+  upcoming: 0,
+  live: 1,
+  voting: 2,
+  ended: 3,
+};
+
+const STATUS_PHASE_MAP = {
+  0: 'upcoming',
+  1: 'live',
+  2: 'voting',
+  3: 'ended',
+};
+
+// 获取状态信息：传入 challenge 对象时按时间计算，传入数字时兼容旧逻辑
+export const getStatusInfo = (statusOrChallenge, intl) => {
+  const phase = typeof statusOrChallenge === 'object' && statusOrChallenge !== null
+    ? getChallengePhase(statusOrChallenge)
+    : (STATUS_PHASE_MAP[Number(statusOrChallenge)] || 'unknown');
+
+  switch (phase) {
+    case 'upcoming':
+      return { label: intl.formatMessage({ id: 'challenge.status.upcoming', defaultMessage: 'Upcoming' }), color: '#1890ff', dot: '#1890ff', phase };
+    case 'live':
+      return { label: intl.formatMessage({ id: 'challenge.status.live', defaultMessage: 'Live Now' }), color: '#52c41a', dot: '#52c41a', phase };
+    case 'voting':
+      return { label: intl.formatMessage({ id: 'challenge.status.voting', defaultMessage: 'Voting' }), color: '#722ed1', dot: '#722ed1', phase };
+    case 'ended':
+      return { label: intl.formatMessage({ id: 'challenge.status.ended', defaultMessage: 'Ended' }), color: '#888', dot: '#888', phase };
+    default:
+      return { label: intl.formatMessage({ id: 'challenge.status.unknown', defaultMessage: 'Unknown' }), color: '#888', dot: '#888', phase: 'unknown' };
+  }
+};
+
+export const isChallengeLive = (challenge) => getChallengePhase(challenge) === 'live';
+
+export const sortChallengesByPhase = (challenges) => {
+  const order = { live: 0, voting: 1, upcoming: 2, ended: 3, unknown: 4 };
+  return [...challenges].sort((a, b) => {
+    const phaseDiff = order[getChallengePhase(a)] - order[getChallengePhase(b)];
+    if (phaseDiff !== 0) return phaseDiff;
+    return new Date(b.startTime).getTime() - new Date(a.startTime).getTime();
+  });
+};
+
+/** 从列表中按时间找出当前活跃挑战（进行中或投票中），与详情页状态一致 */
+export const findActiveChallengeFromList = (challenges) => {
+  if (!Array.isArray(challenges) || challenges.length === 0) return null;
+  return (
+    challenges.find((c) => {
+      const phase = getChallengePhase(c);
+      return phase === 'live' || phase === 'voting';
+    }) || null
+  );
 };
 
 // 清理挑战数据
@@ -81,7 +161,10 @@ export const cleanChallengeData = (data) => {
     endTime: typeof data.endTime === 'string' ? data.endTime : '',
     votingEndTime: typeof data.votingEndTime === 'string' ? data.votingEndTime : '',
     rewardsConfig: typeof data.rewardsConfig === 'string' ? data.rewardsConfig : undefined,
-    status: Number(data.status) || 0,
+    status: (() => {
+      const phase = getChallengePhase(data);
+      return PHASE_STATUS_MAP[phase] ?? (Number(data.status) || 0);
+    })(),
     viewCount: data.viewCount !== undefined && data.viewCount !== null ? Number(data.viewCount) : 0,
     createTime: typeof data.createTime === 'string' ? data.createTime : '',
   };

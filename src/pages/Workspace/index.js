@@ -81,7 +81,7 @@ const CloudDrivePage = () => {
       setSelectedKeys(['promptMarket']);
     } else if (path === '/workspace/channels') {
       setSelectedKeys(['channels']);
-    } else if (path === '/workspace/daily-challenge') {
+    } else if (path.startsWith('/workspace/daily-challenge')) {
       setSelectedKeys(['dailyChallenge']);
     } else if (path === '/workspace/recharge') {
       setSelectedKeys(['recharge']);

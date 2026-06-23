@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useIntl } from 'react-intl';
 import styled from 'styled-components';
 import { RightOutlined, FireFilled, CompassOutlined } from '@ant-design/icons';
-import { listChannels, getCurrentChallenge } from 'api/community';
+import { listChannels } from 'api/community';
 
 const ChannelGrid = styled.div`
   display: grid;
@@ -207,14 +207,9 @@ const ExploreChannels = () => {
     }
   };
 
-  const handleChannelClick = async (channel) => {
+  const handleChannelClick = (channel) => {
     if (channel.channelKey === 'daily-challenge') {
-      try {
-        const currentChallenge = await getCurrentChallenge();
-        navigate(currentChallenge?.id ? `/community/challenge/${currentChallenge.id}` : `/community/challenge`);
-      } catch (error) {
-        navigate(`/community/challenge`);
-      }
+      navigate('/community/challenge');
     } else {
       navigate(`/community/${channel.channelKey}`);
     }

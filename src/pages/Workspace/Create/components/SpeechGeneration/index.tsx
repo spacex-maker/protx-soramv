@@ -28,6 +28,7 @@ import {
 } from '../shared/speechTokenUtils';
 import { useTokenBalance } from '../shared/useTokenBalance';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
+import { handleGenerationApiFailure } from '../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
@@ -119,6 +120,7 @@ const SpeechGeneration: React.FC = () => {
     insufficientBalanceModalBalance,
     closeInsufficientBalanceModal,
     ensureSufficientBalance,
+    ensureKycForModel,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard();
   const [form] = Form.useForm();
@@ -311,6 +313,9 @@ const SpeechGeneration: React.FC = () => {
       if (!ensureSufficientBalance(requiredTokens)) {
         return;
       }
+      if (!(await ensureKycForModel(selectedEngine))) {
+        return;
+      }
       setLoading(true);
       setAudioUrl(null);
 
@@ -347,14 +352,20 @@ const SpeechGeneration: React.FC = () => {
           }
         }
       } else {
-        const errMsg = response.data.message || response.data.msg;
-        if (!tryShowFromApiError(errMsg)) {
-          message.error(errMsg || intl.formatMessage({ id: 'create.speech.generateFailed', defaultMessage: '语音生成失败' }));
+        const handled = await handleGenerationApiFailure(response.data, tryShowFromApiError, {
+          fallbackMessage: response.data.message || response.data.msg,
+        });
+        if (!handled) {
+          message.error(response.data.message || response.data.msg || intl.formatMessage({ id: 'create.speech.generateFailed', defaultMessage: '语音生成失败' }));
         }
       }
     } catch (error: any) {
       const errMsg = error?.response?.data?.message || error?.message;
-      if (!tryShowFromApiError(errMsg)) {
+      const handled = await handleGenerationApiFailure(error?.response?.data, tryShowFromApiError, {
+        error,
+        fallbackMessage: errMsg,
+      });
+      if (!handled) {
         message.error(errMsg || intl.formatMessage({ id: 'create.speech.generateFailed', defaultMessage: '语音生成失败' }));
       }
     } finally {

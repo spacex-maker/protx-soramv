@@ -21,6 +21,8 @@ export interface Model {
   currency: string | null;
   outputPrice: number | null;
   tokenCost: number | null; // 图片生成每张token消耗
+  /** 是否需要实名认证 */
+  requireKyc?: boolean | null;
   likesCount?: number; // 点赞总数
   favoritesCount?: number; // 收藏总数
   coverImage?: string | null; // 封面图

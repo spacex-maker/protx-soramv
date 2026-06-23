@@ -55,6 +55,7 @@ import EstimatedPriceHint from '../shared/EstimatedPriceHint';
 import { useTokenBalance } from '../shared/useTokenBalance';
 import { formatTokenAmount } from '../shared/estimatedPriceText';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
+import { handleGenerationApiFailure } from '../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
@@ -71,6 +72,7 @@ const ImageToImage: React.FC = () => {
     insufficientBalanceModalBalance,
     closeInsufficientBalanceModal,
     ensureSufficientBalance,
+    ensureKycForModel,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard();
   const [form] = Form.useForm();
@@ -838,6 +840,10 @@ const ImageToImage: React.FC = () => {
       return;
     }
 
+    if (!(await ensureKycForModel(selectedModel))) {
+      return;
+    }
+
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
@@ -981,10 +987,18 @@ const ImageToImage: React.FC = () => {
             }
           }
         } else {
-          throw new Error(response.data?.message || intl.formatMessage({ 
-            id: 'create.image.generate.failed', 
-            defaultMessage: '图片生成失败' 
-          }));
+          const handled = await handleGenerationApiFailure(response.data, tryShowFromApiError, {
+            fallbackMessage: intl.formatMessage({
+              id: 'create.image.generate.failed',
+              defaultMessage: '图片生成失败',
+            }),
+          });
+          if (!handled) {
+            throw new Error(response.data?.message || intl.formatMessage({
+              id: 'create.image.generate.failed',
+              defaultMessage: '图片生成失败',
+            }));
+          }
         }
       } catch (uploadError: any) {
         uploadingMessage();

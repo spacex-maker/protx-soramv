@@ -47,6 +47,7 @@ import CommunityPage from './pages/Community';
 import ChannelDetailPage from './pages/Community/ChannelDetail';
 import PostDetailPage from './pages/Community/PostDetail';
 import ChallengeDetailPage from './pages/Community/ChallengeDetailPage';
+import ChallengeHubPage from './pages/Community/ChallengeHubPage';
 import ResumePage from './pages/Resume';
 import OpenRobotXPage from './pages/OpenRobotX';
 import OpenRobotXCompanyPage from './pages/OpenRobotX/companies/CompanyPage';
@@ -481,6 +482,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/workspace/daily-challenge/:challengeId"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
                 path="/workspace/daily-challenge"
                 element={
                   <PrivateRoute>
@@ -520,10 +529,18 @@ export default function App() {
                   <CommunityPage />
                 </PrivateRoute>
               } />
+              <Route path="/community/challenge" element={
+                <PrivateRoute>
+                  <ChallengeHubPage />
+                </PrivateRoute>
+              } />
               <Route path="/community/challenge/:challengeId" element={
                 <PrivateRoute>
                   <ChallengeDetailPage />
                 </PrivateRoute>
+              } />
+              <Route path="/community/daily-challenge" element={
+                <Navigate to="/community/challenge" replace />
               } />
               <Route path="/community/:channelKey" element={
                 <PrivateRoute>

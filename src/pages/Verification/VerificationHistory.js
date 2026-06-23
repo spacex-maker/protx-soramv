@@ -99,7 +99,7 @@ const VerificationHistory = () => {
                   </div>
                 </div>
                 <Tag color={statusMeta.color} icon={statusMeta.icon}>
-                  {getStatusText(record.status)}
+                  {record.statusLabel || getStatusText(record.status)}
                 </Tag>
               </div>
 
@@ -110,19 +110,25 @@ const VerificationHistory = () => {
                     {record.countryCode}
                   </div>
                 ) : null}
+                {record.requestType === 'UNBIND' ? (
+                  <div>
+                    <strong>{intl.formatMessage({ id: 'verification.unbind.reason.label', defaultMessage: '解绑原因' })}</strong>
+                    {record.reason || '-'}
+                  </div>
+                ) : null}
                 {record.realName ? (
                   <div>
                     <strong>{intl.formatMessage({ id: 'verification.info.name', defaultMessage: '姓名：' })}</strong>
                     {record.realName}
                   </div>
                 ) : null}
-                {record.idType ? (
+                {record.idType && record.requestType !== 'UNBIND' ? (
                   <div>
                     <strong>{intl.formatMessage({ id: 'verification.info.idType', defaultMessage: '证件类型：' })}</strong>
                     {record.idType}
                   </div>
                 ) : null}
-                {record.idNumber ? (
+                {record.idNumber && record.requestType !== 'UNBIND' ? (
                   <div>
                     <strong>{intl.formatMessage({ id: 'verification.info.idNumber', defaultMessage: '证件号码：' })}</strong>
                     {record.idNumber}

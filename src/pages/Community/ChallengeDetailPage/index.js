@@ -4,7 +4,7 @@ import { Button, Skeleton, message } from 'antd';
 import { LeftOutlined, UnorderedListOutlined, PictureOutlined, ReadOutlined } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import SimpleHeader from 'components/headers/simple';
-import { listPosts, getChallengeById, getCurrentChallenge, listAllChallenges } from 'api/community';
+import { listPosts, getChallengeById, listAllChallenges } from 'api/community';
 import SubmitChallengeModal from '../SubmitChallengeModal';
 import HeroSection from './HeroSection';
 import SubmissionGrid from './SubmissionGrid';
@@ -13,15 +13,19 @@ import ActionCard from './ActionCard';
 import PrizeCard from './PrizeCard';
 import ShareCard from './ShareCard';
 import NavigationDrawer from './NavigationDrawer';
-import { PageWrapper, Container, ContentGrid, MainColumn, SideColumn, DetailCard, StyledTabs } from './styled';
-import { cleanChallengeData, cleanPostData } from './utils';
+import { PageWrapper, Container, ContentGrid, MainColumn, SideColumn, StyledTabs } from './styled';
+import { cleanChallengeData, cleanPostData, getChallengeTimeFlags } from './utils';
 
+/**
+ * @param {{ challengeId?: number | string, embedInWorkspace?: boolean }} props
+ */
 const ChallengeDetailPage = ({ challengeId: challengeIdProp, embedInWorkspace = false }) => {
   const intl = useIntl();
   const navigate = useNavigate();
   const { challengeId: challengeIdFromParams } = useParams();
   const challengeId = challengeIdProp != null ? String(challengeIdProp) : challengeIdFromParams;
-  
+  const hubPath = embedInWorkspace ? '/workspace/daily-challenge' : '/community/challenge';
+  const detailBasePath = hubPath;
   const [activeTab, setActiveTab] = useState('entries');
   const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
@@ -38,32 +42,31 @@ const ChallengeDetailPage = ({ challengeId: challengeIdProp, embedInWorkspace = 
   
   // Initialize Data
   useEffect(() => {
+    if (!challengeId) {
+      navigate(hubPath, { replace: true });
+      return;
+    }
+
     const initData = async () => {
       setLoading(true);
       try {
-        // Load list of challenges for the drawer
-        listAllChallenges(50)
-          .then(challenges => {
-            const cleanedChallenges = Array.isArray(challenges) 
-              ? challenges.map(cleanChallengeData) 
-              : [];
-            setAllChallenges(cleanedChallenges);
-          })
-          .catch(console.error);
-        
-        let data;
-        if (challengeId) data = await getChallengeById(Number(challengeId));
-        else data = await getCurrentChallenge();
-        
-        setChallenge(cleanChallengeData(data));
-      } catch(e) { 
-        message.error(intl.formatMessage({ id: 'community.challenge.loadFailed', defaultMessage: 'Failed to load challenge data' })); 
+        const [challenges, data] = await Promise.all([
+          listAllChallenges(50),
+          getChallengeById(Number(challengeId)),
+        ]);
+        const cleanedChallenges = Array.isArray(challenges)
+          ? challenges.map(cleanChallengeData).filter(Boolean)
+          : [];
+        setAllChallenges(cleanedChallenges);
+        setChallenge(data?.id ? cleanChallengeData(data) : null);
+      } catch (e) {
+        message.error(intl.formatMessage({ id: 'community.challenge.loadFailed', defaultMessage: 'Failed to load challenge data' }));
       } finally {
         setLoading(false);
       }
     };
     initData();
-  }, [challengeId, intl]);
+  }, [challengeId, intl, navigate, hubPath]);
 
   // Load Posts when Challenge is ready
   useEffect(() => {
@@ -116,28 +119,34 @@ const ChallengeDetailPage = ({ challengeId: challengeIdProp, embedInWorkspace = 
     }
   };
 
-  if (loading || !challenge) {
+  if (loading) {
     return (
       <PageWrapper style={embedInWorkspace ? { paddingTop: 24, background: 'transparent' } : undefined}>
         {!embedInWorkspace && <SimpleHeader />}
         <Container>
-          <Skeleton active paragraph={{rows: 10}} style={{marginTop: 40}} />
+          <Skeleton active paragraph={{ rows: 10 }} style={{ marginTop: 40 }} />
         </Container>
       </PageWrapper>
     );
   }
 
-  const deadline = new Date(challenge.endTime).getTime();
-  const startTime = new Date(challenge.startTime).getTime();
-  const votingEndTime = challenge.votingEndTime ? new Date(challenge.votingEndTime).getTime() : deadline;
-  const now = Date.now();
-  
-  // 状态判断：优先使用时间判断，如果时间符合就不判断status字段
-  // 0=未开始, 1=进行中, 2=评审中, 3=已结束
-  const isNotStarted = now < startTime;
-  const isOngoing = now >= startTime && now < deadline;
-  const isVoting = now >= deadline && now < votingEndTime;
-  const isEnded = now >= votingEndTime;
+  if (!challenge) {
+    return (
+      <PageWrapper style={embedInWorkspace ? { paddingTop: 24, background: 'transparent' } : undefined}>
+        {!embedInWorkspace && <SimpleHeader />}
+        <Container>
+          <Button type="text" icon={<LeftOutlined />} onClick={() => navigate(hubPath)} style={{ marginLeft: -16 }}>
+            <FormattedMessage id="challenge.backToList" defaultMessage="Back to Challenges" />
+          </Button>
+          <div style={{ padding: '80px 0', textAlign: 'center', color: '#999' }}>
+            <FormattedMessage id="challenge.notFound" defaultMessage="Challenge not found" />
+          </div>
+        </Container>
+      </PageWrapper>
+    );
+  }
+
+  const { isNotStarted, isOngoing, isVoting, isEnded } = getChallengeTimeFlags(challenge);
 
   return (
     <PageWrapper style={embedInWorkspace ? { paddingTop: 24, background: 'transparent' } : undefined}>
@@ -149,13 +158,10 @@ const ChallengeDetailPage = ({ challengeId: challengeIdProp, embedInWorkspace = 
           <Button
             type="text"
             icon={<LeftOutlined />}
-            onClick={() => navigate(embedInWorkspace ? '/workspace' : '/community')}
+            onClick={() => navigate(hubPath)}
             style={{ marginBottom: 0, marginLeft: -16 }}
           >
-            {embedInWorkspace
-              ? <FormattedMessage id="common.backToWorkspace" defaultMessage="Back to Workspace" />
-              : <FormattedMessage id="common.backToCommunity" defaultMessage="Back to Community" />
-            }
+            <FormattedMessage id="challenge.backToList" defaultMessage="Back to Challenges" />
           </Button>
           <Button 
             type="default" 
@@ -212,8 +218,8 @@ const ChallengeDetailPage = ({ challengeId: challengeIdProp, embedInWorkspace = 
             <ActionCard
               isNotStarted={isNotStarted}
               isOngoing={isOngoing}
-              startTime={startTime}
-              deadline={deadline}
+              startTime={new Date(challenge.startTime).getTime()}
+              deadline={new Date(challenge.endTime).getTime()}
               onJoin={handleJoin}
             />
 
@@ -236,6 +242,7 @@ const ChallengeDetailPage = ({ challengeId: challengeIdProp, embedInWorkspace = 
         onSearchChange={setSearchTerm}
         onRefresh={handleRefreshChallenges}
         loading={challengesLoading}
+        detailBasePath={detailBasePath}
       />
 
       {/* 提交作品模态框 */}

@@ -3,6 +3,7 @@ import { fetchTokenBalance, isInsufficientBalanceMessage } from './balanceUtils'
 import { isKycRequiredApiResponse } from 'utils/kycRequired';
 import { isIpBlockedApiResponse } from 'utils/ipBlocked';
 import { isUserDisabledApiResponse } from 'utils/userDisabled';
+import { ensureKycForModels, showKycRequiredModal } from 'utils/kycGuard';
 
 export function useInsufficientBalanceGuard() {
   const [open, setOpen] = useState(false);
@@ -31,7 +32,15 @@ export function useInsufficientBalanceGuard() {
     [openInsufficientModal],
   );
 
-  /** 接口错误文案为余额不足时弹出对话框；实名认证错误由全局拦截器处理 */
+  /** 所选模型需要实名且用户未完成认证时弹出引导 */
+  const ensureKycForModel = useCallback(
+    (...models: Array<{ requireKyc?: boolean | null } | null | undefined>): Promise<boolean> => {
+      return Promise.resolve(ensureKycForModels(...models));
+    },
+    [],
+  );
+
+  /** 接口错误文案为余额不足时弹出对话框；实名认证错误弹出认证引导 */
   const tryShowFromApiError = useCallback(
     async (message: string | null | undefined, error?: unknown): Promise<boolean> => {
       if (error && typeof error === 'object') {
@@ -42,6 +51,7 @@ export function useInsufficientBalanceGuard() {
           response?: { data?: unknown };
         };
         if (err.isKycRequired || isKycRequiredApiResponse(err.response?.data)) {
+          showKycRequiredModal();
           return true;
         }
         if (err.isIpBlocked || isIpBlockedApiResponse(err.response?.data)) {
@@ -65,6 +75,7 @@ export function useInsufficientBalanceGuard() {
     insufficientBalanceModalBalance: modalBalance,
     closeInsufficientBalanceModal: closeInsufficientModal,
     ensureSufficientBalance,
+    ensureKycForModel,
     tryShowFromApiError,
   };
 }

@@ -32,6 +32,10 @@ const VerificationVerified = () => {
       navigate(VERIFICATION_ROUTES.apply, { replace: true });
     } else if (kycStatus === 1) {
       navigate(VERIFICATION_ROUTES.pending, { replace: true });
+    } else if (kycStatus === 5) {
+      navigate(VERIFICATION_ROUTES.unbindPending, { replace: true });
+    } else if (kycStatus === 6) {
+      navigate(VERIFICATION_ROUTES.unbindRejected, { replace: true });
     } else if (kycStatus === 3 || kycStatus === 4) {
       navigate(VERIFICATION_ROUTES.rejected, { replace: true });
     }
@@ -96,9 +100,14 @@ const VerificationVerified = () => {
         />
 
         <VerificationImmersiveActions variant="verified">
-          <AccentButton $variant="verified" size="large" onClick={() => navigate('/profile')}>
-            {intl.formatMessage({ id: 'verification.back.profile', defaultMessage: '返回个人中心' })}
-          </AccentButton>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <AccentButton $variant="verified" size="large" onClick={() => navigate('/profile')}>
+              {intl.formatMessage({ id: 'verification.back.profile', defaultMessage: '返回个人中心' })}
+            </AccentButton>
+            <GhostButton $variant="verified" size="large" onClick={() => navigate(VERIFICATION_ROUTES.unbindApply)}>
+              {intl.formatMessage({ id: 'verification.unbind.action', defaultMessage: '申请解除绑定' })}
+            </GhostButton>
+          </div>
         </VerificationImmersiveActions>
       </VerificationImmersiveContent>
     </VerificationImmersiveShell>

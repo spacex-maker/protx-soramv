@@ -180,6 +180,7 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
     insufficientBalanceModalBalance,
     closeInsufficientBalanceModal,
     ensureSufficientBalance,
+    ensureKycForModel,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard();
 
@@ -402,6 +403,7 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
     const duration = Number(form.getFieldValue('duration')) || shot.durationSec || 5;
     const requiredTokens = getVideoRequiredTokens(selectedModel.tokenCost, duration);
     if (!(await ensureSufficientBalance(requiredTokens))) return;
+    if (!(await ensureKycForModel(selectedModel))) return;
 
     setLoading(true);
     setGenerateError(null);

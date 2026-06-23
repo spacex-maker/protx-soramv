@@ -15,6 +15,7 @@ import ar_SA from '../locales/ar_SA';
 import { isKycRequiredApiResponse } from '../utils/kycRequired';
 import { extractIpBlockReason, isIpBlockedApiResponse, redirectToIpBlockedPage } from '../utils/ipBlocked';
 import { extractDisabledReason, isUserDisabledApiResponse } from '../utils/userDisabled';
+import { showKycRequiredModal } from '../utils/kycGuard';
 
 const AUTH_MODAL_LOCALES = {
   zh: zh_CN,
@@ -40,20 +41,6 @@ const getAuthModalMessages = () => {
     content: t['auth.modal.content'] || 'Your session has expired or you are not logged in. Please log in to continue.',
     okText: t['auth.modal.ok'] || 'Go to Login',
     cancelText: t['auth.modal.cancel'] || 'Later',
-  };
-};
-
-const getKycModalMessages = () => {
-  const locale = (typeof localStorage !== 'undefined' && localStorage.getItem('locale')) || '';
-  const key = String(locale).toLowerCase().split('-')[0];
-  const t = AUTH_MODAL_LOCALES[key] || en_US;
-  return {
-    title: t['kyc.modal.title'] || 'Real-name verification required',
-    content:
-      t['kyc.modal.content'] ||
-      'This model requires identity verification. Please complete real-name verification before use.',
-    okText: t['kyc.modal.ok'] || 'Go to Verification',
-    cancelText: t['kyc.modal.cancel'] || 'Later',
   };
 };
 
@@ -116,7 +103,6 @@ instance.interceptors.request.use(
 
 // 防止重复弹框的标记
 let isShowingModal = false;
-let isShowingKycModal = false;
 let isShowingDisabledModal = false;
 let isRedirectingIpBlocked = false;
 
@@ -155,33 +141,7 @@ const handle401Error = () => {
 };
 
 const handleKycRequiredError = () => {
-  if (isShowingKycModal) return;
-  isShowingKycModal = true;
-
-  const msg = getKycModalMessages();
-  Modal.confirm({
-    type: 'warning',
-    title: msg.title,
-    content: msg.content,
-    okText: msg.okText,
-    okType: 'primary',
-    cancelText: msg.cancelText,
-    centered: true,
-    maskClosable: false,
-    closable: true,
-    width: 420,
-    styles: {
-      body: { paddingTop: 8 },
-      footer: { marginTop: 16 },
-    },
-    onOk: () => {
-      isShowingKycModal = false;
-      window.location.href = '/verification';
-    },
-    onCancel: () => {
-      isShowingKycModal = false;
-    },
-  });
+  showKycRequiredModal();
 };
 
 const handleIpBlockedError = (payload) => {

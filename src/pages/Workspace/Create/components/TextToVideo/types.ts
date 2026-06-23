@@ -32,6 +32,8 @@ export interface Model {
   currency: string | null;
   outputPrice: number | null;
   tokenCost: number | null; // 视频每秒token消耗或图片生成每张消耗
+  /** 是否需要实名认证 */
+  requireKyc?: boolean | null;
   videoSupportStyle: string | null; // 视频支持风格枚举（以逗号分隔，如 "fun,normal,spicy"）
   videoQuality: string | null; // 视频质量枚举（以逗号分隔，如 "standard,high"）
   likesCount?: number; // 点赞总数

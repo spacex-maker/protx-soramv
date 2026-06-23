@@ -11,4 +11,5 @@ export interface EngineModel {
   cover_image?: string;
   companyName?: string;
   createTime?: string;
+  requireKyc?: boolean | null;
 }

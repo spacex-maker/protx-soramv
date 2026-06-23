@@ -58,6 +58,7 @@ import { useTokenBalance } from '../shared/useTokenBalance';
 import { formatDurationEstimatedTooltip } from '../shared/estimatedPriceText';
 import { getVideoRequiredTokens } from '../shared/balanceUtils';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
+import { handleGenerationApiFailure } from '../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
@@ -76,6 +77,7 @@ const TextToVideo: React.FC = () => {
     insufficientBalanceModalBalance,
     closeInsufficientBalanceModal,
     ensureSufficientBalance,
+    ensureKycForModel,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard();
   const [form] = Form.useForm();
@@ -765,6 +767,10 @@ const TextToVideo: React.FC = () => {
       return;
     }
 
+    if (!(await ensureKycForModel(selectedModel))) {
+      return;
+    }
+
     // 如果已有请求在进行，先取消
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -898,10 +904,18 @@ const TextToVideo: React.FC = () => {
           }
         }
       } else {
-        throw new Error(response.data?.message || intl.formatMessage({ 
-          id: 'create.video.generate.failed', 
-          defaultMessage: '视频生成失败' 
-        }));
+        const handled = await handleGenerationApiFailure(response.data, tryShowFromApiError, {
+          fallbackMessage: intl.formatMessage({
+            id: 'create.video.generate.failed',
+            defaultMessage: '视频生成失败',
+          }),
+        });
+        if (!handled) {
+          throw new Error(response.data?.message || intl.formatMessage({
+            id: 'create.video.generate.failed',
+            defaultMessage: '视频生成失败',
+          }));
+        }
       }
     } catch (error: any) {
       // 如果是用户取消的请求，不显示错误

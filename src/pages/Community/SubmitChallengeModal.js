@@ -842,14 +842,15 @@ const SubmitChallengeModal = ({ open, onCancel, onSuccess, challenge }) => {
               <h1 className="challenge-title">{challenge.title}</h1>
 
               <div className="challenge-meta">
-                {challenge.requiredModel && (
-                  <div className="meta-item">
-                    <ThunderboltOutlined style={{ color: '#fbbf24' }} />
-                    <span>
-                      <FormattedMessage id="challenge.requiredModel" defaultMessage="要求模型" />: {challenge.requiredModel}
-                    </span>
-                  </div>
-                )}
+                <div className="meta-item">
+                  <ThunderboltOutlined style={{ color: '#fbbf24' }} />
+                  <span>
+                    <FormattedMessage
+                      id="challenge.req.modelsAll"
+                      defaultMessage="All platform model types are supported — text-to-image, image-to-image, image-to-video, and more."
+                    />
+                  </span>
+                </div>
                 <div className="meta-item">
                   <AppstoreOutlined style={{ color: '#60a5fa' }} />
                   <span>Daily Challenge</span>

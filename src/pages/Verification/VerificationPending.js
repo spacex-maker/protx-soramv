@@ -399,6 +399,8 @@ const VerificationPending = () => {
       navigate(VERIFICATION_ROUTES.apply, { replace: true });
     } else if (kycStatus === 2) {
       navigate(VERIFICATION_ROUTES.verified, { replace: true });
+    } else if (kycStatus === 5) {
+      navigate(VERIFICATION_ROUTES.unbindPending, { replace: true });
     } else if (kycStatus === 3 || kycStatus === 4) {
       navigate(VERIFICATION_ROUTES.rejected, { replace: true });
     }

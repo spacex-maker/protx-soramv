@@ -12,7 +12,7 @@ import {
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled, { keyframes, css } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
-import { getChannelByKey, listPosts, likePost, unlikePost, collectPost, uncollectPost, getCurrentChallenge, listChannels } from 'api/community';
+import { getChannelByKey, listPosts, likePost, unlikePost, collectPost, uncollectPost, listChannels } from 'api/community';
 import UserRoleCard from 'components/community/UserRoleCard';
 
 const { Text } = Typography;
@@ -808,7 +808,7 @@ const ChannelDetailPage = () => {
   const intl = useIntl();
   const navigate = useNavigate();
   const { channelKey } = useParams();
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [postsLoading, setPostsLoading] = useState(false);
   const [channel, setChannel] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -850,19 +850,7 @@ const ChannelDetailPage = () => {
   useEffect(() => {
     if (channelKey) {
       if (channelKey === 'daily-challenge') {
-        const redirectToCurrentChallenge = async () => {
-          try {
-            const currentChallenge = await getCurrentChallenge();
-            if (currentChallenge && currentChallenge.id) {
-              navigate(`/community/challenge/${currentChallenge.id}`, { replace: true });
-            } else {
-              navigate('/community/challenge', { replace: true });
-            }
-          } catch (error) {
-            navigate('/community/challenge', { replace: true });
-          }
-        };
-        redirectToCurrentChallenge();
+        navigate('/community/challenge', { replace: true });
         return;
       }
       fetchChannel();
@@ -985,15 +973,10 @@ const ChannelDetailPage = () => {
     navigate(`/community/post/${post.id}`);
   };
 
-  const handleChannelClick = async (ch) => {
+  const handleChannelClick = (ch) => {
     if (ch.channelKey === channelKey) return;
     if (ch.channelKey === 'daily-challenge') {
-      try {
-        const currentChallenge = await getCurrentChallenge();
-        navigate(currentChallenge?.id ? `/community/challenge/${currentChallenge.id}` : '/community/challenge');
-      } catch {
-        navigate('/community/challenge');
-      }
+      navigate('/community/challenge');
     } else {
       navigate(`/community/${ch.channelKey}`);
     }

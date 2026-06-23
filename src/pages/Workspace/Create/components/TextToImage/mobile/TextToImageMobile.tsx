@@ -57,6 +57,7 @@ import EstimatedPriceHint from '../../shared/EstimatedPriceHint';
 import { useTokenBalance } from '../../shared/useTokenBalance';
 import { getImageEstimatedPrice, getImageRequiredTokens } from '../../shared/estimatedPriceText';
 import { useInsufficientBalanceGuard } from '../../shared/useInsufficientBalanceGuard';
+import { handleGenerationApiFailure } from '../../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../../shared/promptTranslateUtils';
@@ -137,6 +138,7 @@ const TextToImageMobile: React.FC = () => {
     insufficientBalanceModalBalance,
     closeInsufficientBalanceModal,
     ensureSufficientBalance,
+    ensureKycForModel,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard();
   const [form] = Form.useForm();
@@ -657,6 +659,12 @@ const TextToImageMobile: React.FC = () => {
       clearSubmitting();
       return;
     }
+
+    const modelForKyc = modelForPrice || selectedFamily;
+    if (!(await ensureKycForModel(modelForKyc, selectedFamily, selectedModel))) {
+      clearSubmitting();
+      return;
+    }
     
     setLoading(true);
     setGeneratedImages([]);
@@ -698,7 +706,12 @@ const TextToImageMobile: React.FC = () => {
           }
           fetchHistoryTasks(historyPagination.current, historyPagination.pageSize);
         } else {
-          message.error(response.data?.error || response.data?.message || intl.formatMessage({ id: 'create.generate.failed', defaultMessage: '生成失败，请重试' }));
+          const handled = await handleGenerationApiFailure(response.data, tryShowFromApiError, {
+            fallbackMessage: intl.formatMessage({ id: 'create.generate.failed', defaultMessage: '生成失败，请重试' }),
+          });
+          if (!handled) {
+            message.error(response.data?.error || response.data?.message || intl.formatMessage({ id: 'create.generate.failed', defaultMessage: '生成失败，请重试' }));
+          }
         }
       } else if (useAsyncApiGen) {
         const modelCode =
@@ -720,14 +733,19 @@ const TextToImageMobile: React.FC = () => {
         const taskId =
           createRes.data?.data?.id ?? createRes.data?.data?.taskId;
         if (!taskId) {
-          message.error(
-            createRes.data?.error ||
-              createRes.data?.message ||
-              intl.formatMessage({
-                id: 'create.generate.failed',
-                defaultMessage: '生成失败，请重试',
-              })
-          );
+          const handled = await handleGenerationApiFailure(createRes.data, tryShowFromApiError, {
+            fallbackMessage: intl.formatMessage({ id: 'create.generate.failed', defaultMessage: '生成失败，请重试' }),
+          });
+          if (!handled) {
+            message.error(
+              createRes.data?.error ||
+                createRes.data?.message ||
+                intl.formatMessage({
+                  id: 'create.generate.failed',
+                  defaultMessage: '生成失败，请重试',
+                })
+            );
+          }
           return;
         }
 

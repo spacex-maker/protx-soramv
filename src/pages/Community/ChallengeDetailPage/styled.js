@@ -1211,6 +1211,31 @@ export const ChallengeCard = styled.div`
   }
 `;
 
+export const CardSettingsButton = styled.button`
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 4;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: ${props => props.theme.mode === 'dark' ? '#e5e5e5' : '#595959'};
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.55)' : 'rgba(255, 255, 255, 0.92)'};
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transition: all 0.2s ease;
+
+  &:hover {
+    color: #1890ff;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(24, 144, 255, 0.25);
+  }
+`;
+
 export const ChallengeThumb = styled.div`
   width: 120px;
   height: 80px;
@@ -1633,6 +1658,86 @@ export const ActionTip = styled.div`
   
   &:hover {
     background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'};
+  }
+`;
+
+export const HubHeader = styled.div`
+  margin: 16px 0 24px;
+
+  .hub-title-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .hub-icon {
+    font-size: 36px;
+    color: #faad14;
+    margin-top: 4px;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    font-weight: 800;
+    color: ${props => props.theme.mode === 'dark' ? '#e5e5e5' : '#1f1f1f'};
+  }
+
+  p {
+    margin: 0;
+    font-size: 15px;
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)'};
+    max-width: 640px;
+  }
+`;
+
+export const HubStats = styled(DrawerStats)`
+  margin-bottom: 20px;
+`;
+
+export const HubToolbar = styled.div`
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+
+  .ant-input-affix-wrapper {
+    flex: 1;
+    min-width: 220px;
+    max-width: 480px;
+  }
+`;
+
+export const HubGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+
+  ${ChallengeCard} {
+    flex-direction: column;
+    animation-name: hubCardIn;
+    min-height: 0;
+
+    @keyframes hubCardIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    &:hover {
+      transform: translateY(-4px);
+    }
+
+    ${ChallengeThumb} {
+      width: 100%;
+      height: 140px;
+    }
   }
 `;
 
