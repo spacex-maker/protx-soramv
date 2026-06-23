@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Layout, Row, Col, Typography, Input, Button, 
   Tabs, Tag, Avatar, Space, theme, Pagination, message, Spin, Empty 
@@ -266,6 +267,7 @@ const PromptMarket: React.FC = () => {
   const { token } = theme.useToken();
   const intl = useIntl();
   const { locale } = useLocale();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedListingId, setSelectedListingId] = useState<number | null>(null);
@@ -297,6 +299,18 @@ const PromptMarket: React.FC = () => {
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
+
+  useEffect(() => {
+    const listingIdParam = searchParams.get('listingId');
+    if (!listingIdParam) return;
+    const id = Number(listingIdParam);
+    if (!Number.isFinite(id) || id <= 0) return;
+    setSelectedListingId(id);
+    setDetailModalVisible(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete('listingId');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   // 页面加载时拉取热门标签，按当前语言显示
   useEffect(() => {

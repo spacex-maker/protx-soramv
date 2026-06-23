@@ -6,14 +6,17 @@ import {
 import { 
   HeartOutlined, HeartFilled, StarOutlined, StarFilled, 
   EyeOutlined, ArrowLeftOutlined, CopyOutlined, ShareAltOutlined,
-  ThunderboltFilled, DownloadOutlined, UserAddOutlined, CheckOutlined
+  ThunderboltFilled, DownloadOutlined, UserAddOutlined, CheckOutlined,
+  ShopOutlined, LockOutlined
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
-import { getPostDetail, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus, followUser, unfollowUser, getRelationStatus } from 'api/community';
+import { getPostDetail, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus, followUser, unfollowUser, getRelationStatus, checkReviewPermission } from 'api/community';
 import UserProfileModal from 'components/community/UserProfileModal';
-import { addTencentImageCompression } from './ChallengeDetailPage/utils';
+import PostShelfToggle from 'components/community/PostShelfToggle';
+import { isPostDelisted } from 'utils/communityPostStatus';
+import { addTencentImageCompression, parsePostGenerationDetails } from './ChallengeDetailPage/utils';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -98,8 +101,24 @@ const ImageContainer = styled.div`
     width: 100%;
     height: auto;
     display: block;
-    transition: transform 0.3s;
+    transition: transform 0.3s, filter 0.3s ease, opacity 0.3s ease;
   }
+
+  ${(props) => props.$delisted && `
+    .ant-image-img {
+      filter: grayscale(100%);
+      opacity: 0.55;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.12);
+      pointer-events: none;
+      z-index: 2;
+    }
+  `}
 `;
 
 // 右侧：信息与操作区 (Sticky Sidebar)
@@ -243,6 +262,36 @@ const FollowButton = styled(Button)`
   .anticon {
     margin-right: 4px;
     font-size: 14px;
+  }
+`;
+
+const PromptMarketCta = styled.div`
+  background: ${props => props.theme.mode === 'dark'
+    ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'
+    : 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)'};
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  border: 1px solid ${props => props.theme.mode === 'dark' ? '#334155' : '#c7d2fe'};
+  text-align: center;
+
+  .icon-wrap {
+    font-size: 32px;
+    color: #6366f1;
+    margin-bottom: 12px;
+  }
+
+  h4 {
+    margin: 0 0 8px;
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  p {
+    margin: 0 0 16px;
+    color: ${props => props.theme.mode === 'dark' ? '#94a3b8' : '#64748b'};
+    font-size: 14px;
+    line-height: 1.6;
   }
 `;
 
@@ -479,9 +528,21 @@ const PostDetailPage = () => {
   const [relation, setRelation] = useState(null);
   const [followLoading, setFollowLoading] = useState(false);
   const [userProfileModalVisible, setUserProfileModalVisible] = useState(false);
+  const [canModeratePosts, setCanModeratePosts] = useState(false);
 
   useEffect(() => {
     if (postId) fetchPostDetailData();
+  }, [postId]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setCanModeratePosts(false);
+      return;
+    }
+    checkReviewPermission()
+      .then(setCanModeratePosts)
+      .catch(() => setCanModeratePosts(false));
   }, [postId]);
 
   const fetchPostDetailData = async () => {
@@ -616,7 +677,7 @@ const PostDetailPage = () => {
           <Row gutter={[16, 16]}>
             {post.mediaUrls.map((url, index) => (
               <Col key={index} xs={post.mediaUrls.length > 1 ? 12 : 24} sm={12}>
-                <ImageContainer>
+                <ImageContainer $delisted={isPostDelisted(post.status)}>
                   <Image
                     src={addTencentImageCompression(url, { quality: 30 })}
                     alt={`Creation ${index + 1}`}
@@ -627,6 +688,15 @@ const PostDetailPage = () => {
                       mask: <div style={{ padding: '8px', color: '#fff', fontSize: '14px' }}>查看原图</div>
                     }}
                   />
+                  {canModeratePosts && index === 0 && (
+                    <PostShelfToggle
+                      postId={post.id}
+                      status={post.status}
+                      onStatusChange={(_postId, newStatus) => {
+                        setPost((prev) => (prev ? { ...prev, status: newStatus } : prev));
+                      }}
+                    />
+                  )}
                 </ImageContainer>
               </Col>
             ))}
@@ -714,7 +784,38 @@ const PostDetailPage = () => {
 
             <Divider />
 
-            {/* 2. 核心资产：Prompt */}
+            {/* 2. 核心资产：Prompt / 提示词商城引导 */}
+            {post.isPromptHidden && post.promptMarketListingId ? (
+                <PromptMarketCta>
+                    <div className="icon-wrap">
+                        <LockOutlined />
+                    </div>
+                    <h4>
+                        <FormattedMessage
+                            id="post.promptHiddenTitle"
+                            defaultMessage="完整提示词已在提示词商城上架"
+                        />
+                    </h4>
+                    <p>
+                        <FormattedMessage
+                            id="post.promptHiddenDesc"
+                            defaultMessage="社区展示版已隐藏提示词与参数。前往提示词商城购买后可获取完整 Prompt 与生成参数。"
+                        />
+                    </p>
+                    <Button
+                        type="primary"
+                        size="large"
+                        icon={<ShopOutlined />}
+                        onClick={() => navigate(`/workspace/prompt-market?listingId=${post.promptMarketListingId}`)}
+                    >
+                        <FormattedMessage
+                            id="post.goPromptMarket"
+                            defaultMessage="前往提示词商城购买"
+                        />
+                    </Button>
+                </PromptMarketCta>
+            ) : (
+                <>
             {post.prompt && (
                 <PromptBox>
                     <div className="box-header">
@@ -752,31 +853,54 @@ const PostDetailPage = () => {
                     </div>
                 </PromptBox>
             )}
+                </>
+            )}
 
             {/* 3. 参数与标签 */}
+            {(() => {
+              const gen = parsePostGenerationDetails(post);
+              const hasDetails = gen.modelLabel || gen.resolution || gen.steps != null || gen.cfgScale != null || gen.seed != null;
+              if (!hasDetails) return null;
+              return (
             <div style={{ marginBottom: 24 }}>
                 <Text type="secondary" style={{ fontSize: 12, textTransform: 'uppercase', fontWeight: 700, display: 'block', marginBottom: 12 }}>
                     <FormattedMessage id="post.details" defaultMessage="Details" />
                 </Text>
                 <Row gutter={[16, 16]}>
+                    {gen.modelLabel && (
                     <Col span={12}>
                         <Text type="secondary" style={{ fontSize: 12 }}><FormattedMessage id="post.model" defaultMessage="Model" /></Text>
-                        <GlowModelName>{post.modelKey || 'SDXL 1.0'}</GlowModelName>
+                        <GlowModelName>{gen.modelLabel}</GlowModelName>
                     </Col>
+                    )}
+                    {gen.resolution && (
                     <Col span={12}>
                         <Text type="secondary" style={{ fontSize: 12 }}><FormattedMessage id="post.resolution" defaultMessage="Resolution" /></Text>
-                        <div style={{ fontWeight: 500 }}>1024 x 1024</div>
+                        <div style={{ fontWeight: 500 }}>{gen.resolution}</div>
                     </Col>
+                    )}
+                    {gen.steps != null && (
                     <Col span={12}>
                         <Text type="secondary" style={{ fontSize: 12 }}><FormattedMessage id="post.steps" defaultMessage="Steps" /></Text>
-                        <div style={{ fontWeight: 500 }}>30</div>
+                        <div style={{ fontWeight: 500 }}>{gen.steps}</div>
                     </Col>
+                    )}
+                    {gen.cfgScale != null && (
                     <Col span={12}>
                         <Text type="secondary" style={{ fontSize: 12 }}><FormattedMessage id="post.cfgScale" defaultMessage="Guidance Scale" /></Text>
-                        <div style={{ fontWeight: 500 }}>7.0</div>
+                        <div style={{ fontWeight: 500 }}>{gen.cfgScale}</div>
                     </Col>
+                    )}
+                    {gen.seed != null && (
+                    <Col span={12}>
+                        <Text type="secondary" style={{ fontSize: 12 }}><FormattedMessage id="post.seed" defaultMessage="Seed" /></Text>
+                        <div style={{ fontWeight: 500 }}>{gen.seed}</div>
+                    </Col>
+                    )}
                 </Row>
             </div>
+              );
+            })()}
 
             {post.tags && post.tags.length > 0 && (
                 <div style={{ marginTop: 24 }}>

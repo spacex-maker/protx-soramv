@@ -23,8 +23,9 @@ import {
 import {
   PageWrapper,
   Container,
-  HubHeader,
-  HubStats,
+  HubHero,
+  HubStatsGrid,
+  HubStatCard,
   HubToolbar,
   HubGrid,
   EmptyState,
@@ -67,9 +68,11 @@ const ChallengeHubPage = ({ embedInWorkspace = false }) => {
 
   useEffect(() => {
     loadChallenges();
-    getMyRoles()
-      .then((roles) => setCanManage(canManageDailyChallenge(roles || [])))
-      .catch(() => setCanManage(false));
+    if (localStorage.getItem('token')) {
+      getMyRoles()
+        .then((roles) => setCanManage(canManageDailyChallenge(roles || [])))
+        .catch(() => setCanManage(false));
+    }
   }, []);
 
   const filteredChallenges = useMemo(() => {
@@ -105,7 +108,7 @@ const ChallengeHubPage = ({ embedInWorkspace = false }) => {
   };
 
   return (
-    <PageWrapper style={embedInWorkspace ? { paddingTop: 24, background: 'transparent' } : undefined}>
+    <PageWrapper style={embedInWorkspace ? { paddingTop: 0, background: 'transparent', minHeight: 'auto' } : undefined}>
       {!embedInWorkspace && <SimpleHeader />}
 
       <Container>
@@ -122,10 +125,18 @@ const ChallengeHubPage = ({ embedInWorkspace = false }) => {
           )}
         </Button>
 
-        <HubHeader>
-          <div className="hub-title-row">
-            <TrophyFilled className="hub-icon" />
-            <div>
+        <HubHero>
+          <div className="hero-glow" aria-hidden />
+          <div className="hero-glow-2" aria-hidden />
+          <div className="hero-content">
+            <div className="hero-icon-wrap">
+              <TrophyFilled />
+            </div>
+            <div className="hero-text">
+              <div className="hero-eyebrow">
+                <FireFilled style={{ fontSize: 11 }} />
+                <FormattedMessage id="challenge.hub.eyebrow" defaultMessage="Creative Arena" />
+              </div>
               <h1>
                 <FormattedMessage id="challenge.hub.title" defaultMessage="Daily Challenges" />
               </h1>
@@ -137,36 +148,49 @@ const ChallengeHubPage = ({ embedInWorkspace = false }) => {
               </p>
             </div>
           </div>
-        </HubHeader>
+        </HubHero>
 
-        <HubStats>
-          <div className="stat-item">
+        <HubStatsGrid>
+          <HubStatCard
+            $accent="linear-gradient(90deg, #3b82f6, #60a5fa)"
+            $iconBg="rgba(59, 130, 246, 0.12)"
+            $iconColor="#3b82f6"
+          >
+            <div className="stat-icon">
+              <TrophyFilled />
+            </div>
             <div className="stat-value">{stats.total}</div>
             <div className="stat-label">
               <FormattedMessage id="challenge.stats.total" defaultMessage="Total" />
             </div>
-          </div>
-          <div className="stat-divider" />
-          <div className="stat-item">
-            <div className="stat-value active">
-              <FireFilled style={{ fontSize: 14, marginRight: 4 }} />
-              {stats.active}
+          </HubStatCard>
+          <HubStatCard
+            $accent="linear-gradient(90deg, #52c41a, #95de64)"
+            $iconBg="rgba(82, 196, 26, 0.12)"
+            $iconColor="#52c41a"
+          >
+            <div className="stat-icon">
+              <FireFilled />
             </div>
+            <div className="stat-value">{stats.active}</div>
             <div className="stat-label">
               <FormattedMessage id="challenge.stats.active" defaultMessage="Active" />
             </div>
-          </div>
-          <div className="stat-divider" />
-          <div className="stat-item">
-            <div className="stat-value prize">
-              <TrophyFilled style={{ fontSize: 14, marginRight: 4 }} />
-              {stats.totalPrize.toLocaleString()}
+          </HubStatCard>
+          <HubStatCard
+            $accent="linear-gradient(90deg, #faad14, #ffd666)"
+            $iconBg="rgba(250, 173, 20, 0.12)"
+            $iconColor="#faad14"
+          >
+            <div className="stat-icon">
+              <TrophyFilled />
             </div>
+            <div className="stat-value">{stats.totalPrize.toLocaleString()}</div>
             <div className="stat-label">
               <FormattedMessage id="challenge.stats.totalPrize" defaultMessage="Total Prize" />
             </div>
-          </div>
-        </HubStats>
+          </HubStatCard>
+        </HubStatsGrid>
 
         <HubToolbar>
           <Input
@@ -192,6 +216,7 @@ const ChallengeHubPage = ({ embedInWorkspace = false }) => {
                 challenge={item}
                 isActive={false}
                 index={index}
+                variant="hub"
                 canManage={canManage && !embedInWorkspace}
                 onManageClick={handleManageClick}
                 onClick={() => handleCardClick(item.id)}

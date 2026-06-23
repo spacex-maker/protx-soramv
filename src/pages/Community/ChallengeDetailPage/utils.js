@@ -170,6 +170,72 @@ export const cleanChallengeData = (data) => {
   };
 };
 
+// 解析帖子生成参数（用于详情页展示）
+export const parsePostGenerationDetails = (post) => {
+  let params = {};
+  if (post?.generationParams) {
+    try {
+      params = typeof post.generationParams === 'string'
+        ? JSON.parse(post.generationParams)
+        : post.generationParams;
+    } catch (e) {
+      params = {};
+    }
+  }
+
+  const modelLabel = post?.modelName || params.modelName || post?.modelKey || null;
+
+  let resolution = null;
+  if (params.size) {
+    resolution = String(params.size);
+  } else if (params.resolution) {
+    resolution = String(params.resolution);
+  } else if (params.width && params.height) {
+    resolution = `${params.width} x ${params.height}`;
+  }
+
+  const steps = params.steps ?? params.numInferenceSteps ?? null;
+  const cfgScale = params.cfgScale ?? params.guidance_scale ?? params.guidanceScale ?? null;
+  const seed = params.seed ?? null;
+
+  return { modelLabel, resolution, steps, cfgScale, seed };
+};
+
+/** 频道卡片上展示的规格标签（尺寸、分辨率、模型等） */
+export const getPostCardSpecs = (post) => {
+  const gen = parsePostGenerationDetails(post);
+  let params = {};
+  if (post?.generationParams) {
+    try {
+      params = typeof post.generationParams === 'string'
+        ? JSON.parse(post.generationParams)
+        : post.generationParams;
+    } catch (e) {
+      params = {};
+    }
+  }
+
+  const specs = [];
+  const sizeValue = params.size ? String(params.size) : null;
+  const pixelSize = params.width && params.height ? `${params.width}×${params.height}` : null;
+
+  if (sizeValue) {
+    specs.push({ key: 'size', labelId: 'post.imageSize', value: sizeValue });
+  }
+  if (pixelSize && pixelSize !== sizeValue) {
+    specs.push({ key: 'dimensions', labelId: 'post.dimensions', value: pixelSize });
+  } else if (!sizeValue && gen.resolution) {
+    specs.push({ key: 'resolution', labelId: 'post.resolution', value: gen.resolution });
+  }
+  if (gen.modelLabel) {
+    specs.push({ key: 'model', labelId: 'post.model', value: gen.modelLabel });
+  }
+  if (gen.steps != null) {
+    specs.push({ key: 'steps', labelId: 'post.steps', value: String(gen.steps) });
+  }
+  return specs;
+};
+
 // 清理帖子数据
 export const cleanPostData = (post) => {
   let mediaUrls = [];
@@ -196,6 +262,7 @@ export const cleanPostData = (post) => {
     prompt: typeof post.prompt === 'string' ? post.prompt : undefined,
     negativePrompt: typeof post.negativePrompt === 'string' ? post.negativePrompt : undefined,
     modelKey: typeof post.modelKey === 'string' ? post.modelKey : undefined,
+    modelName: typeof post.modelName === 'string' ? post.modelName : undefined,
     generationParams: typeof post.generationParams === 'string' ? post.generationParams : undefined,
     viewCount: Number(post.viewCount) || 0,
     likeCount: Number(post.likeCount) || 0,

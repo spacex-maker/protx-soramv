@@ -27,11 +27,12 @@ import {
   IdcardOutlined,
   WalletOutlined,
   SafetyCertificateOutlined,
-  ToolOutlined,
   CloudUploadOutlined,
   SettingOutlined,
   CheckCircleFilled,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  CameraOutlined,
+  PictureOutlined
 } from "@ant-design/icons";
 
 // ==========================================
@@ -50,26 +51,12 @@ const PageBackground = styled.div`
   overflow-x: hidden;
 `;
 
-const ConstructionBanner = styled.div`
-  background: ${props => props.$token.colorWarningBg};
-  border-bottom: 1px solid ${props => props.$token.colorWarningBorder};
-  color: ${props => props.$token.colorWarning};
-  padding: 10px 16px;
-  text-align: center;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  position: relative;
-  z-index: 50;
-`;
-
 const ContentWrapper = styled.div`
   flex: 1;
   position: relative;
   padding-bottom: 40px;
   width: 100%;
+  margin-top: ${props => (props.$overlap ? '-72px' : '0')};
   
   /* 背景装饰 */
   &::before {
@@ -88,46 +75,98 @@ const ContentWrapper = styled.div`
   }
 `;
 
+const CoverHeroSection = styled.section`
+  position: relative;
+  width: 100%;
+  min-height: clamp(220px, 38vh, 420px);
+  overflow: hidden;
+  isolation: isolate;
+  background: ${props =>
+    props.$hasImage
+      ? 'transparent'
+      : `linear-gradient(135deg, ${props.$token.colorPrimaryBg} 0%, ${props.$token.colorBgLayout} 55%, ${props.$token.colorPrimaryBgHover || props.$token.colorPrimaryBg} 100%)`};
+
+  .bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center center;
+    transform: scale(1.02);
+  }
+
+  .overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.08) 0%,
+      rgba(0, 0, 0, 0.02) 45%,
+      rgba(0, 0, 0, 0.35) 100%
+    );
+    pointer-events: none;
+  }
+
+  .bottom-fade {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 120px;
+    background: linear-gradient(to bottom, transparent, ${props => props.$token.colorBgLayout});
+    pointer-events: none;
+  }
+
+  .upload-trigger {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+
+    .upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 500;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    }
+
+    &:hover .upload-btn,
+    &:focus-within .upload-btn {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .upload-btn:hover {
+      background: rgba(0, 0, 0, 0.58);
+    }
+  }
+`;
+
 const MainContainer = styled(motion.div)`
   position: relative;
   z-index: 10;
   max-width: 1000px;
   margin: 0 auto;
-  padding: 24px 16px;
+  padding: 0 16px 24px;
   display: flex;
   flex-direction: column;
 
   @media (min-width: 768px) {
-    padding: 32px 24px;
-  }
-`;
-
-const CoverSection = styled.div`
-  width: 100%;
-  height: 200px;
-  border-radius: 20px;
-  position: relative;
-  overflow: hidden;
-  background-color: ${props => props.$token.colorBgContainerDisabled};
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    display: block;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.2) 100%);
-    pointer-events: none;
-  }
-
-  @media (min-width: 768px) {
-    height: 280px;
+    padding: 0 24px 32px;
   }
 `;
 
@@ -141,7 +180,7 @@ const ProfileCard = styled.div`
   /* 添加阴影 */
   box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.15);
   
-  margin-top: -60px; 
+  margin-top: -48px; 
   margin-left: 12px;
   margin-right: 12px;
   padding: 0 24px 32px;
@@ -153,7 +192,7 @@ const ProfileCard = styled.div`
   @media (min-width: 768px) {
     margin-left: 40px;
     margin-right: 40px;
-    margin-top: -80px;
+    margin-top: -64px;
     padding: 0 40px 40px;
   }
 `;
@@ -421,6 +460,7 @@ const ProfileContent = () => {
   const [loading, setLoading] = useState(false);
   const [editedInfo, setEditedInfo] = useState({});
   const [avatarFile, setAvatarFile] = useState(null); // 保存选中的头像文件对象
+  const [coverUploadLoading, setCoverUploadLoading] = useState(false);
   const [followersCount, setFollowersCount] = useState(0);
   const [followingCount, setFollowingCount] = useState(0);
   const [followersModalOpen, setFollowersModalOpen] = useState(false);
@@ -556,6 +596,50 @@ const ProfileContent = () => {
   };
 
 
+  const handleCoverUpload = async (file) => {
+    if (!file.type.startsWith('image/')) {
+      message.error(intl.formatMessage({ id: 'profile.message.coverTypeInvalid', defaultMessage: '只能上传图片文件' }));
+      return;
+    }
+    if (file.size / 1024 / 1024 > 5) {
+      message.error(intl.formatMessage({ id: 'profile.message.coverSizeLimit', defaultMessage: '背景图大小不能超过 5MB' }));
+      return;
+    }
+
+    setCoverUploadLoading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const uploadResponse = await instance.post('/productx/user/cover', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (uploadResponse.data.success) {
+        message.success(intl.formatMessage({ id: 'profile.message.coverUploadSuccess', defaultMessage: '背景图上传成功' }));
+        const userInfoResult = await auth.getUserInfo();
+        if (userInfoResult.success) {
+          setUserInfo(userInfoResult.data);
+          localStorage.setItem('userInfo', JSON.stringify(userInfoResult.data));
+        }
+      } else {
+        message.error(uploadResponse.data.message || intl.formatMessage({ id: 'profile.message.uploadCoverFailed', defaultMessage: '背景图上传失败' }));
+      }
+    } catch (error) {
+      message.error(error.response?.data?.message || intl.formatMessage({ id: 'profile.message.uploadCoverFailed', defaultMessage: '背景图上传失败' }));
+    } finally {
+      setCoverUploadLoading(false);
+    }
+  };
+
+  const handleCoverChange = (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleCoverUpload(file);
+    }
+    event.target.value = '';
+  };
+
   const handleEditClick = () => {
     setEditedInfo({
       username: userInfo?.username || '',
@@ -651,28 +735,49 @@ const ProfileContent = () => {
     </div>
   );
 
+  const coverUrl = userInfo.coverImage || userInfo.cover;
+
   return (
     // 2. 将 token 传给所有的 Styled Components
     <PageBackground $token={token}>
       <SimpleHeader />
-      
-      <ConstructionBanner $token={token}>
-        <ToolOutlined /> {intl.formatMessage({ id: 'profile.banner.construction', defaultMessage: '本页面正在建设中...' })}
-      </ConstructionBanner>
 
-      <ContentWrapper $token={token}>
+      <CoverHeroSection $token={token} $hasImage={Boolean(coverUrl)}>
+        {coverUrl && (
+          <img className="bg" src={coverUrl} alt="" loading="eager" />
+        )}
+        <div className="overlay" aria-hidden />
+        <div className="bottom-fade" aria-hidden />
+        <label className="upload-trigger" htmlFor="profile-cover-upload">
+          <input
+            id="profile-cover-upload"
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={handleCoverChange}
+            disabled={coverUploadLoading}
+          />
+          <span className="upload-btn">
+            {coverUploadLoading ? (
+              <Spin size="small" />
+            ) : coverUrl ? (
+              <CameraOutlined />
+            ) : (
+              <PictureOutlined />
+            )}
+            {coverUrl
+              ? intl.formatMessage({ id: 'profile.cover.change', defaultMessage: '更换背景图' })
+              : intl.formatMessage({ id: 'profile.cover.upload', defaultMessage: '上传背景图' })}
+          </span>
+        </label>
+      </CoverHeroSection>
+
+      <ContentWrapper $token={token} $overlap>
         <MainContainer
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <CoverSection $token={token}>
-              <img 
-                src={userInfo.cover || "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?auto=format&fit=crop&w=1200&q=80"} 
-                alt="Cover Background" 
-              />
-          </CoverSection>
-
           <ProfileCard $token={token}>
             <HeaderRow>
               <UserInfoSection>

@@ -215,7 +215,10 @@ instance.interceptors.response.use(
     }
     
     if (response?.status === 401 || response?.status === 403) {
-      handle401Error();
+      const hadToken = !!localStorage.getItem('token');
+      if (hadToken) {
+        handle401Error();
+      }
     }
     
     return Promise.reject(error);

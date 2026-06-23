@@ -1,19 +1,27 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Spin, message, Button, Typography, Empty, Select, Avatar, Tooltip, Tag } from 'antd';
+import { Spin, message, Button, Typography, Empty, Select, Avatar, Tooltip, Tag, Image } from 'antd';
 import Masonry from 'react-masonry-css';
 import { 
   HeartOutlined, HeartFilled, 
   StarOutlined, StarFilled, 
   EyeOutlined, UserOutlined,
   FireOutlined, ClockCircleOutlined,
-  PictureOutlined
+  PictureOutlined, RobotOutlined,
+  ArrowRightOutlined,
+  LoadingOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled, { keyframes, css } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
-import { getChannelByKey, listPosts, likePost, unlikePost, collectPost, uncollectPost, listChannels } from 'api/community';
+import { getChannelByKey, listPosts, likePost, unlikePost, collectPost, uncollectPost, listChannels, incrementPostView, checkReviewPermission } from 'api/community';
+import { checkAiOperatorManagePermission } from 'api/communityAiOperator';
 import UserRoleCard from 'components/community/UserRoleCard';
+import ChannelAiOperatorModal from 'components/community/ChannelAiOperatorModal';
+import PostShelfToggle from 'components/community/PostShelfToggle';
+import { isPostDelisted } from 'utils/communityPostStatus';
+import { communityChannelPath } from 'utils/communityRoutes';
+import { getPostCardSpecs } from './ChallengeDetailPage/utils';
 
 const { Text } = Typography;
 
@@ -603,14 +611,6 @@ const ModernCard = styled.div`
   transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
   border: 1px solid ${props => props.theme.mode === 'dark' ? '#333' : 'transparent'};
 
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    z-index: 5;
-    cursor: pointer;
-  }
-
   &:hover {
     transform: translateY(-6px);
     box-shadow: 0 20px 40px rgba(0,0,0,0.15);
@@ -632,18 +632,44 @@ const CardImageWrapper = styled.div`
   width: 100%;
   height: auto;
   z-index: 1;
+  cursor: zoom-in;
 
-  img {
+  .ant-image {
+    width: 100%;
+    display: block;
+  }
+
+  .ant-image-img {
     width: 100%;
     height: auto;
     display: block;
     vertical-align: top;
-    transition: transform 0.7s ease;
+    transition: transform 0.7s ease, filter 0.3s ease, opacity 0.3s ease;
   }
 
-  ${ModernCard}:hover & img {
+  ${ModernCard}:hover & .ant-image-img {
     transform: scale(1.02);
   }
+
+  ${(props) => props.$delisted && css`
+    .ant-image-img {
+      filter: grayscale(100%);
+      opacity: 0.55;
+    }
+
+    ${ModernCard}:hover & .ant-image-img {
+      transform: none;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.12);
+      pointer-events: none;
+      z-index: 2;
+    }
+  `}
 `;
 
 const FloatingActions = styled.div`
@@ -726,9 +752,24 @@ const CardContent = styled.div`
     ? 'rgba(255, 255, 255, 0.06)'
     : 'rgba(255, 255, 255, 0.18)'};
 
-  transition: background 0.3s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease, background 0.3s ease;
 
-  ${ModernCard}:hover & {
+  @media (hover: hover) and (pointer: fine) {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+
+    ${ModernCard}:hover & {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+      background: ${props => props.theme.mode === 'dark'
+        ? 'rgba(0, 0, 0, 0.42)'
+        : 'rgba(255, 255, 255, 0.52)'};
+    }
+  }
+
+  @media (hover: none), (pointer: coarse) {
     background: ${props => props.theme.mode === 'dark'
       ? 'rgba(0, 0, 0, 0.42)'
       : 'rgba(255, 255, 255, 0.52)'};
@@ -742,7 +783,9 @@ const CardContent = styled.div`
 const CardTitle = styled.h3`
   font-size: 15px;
   font-weight: 700;
-  margin: 0 0 6px 0;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -751,7 +794,62 @@ const CardTitle = styled.h3`
 
   @media (max-width: 768px) {
     font-size: 14px;
+  }
+`;
+
+const CardTitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+
+  @media (max-width: 768px) {
     margin-bottom: 4px;
+  }
+`;
+
+const CardSpecRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+  min-width: 0;
+`;
+
+const SpecChip = styled.span`
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.88)' : 'rgba(0,0,0,0.75)')};
+  background: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)')};
+  border: 1px solid ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')};
+`;
+
+const DetailLink = styled.button`
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: ${props => props.theme.mode === 'dark' ? '#93c5fd' : '#2563eb'};
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0.88;
+
+  &:hover {
+    opacity: 1;
+    text-decoration: underline;
   }
 `;
 
@@ -816,6 +914,9 @@ const ChannelDetailPage = () => {
   const [hasMore, setHasMore] = useState(true);
   const [sortBy, setSortBy] = useState('latest');
   const [animatingPost, setAnimatingPost] = useState(null);
+  const viewedPreviewRef = useRef(new Set());
+  const [previewOriginalIds, setPreviewOriginalIds] = useState(() => new Set());
+  const [previewLoadingOriginalId, setPreviewLoadingOriginalId] = useState(null);
   
   // Drag state
   const [cardPosition, setCardPosition] = useState({ top: 100, right: 40 });
@@ -825,6 +926,13 @@ const ChannelDetailPage = () => {
 
   // 头部频道列表（快捷跳转）
   const [channelsList, setChannelsList] = useState([]);
+
+  // AI 运营管理（超级管理员 / 社区运营官）
+  const [canManageAiOperator, setCanManageAiOperator] = useState(false);
+  const [aiOperatorModalOpen, setAiOperatorModalOpen] = useState(false);
+
+  // 帖子审核上架/下架（超级管理员 / 社区运营官）
+  const [canModeratePosts, setCanModeratePosts] = useState(false);
 
   // 滚动到底部附近自动加载
   const loadMoreRef = useRef(null);
@@ -870,6 +978,21 @@ const ChannelDetailPage = () => {
     listChannels()
       .then((data) => setChannelsList(data || []))
       .catch(() => setChannelsList([]));
+  }, [channel?.id]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setCanManageAiOperator(false);
+      setCanModeratePosts(false);
+      return;
+    }
+    checkAiOperatorManagePermission()
+      .then(setCanManageAiOperator)
+      .catch(() => setCanManageAiOperator(false));
+    checkReviewPermission()
+      .then(setCanModeratePosts)
+      .catch(() => setCanModeratePosts(false));
   }, [channel?.id]);
 
   useEffect(() => {
@@ -969,8 +1092,100 @@ const ChannelDetailPage = () => {
     }
   };
 
-  const handlePostClick = (post) => {
+  const handlePostDetailClick = (post, e) => {
+    e?.stopPropagation();
+    e?.preventDefault();
     navigate(`/community/post/${post.id}`);
+  };
+
+  const handlePostShelfStatusChange = (postId, newStatus) => {
+    setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, status: newStatus } : p)));
+  };
+
+  const handlePreviewVisibleChange = async (post, visible) => {
+    if (!visible) {
+      setPreviewOriginalIds((prev) => {
+        const next = new Set(prev);
+        next.delete(post.id);
+        return next;
+      });
+      setPreviewLoadingOriginalId((id) => (id === post.id ? null : id));
+      return;
+    }
+    if (viewedPreviewRef.current.has(post.id)) {
+      return;
+    }
+    viewedPreviewRef.current.add(post.id);
+    try {
+      const viewCount = await incrementPostView(post.id);
+      if (typeof viewCount === 'number') {
+        setPosts(prev => prev.map(p => (p.id === post.id ? { ...p, viewCount } : p)));
+      }
+    } catch (error) {
+      viewedPreviewRef.current.delete(post.id);
+    }
+  };
+
+  const getPostImageUrl = (post, options = {}) => addTencentImageCompression(
+    post.coverUrl || post.mediaUrls?.[0],
+    options
+  );
+
+  const getPostOriginalUrl = (post) => post.coverUrl || post.mediaUrls?.[0] || '';
+
+  const handleLoadOriginalInPreview = (postId) => {
+    setPreviewLoadingOriginalId(postId);
+    setPreviewOriginalIds((prev) => new Set(prev).add(postId));
+  };
+
+  const buildPostPreviewConfig = (post) => {
+    const originalUrl = getPostOriginalUrl(post);
+    const showOriginal = previewOriginalIds.has(post.id);
+    const previewSrc = showOriginal
+      ? originalUrl
+      : getPostImageUrl(post, { quality: 90, width: 1920 });
+
+    return {
+      src: previewSrc,
+      onVisibleChange: (visible) => handlePreviewVisibleChange(post, visible),
+      imageRender: (originalNode) => React.cloneElement(originalNode, {
+        onLoad: () => {
+          if (previewLoadingOriginalId === post.id) {
+            setPreviewLoadingOriginalId(null);
+          }
+        },
+      }),
+      toolbarRender: (originalNode) => {
+        if (showOriginal || !originalUrl) {
+          return originalNode;
+        }
+        return React.cloneElement(originalNode, {
+          children: (
+            <>
+              {originalNode.props.children}
+              <div
+                className="ant-image-preview-operations-operation"
+                role="button"
+                aria-label={intl.formatMessage({ id: 'post.viewOriginal', defaultMessage: '原图' })}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLoadOriginalInPreview(post.id);
+                }}
+              >
+                {previewLoadingOriginalId === post.id ? (
+                  <LoadingOutlined />
+                ) : (
+                  <PictureOutlined />
+                )}
+                <span style={{ marginLeft: 6, fontSize: 13 }}>
+                  <FormattedMessage id="post.viewOriginal" defaultMessage="原图" />
+                </span>
+              </div>
+            </>
+          ),
+        });
+      },
+    };
   };
 
   const handleChannelClick = (ch) => {
@@ -978,7 +1193,7 @@ const ChannelDetailPage = () => {
     if (ch.channelKey === 'daily-challenge') {
       navigate('/community/challenge');
     } else {
-      navigate(`/community/${ch.channelKey}`);
+      navigate(communityChannelPath(ch.channelKey));
     }
   };
 
@@ -1121,6 +1336,15 @@ const ChannelDetailPage = () => {
             <Text type="secondary" style={{ fontSize: 'inherit' }}>
               <FormattedMessage id="community.totalPosts" defaultMessage="{count} artworks" values={{ count: <b>{channel.postCount || 0}</b> }} />
             </Text>
+            {canManageAiOperator && (
+              <Button
+                type="default"
+                icon={<RobotOutlined />}
+                onClick={() => setAiOperatorModalOpen(true)}
+              >
+                <FormattedMessage id="community.aiOperator.manageButton" defaultMessage="AI 运营" />
+              </Button>
+            )}
           </ToolBarLeft>
 
           <FilterGroup>
@@ -1151,16 +1375,25 @@ const ChannelDetailPage = () => {
             {posts.map((post) => {
               const isLiked = post.isLiked || false;
               const isCollected = post.isCollected || false;
+              const cardSpecs = getPostCardSpecs(post);
+              const delisted = isPostDelisted(post.status);
 
               return (
                 <div key={post.id}>
-                  <ModernCard onClick={() => handlePostClick(post)}>
-                    <CardImageWrapper>
-                      <img
-                        src={addTencentImageCompression(post.coverUrl || post.mediaUrls?.[0], { quality: 20 })}
+                  <ModernCard>
+                    <CardImageWrapper $delisted={delisted}>
+                      <Image
+                        src={getPostImageUrl(post, { quality: 20 })}
                         alt={post.title}
-                        loading="lazy"
+                        preview={buildPostPreviewConfig(post)}
                       />
+                      {canModeratePosts && (
+                        <PostShelfToggle
+                          postId={post.id}
+                          status={post.status}
+                          onStatusChange={handlePostShelfStatusChange}
+                        />
+                      )}
                     </CardImageWrapper>
 
                     <FloatingActions>
@@ -1186,7 +1419,27 @@ const ChannelDetailPage = () => {
                     </FloatingActions>
 
                     <CardContent>
-                      <CardTitle title={post.title}>{post.title || "Untitled Artwork"}</CardTitle>
+                      <CardTitleRow>
+                        <CardTitle title={post.title}>{post.title || intl.formatMessage({ id: 'post.untitled', defaultMessage: 'Untitled Creation' })}</CardTitle>
+                        <DetailLink
+                          onClick={(e) => handlePostDetailClick(post, e)}
+                        >
+                          <FormattedMessage id="post.viewDetail" defaultMessage="Details" />
+                          <ArrowRightOutlined style={{ fontSize: 10 }} />
+                        </DetailLink>
+                      </CardTitleRow>
+                      {cardSpecs.length > 0 && (
+                        <CardSpecRow>
+                          {cardSpecs.map((spec) => (
+                            <Tooltip
+                              key={`${post.id}-${spec.key}`}
+                              title={`${intl.formatMessage({ id: spec.labelId, defaultMessage: spec.key })}: ${spec.value}`}
+                            >
+                              <SpecChip>{spec.value}</SpecChip>
+                            </Tooltip>
+                          ))}
+                        </CardSpecRow>
+                      )}
                       <MetaRow>
                         <UserInfo>
                           <Avatar
@@ -1253,6 +1506,32 @@ const ChannelDetailPage = () => {
           </BlockSection>
         )}
       </Container>
+
+      <ChannelAiOperatorModal
+        open={aiOperatorModalOpen}
+        channelId={channel?.id}
+        channelName={channel?.name}
+        onClose={() => setAiOperatorModalOpen(false)}
+        onPostTriggered={async () => {
+          if (!channel?.id) return;
+          setPage(1);
+          setPostsLoading(true);
+          try {
+            const data = await listPosts({
+              channelId: channel.id,
+              page: 1,
+              pageSize: 20,
+              sortBy,
+            });
+            setPosts(data);
+            setHasMore(data.length === 20);
+          } catch (error) {
+            message.error(error?.response?.data?.message || 'Load failed');
+          } finally {
+            setPostsLoading(false);
+          }
+        }}
+      />
     </PageLayout>
   );
 };

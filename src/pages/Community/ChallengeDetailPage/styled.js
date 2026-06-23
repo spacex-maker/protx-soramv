@@ -1661,33 +1661,194 @@ export const ActionTip = styled.div`
   }
 `;
 
-export const HubHeader = styled.div`
-  margin: 16px 0 24px;
+export const HubHero = styled.div`
+  position: relative;
+  margin: 8px 0 32px;
+  padding: 40px 36px;
+  border-radius: 24px;
+  overflow: hidden;
+  isolation: isolate;
+  background: ${props => props.theme.mode === 'dark'
+    ? 'linear-gradient(135deg, #141414 0%, #1a1208 45%, #0f172a 100%)'
+    : 'linear-gradient(135deg, #fff7e6 0%, #ffffff 40%, #f0f5ff 100%)'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+  box-shadow: ${props => props.theme.mode === 'dark'
+    ? '0 24px 48px rgba(0,0,0,0.35)'
+    : '0 20px 40px rgba(250, 173, 20, 0.08), 0 8px 24px rgba(0,0,0,0.04)'};
 
-  .hub-title-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 16px;
+  .hero-glow {
+    position: absolute;
+    top: -40%;
+    right: -10%;
+    width: 420px;
+    height: 420px;
+    background: radial-gradient(circle, rgba(250, 173, 20, 0.22) 0%, transparent 68%);
+    pointer-events: none;
   }
 
-  .hub-icon {
-    font-size: 36px;
-    color: #faad14;
-    margin-top: 4px;
+  .hero-glow-2 {
+    position: absolute;
+    bottom: -50%;
+    left: -5%;
+    width: 360px;
+    height: 360px;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.14) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+  }
+
+  .hero-icon-wrap {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, #ffd666 0%, #faad14 55%, #d48806 100%);
+    box-shadow: 0 12px 28px rgba(250, 173, 20, 0.35);
+    color: #fff;
+    font-size: 30px;
+  }
+
+  .hero-text {
+    min-width: 0;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    margin-bottom: 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: #d48806;
+    background: rgba(250, 173, 20, 0.12);
+    border: 1px solid rgba(250, 173, 20, 0.22);
   }
 
   h1 {
-    margin: 0 0 8px;
-    font-size: 28px;
+    margin: 0 0 10px;
+    font-size: clamp(28px, 4vw, 40px);
     font-weight: 800;
-    color: ${props => props.theme.mode === 'dark' ? '#e5e5e5' : '#1f1f1f'};
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+    color: ${props => props.theme.mode === 'dark' ? '#fff' : '#141414'};
   }
 
   p {
     margin: 0;
-    font-size: 15px;
-    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)'};
-    max-width: 640px;
+    max-width: 560px;
+    font-size: 16px;
+    line-height: 1.65;
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.62)' : 'rgba(0,0,0,0.58)'};
+  }
+
+  @media (max-width: 768px) {
+    padding: 28px 20px;
+    border-radius: 18px;
+
+    .hero-content {
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .hero-icon-wrap {
+      width: 52px;
+      height: 52px;
+      font-size: 24px;
+      border-radius: 14px;
+    }
+  }
+`;
+
+export const HubHeader = styled.div`
+  /* legacy alias */
+`;
+
+export const HubStatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 28px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+`;
+
+export const HubStatCard = styled.div`
+  position: relative;
+  padding: 22px 24px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: ${props => props.theme.mode === 'dark' ? '#141414' : '#fff'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+  box-shadow: ${props => props.theme.mode === 'dark'
+    ? '0 8px 24px rgba(0,0,0,0.25)'
+    : '0 8px 24px rgba(0,0,0,0.04)'};
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: ${props => props.$accent || 'linear-gradient(90deg, #faad14, #ffd666)'};
+    opacity: 0.9;
+  }
+
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: ${props => props.theme.mode === 'dark'
+      ? '0 16px 32px rgba(0,0,0,0.35)'
+      : '0 16px 32px rgba(0,0,0,0.08)'};
+  }
+
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 14px;
+    font-size: 18px;
+    background: ${props => props.$iconBg || 'rgba(250, 173, 20, 0.12)'};
+    color: ${props => props.$iconColor || '#faad14'};
+  }
+
+  .stat-value {
+    font-size: 32px;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+    color: ${props => props.theme.mode === 'dark' ? '#fff' : '#141414'};
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.48)'};
+    letter-spacing: 0.3px;
   }
 `;
 
@@ -1700,44 +1861,261 @@ export const HubToolbar = styled.div`
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
+  margin-bottom: 8px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.85)'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'};
+  backdrop-filter: blur(8px);
 
   .ant-input-affix-wrapper {
     flex: 1;
     min-width: 220px;
     max-width: 480px;
+    border-radius: 12px !important;
+    height: 44px;
+  }
+
+  .ant-btn {
+    height: 44px;
+    border-radius: 12px;
+    font-weight: 600;
+  }
+`;
+
+export const HubChallengeCard = styled.div`
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 20px;
+  overflow: hidden;
+  cursor: pointer;
+  background: ${props => props.theme.mode === 'dark' ? '#141414' : '#fff'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+  box-shadow: ${props => props.theme.mode === 'dark'
+    ? '0 8px 24px rgba(0,0,0,0.3)'
+    : '0 8px 28px rgba(0,0,0,0.06)'};
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.35s ease;
+  animation: hubCardIn 0.5s ease-out both;
+
+  @keyframes hubCardIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    padding: 1px;
+    background: linear-gradient(135deg, transparent 40%, rgba(250, 173, 20, 0.45) 100%);
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+  }
+
+  &:hover {
+    transform: translateY(-8px);
+    box-shadow: ${props => props.theme.mode === 'dark'
+      ? '0 24px 48px rgba(0,0,0,0.45), 0 0 0 1px rgba(250, 173, 20, 0.15)'
+      : '0 24px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(250, 173, 20, 0.2)'};
+
+    &::after {
+      opacity: 1;
+    }
+
+    .cover-cta {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .hub-card-cover img {
+      transform: scale(1.06);
+    }
+  }
+
+  &.live {
+    border-color: ${props => props.theme.mode === 'dark' ? 'rgba(82, 196, 26, 0.25)' : 'rgba(82, 196, 26, 0.2)'};
+  }
+`;
+
+export const HubCardCover = styled.div`
+  position: relative;
+  width: 100%;
+  height: clamp(180px, 22vw, 240px);
+  overflow: hidden;
+  background: ${props => props.theme.mode === 'dark' ? '#0a0a0a' : '#f0f0f0'};
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .cover-gradient {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0.08) 0%,
+      rgba(0, 0, 0, 0.02) 35%,
+      rgba(0, 0, 0, 0.55) 78%,
+      rgba(0, 0, 0, 0.82) 100%
+    );
+    pointer-events: none;
+  }
+
+  .cover-top {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    z-index: 2;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    backdrop-filter: blur(12px);
+    border: 1px solid;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      animation: pulse-dot 2s ease-in-out infinite;
+    }
+  }
+
+  .challenge-id {
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.92);
+    background: rgba(0, 0, 0, 0.38);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .cover-bottom {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 18px 18px 16px;
+    z-index: 2;
+  }
+
+  .hub-card-title {
+    margin: 0 0 10px;
+    font-size: clamp(17px, 2vw, 20px);
+    font-weight: 800;
+    line-height: 1.35;
+    color: #fff;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .prize-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .prize-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 800;
+    color: #ffd666;
+    background: rgba(0, 0, 0, 0.42);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 214, 102, 0.35);
+  }
+
+  .cover-cta {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.88);
+    opacity: 0;
+    transform: translateY(6px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    white-space: nowrap;
+  }
+`;
+
+export const HubCardBody = styled.div`
+  padding: 16px 18px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  .date-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)'};
+  }
+
+  .phase-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'};
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.55)'};
   }
 `;
 
 export const HubGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 16px;
-  margin-top: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 24px;
+  margin-top: 16px;
 
-  ${ChallengeCard} {
-    flex-direction: column;
-    animation-name: hubCardIn;
-    min-height: 0;
-
-    @keyframes hubCardIn {
-      from {
-        opacity: 0;
-        transform: translateY(12px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-
-    &:hover {
-      transform: translateY(-4px);
-    }
-
-    ${ChallengeThumb} {
-      width: 100%;
-      height: 140px;
-    }
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 18px;
   }
 `;
 

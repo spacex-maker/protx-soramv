@@ -11,7 +11,7 @@ import { TopControls } from './components/TopControls';
 import { RightSection } from './components/RightSection';
 import { PhilosophyQuote, PoweredBy } from './components/Footer';
 import { PageContainer } from './styles';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const SignupPage = () => {
   const [username, setUsername] = useState("");
@@ -35,7 +35,16 @@ const SignupPage = () => {
   const [code, setCode] = useState('');
   const [countdown, setCountdown] = useState(0);
   const [isSending, setIsSending] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const codeFromUrl = searchParams.get('inviteCode');
+    if (codeFromUrl) {
+      setInviteCode(codeFromUrl);
+    }
+  }, [searchParams]);
 
   // 获取支持的语言列表
   useEffect(() => {
@@ -202,7 +211,8 @@ const SignupPage = () => {
         email,
         password,
         countryCode,
-        code
+        code,
+        inviteCode: inviteCode?.trim() || undefined,
       });
 
       if (result.success) {
@@ -262,6 +272,8 @@ const SignupPage = () => {
           isSending={isSending}
           handleSendCode={handleSendCode}
           handleSubmit={handleSubmit}
+          inviteCode={inviteCode}
+          setInviteCode={setInviteCode}
         />
         <PhilosophyQuote>
           {intl.formatMessage({ id: 'common.philosophy' })}

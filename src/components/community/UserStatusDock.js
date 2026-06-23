@@ -459,6 +459,7 @@ const UserStatusDock = ({ showRoles = true }) => {
   };
 
   const loadRoles = async () => {
+    if (!localStorage.getItem('token')) return;
     try {
       const data = await getMyRoles();
       setRoles(data);

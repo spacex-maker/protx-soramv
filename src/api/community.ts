@@ -12,6 +12,7 @@ export interface CommunityPost {
   prompt?: string;
   negativePrompt?: string;
   modelKey?: string;
+  modelName?: string;
   generationParams?: string;
   viewCount: number;
   likeCount: number;
@@ -72,6 +73,7 @@ export interface CreatePostRequest {
   prompt?: string;
   negativePrompt?: string;
   modelKey?: string;
+  modelName?: string;
   generationParams?: string;
   channelId?: number;
   tagIds?: number[];
@@ -131,6 +133,36 @@ export const getPostDetail = async (postId: number): Promise<CommunityPost> => {
     `/productx/community/post/${postId}`
   );
   return response.data.data;
+};
+
+/**
+ * 增加作品浏览次数（卡片预览等轻量场景）
+ */
+export const incrementPostView = async (postId: number): Promise<number> => {
+  const response = await instance.post<ApiResponse<number>>(
+    `/productx/community/post/${postId}/view`
+  );
+  return response.data.data;
+};
+
+export type CommunityInteractionType = 'like' | 'collect';
+
+/**
+ * 查询当前用户点赞或收藏的作品
+ */
+export const listMyInteractionPosts = async (params: {
+  type: CommunityInteractionType;
+  page?: number;
+  pageSize?: number;
+}): Promise<CommunityPost[]> => {
+  const response = await instance.get<ApiResponse<CommunityPost[]>>(
+    '/productx/community/post/my-interactions',
+    { params }
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '加载失败');
+  }
+  return response.data.data || [];
 };
 
 /**
@@ -530,6 +562,7 @@ export interface ReviewPost {
   prompt?: string;
   negativePrompt?: string;
   modelKey?: string;
+  modelName?: string;
   generationParams?: string;
   viewCount: number;
   likeCount: number;
@@ -599,6 +632,17 @@ export const reviewPost = async (request: PostReviewRequest): Promise<boolean> =
     request
   );
   return response.data.data;
+};
+
+/**
+ * 快速上架/下架作品（超级管理员、社区运营官）
+ */
+export const moderatePostShelf = async (postId: number, publish: boolean): Promise<boolean> => {
+  return reviewPost({
+    postId,
+    status: publish ? 1 : 9,
+    reviewComment: publish ? '运营上架' : '运营下架',
+  });
 };
 
 /**

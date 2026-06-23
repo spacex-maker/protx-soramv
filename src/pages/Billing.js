@@ -878,6 +878,16 @@ const BillingContent = () => {
               style={{ width: 150 }}
               allowClear
             />
+            <Button
+              onClick={() => {
+                setChangeTypeFilter('REWARD');
+                setCoinTypeFilter('TOKEN');
+                setRemarkFilter('邀请');
+                setPagination((prev) => ({ ...prev, current: 1 }));
+              }}
+            >
+              {intl.formatMessage({ id: 'billing.filter.inviteReward', defaultMessage: '邀请奖励' })}
+            </Button>
             <DatePicker.RangePicker 
               value={dateRange} 
               onChange={(v) => { setDateRange(v || [dayjs().subtract(30, 'day'), dayjs()]); setQuickDatePreset(null); }} 

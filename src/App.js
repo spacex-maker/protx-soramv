@@ -44,8 +44,11 @@ import TermsOfServicePage from './pages/TermsOfService';
 import PrivacyPolicyPage from './pages/PrivacyPolicy';
 import GoogleCallback from './pages/GoogleCallback';
 import CommunityPage from './pages/Community';
+import CommunityExplorePage from './pages/Community/ExplorePage';
+import LegacyCommunityChannelRedirect from './pages/Community/LegacyCommunityChannelRedirect';
 import ChannelDetailPage from './pages/Community/ChannelDetail';
 import PostDetailPage from './pages/Community/PostDetail';
+import MySavedPostsPage from './pages/Community/MySavedPostsPage';
 import ChallengeDetailPage from './pages/Community/ChallengeDetailPage';
 import ChallengeHubPage from './pages/Community/ChallengeHubPage';
 import ResumePage from './pages/Resume';
@@ -523,35 +526,25 @@ export default function App() {
                   </PrivateRoute>
                 }
               />
-              {/* 社区相关路由 */}
-              <Route path="/community" element={
-                <PrivateRoute>
-                  <CommunityPage />
-                </PrivateRoute>
-              } />
-              <Route path="/community/challenge" element={
-                <PrivateRoute>
-                  <ChallengeHubPage />
-                </PrivateRoute>
-              } />
-              <Route path="/community/challenge/:challengeId" element={
-                <PrivateRoute>
-                  <ChallengeDetailPage />
-                </PrivateRoute>
-              } />
+              {/* 社区相关路由（免登录浏览） */}
+              <Route path="/community/channels" element={<CommunityExplorePage />} />
+              <Route path="/community/explore" element={<Navigate to="/community/channels" replace />} />
+              <Route path="/community" element={<CommunityPage />} />
+              <Route path="/community/challenge" element={<ChallengeHubPage />} />
+              <Route path="/community/challenge/:challengeId" element={<ChallengeDetailPage />} />
               <Route path="/community/daily-challenge" element={
                 <Navigate to="/community/challenge" replace />
               } />
-              <Route path="/community/:channelKey" element={
+              <Route path="/community/post/:postId" element={<PostDetailPage />} />
+              <Route path="/community/saved" element={
                 <PrivateRoute>
-                  <ChannelDetailPage />
+                  <MySavedPostsPage />
                 </PrivateRoute>
               } />
-              <Route path="/community/post/:postId" element={
-                <PrivateRoute>
-                  <PostDetailPage />
-                </PrivateRoute>
-              } />
+              <Route path="/community/collected" element={<Navigate to="/community/saved?tab=collect" replace />} />
+              <Route path="/community/liked" element={<Navigate to="/community/saved?tab=like" replace />} />
+              <Route path="/community/c/:channelKey" element={<ChannelDetailPage />} />
+              <Route path="/community/:channelKey" element={<LegacyCommunityChannelRedirect />} />
               {/* Open Robot X 官网落地页 */}
               <Route path="/openrobotx" element={<OpenRobotXPage />} />
               <Route path="/openrobotx/companies/:slug" element={<OpenRobotXCompanyPage />} />

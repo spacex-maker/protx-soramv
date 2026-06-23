@@ -5,6 +5,7 @@ import { useIntl } from 'react-intl';
 import styled from 'styled-components';
 import { RightOutlined, FireFilled, CompassOutlined } from '@ant-design/icons';
 import { listChannels } from 'api/community';
+import { communityChannelPath } from 'utils/communityRoutes';
 
 const ChannelGrid = styled.div`
   display: grid;
@@ -211,7 +212,7 @@ const ExploreChannels = () => {
     if (channel.channelKey === 'daily-challenge') {
       navigate('/community/challenge');
     } else {
-      navigate(`/community/${channel.channelKey}`);
+      navigate(communityChannelPath(channel.channelKey));
     }
   };
 
