@@ -24,6 +24,7 @@ export interface CommunityAiOperator {
   canPost?: boolean;
   postSourceType?: string;
   generationModelCode?: string;
+  generationImageCount?: number;
   generationMediaType?: string;
   status?: boolean;
   activeTimeRange?: string;
@@ -40,6 +41,7 @@ export interface CommunityAiOperatorUpdateRequest {
   canPost?: boolean;
   postSourceType?: string;
   generationModelCode?: string;
+  generationImageCount?: number;
   generationMediaType?: string;
   status?: boolean;
   activeTimeRange?: string;

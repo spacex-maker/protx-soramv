@@ -236,6 +236,32 @@ export const getPostCardSpecs = (post) => {
   return specs;
 };
 
+/** 解析帖子全部图片 URL（去重、保序） */
+export const getPostMediaUrls = (post) => {
+  if (!post) return [];
+  let mediaUrls = [];
+  if (Array.isArray(post.mediaUrls)) {
+    mediaUrls = post.mediaUrls.filter(Boolean);
+  } else if (typeof post.mediaUrls === 'string') {
+    try {
+      const parsed = JSON.parse(post.mediaUrls);
+      mediaUrls = Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+    } catch (e) {
+      mediaUrls = [];
+    }
+  }
+  const ordered = [];
+  const seen = new Set();
+  const pushUnique = (url) => {
+    if (typeof url !== 'string' || !url.trim() || seen.has(url)) return;
+    seen.add(url);
+    ordered.push(url);
+  };
+  pushUnique(post.coverUrl);
+  mediaUrls.forEach(pushUnique);
+  return ordered;
+};
+
 // 清理帖子数据
 export const cleanPostData = (post) => {
   let mediaUrls = [];
@@ -277,6 +303,8 @@ export const cleanPostData = (post) => {
     challengeScore: post.challengeScore ? Number(post.challengeScore) : undefined,
     isLiked: Boolean(post.isLiked),
     isCollected: Boolean(post.isCollected),
+    isPromptHidden: Boolean(post.isPromptHidden),
+    promptMarketListingId: post.promptMarketListingId != null ? Number(post.promptMarketListingId) : undefined,
     tags: Array.isArray(post.tags) ? post.tags : [],
     createTime: typeof post.createTime === 'string' ? post.createTime : '',
   };

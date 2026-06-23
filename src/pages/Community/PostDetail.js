@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Spin, message, Button, Typography, Tag, Row, Col, Avatar, Tooltip, Divider, Space, Image 
@@ -7,16 +7,18 @@ import {
   HeartOutlined, HeartFilled, StarOutlined, StarFilled, 
   EyeOutlined, ArrowLeftOutlined, CopyOutlined, ShareAltOutlined,
   ThunderboltFilled, DownloadOutlined, UserAddOutlined, CheckOutlined,
-  ShopOutlined, LockOutlined
+  ShopOutlined, LockOutlined, ArrowRightOutlined, CheckCircleFilled,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
 import { getPostDetail, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus, followUser, unfollowUser, getRelationStatus, checkReviewPermission } from 'api/community';
 import UserProfileModal from 'components/community/UserProfileModal';
 import PostShelfToggle from 'components/community/PostShelfToggle';
 import { isPostDelisted } from 'utils/communityPostStatus';
 import { addTencentImageCompression, parsePostGenerationDetails } from './ChallengeDetailPage/utils';
+import { buildT2iImportFromPost, persistT2iImportPayload } from 'utils/postT2iImport';
+import { isPostPromptMarketLocked } from 'utils/communityPostPrompt';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -265,33 +267,241 @@ const FollowButton = styled(Button)`
   }
 `;
 
-const PromptMarketCta = styled.div`
-  background: ${props => props.theme.mode === 'dark'
-    ? 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)'
-    : 'linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)'};
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 24px;
-  border: 1px solid ${props => props.theme.mode === 'dark' ? '#334155' : '#c7d2fe'};
-  text-align: center;
+const shimmer = keyframes`
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+`;
 
-  .icon-wrap {
-    font-size: 32px;
-    color: #6366f1;
-    margin-bottom: 12px;
+const PromptMarketCta = styled.div`
+  position: relative;
+  margin-bottom: 24px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(99, 102, 241, 0.35)' : 'rgba(99, 102, 241, 0.22)'};
+  background: ${props => props.theme.mode === 'dark'
+    ? 'linear-gradient(145deg, rgba(30, 27, 75, 0.95) 0%, rgba(15, 23, 42, 0.98) 55%, rgba(23, 37, 84, 0.6) 100%)'
+    : 'linear-gradient(145deg, #ffffff 0%, #f5f7ff 48%, #eef2ff 100%)'};
+  box-shadow: ${props => props.theme.mode === 'dark'
+    ? '0 12px 40px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06)'
+    : '0 8px 32px rgba(99, 102, 241, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9)'};
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #6366f1, #8b5cf6, #a855f7, #6366f1);
+    background-size: 200% 100%;
+    animation: ${shimmer} 6s linear infinite;
+  }
+
+  @media (max-width: 768px) {
+    margin-bottom: 16px;
+    border-radius: 14px;
+  }
+`;
+
+const PromptMarketCtaInner = styled.div`
+  padding: 22px 22px 20px;
+
+  @media (max-width: 768px) {
+    padding: 16px 16px 14px;
+  }
+`;
+
+const PromptMarketHeader = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-bottom: 16px;
+`;
+
+const PromptMarketIcon = styled.div`
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.35);
+
+  @media (max-width: 768px) {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    border-radius: 10px;
+  }
+`;
+
+const PromptMarketHeaderText = styled.div`
+  flex: 1;
+  min-width: 0;
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    margin-bottom: 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: ${props => props.theme.mode === 'dark' ? '#c7d2fe' : '#4338ca'};
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(99, 102, 241, 0.1)'};
+    border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(129, 140, 248, 0.35)' : 'rgba(99, 102, 241, 0.2)'};
   }
 
   h4 {
-    margin: 0 0 8px;
-    font-size: 16px;
+    margin: 0 0 6px;
+    font-size: 17px;
     font-weight: 600;
+    line-height: 1.35;
+    color: ${props => props.theme.mode === 'dark' ? '#f1f5f9' : '#1e293b'};
   }
 
   p {
-    margin: 0 0 16px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.65;
     color: ${props => props.theme.mode === 'dark' ? '#94a3b8' : '#64748b'};
-    font-size: 14px;
-    line-height: 1.6;
+  }
+
+  @media (max-width: 768px) {
+    h4 { font-size: 15px; }
+    p { font-size: 12px; }
+  }
+`;
+
+const PromptLockedPreview = styled.div`
+  position: relative;
+  border-radius: 12px;
+  padding: 16px 16px 14px;
+  margin-bottom: 16px;
+  overflow: hidden;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.35)' : 'rgba(255, 255, 255, 0.72)'};
+  border: 1px dashed ${props => props.theme.mode === 'dark' ? 'rgba(148, 163, 184, 0.35)' : 'rgba(148, 163, 184, 0.45)'};
+
+  .label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: ${props => props.theme.mode === 'dark' ? '#64748b' : '#94a3b8'};
+    margin-bottom: 10px;
+  }
+
+  .lines {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    filter: blur(5px);
+    user-select: none;
+    pointer-events: none;
+    opacity: 0.55;
+  }
+
+  .line {
+    height: 10px;
+    border-radius: 6px;
+    background: ${props => props.theme.mode === 'dark'
+      ? 'linear-gradient(90deg, #334155 0%, #475569 100%)'
+      : 'linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 100%)'};
+  }
+
+  .line:nth-child(1) { width: 92%; }
+  .line:nth-child(2) { width: 78%; }
+  .line:nth-child(3) { width: 65%; }
+  .line:nth-child(4) { width: 84%; }
+
+  .lock-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: ${props => props.theme.mode === 'dark'
+      ? 'rgba(15, 23, 42, 0.55)'
+      : 'rgba(248, 250, 252, 0.65)'};
+    backdrop-filter: blur(2px);
+
+    .lock-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: #6366f1;
+      background: ${props => props.theme.mode === 'dark' ? 'rgba(99, 102, 241, 0.2)' : '#fff'};
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
+    }
+
+    span {
+      font-size: 12px;
+      font-weight: 600;
+      color: ${props => props.theme.mode === 'dark' ? '#cbd5e1' : '#475569'};
+    }
+  }
+`;
+
+const PromptMarketFeatures = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 18px;
+
+  .feature {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: ${props => props.theme.mode === 'dark' ? '#c7d2fe' : '#4338ca'};
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(99, 102, 241, 0.12)' : 'rgba(238, 242, 255, 0.9)'};
+    border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(99, 102, 241, 0.25)' : 'rgba(199, 210, 254, 0.8)'};
+
+    .anticon {
+      font-size: 12px;
+      color: #6366f1;
+    }
+  }
+`;
+
+const PromptMarketAction = styled(Button)`
+  && {
+    width: 100%;
+    height: 46px;
+    border: none;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.35);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+    &:hover {
+      background: linear-gradient(135deg, #4f46e5 0%, #6d28d9 100%) !important;
+      transform: translateY(-1px);
+      box-shadow: 0 10px 24px rgba(99, 102, 241, 0.42);
+    }
+
+    @media (max-width: 768px) {
+      height: 44px;
+      font-size: 14px;
+      border-radius: 10px;
+    }
   }
 `;
 
@@ -620,18 +830,25 @@ const PostDetailPage = () => {
     message.success(intl.formatMessage({ id: 'common.copied', defaultMessage: '已复制' }));
   };
 
+  const t2iImportPayload = useMemo(() => buildT2iImportFromPost(post), [post]);
+  const canGenerateSameStyle = Boolean(t2iImportPayload);
+
   const handleRemix = () => {
-    // 跳转到创作页并带参数
-    navigate('/create', { 
-        state: { 
-            importedParams: {
-                prompt: post.prompt,
-                negativePrompt: post.negativePrompt,
-                model: post.modelKey
-                // ...其他参数
-            } 
-        } 
-    });
+    if (!t2iImportPayload) {
+      if (isPostPromptMarketLocked(post)) {
+        navigate(`/workspace/prompt-market?listingId=${post.promptMarketListingId}`);
+        return;
+      }
+      message.warning(
+        intl.formatMessage({
+          id: 'post.remixUnavailable',
+          defaultMessage: '当前帖子暂无法生成同款',
+        })
+      );
+      return;
+    }
+    persistT2iImportPayload(t2iImportPayload);
+    navigate('/workspace/create/text-to-image', { state: { t2iImport: t2iImportPayload } });
   };
 
   if (loading || !post) {
@@ -751,14 +968,16 @@ const PostDetailPage = () => {
             </UserCard>
 
             <ActionGroup>
+                {canGenerateSameStyle && (
                 <Button 
                     type="primary" 
                     className="main-btn" 
                     icon={<ThunderboltFilled />}
                     onClick={handleRemix}
                 >
-                    <FormattedMessage id="post.remix" defaultMessage="Remix / Try this" />
+                    <FormattedMessage id="post.remix" defaultMessage="生成同款" />
                 </Button>
+                )}
                 
                 <Tooltip title={isLiked ? intl.formatMessage({id: 'common.unlike', defaultMessage: 'Unlike'}) : intl.formatMessage({id: 'common.like', defaultMessage: 'Like'})}>
                     <button 
@@ -785,34 +1004,75 @@ const PostDetailPage = () => {
             <Divider />
 
             {/* 2. 核心资产：Prompt / 提示词商城引导 */}
-            {post.isPromptHidden && post.promptMarketListingId ? (
+            {isPostPromptMarketLocked(post) ? (
                 <PromptMarketCta>
-                    <div className="icon-wrap">
-                        <LockOutlined />
-                    </div>
-                    <h4>
-                        <FormattedMessage
+                  <PromptMarketCtaInner>
+                    <PromptMarketHeader>
+                      <PromptMarketIcon>
+                        <ShopOutlined />
+                      </PromptMarketIcon>
+                      <PromptMarketHeaderText>
+                        <span className="badge">
+                          <FormattedMessage id="post.promptHiddenBadge" defaultMessage="提示词商城" />
+                        </span>
+                        <h4>
+                          <FormattedMessage
                             id="post.promptHiddenTitle"
                             defaultMessage="完整提示词已在提示词商城上架"
-                        />
-                    </h4>
-                    <p>
-                        <FormattedMessage
+                          />
+                        </h4>
+                        <p>
+                          <FormattedMessage
                             id="post.promptHiddenDesc"
-                            defaultMessage="社区展示版已隐藏提示词与参数。前往提示词商城购买后可获取完整 Prompt 与生成参数。"
-                        />
-                    </p>
-                    <Button
-                        type="primary"
-                        size="large"
-                        icon={<ShopOutlined />}
-                        onClick={() => navigate(`/workspace/prompt-market?listingId=${post.promptMarketListingId}`)}
+                            defaultMessage="社区展示版已隐藏提示词与参数。购买后可解锁完整 Prompt，并支持一键生成同款。"
+                          />
+                        </p>
+                      </PromptMarketHeaderText>
+                    </PromptMarketHeader>
+
+                    <PromptLockedPreview>
+                      <div className="label">Prompt</div>
+                      <div className="lines" aria-hidden>
+                        <div className="line" />
+                        <div className="line" />
+                        <div className="line" />
+                        <div className="line" />
+                      </div>
+                      <div className="lock-overlay">
+                        <div className="lock-icon">
+                          <LockOutlined />
+                        </div>
+                        <span>
+                          <FormattedMessage id="post.promptHiddenLocked" defaultMessage="提示词与参数已隐藏" />
+                        </span>
+                      </div>
+                    </PromptLockedPreview>
+
+                    <PromptMarketFeatures>
+                      <span className="feature">
+                        <CheckCircleFilled />
+                        <FormattedMessage id="post.promptHiddenFeaturePrompt" defaultMessage="完整 Prompt" />
+                      </span>
+                      <span className="feature">
+                        <CheckCircleFilled />
+                        <FormattedMessage id="post.promptHiddenFeatureParams" defaultMessage="生成参数" />
+                      </span>
+                      <span className="feature">
+                        <CheckCircleFilled />
+                        <FormattedMessage id="post.promptHiddenFeatureRemix" defaultMessage="生成同款" />
+                      </span>
+                    </PromptMarketFeatures>
+
+                    <PromptMarketAction
+                      type="primary"
+                      size="large"
+                      icon={<ShopOutlined />}
+                      onClick={() => navigate(`/workspace/prompt-market?listingId=${post.promptMarketListingId}`)}
                     >
-                        <FormattedMessage
-                            id="post.goPromptMarket"
-                            defaultMessage="前往提示词商城购买"
-                        />
-                    </Button>
+                      <FormattedMessage id="post.goPromptMarket" defaultMessage="前往提示词商城购买" />
+                      <ArrowRightOutlined style={{ marginLeft: 6, fontSize: 13 }} />
+                    </PromptMarketAction>
+                  </PromptMarketCtaInner>
                 </PromptMarketCta>
             ) : (
                 <>
@@ -858,6 +1118,7 @@ const PostDetailPage = () => {
 
             {/* 3. 参数与标签 */}
             {(() => {
+              if (isPostPromptMarketLocked(post)) return null;
               const gen = parsePostGenerationDetails(post);
               const hasDetails = gen.modelLabel || gen.resolution || gen.steps != null || gen.cfgScale != null || gen.seed != null;
               if (!hasDetails) return null;

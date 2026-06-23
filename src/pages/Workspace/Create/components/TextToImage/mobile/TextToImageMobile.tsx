@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Typography,
   Input,
@@ -40,7 +40,9 @@ import {
   DeleteOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { useLocation } from 'react-router-dom';
 import { useLocale } from 'contexts/LocaleContext';
+import { consumeT2iImportPayload } from 'utils/postT2iImport';
 import instance from 'api/axios';
 import ModelDetailModal, { ModelDetail } from '../../ModelDetailModal';
 import ModelSelectionModal from '../ModelSelectionModal';
@@ -52,6 +54,8 @@ import {
   parseResolution,
   formatResolution,
 } from '../utils';
+import { useT2iPageImport } from '../useT2iPageImport';
+import type { FetchStyleModelsOptions } from '../useStyleModels';
 import { checkAndSetSubmitting, clearSubmitting } from '../submitGuard';
 import EstimatedPriceHint from '../../shared/EstimatedPriceHint';
 import { useTokenBalance } from '../../shared/useTokenBalance';
@@ -131,6 +135,11 @@ const normalizeImageData = (image: any): string | null => {
 const TextToImageMobile: React.FC = () => {
   const intl = useIntl();
   const { locale } = useLocale();
+  const location = useLocation();
+  const pageImportPayload = useMemo(
+    () => consumeT2iImportPayload(location.state),
+    [location.state]
+  );
   const { tokenBalance, balanceLoading } = useTokenBalance();
   const {
     insufficientBalanceOpen,
@@ -286,11 +295,13 @@ const TextToImageMobile: React.FC = () => {
           response.data.data.length > 0
         ) {
           setModelFamilies(response.data.data);
-          const firstFamily = response.data.data[0];
-          setSelectedFamily(firstFamily);
-          form.setFieldsValue({ familyId: firstFamily.id });
-          if (firstFamily.modelCode) {
-            fetchStyleModels(firstFamily.modelCode, firstFamily);
+          if (!pageImportPayload?.preferredModelCode) {
+            const firstFamily = response.data.data[0];
+            setSelectedFamily(firstFamily);
+            form.setFieldsValue({ familyId: firstFamily.id });
+            if (firstFamily.modelCode) {
+              fetchStyleModels(firstFamily.modelCode, firstFamily);
+            }
           }
         } else {
           message.warning(
@@ -319,7 +330,8 @@ const TextToImageMobile: React.FC = () => {
   // 获取风格模型列表
   const fetchStyleModels = async (
     parentModelCode: string,
-    family?: ModelFamily
+    family?: ModelFamily | null,
+    options?: FetchStyleModelsOptions
   ) => {
     setStyleModelsLoading(true);
     try {
@@ -360,10 +372,12 @@ const TextToImageMobile: React.FC = () => {
         }));
         setStyleModels(styleModelsList);
         if (styleModelsList.length > 0) {
-          const firstStyleModel = styleModelsList[0];
-          setSelectedModel(firstStyleModel);
-          form.setFieldsValue({ styleModelId: firstStyleModel.id });
-          updateFormByModel(firstStyleModel);
+          if (options?.autoSelectFirst !== false) {
+            const firstStyleModel = styleModelsList[0];
+            setSelectedModel(firstStyleModel);
+            form.setFieldsValue({ styleModelId: firstStyleModel.id });
+            updateFormByModel(firstStyleModel);
+          }
         } else {
           setSelectedModel(null);
           form.setFieldsValue({ styleModelId: null });
@@ -456,6 +470,24 @@ const TextToImageMobile: React.FC = () => {
     }
   };
 
+  const importPayload = useT2iPageImport({
+    isEmbed: false,
+    importPayload: pageImportPayload,
+    form,
+    modelFamilies,
+    familiesLoading,
+    setSelectedFamily,
+    setSelectedModel,
+    setStyleModels,
+    fetchStyleModels,
+  });
+
+  useEffect(() => {
+    if (importPayload?.prompt) {
+      setPromptValue(importPayload.prompt);
+    }
+  }, [importPayload?.prompt]);
+
   // 处理模型家族选择变化
   const handleFamilyChange = (family: ModelFamily) => {
     setSelectedFamily(family);
@@ -508,7 +540,7 @@ const TextToImageMobile: React.FC = () => {
       ? getImageEstimatedPrice(
           effectiveModelForPrice.tokenCost,
           batchSize,
-          !isApiModel,
+          !useAsyncApi,
         )
       : null;
 
@@ -639,9 +671,6 @@ const TextToImageMobile: React.FC = () => {
     }
 
     const modelForPrice = getEffectiveModel();
-    const isApiModelForPrice =
-      (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
-        .toUpperCase() === 'API';
     const requiredTokens =
       modelForPrice &&
       !isFree(
@@ -652,7 +681,7 @@ const TextToImageMobile: React.FC = () => {
         ? getImageRequiredTokens(
             modelForPrice.tokenCost,
             batchSize,
-            !isApiModelForPrice,
+            !useAsyncApi,
           )
         : 0;
     if (!(await ensureSufficientBalance(requiredTokens))) {
@@ -692,9 +721,17 @@ const TextToImageMobile: React.FC = () => {
             requestData.size = map[allValues.aspectRatio];
           }
         }
+        if (allValues.batchSize && allValues.batchSize > 1) {
+          requestData.batchSize = allValues.batchSize;
+        }
         const response = await instance.post('/productx/sa-ai-models/image/generate/text', requestData, { timeout: 120000 });
         if (response.data && response.data.success !== false) {
-          const rawList = response.data.images || response.data.data?.images || response.data.data?.resultUrls || [];
+          const data = response.data.data;
+          const rawList =
+            response.data.images ||
+            data?.images ||
+            data?.resultUrls ||
+            (data?.imageUrl ? [data.imageUrl] : []);
           const imageUrls = (Array.isArray(rawList) ? rawList : [])
             .map((img: any) => normalizeImageData(typeof img === 'string' ? img : img?.url || img))
             .filter((url: string | null): url is string => Boolean(url));
@@ -1960,8 +1997,8 @@ const TextToImageMobile: React.FC = () => {
               </Select>
             </Form.Item>
 
-            {/* 批次大小 - 仅 LOCAL 模型支持 */}
-            {!isApiModel && (
+            {/* 批次大小 - LOCAL / Volc Seedream 支持 */}
+            {(!isApiModel || isVolcSeedream) && (
               <Form.Item
                 name="batchSize"
                 label={

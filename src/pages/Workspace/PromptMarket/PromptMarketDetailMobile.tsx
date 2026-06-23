@@ -65,6 +65,7 @@ const ScrollBody = styled.div`
   -webkit-overflow-scrolling: touch;
   padding: 16px;
   padding-bottom: 100px;
+  position: relative;
 
   &::-webkit-scrollbar {
     width: 4px;
@@ -75,23 +76,99 @@ const ScrollBody = styled.div`
   }
 `;
 
-const CoverBlock = styled.div`
+const CoverBlock = styled.div<{ $isDark: boolean }>`
   width: 100%;
   border-radius: 16px;
   overflow: hidden;
   margin-bottom: 16px;
-  background: #1a1a1a;
+  background: ${(p) => (p.$isDark ? '#111' : '#f0f0f2')};
+`;
+
+const MobileHeroImage = styled.div`
+  width: 100%;
+  height: min(52vw, 340px);
+  min-height: 220px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
   .ant-image {
-    display: block;
     width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ant-image-img {
+    width: auto !important;
+    max-width: 100%;
+    height: auto !important;
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center center;
+  }
+`;
+
+const MobileHeroStage = styled.div`
+  position: relative;
+`;
+
+const MobileHeroOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 16px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.4) 45%,
+    transparent 100%
+  );
+  pointer-events: none;
+
+  .overlay-inner {
+    pointer-events: auto;
+  }
+`;
+
+const MobileOverlayTag = styled(Tag)`
+  && {
+    margin: 0;
+    border: none;
+    background: rgba(255, 255, 255, 0.16);
+    color: #fff;
+    font-size: 11px;
+  }
+`;
+
+const MobileThumbStrip = styled.div<{ $isDark: boolean }>`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  gap: 6px;
+  padding: 8px 10px;
+  background: ${(p) => (p.$isDark ? '#141414' : '#fafafa')};
+  border-top: 1px solid ${(p) => (p.$isDark ? '#262626' : '#eee')};
+`;
+
+const MobileThumbItem = styled.div`
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #222;
+
+  .ant-image {
+    width: 100%;
+    height: 100%;
+    display: block;
   }
   img {
     width: 100%;
-    height: auto;
-    max-height: 320px;
+    height: 100%;
     object-fit: cover;
-    vertical-align: top;
   }
 `;
 
@@ -100,7 +177,7 @@ const CreatorRow = styled.div<{ $isDark: boolean }>`
   align-items: center;
   justify-content: space-between;
   padding: 12px 0;
-  border-bottom: 1px solid ${props => props.$isDark ? '#262626' : '#f0f0f0'};
+  border-bottom: 1px solid ${(p) => (p.$isDark ? '#262626' : '#f0f0f0')};
   margin-bottom: 16px;
 `;
 
@@ -109,21 +186,21 @@ const PromptBlock = styled.div<{ $isDark: boolean; $locked: boolean }>`
   border-radius: 12px;
   overflow: hidden;
   margin-bottom: 20px;
-  ${props => props.$locked && `
+  ${(p) => p.$locked && `
     .prompt-content { filter: blur(6px); user-select: none; pointer-events: none; }
     .prompt-overlay {
       position: absolute; inset: 0;
       display: flex; align-items: center; justify-content: center;
-      background: ${props.$isDark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.65)'};
-      color: ${props.$isDark ? '#fff' : '#434343'};
+      background: ${p.$isDark ? 'rgba(0,0,0,0.55)' : 'rgba(255,255,255,0.65)'};
+      color: ${p.$isDark ? '#fff' : '#434343'};
       font-size: 13px; gap: 8px; padding: 16px;
     }
   `}
 `;
 
 const PromptBox = styled.div<{ $isDark: boolean }>`
-  background: ${props => props.$isDark ? '#000' : '#f5f5f7'};
-  border: 1px solid ${props => props.$isDark ? '#262626' : '#e8e8e8'};
+  background: ${(p) => (p.$isDark ? '#141414' : '#f5f5f7')};
+  border: 1px solid ${(p) => (p.$isDark ? '#262626' : '#e8e8e8')};
   border-radius: 12px;
   padding: 14px;
   pre {
@@ -131,7 +208,7 @@ const PromptBox = styled.div<{ $isDark: boolean }>`
     font-family: 'SF Mono', monospace;
     font-size: 12px;
     line-height: 1.5;
-    color: ${props => props.$isDark ? '#d1d1d6' : '#434343'};
+    color: ${(p) => (p.$isDark ? '#d1d1d6' : '#434343')};
     white-space: pre-wrap;
     word-break: break-all;
   }
@@ -261,14 +338,17 @@ const PromptMarketDetailMobile: React.FC<PromptMarketDetailMobileProps> = ({
   }, [detail]);
 
   const mediaList = useMemo(() => {
-    if (!detail) return [];
+    if (!detail) return [] as string[];
     try {
       const previews = JSON.parse(detail.previewImages || '[]');
-      return Array.from(new Set([detail.coverImageUrl, ...previews])).filter(Boolean).slice(0, 5);
+      return Array.from(new Set([detail.coverImageUrl, ...previews])).filter(Boolean).slice(0, 8) as string[];
     } catch (e) {
-      return [detail.coverImageUrl].filter(Boolean);
+      return [detail.coverImageUrl].filter(Boolean) as string[];
     }
   }, [detail]);
+
+  const heroImage = mediaList[0];
+  const thumbImages = mediaList.slice(1);
 
   const promptLocked = detail?.promptFullVisible === false;
 
@@ -310,7 +390,43 @@ const PromptMarketDetailMobile: React.FC<PromptMarketDetailMobileProps> = ({
             </MobileHeader>
 
             <ScrollBody>
-              {/* 顶部：卖家信息 */}
+              {/* 顶部：主图 + 标签标题浮层 + 缩略图 */}
+              {heroImage && (
+                <CoverBlock $isDark={isDark}>
+                  <Image.PreviewGroup>
+                    <MobileHeroStage>
+                      <MobileHeroImage>
+                        <Image src={addImageCompressSuffix(heroImage, 900)} alt={detail.title || 'cover'} />
+                      </MobileHeroImage>
+                      <MobileHeroOverlay>
+                        <div className="overlay-inner">
+                          <Space size={[6, 6]} wrap>
+                            <MobileOverlayTag color="orange" icon={<RocketOutlined />}>
+                              {parsedInfo.modelCode || detail.modelType}
+                            </MobileOverlayTag>
+                            {parsedInfo.tags.map((tag: string) => (
+                              <MobileOverlayTag key={tag} icon={<TagOutlined />}>{tag}</MobileOverlayTag>
+                            ))}
+                          </Space>
+                          <Title level={4} style={{ margin: '10px 0 0', color: '#fff', fontWeight: 800 }}>
+                            {detail.title}
+                          </Title>
+                        </div>
+                      </MobileHeroOverlay>
+                    </MobileHeroStage>
+                    {thumbImages.length > 0 && (
+                      <MobileThumbStrip $isDark={isDark}>
+                        {thumbImages.map((url, index) => (
+                          <MobileThumbItem key={`${url}-${index}`}>
+                            <Image src={addImageCompressSuffix(url, 400)} alt={`preview-${index + 2}`} />
+                          </MobileThumbItem>
+                        ))}
+                      </MobileThumbStrip>
+                    )}
+                  </Image.PreviewGroup>
+                </CoverBlock>
+              )}
+
               <CreatorRow $isDark={isDark} style={{ marginTop: 0 }}>
                 <Space size={12}>
                   <Avatar
@@ -342,7 +458,6 @@ const PromptMarketDetailMobile: React.FC<PromptMarketDetailMobileProps> = ({
                 </FollowBtnWrap>
               </CreatorRow>
 
-              {/* 顶部：提示词 */}
               <div style={{ marginBottom: 20 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                   <Text strong style={{ fontSize: 13 }}>
@@ -371,27 +486,6 @@ const PromptMarketDetailMobile: React.FC<PromptMarketDetailMobileProps> = ({
                   )}
                 </PromptBlock>
               </div>
-
-              <Space size={6} wrap style={{ marginBottom: 10 }}>
-                <Tag bordered={false} color="orange" icon={<RocketOutlined />}>
-                  {parsedInfo.modelCode || detail.modelType}
-                </Tag>
-                {parsedInfo.tags.map((tag: string) => (
-                  <Tag key={tag} bordered={false} icon={<TagOutlined />}>{tag}</Tag>
-                ))}
-              </Space>
-
-              <CoverBlock>
-                <Image.PreviewGroup>
-                  {mediaList.map((url: string, index: number) => (
-                    <Image
-                      key={index}
-                      src={addImageCompressSuffix(url, 800)}
-                      alt="preview"
-                    />
-                  ))}
-                </Image.PreviewGroup>
-              </CoverBlock>
 
               <Title level={5} style={{ fontSize: 13, marginBottom: 6 }}>{isEn ? 'Description' : '作品简介'}</Title>
               <Paragraph type="secondary" style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 16 }}>

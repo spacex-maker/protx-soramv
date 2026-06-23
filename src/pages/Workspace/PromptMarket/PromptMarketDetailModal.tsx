@@ -1,4 +1,4 @@
-import React, { useEffect, useState, ReactNode, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   Modal, Spin, Typography, Tag, Image, message, theme, Button, Space, Divider
 } from 'antd';
@@ -10,7 +10,6 @@ import {
 import styled from 'styled-components';
 import { base } from 'api/base';
 import { followUser, unfollowUser, getRelationStatus } from 'api/community';
-import { motion, HTMLMotionProps } from 'framer-motion';
 import PromptMarketCreatorCard from './PromptMarketCreatorCard';
 import UnlockConfirmModal from './UnlockConfirmModal';
 
@@ -73,34 +72,167 @@ const DetailWrapper = styled.div<{ $isDark: boolean }>`
   @media (max-width: 992px) { flex-direction: column; height: auto; }
 `;
 
-const ScrollContent = styled.div`
-  flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 24px 32px;
+const LeftColumn = styled.div<{ $isDark: boolean }>`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: ${(p) => (p.$isDark ? '#0d0d0d' : '#fff')};
+`;
+
+const HeroGallery = styled.div<{ $isDark: boolean }>`
+  position: relative;
+  flex-shrink: 0;
+  background: ${(p) => (p.$isDark ? '#111' : '#f0f0f2')};
+`;
+
+const HeroStage = styled.div`
+  position: relative;
+`;
+
+const HeroImageWrap = styled.div`
+  width: 100%;
+  height: min(44vh, 380px);
+  min-height: 240px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .ant-image {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ant-image-img {
+    width: auto !important;
+    max-width: 100%;
+    height: auto !important;
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center center;
+  }
+`;
+
+const HeroOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 20px 24px 18px;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.82) 0%,
+    rgba(0, 0, 0, 0.45) 42%,
+    rgba(0, 0, 0, 0.08) 72%,
+    transparent 100%
+  );
+  pointer-events: none;
+
+  .overlay-inner {
+    pointer-events: auto;
+  }
+`;
+
+const OverlayTag = styled(Tag)`
+  && {
+    margin: 0;
+    border: none;
+    background: rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(6px);
+    color: #fff;
+    font-size: 11px;
+  }
+  .anticon {
+    color: rgba(255, 255, 255, 0.9);
+  }
+`;
+
+const OverlayModelTag = styled(OverlayTag)`
+  && {
+    background: rgba(250, 173, 20, 0.35);
+  }
+`;
+
+const OverlayTitle = styled(Title)`
+  && {
+    margin: 10px 0 0;
+    color: #fff !important;
+    font-weight: 800;
+    font-size: 22px !important;
+    line-height: 1.35;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+  }
+`;
+
+const ThumbnailStrip = styled.div<{ $isDark: boolean }>`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(68px, 1fr));
+  gap: 6px;
+  padding: 8px 12px 10px;
+  background: ${(p) => (p.$isDark ? '#141414' : '#fafafa')};
+  border-top: 1px solid ${(p) => (p.$isDark ? '#262626' : '#eee')};
+`;
+
+const ThumbItem = styled.div`
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #1a1a1a;
+  cursor: zoom-in;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  }
+
+  .ant-image {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const ScrollContent = styled.div<{ $isDark: boolean }>`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 20px 28px 24px;
+  background: ${(p) => (p.$isDark ? '#0d0d0d' : '#fff')};
+  border-top: 1px solid ${(p) => (p.$isDark ? '#1f1f1f' : '#f0f0f0')};
+
   &::-webkit-scrollbar { width: 5px; }
-  &::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 10px; }
+  &::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.25); border-radius: 10px; }
+`;
+
+const ContentSection = styled.div<{ $isDark: boolean }>`
+  margin-bottom: 20px;
+`;
+
+const StatsRow = styled.div`
+  flex-shrink: 0;
+  padding-top: 4px;
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
 `;
 
 const ActionPanel = styled.div<{ $isDark: boolean }>`
   width: 290px; background: ${props => props.$isDark ? '#141414' : '#fcfcfd'};
   border-left: 1px solid ${props => props.$isDark ? '#262626' : '#f0f0f0'};
   padding: 24px 16px 24px; display: flex; flex-direction: column; justify-content: space-between;
-`;
-
-const CompactGallery = styled.div`
-  display: grid; grid-template-columns: repeat(4, 1fr); grid-gap: 8px; margin-bottom: 20px;
-`;
-
-// 修复 TS2769: 明确指定 children 属于 ReactNode
-interface IGalleryItemProps extends HTMLMotionProps<"div"> {
-  $isMain?: boolean;
-  children?: ReactNode;
-}
-
-const GalleryItem = styled(motion.div)<IGalleryItemProps>`
-  grid-column: ${props => props.$isMain ? 'span 4' : 'span 1'};
-  border-radius: 12px; overflow: hidden; background: #1a1a1a;
-  height: ${props => props.$isMain ? '320px' : '80px'};
-  .ant-image { width: 100%; height: 100%; }
-  img { width: 100%; height: 100%; object-fit: cover; }
 `;
 
 const PromptWrapper = styled.div<{ $isDark: boolean; $locked: boolean }>`
@@ -120,12 +252,13 @@ const PromptWrapper = styled.div<{ $isDark: boolean; $locked: boolean }>`
 `;
 
 const PromptContainer = styled.div<{ $isDark: boolean }>`
-  background: ${props => props.$isDark ? '#000' : '#f5f5f7'};
-  border: 1px solid ${props => props.$isDark ? '#262626' : '#e8e8e8'};
-  border-radius: 12px; padding: 16px;
+  background: ${(p) => (p.$isDark ? '#141414' : '#f5f5f7')};
+  border: 1px solid ${(p) => (p.$isDark ? '#262626' : '#e8e8e8')};
+  border-radius: 12px;
+  padding: 16px;
   pre {
     margin: 0; font-family: 'SF Mono', monospace; font-size: 13px; line-height: 1.6;
-    color: ${props => props.$isDark ? '#d1d1d6' : '#434343'}; white-space: pre-wrap; word-break: break-all;
+    color: ${(p) => (p.$isDark ? '#d1d1d6' : '#434343')}; white-space: pre-wrap; word-break: break-all;
   }
 `;
 
@@ -191,14 +324,17 @@ const PromptMarketDetailModal: React.FC<PromptMarketDetailModalProps> = ({
   }, [detail]);
 
   const mediaList = useMemo(() => {
-    if (!detail) return [];
+    if (!detail) return [] as string[];
     try {
       const previews = JSON.parse(detail.previewImages || '[]');
-      return Array.from(new Set([detail.coverImageUrl, ...previews])).filter(Boolean).slice(0, 5);
+      return Array.from(new Set([detail.coverImageUrl, ...previews])).filter(Boolean).slice(0, 8) as string[];
     } catch(e) {
-      return [detail.coverImageUrl].filter(Boolean);
+      return [detail.coverImageUrl].filter(Boolean) as string[];
     }
   }, [detail]);
+
+  const heroImage = mediaList[0];
+  const thumbImages = mediaList.slice(1);
 
   const promptLocked = detail?.promptFullVisible === false;
 
@@ -223,67 +359,84 @@ const PromptMarketDetailModal: React.FC<PromptMarketDetailModalProps> = ({
       <Spin spinning={loading}>
         {detail && (
           <DetailWrapper $isDark={isDark}>
-            <ScrollContent>
-              <div style={{ flex: 1 }}>
-                <div style={{ marginBottom: 20 }}>
-                  <Space size={6} wrap style={{ marginBottom: 10 }}>
-                    <Tag bordered={false} color="orange" icon={<RocketOutlined />}>{parsedInfo.modelCode || detail.modelType}</Tag>
-                    {/* 修复 TS7006: 显式指定 tag: string */}
-                    {parsedInfo.tags.map((tag: string) => (
-                      <Tag key={tag} bordered={false} icon={<TagOutlined />}>{tag}</Tag>
-                    ))}
-                  </Space>
-                  <Title level={3} style={{ margin: 0, fontWeight: 800 }}>{detail.title}</Title>
-                </div>
-
-                <CompactGallery>
+            <LeftColumn $isDark={isDark}>
+              {heroImage && (
+                <HeroGallery $isDark={isDark}>
                   <Image.PreviewGroup>
-                    {mediaList.map((url: any, index: number) => (
-                      <GalleryItem key={index} $isMain={index === 0}
-                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: index * 0.1 }}
-                      >
-                        <Image src={url} alt="preview" />
-                      </GalleryItem>
-                    ))}
+                    <HeroStage>
+                      <HeroImageWrap>
+                        <Image src={heroImage} alt={detail.title || 'cover'} />
+                      </HeroImageWrap>
+                      <HeroOverlay>
+                        <div className="overlay-inner">
+                          <Space size={[6, 6]} wrap>
+                            <OverlayModelTag icon={<RocketOutlined />}>
+                              {parsedInfo.modelCode || detail.modelType}
+                            </OverlayModelTag>
+                            {parsedInfo.tags.map((tag: string) => (
+                              <OverlayTag key={tag} icon={<TagOutlined />}>{tag}</OverlayTag>
+                            ))}
+                          </Space>
+                          <OverlayTitle level={3}>{detail.title}</OverlayTitle>
+                        </div>
+                      </HeroOverlay>
+                    </HeroStage>
+                    {thumbImages.length > 0 && (
+                      <ThumbnailStrip $isDark={isDark}>
+                        {thumbImages.map((url, index) => (
+                          <ThumbItem key={`${url}-${index}`}>
+                            <Image src={url} alt={`preview-${index + 2}`} />
+                          </ThumbItem>
+                        ))}
+                      </ThumbnailStrip>
+                    )}
                   </Image.PreviewGroup>
-                </CompactGallery>
+                </HeroGallery>
+              )}
 
-                <div style={{ marginBottom: 24 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <Text strong style={{ fontSize: 13 }}>
-                      <ThunderboltFilled style={{ color: '#faad14', marginRight: 4 }} />
-                      {isEn ? 'Prompt Parameters' : '提示词参数'}
-                    </Text>
-                    {!promptLocked && (
-                      <Button type="link" size="small" icon={<CopyOutlined />} onClick={copyPrompt}>Copy</Button>
-                    )}
-                  </div>
-                  <PromptWrapper $isDark={isDark} $locked={promptLocked}>
-                    <div className="prompt-content">
-                      <PromptContainer $isDark={isDark}>
-                        <pre>{parsedInfo.prompt || (isEn ? 'Unlock after purchase' : '付费解锁后可见')}</pre>
-                      </PromptContainer>
+              <ScrollContent $isDark={isDark}>
+                <div style={{ flex: 1 }}>
+                  <ContentSection $isDark={isDark}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text strong style={{ fontSize: 13 }}>
+                        <ThunderboltFilled style={{ color: '#faad14', marginRight: 4 }} />
+                        {isEn ? 'Prompt Parameters' : '提示词参数'}
+                      </Text>
+                      {!promptLocked && (
+                        <Button type="link" size="small" icon={<CopyOutlined />} onClick={copyPrompt}>Copy</Button>
+                      )}
                     </div>
-                    {promptLocked && (
-                      <div className="prompt-overlay">
-                        <LockOutlined style={{ fontSize: 18 }} />
-                        <span>{isEn ? 'Unlock after purchase to view full prompt' : '付费解锁后可查看完整提示词'}</span>
+                    <PromptWrapper $isDark={isDark} $locked={promptLocked}>
+                      <div className="prompt-content">
+                        <PromptContainer $isDark={isDark}>
+                          <pre>{parsedInfo.prompt || (isEn ? 'Unlock after purchase' : '付费解锁后可见')}</pre>
+                        </PromptContainer>
                       </div>
-                    )}
-                  </PromptWrapper>
+                      {promptLocked && (
+                        <div className="prompt-overlay">
+                          <LockOutlined style={{ fontSize: 18 }} />
+                          <span>{isEn ? 'Unlock after purchase to view full prompt' : '付费解锁后可查看完整提示词'}</span>
+                        </div>
+                      )}
+                    </PromptWrapper>
+                  </ContentSection>
+
+                  <ContentSection $isDark={isDark}>
+                    <Title level={5} style={{ fontSize: 14, marginBottom: 8, marginTop: 0 }}>
+                      {isEn ? 'Description' : '作品简介'}
+                    </Title>
+                    <Paragraph type="secondary" style={{ fontSize: 13, lineHeight: 1.6, marginBottom: 0 }}>
+                      {detail.description}
+                    </Paragraph>
+                  </ContentSection>
                 </div>
 
-                <Title level={5} style={{ fontSize: 14, marginBottom: 8 }}>{isEn ? 'Description' : '作品简介'}</Title>
-                <Paragraph type="secondary" style={{ fontSize: 13, lineHeight: 1.6 }}>
-                  {detail.description}
-                </Paragraph>
-              </div>
-
-              <div style={{ flexShrink: 0, paddingTop: 16, display: 'flex', gap: 16, fontSize: 12 }}>
-                <Text type="secondary"><EyeOutlined /> {isEn ? 'Views' : '浏览'} {detail.viewCount || 0}</Text>
-                <Text type="secondary"><FireOutlined /> {isEn ? 'Sales' : '已售'} {detail.salesCount || 0}</Text>
-              </div>
-            </ScrollContent>
+                <StatsRow>
+                  <Text type="secondary"><EyeOutlined /> {isEn ? 'Views' : '浏览'} {detail.viewCount || 0}</Text>
+                  <Text type="secondary"><FireOutlined /> {isEn ? 'Sales' : '已售'} {detail.salesCount || 0}</Text>
+                </StatsRow>
+              </ScrollContent>
+            </LeftColumn>
 
             <ActionPanel $isDark={isDark}>
               <div>

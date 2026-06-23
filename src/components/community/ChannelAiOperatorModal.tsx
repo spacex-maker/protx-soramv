@@ -794,6 +794,21 @@ const OperatorConfigPanel: React.FC<OperatorConfigPanelProps> = ({
             />
           </FieldRow>
         )}
+        {isAiGenerate && (
+          <FieldRow>
+            <span className="label">
+              <FormattedMessage id="community.aiOperator.generationImageCount" defaultMessage="生图数量" />
+            </span>
+            <InputNumber
+              className="control"
+              style={{ width: '100%' }}
+              min={1}
+              max={4}
+              value={draft.generationImageCount ?? 1}
+              onChange={(value) => onDraftChange({ generationImageCount: value ?? 1 })}
+            />
+          </FieldRow>
+        )}
         <FieldRow>
           <span className="label">
             <FormattedMessage id="community.aiOperator.activeTime" defaultMessage="活跃时段" />
@@ -928,6 +943,7 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
         canPost: currentDraft.canPost,
         postSourceType: currentDraft.postSourceType,
         generationModelCode: currentDraft.generationModelCode,
+        generationImageCount: currentDraft.generationImageCount ?? 1,
         generationMediaType: currentDraft.generationMediaType || 'IMAGE',
         status: currentDraft.status,
         activeTimeRange: currentDraft.activeTimeRange,

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Spin, message, Button, Typography, Empty, Select, Avatar, Tooltip, Tag, Image } from 'antd';
+import { Spin, message, Button, Typography, Empty, Select, Avatar, Tooltip, Tag, Image, Space } from 'antd';
 import Masonry from 'react-masonry-css';
 import { 
   HeartOutlined, HeartFilled, 
@@ -10,6 +10,10 @@ import {
   PictureOutlined, RobotOutlined,
   ArrowRightOutlined,
   LoadingOutlined,
+  FilterOutlined,
+  LockOutlined,
+  UnlockOutlined,
+  FileTextOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled, { keyframes, css } from 'styled-components';
@@ -21,7 +25,9 @@ import ChannelAiOperatorModal from 'components/community/ChannelAiOperatorModal'
 import PostShelfToggle from 'components/community/PostShelfToggle';
 import { isPostDelisted } from 'utils/communityPostStatus';
 import { communityChannelPath } from 'utils/communityRoutes';
-import { getPostCardSpecs } from './ChallengeDetailPage/utils';
+import PostStackImagePreview from 'components/community/PostStackImagePreview';
+import { getPostCardSpecs, getPostMediaUrls } from './ChallengeDetailPage/utils';
+import { getPostPromptAccessType } from 'utils/communityPostPrompt';
 
 const { Text } = Typography;
 
@@ -172,28 +178,72 @@ const HeroSection = styled.div`
   align-items: flex-end;
   box-shadow: 0 4px 20px rgba(0,0,0,0.05);
 
-  &::before {
-    content: '';
-    position: absolute;
-    inset: -20px;
-    background-image: ${props => props.coverUrl ? `url(${props.coverUrl})` : 'none'};
-    background-size: cover;
-    background-position: center;
-    filter: blur(3px) brightness(0.92);
-    opacity: 0.9;
-    transform: scale(1.05);
+  @media (hover: hover) and (pointer: fine) {
+    transition: height 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+
+    &:hover {
+      height: min(56vh, 560px);
+    }
   }
 
   &::after {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) 100%);
+    z-index: 1;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.52) 100%);
+    transition: background 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: none;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover::after {
+      background: linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.38) 100%);
+    }
   }
 
   @media (max-width: 768px) {
     height: 300px;
     margin-bottom: 24px;
+  }
+`;
+
+const HeroBackdrop = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+
+  img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 36%;
+    transform: scale(1.14);
+    filter: blur(5px) brightness(0.9) saturate(0.96);
+    will-change: transform, filter;
+    transition:
+      transform 1.5s cubic-bezier(0.22, 1, 0.36, 1),
+      filter 1.5s cubic-bezier(0.22, 1, 0.36, 1),
+      object-position 1.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    ${HeroSection}:hover & img {
+      transform: scale(1.02);
+      filter: blur(0) brightness(1) saturate(1);
+      object-position: center center;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    img {
+      transform: none;
+      filter: none;
+      transition: none;
+    }
   }
 `;
 
@@ -243,32 +293,46 @@ const ChannelNavLabel = styled.div`
 const ChannelNavScroll = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   overflow-x: auto;
   overflow-y: visible;
-  padding: 14px 0 14px 0;
+  padding: 16px 0 10px 0;
   min-width: 0;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  scrollbar-width: none;
 
   &::-webkit-scrollbar {
     height: 6px;
   }
   &::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.mode === 'dark' ? '#333' : 'rgba(0,0,0,0.15)'};
+    background: transparent;
     border-radius: 3px;
+    transition: background 0.2s ease;
   }
   &::-webkit-scrollbar-track {
-    background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'};
+    background: transparent;
     border-radius: 3px;
+    transition: background 0.2s ease;
+  }
+
+  &:hover {
+    scrollbar-width: thin;
+  }
+
+  &:hover::-webkit-scrollbar-thumb {
+    background: ${props => props.theme.mode === 'dark' ? '#444' : 'rgba(0,0,0,0.22)'};
+  }
+
+  &:hover::-webkit-scrollbar-track {
+    background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'};
   }
 `;
 
 const ChannelNavItem = styled.div`
   flex-shrink: 0;
-  width: 120px;
-  height: 72px;
-  border-radius: 12px;
+  width: 168px;
+  height: 96px;
+  border-radius: 14px;
   overflow: visible;
   cursor: pointer;
   position: relative;
@@ -278,7 +342,7 @@ const ChannelNavItem = styled.div`
   transform-origin: center center;
 
   &.active {
-    transform: scale(1.18);
+    transform: scale(1.1);
     border-color: ${props => props.theme.mode === 'dark' ? '#1890ff' : '#1890ff'};
     box-shadow: 0 0 0 1px rgba(24, 144, 255, 0.3);
     z-index: 1;
@@ -315,8 +379,8 @@ const ChannelNavItem = styled.div`
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 8px 10px;
-    font-size: 12px;
+    padding: 10px 12px;
+    font-size: 13px;
     font-weight: 600;
     color: #fff;
     text-shadow: 0 1px 2px rgba(0,0,0,0.5);
@@ -326,13 +390,13 @@ const ChannelNavItem = styled.div`
   }
 
   @media (max-width: 768px) {
-    width: 100px;
-    height: 60px;
-    border-radius: 10px;
-    .name { font-size: 11px; padding: 6px 8px; }
+    width: 132px;
+    height: 78px;
+    border-radius: 12px;
+    .name { font-size: 12px; padding: 8px 10px; }
 
     &.active {
-      transform: scale(1.15);
+      transform: scale(1.08);
     }
   }
 `;
@@ -674,7 +738,7 @@ const CardImageWrapper = styled.div`
 
 const FloatingActions = styled.div`
   position: absolute;
-  top: 12px;
+  top: 52px;
   right: 12px;
   display: flex;
   flex-direction: column;
@@ -902,6 +966,72 @@ const StatsInfo = styled.div`
   }
 `;
 
+const MultiImageBadge = styled.div`
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 15;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+`;
+
+const PromptAccessBadge = styled.div`
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 16;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  font-size: 15px;
+  cursor: default;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  pointer-events: auto;
+
+  ${({ $type, theme }) => $type === 'free' && `
+    color: #52c41a;
+    background: ${theme.mode === 'dark' ? 'rgba(22, 48, 16, 0.88)' : 'rgba(246, 255, 237, 0.92)'};
+  `}
+
+  ${({ $type, theme }) => $type === 'paid' && `
+    color: #a78bfa;
+    background: ${theme.mode === 'dark' ? 'rgba(46, 36, 86, 0.88)' : 'rgba(245, 243, 255, 0.92)'};
+  `}
+
+  @media (max-width: 768px) {
+    width: 28px;
+    height: 28px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+`;
+
+const AdvancedFilterWrap = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    width: 100%;
+    justify-content: flex-end;
+  }
+`;
+
 const ChannelDetailPage = () => {
   const intl = useIntl();
   const navigate = useNavigate();
@@ -913,10 +1043,13 @@ const ChannelDetailPage = () => {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [sortBy, setSortBy] = useState('latest');
+  const [promptAccess, setPromptAccess] = useState('all');
   const [animatingPost, setAnimatingPost] = useState(null);
   const viewedPreviewRef = useRef(new Set());
   const [previewOriginalIds, setPreviewOriginalIds] = useState(() => new Set());
   const [previewLoadingOriginalId, setPreviewLoadingOriginalId] = useState(null);
+  const [stackPreviewPost, setStackPreviewPost] = useState(null);
+  const [stackPreviewIndex, setStackPreviewIndex] = useState(0);
   
   // Drag state
   const [cardPosition, setCardPosition] = useState({ top: 100, right: 40 });
@@ -971,7 +1104,7 @@ const ChannelDetailPage = () => {
       setPosts([]);
       setHasMore(true);
     }
-  }, [channel?.id, sortBy]);
+  }, [channel?.id, sortBy, promptAccess]);
 
   useEffect(() => {
     if (!channel) return;
@@ -999,7 +1132,7 @@ const ChannelDetailPage = () => {
     if (channel?.id) {
       fetchPosts();
     }
-  }, [channel?.id, page, sortBy]);
+  }, [channel?.id, page, sortBy, promptAccess]);
 
   const fetchChannel = async () => {
     setLoading(true);
@@ -1023,6 +1156,7 @@ const ChannelDetailPage = () => {
         page,
         pageSize: 20,
         sortBy: sortBy,
+        ...(promptAccess !== 'all' ? { promptAccess } : {}),
       });
       
       if (page === 1) {
@@ -1132,6 +1266,26 @@ const ChannelDetailPage = () => {
   );
 
   const getPostOriginalUrl = (post) => post.coverUrl || post.mediaUrls?.[0] || '';
+
+  const getPostPreviewUrls = (post, options = {}) => {
+    return getPostMediaUrls(post).map((url) => addTencentImageCompression(url, options));
+  };
+
+  const handleOpenStackPreview = (post) => {
+    const urls = getPostMediaUrls(post);
+    if (urls.length <= 1) return;
+    setStackPreviewIndex(0);
+    setStackPreviewPost(post);
+    handlePreviewVisibleChange(post, true);
+  };
+
+  const handleCloseStackPreview = () => {
+    if (stackPreviewPost) {
+      handlePreviewVisibleChange(stackPreviewPost, false);
+    }
+    setStackPreviewPost(null);
+    setStackPreviewIndex(0);
+  };
 
   const handleLoadOriginalInPreview = (postId) => {
     setPreviewLoadingOriginalId(postId);
@@ -1286,6 +1440,11 @@ const ChannelDetailPage = () => {
 
       {/* Hero Banner：标题 + Switch Channel 均在内部 */}
       <HeroSection bgColor={channel.themeColor} coverUrl={channel.coverUrl}>
+        {channel.coverUrl && (
+          <HeroBackdrop aria-hidden>
+            <img src={channel.coverUrl} alt="" draggable={false} />
+          </HeroBackdrop>
+        )}
         <HeroInner className="hero-inner">
           <HeroContent>
             <TitleWrapper>
@@ -1347,22 +1506,62 @@ const ChannelDetailPage = () => {
             )}
           </ToolBarLeft>
 
-          <FilterGroup>
-            <span className="label">
-              <FormattedMessage id="community.sortBy" defaultMessage="Sort By" />
-            </span>
-            <Select
-              value={sortBy}
-              onChange={setSortBy}
-              size="large"
-              bordered={false}
-              style={{ width: 140, background: 'rgba(0,0,0,0.04)', borderRadius: 8 }}
-              options={[
-                { value: 'latest', label: <><ClockCircleOutlined /> Latest</> },
-                { value: 'popular', label: <><FireOutlined /> Popular</> },
-              ]}
-            />
-          </FilterGroup>
+          <AdvancedFilterWrap>
+            <FilterGroup>
+              <span className="label">
+                <FormattedMessage id="community.sortBy" defaultMessage="Sort By" />
+              </span>
+              <Select
+                value={sortBy}
+                onChange={setSortBy}
+                size="large"
+                bordered={false}
+                style={{ width: 140, background: 'rgba(0,0,0,0.04)', borderRadius: 8 }}
+                options={[
+                  { value: 'latest', label: <><ClockCircleOutlined /> Latest</> },
+                  { value: 'popular', label: <><FireOutlined /> Popular</> },
+                ]}
+              />
+            </FilterGroup>
+
+            <FilterGroup>
+              <span className="label">
+                <FilterOutlined style={{ marginRight: 4 }} />
+                <FormattedMessage id="community.advancedFilter" defaultMessage="高级筛选" />
+              </span>
+              <Select
+                value={promptAccess}
+                onChange={setPromptAccess}
+                size="large"
+                bordered={false}
+                style={{ width: 168, background: 'rgba(0,0,0,0.04)', borderRadius: 8 }}
+                options={[
+                  {
+                    value: 'all',
+                    label: intl.formatMessage({ id: 'community.promptAccess.all', defaultMessage: '全部提示词' }),
+                  },
+                  {
+                    value: 'free',
+                    label: (
+                      <Space size={6}>
+                        <UnlockOutlined style={{ color: '#52c41a' }} />
+                        {intl.formatMessage({ id: 'community.promptAccess.free', defaultMessage: '免费开放' })}
+                      </Space>
+                    ),
+                  },
+                  {
+                    value: 'paid',
+                    label: (
+                      <Space size={6}>
+                        <LockOutlined style={{ color: '#7c3aed' }} />
+                        {intl.formatMessage({ id: 'community.promptAccess.paid', defaultMessage: '需购买' })}
+                      </Space>
+                    ),
+                  },
+                ]}
+              />
+            </FilterGroup>
+          </AdvancedFilterWrap>
         </ToolBar>
 
         {/* --- Art Grid：JS 瀑布流，新帖子严格出现在底部 --- */}
@@ -1377,16 +1576,47 @@ const ChannelDetailPage = () => {
               const isCollected = post.isCollected || false;
               const cardSpecs = getPostCardSpecs(post);
               const delisted = isPostDelisted(post.status);
+              const mediaUrls = getPostMediaUrls(post);
+              const hasMultipleImages = mediaUrls.length > 1;
+              const promptAccessType = getPostPromptAccessType(post);
 
               return (
                 <div key={post.id}>
                   <ModernCard>
-                    <CardImageWrapper $delisted={delisted}>
+                    <CardImageWrapper
+                      $delisted={delisted}
+                      onClick={hasMultipleImages ? () => handleOpenStackPreview(post) : undefined}
+                    >
                       <Image
                         src={getPostImageUrl(post, { quality: 20 })}
                         alt={post.title}
-                        preview={buildPostPreviewConfig(post)}
+                        preview={hasMultipleImages ? false : buildPostPreviewConfig(post)}
                       />
+                      {hasMultipleImages && (
+                        <MultiImageBadge>
+                          <PictureOutlined />
+                          {mediaUrls.length}
+                        </MultiImageBadge>
+                      )}
+                      {promptAccessType !== 'none' && (
+                        <Tooltip
+                          title={
+                            promptAccessType === 'free'
+                              ? intl.formatMessage({
+                                  id: 'community.promptAccess.freeHint',
+                                  defaultMessage: '提供完整提示词，可直接查看与生成同款',
+                                })
+                              : intl.formatMessage({
+                                  id: 'community.promptAccess.paidHint',
+                                  defaultMessage: '提示词已隐藏，需前往提示词商城购买',
+                                })
+                          }
+                        >
+                          <PromptAccessBadge $type={promptAccessType}>
+                            {promptAccessType === 'free' ? <FileTextOutlined /> : <LockOutlined />}
+                          </PromptAccessBadge>
+                        </Tooltip>
+                      )}
                       {canModeratePosts && (
                         <PostShelfToggle
                           postId={post.id}
@@ -1522,6 +1752,7 @@ const ChannelDetailPage = () => {
               page: 1,
               pageSize: 20,
               sortBy,
+              ...(promptAccess !== 'all' ? { promptAccess } : {}),
             });
             setPosts(data);
             setHasMore(data.length === 20);
@@ -1531,6 +1762,14 @@ const ChannelDetailPage = () => {
             setPostsLoading(false);
           }
         }}
+      />
+
+      <PostStackImagePreview
+        open={Boolean(stackPreviewPost)}
+        images={stackPreviewPost ? getPostPreviewUrls(stackPreviewPost, { quality: 90, width: 1920 }) : []}
+        currentIndex={stackPreviewIndex}
+        onChange={setStackPreviewIndex}
+        onClose={handleCloseStackPreview}
       />
     </PageLayout>
   );

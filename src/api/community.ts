@@ -33,6 +33,9 @@ export interface CommunityPost {
   isCollected?: boolean;
   tags?: string[];
   createTime: string;
+  isPromptHidden?: boolean;
+  promptMarketListingId?: number;
+  hasPurchasedPrompt?: boolean;
 }
 
 export interface CommunityChannel {
@@ -117,6 +120,7 @@ export const listPosts = async (params: {
   page?: number;
   pageSize?: number;
   sortBy?: 'latest' | 'popular';
+  promptAccess?: 'free' | 'paid';
 }): Promise<CommunityPost[]> => {
   const response = await instance.get<ApiResponse<CommunityPost[]>>(
     '/productx/community/post/list',

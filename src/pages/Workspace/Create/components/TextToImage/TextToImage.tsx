@@ -26,6 +26,7 @@ import {
   DesktopOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
+import { useLocation } from 'react-router-dom';
 import { useLocale } from 'contexts/LocaleContext';
 import instance from 'api/axios';
 import ModelDetailModal, { ModelDetail } from '../ModelDetailModal';
@@ -76,6 +77,8 @@ import {
 } from './styles';
 import type { TextToImageProps } from './embedTypes';
 import { resolvePreferredT2iModel } from './resolvePreferredT2iModel';
+import { useT2iPageImport } from './useT2iPageImport';
+import { consumeT2iImportPayload } from 'utils/postT2iImport';
 
 const { Title, Text } = Typography;
 
@@ -86,6 +89,11 @@ const TextToImage: React.FC<TextToImageProps> = ({
 }) => {
   const intl = useIntl();
   const { locale } = useLocale();
+  const location = useLocation();
+  const pageImportPayload = useMemo(
+    () => (variant === 'embed' ? null : consumeT2iImportPayload(location.state)),
+    [location.state, variant]
+  );
   const { tokenBalance, balanceLoading } = useTokenBalance();
   const {
     insufficientBalanceOpen,
@@ -110,7 +118,10 @@ const TextToImage: React.FC<TextToImageProps> = ({
   } = useModelFamilies({
     locale,
     form,
-    onFirstFamilySelected: (family) => onFirstFamilySelectedRef.current?.(family),
+    onFirstFamilySelected: (family) => {
+      if (pageImportPayload?.preferredModelCode) return;
+      onFirstFamilySelectedRef.current?.(family);
+    },
   });
 
   const updateFormByModelRef = useRef<((model: Model | ModelFamily | null) => void) | null>(null);
@@ -127,6 +138,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
     modelFamilies,
     onAfterLoad: (model) => updateFormByModelRef.current?.(model),
   });
+
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailModel, setDetailModel] = useState<ModelDetail | null>(null);
   
@@ -151,6 +163,19 @@ const TextToImage: React.FC<TextToImageProps> = ({
 
   const isEmbed = variant === 'embed';
   const embedReady = !isEmbed || embedActive;
+
+  useT2iPageImport({
+    isEmbed,
+    importPayload: pageImportPayload,
+    form,
+    modelFamilies,
+    familiesLoading,
+    setSelectedFamily,
+    setSelectedModel,
+    setStyleModels,
+    fetchStyleModels,
+  });
+
   const LeftPanel = isEmbed ? EmbedControlPanel : 'div';
   const paramColProps = isEmbed
     ? ({ xs: 24 as const, sm: 12 as const })
@@ -288,7 +313,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
       ? getImageEstimatedPrice(
           effectiveModelForPrice.tokenCost,
           batchSize,
-          !isApiModel,
+          !isApiModelAsync,
         )
       : null;
 
@@ -429,17 +454,22 @@ const TextToImage: React.FC<TextToImageProps> = ({
       const map = VOLC_SEEDREAM_SIZE_ASPECT_MAP[sizeKey];
       if (map?.[values.aspectRatio]) requestData.size = map[values.aspectRatio];
     }
+    const batch = values.batchSize ?? 1;
+    if (batch > 1) {
+      requestData.batchSize = batch;
+    }
     const response = await instance.post(
       '/productx/sa-ai-models/image/generate/text',
       requestData,
       { timeout: 120000 }
     );
     if (response.data && response.data.success !== false) {
+      const data = response.data.data;
       const rawList =
         response.data.images ||
-        response.data.data?.images ||
-        response.data.data?.resultUrls ||
-        [];
+        data?.images ||
+        data?.resultUrls ||
+        (data?.imageUrl ? [data.imageUrl] : []);
       applySuccess(parseResponseImages(rawList));
     } else {
       await applyError(response.data, response.data?.error || response.data?.message);
@@ -584,7 +614,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
         modelForPrice.currency,
         modelForPrice.tokenCost,
       )
-        ? getImageRequiredTokens(modelForPrice.tokenCost, batchSize, !isApiModel)
+        ? getImageRequiredTokens(modelForPrice.tokenCost, batchSize, !isApiModelAsync)
         : 0;
     if (!(await ensureSufficientBalance(requiredTokens))) {
       clearSubmitting();
@@ -603,7 +633,8 @@ const TextToImage: React.FC<TextToImageProps> = ({
     let skipFinallyLoading = false;
     try {
       if (isVolcSeedream) {
-        await runSeedreamSync(values);
+        const allValues = { ...form.getFieldsValue(), ...values };
+        await runSeedreamSync(allValues);
         return;
       }
       if (isApiModelAsync) {
@@ -978,8 +1009,8 @@ const TextToImage: React.FC<TextToImageProps> = ({
                   />
                 )}
 
-                {/* 生成数量 - 仅 LOCAL 模型支持 */}
-                {!isApiModel && (
+                {/* 生成数量 - LOCAL / Volc Seedream 支持 */}
+                {(!isApiModel || isVolcSeedream) && (
                   <Form.Item
                     name="batchSize"
                     label={
