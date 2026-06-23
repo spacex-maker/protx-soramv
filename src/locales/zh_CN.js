@@ -895,6 +895,15 @@ export default {
   'modal.fileUpload.encrypt.mobile': '加密',
   'modal.fileUpload.addMore.mobile': '添加',
   'productLog.title': '产品更新日志',
+  'productLog.feedback': '提需求',
+  'productLog.deploy': '发布更新',
+  'productLog.deployTitle': '发布 Core 更新',
+  'productLog.deployDesc': '上传 core JAR 到 COS 固定路径（deploy/core/core-0.0.1.jar），覆盖后请在产线服务器执行 scripts/deploy-core.sh 完成替换与重启。',
+  'productLog.deployDropHint': '点击或拖拽 core JAR 到此处',
+  'productLog.deployConfirm': '上传并发布',
+  'productLog.deploy.success': 'JAR 已上传至 COS，请在产线服务器执行 deploy-core.sh',
+  'productLog.deploy.failed': '上传失败',
+  'productLog.deploy.invalidFile': '只能上传 .jar 文件',
   
   // 解密页面
   'page.decrypt.title': 'AI2OBJ 文件解密工具',

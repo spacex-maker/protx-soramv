@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Timeline, Spin, Typography, Tag } from 'antd';
-import { FormattedMessage } from 'react-intl';
+import { Timeline, Spin, Typography, Tag, Modal, Upload, Progress, message } from 'antd';
+import type { UploadFile } from 'antd/es/upload/interface';
+import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
 import instance from 'api/axios';
-import { CloseOutlined, BulbOutlined } from '@ant-design/icons';
+import { CloseOutlined, BulbOutlined, CloudUploadOutlined } from '@ant-design/icons';
 import FeedbackModalEntry from 'components/modals/FeedbackModalEntry';
+import { checkCoreDeployPermission, uploadCoreJar } from 'api/coreDeploy';
 
 const { Text } = Typography;
 
@@ -132,6 +134,22 @@ const FeedbackButton = styled(ActionButton)`
   right: 64px;
 `;
 
+const DeployButton = styled(ActionButton)`
+  bottom: 24px;
+  right: 24px;
+  top: auto;
+  background: ${props => props.theme.mode === 'dark'
+    ? 'rgba(24, 144, 255, 0.85)'
+    : 'rgba(24, 144, 255, 0.92)'};
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+
+  &:hover {
+    background: rgba(24, 144, 255, 1);
+    color: #fff;
+  }
+`;
+
 const CloseButton = styled(ActionButton)`
   top: 12px;
   right: 12px;
@@ -199,6 +217,7 @@ const LoadingWrapper = styled.div`
 `;
 
 const ProductLogModal: React.FC<ProductLogModalProps> = ({ open, onClose }) => {
+  const intl = useIntl();
   const [loading, setLoading] = useState(false);
   const [logs, setLogs] = useState<ProductLog[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -208,6 +227,12 @@ const ProductLogModal: React.FC<ProductLogModalProps> = ({ open, onClose }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const pageSize = 10;
   const [isFeedbackVisible, setIsFeedbackVisible] = useState(false);
+  const [canDeployCore, setCanDeployCore] = useState(false);
+  const [deployModalOpen, setDeployModalOpen] = useState(false);
+  const [deployUploading, setDeployUploading] = useState(false);
+  const [deployProgress, setDeployProgress] = useState(0);
+  const [deployFileList, setDeployFileList] = useState<UploadFile[]>([]);
+  const [pendingDeployFile, setPendingDeployFile] = useState<File | null>(null);
 
   const fetchLogs = async (page: number) => {
     try {
@@ -253,6 +278,13 @@ const ProductLogModal: React.FC<ProductLogModalProps> = ({ open, onClose }) => {
       setHasMore(true);
       setLogs([]);
       fetchLogs(1);
+      checkCoreDeployPermission().then(setCanDeployCore);
+    } else {
+      setCanDeployCore(false);
+      setDeployModalOpen(false);
+      setDeployFileList([]);
+      setPendingDeployFile(null);
+      setDeployProgress(0);
     }
   }, [open]);
 
@@ -285,6 +317,62 @@ const ProductLogModal: React.FC<ProductLogModalProps> = ({ open, onClose }) => {
         return 'warning';
       default:
         return 'default';
+    }
+  };
+
+  const handleDeployBeforeUpload = (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.jar')) {
+      message.error(intl.formatMessage({
+        id: 'productLog.deploy.invalidFile',
+        defaultMessage: '只能上传 .jar 文件',
+      }));
+      return Upload.LIST_IGNORE;
+    }
+    setPendingDeployFile(file);
+    setDeployFileList([{
+      uid: '-1',
+      name: file.name,
+      status: 'done',
+      size: file.size,
+    }]);
+    return false;
+  };
+
+  const handleDeployConfirm = async () => {
+    if (!pendingDeployFile || deployUploading) return;
+    setDeployUploading(true);
+    setDeployProgress(0);
+    try {
+      const res = await uploadCoreJar(pendingDeployFile, setDeployProgress);
+      if (res?.success) {
+        message.success(
+          res.message
+            || intl.formatMessage({
+              id: 'productLog.deploy.success',
+              defaultMessage: 'JAR 已上传至 COS，请在产线服务器执行 deploy-core.sh',
+            })
+        );
+        setDeployModalOpen(false);
+        setDeployFileList([]);
+        setPendingDeployFile(null);
+      } else {
+        message.error(res?.message || intl.formatMessage({
+          id: 'productLog.deploy.failed',
+          defaultMessage: '上传失败',
+        }));
+      }
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { message?: string } } };
+      message.error(
+        err?.response?.data?.message
+          || intl.formatMessage({
+            id: 'productLog.deploy.failed',
+            defaultMessage: '上传失败',
+          })
+      );
+    } finally {
+      setDeployUploading(false);
+      setDeployProgress(0);
     }
   };
 
@@ -344,6 +432,57 @@ const ProductLogModal: React.FC<ProductLogModalProps> = ({ open, onClose }) => {
         open={isFeedbackVisible}
         onClose={() => setIsFeedbackVisible(false)}
       />
+
+      {canDeployCore && (
+        <DeployButton onClick={() => setDeployModalOpen(true)}>
+          <CloudUploadOutlined />
+          <FormattedMessage id="productLog.deploy" defaultMessage="发布更新" />
+        </DeployButton>
+      )}
+
+      <Modal
+        open={deployModalOpen}
+        title={intl.formatMessage({ id: 'productLog.deployTitle', defaultMessage: '发布 Core 更新' })}
+        okText={intl.formatMessage({ id: 'productLog.deployConfirm', defaultMessage: '上传并发布' })}
+        cancelText={intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' })}
+        confirmLoading={deployUploading}
+        onOk={handleDeployConfirm}
+        onCancel={() => {
+          if (deployUploading) return;
+          setDeployModalOpen(false);
+          setDeployFileList([]);
+          setPendingDeployFile(null);
+        }}
+        destroyOnClose
+      >
+        <Typography.Paragraph type="secondary">
+          <FormattedMessage
+            id="productLog.deployDesc"
+            defaultMessage="上传 core JAR 到 COS 固定路径（deploy/core/core-0.0.1.jar），覆盖后请在产线服务器执行 scripts/deploy-core.sh 完成替换与重启。"
+          />
+        </Typography.Paragraph>
+        <Upload.Dragger
+          accept=".jar"
+          maxCount={1}
+          fileList={deployFileList}
+          beforeUpload={handleDeployBeforeUpload}
+          onRemove={() => {
+            setDeployFileList([]);
+            setPendingDeployFile(null);
+          }}
+          disabled={deployUploading}
+        >
+          <p className="ant-upload-drag-icon">
+            <CloudUploadOutlined />
+          </p>
+          <p className="ant-upload-text">
+            <FormattedMessage id="productLog.deployDropHint" defaultMessage="点击或拖拽 core JAR 到此处" />
+          </p>
+        </Upload.Dragger>
+        {deployUploading && (
+          <Progress percent={deployProgress} style={{ marginTop: 16 }} status="active" />
+        )}
+      </Modal>
     </FullScreenOverlay>
   );
 };
