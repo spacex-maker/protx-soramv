@@ -32,7 +32,7 @@ const HeroContainer = styled.div`
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: ${props => props.theme.mode === 'dark' ? '#000000' : '#ffffff'};
+  background: ${props => props.theme.mode === 'dark' ? '#000000' : '#dfe3e8'};
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   
   /* 定义 CSS 变量默认值，防止 SSR 报错 */

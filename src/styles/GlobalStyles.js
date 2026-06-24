@@ -13,7 +13,7 @@ const GlobalStyles = createGlobalStyle`
       sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background: var(--ant-color-bg-container);
+    background: var(--ant-color-bg-layout);
     color: var(--ant-color-text, ${props => props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.85)'});
     min-height: 100vh;
   }
@@ -50,14 +50,14 @@ const GlobalStyles = createGlobalStyle`
     text-align: start;
     text-decoration: none;
     word-wrap: break-word;
-    background-color: ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.85)' : '#fff'};
+    background-color: ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.85)' : '#eceef1'};
     border-radius: 20px;
     box-shadow: 0 6px 16px 0 rgba(0, 0, 0, 0.08), 0 3px 6px -4px rgba(0, 0, 0, 0.12), 0 9px 28px 8px rgba(0, 0, 0, 0.05);
     box-sizing: border-box;
   }
 
   .ant-tooltip .ant-tooltip-arrow-content {
-    background-color: ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.85)' : '#fff'};
+    background-color: ${props => props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.85)' : '#eceef1'};
   }
 
   /* Below animations are for modal created using React-Modal */

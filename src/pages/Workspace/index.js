@@ -20,6 +20,7 @@ import DailyChallenge from './DailyChallenge';
 import Recharge from './Recharge';
 import FileDecryptPage from '../FileDecrypt';
 import Embedding from './Embedding';
+import MyPrompts from './MyPrompts';
 
 const { Content, Sider } = Layout;
 
@@ -28,7 +29,7 @@ const ContentLayout = styled(Layout)`
   transition: margin-left 0.2s;
   height: 100%;
   overflow: auto;
-  background: ${props => props.theme?.mode === 'dark' ? '#0a0a0a' : '#f5f7fa'} !important;
+  background: var(--ant-color-bg-layout) !important;
 `;
 
 const CloudDrivePage = () => {
@@ -85,6 +86,8 @@ const CloudDrivePage = () => {
       setSelectedKeys(['dailyChallenge']);
     } else if (path === '/workspace/recharge') {
       setSelectedKeys(['recharge']);
+    } else if (path === '/workspace/my-prompts') {
+      setSelectedKeys(['myPrompts']);
     } else if (path === '/workspace/embedding') {
       setSelectedKeys(['embedding']);
     } else if (path === '/workspace') {
@@ -123,6 +126,8 @@ const CloudDrivePage = () => {
         return <DailyChallenge />;
       case 'recharge':
         return <Recharge />;
+      case 'myPrompts':
+        return <MyPrompts />;
       case 'embedding':
         return <Embedding />;
       default:

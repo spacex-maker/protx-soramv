@@ -364,7 +364,9 @@ const PromptMarket: React.FC = () => {
 
   const handleCreate = async (values: any) => {
     const priceToken = Number(values.priceToken) ?? 0;
-    const isPromptHidden = priceToken === 0 ? false : (values.isPromptHidden !== false);
+    const buyoutPriceToken = Number(values.buyoutPriceToken) ?? 0;
+    const hasPaidPrice = priceToken > 0 || buyoutPriceToken > 0;
+    const isPromptHidden = hasPaidPrice;
     // 仅传后端 PromptMarketListingCreateRequest 支持的字段，避免 status/auditStatus/userId 等导致 JSON parse error
     const payload = {
       originalTaskId: values.originalTaskId ? Number(values.originalTaskId) : undefined,
@@ -374,6 +376,7 @@ const PromptMarket: React.FC = () => {
       coverImageUrl: values.coverImageUrl,
       previewImages: values.previewImages,
       priceToken,
+      buyoutPriceToken: values.buyoutPriceToken != null ? Number(values.buyoutPriceToken) : 0,
       originalPriceToken: values.originalPriceToken != null ? Number(values.originalPriceToken) : undefined,
       licenseType: values.licenseType,
       parameterSnapshot: values.parameterSnapshot,

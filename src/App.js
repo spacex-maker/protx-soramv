@@ -181,7 +181,7 @@ export default function App() {
 
       // 中性色
       colorTextBase: isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.85)',
-      colorBgBase: isDark ? '#141414' : '#ffffff',
+      colorBgBase: isDark ? '#141414' : '#dfe3e8',
       
       // 其他基础配置保持不变
       borderRadius: 4,
@@ -191,11 +191,11 @@ export default function App() {
       fontSizeXL: 20,
       lineHeight: 1.5715,
       
-      // 背景色系统
-      colorBgContainer: isDark ? '#1f1f1f' : '#ffffff',
-      colorBgElevated: isDark ? '#1f1f1f' : '#ffffff',
-      colorBgLayout: isDark ? '#141414' : '#f0f2f5',
-      colorBgSpotlight: isDark ? '#1f1f1f' : '#ffffff',
+      // 背景色系统（明亮模式：中浅灰层次，避免纯白刺眼）
+      colorBgContainer: isDark ? '#1f1f1f' : '#e8eaed',
+      colorBgElevated: isDark ? '#1f1f1f' : '#eceef1',
+      colorBgLayout: isDark ? '#141414' : '#dfe3e8',
+      colorBgSpotlight: isDark ? '#1f1f1f' : '#eceef1',
       colorBgMask: 'rgba(0, 0, 0, 0.45)',
       
       // 文字颜色系统
@@ -205,9 +205,9 @@ export default function App() {
       colorTextQuaternary: isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(0, 0, 0, 0.25)',
       
       // 边框颜色系统
-      colorBorder: isDark ? '#303030' : '#d9d9d9',
-      colorBorderSecondary: isDark ? '#303030' : '#f0f0f0',
-      colorSplit: isDark ? '#303030' : '#f0f0f0',
+      colorBorder: isDark ? '#303030' : '#c9cdd4',
+      colorBorderSecondary: isDark ? '#303030' : '#d8dce2',
+      colorSplit: isDark ? '#303030' : '#d8dce2',
     },
     components: {
       Button: {
@@ -218,9 +218,11 @@ export default function App() {
       Input: {
         borderRadius: 20,
         controlHeight: 36,
+        colorBgContainer: isDark ? '#1f1f1f' : '#eceef1',
       },
       Select: {
         borderRadius: 4,
+        colorBgContainer: isDark ? '#1f1f1f' : '#eceef1',
       },
       Pagination: {
         borderRadius: 4,
@@ -250,6 +252,12 @@ export default function App() {
       },
       Card: {
         borderRadius: 8,
+        colorBgContainer: isDark ? '#1f1f1f' : '#eceef1',
+      },
+      Layout: {
+        bodyBg: isDark ? '#141414' : '#dfe3e8',
+        headerBg: isDark ? '#1f1f1f' : '#e8eaed',
+        siderBg: isDark ? '#141414' : '#dfe3e8',
       },
     },
   }), [isDark]);
@@ -505,6 +513,14 @@ export default function App() {
               />
               <Route
                 path="/workspace/recharge"
+                element={
+                  <PrivateRoute>
+                    <CloudDrivePage />
+                  </PrivateRoute>
+                }
+              />
+              <Route
+                path="/workspace/my-prompts"
                 element={
                   <PrivateRoute>
                     <CloudDrivePage />

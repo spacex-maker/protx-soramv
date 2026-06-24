@@ -141,6 +141,9 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
   const { locale } = useLocale();
   const [form] = Form.useForm();
   const priceToken = Form.useWatch('priceToken', form);
+  const buyoutPriceToken = Form.useWatch('buyoutPriceToken', form);
+
+  const hasPaidPrice = Number(priceToken) > 0 || Number(buyoutPriceToken) > 0;
 
   const [taskSelectVisible, setTaskSelectVisible] = useState(false);
   const [coverUrl, setCoverUrl] = useState('');
@@ -188,12 +191,11 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
     load();
   }, [isVisible, locale]);
 
-  // 费用为 0 时自动不隐藏提示词
+  // 设置了查看价或买断价时强制隐藏提示词；全部免费则公开
   useEffect(() => {
-    if (isVisible && (priceToken === 0 || priceToken === '0')) {
-      form.setFieldsValue({ isPromptHidden: false });
-    }
-  }, [isVisible, priceToken, form]);
+    if (!isVisible) return;
+    form.setFieldsValue({ isPromptHidden: hasPaidPrice });
+  }, [isVisible, hasPaidPrice, form]);
 
   // 根据 taskType 得到 listingType（IMAGE / VIDEO）
   const getListingType = (taskType: string) => LISTING_TYPE_OPTIONS.find(o => o.taskType === taskType)?.listingType ?? 'IMAGE';
@@ -327,10 +329,9 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
           layout="vertical"
           initialValues={{ 
             licenseType: 1, 
-            priceToken: 0, 
+            priceToken: 0,
+            buyoutPriceToken: 0,
             isPromptHidden: true,
-            status: 1, // 默认上架
-            auditStatus: 0 // 默认待审
           }}
         >
           {/* ==================== 隐藏域 (后端需要，前端不展示) ==================== */}
@@ -342,7 +343,6 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
           <Form.Item name="baseModelVersion" hidden><Input /></Form.Item>
           <Form.Item name="previewImages" hidden><Input /></Form.Item>
           <Form.Item name="status" hidden><InputNumber /></Form.Item>
-          <Form.Item name="auditStatus" hidden><InputNumber /></Form.Item>
 
           {/* ==================== 选择作品 ==================== */}
           <div style={{ marginBottom: 24 }}>
@@ -479,11 +479,10 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
                         </div>
                     </Form.Item>
 
-                    <div className="fee-input-pill">
-                        <Form.Item
+                    <Form.Item
                           label={
                             <Space size={4}>
-                              <span>费用</span>
+                              <span>查看价格</span>
                               <QuestionCircleOutlined
                                 style={{ color: token.colorPrimary, cursor: 'pointer', fontSize: 14 }}
                                 onClick={(e) => { e.preventDefault(); setFeeRuleModalVisible(true); }}
@@ -491,8 +490,8 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
                             </Space>
                           }
                           name="priceToken"
-                          rules={[{ required: true, message: '请设置费用' }]}
-                          style={{ marginBottom: 0 }}
+                          rules={[{ required: true, message: '请设置查看价格' }]}
+                          style={{ marginBottom: 12 }}
                         >
                             <InputNumber 
                                 min={0} 
@@ -500,36 +499,48 @@ const PromptMarketListingCreateFormModel: React.FC<PromptMarketListingCreateForm
                                 style={{ width: '100%', borderRadius: ROUND_PILL }} 
                                 size="large"
                                 addonAfter="TOKEN"
-                                placeholder="0 即免费"
+                                placeholder="0 即免费查看"
                             />
                         </Form.Item>
-                    </div>
+                        <Form.Item
+                          label="买断价格"
+                          name="buyoutPriceToken"
+                          tooltip="设置后其他用户可买断获得独家查看权；0 表示不支持买断"
+                          style={{ marginBottom: 0 }}
+                        >
+                            <InputNumber
+                                min={0}
+                                max={99999}
+                                style={{ width: '100%', borderRadius: ROUND_PILL }}
+                                size="large"
+                                addonAfter="TOKEN"
+                                placeholder="0 即不支持买断"
+                            />
+                        </Form.Item>
                 </Col>
              </Row>
 
-             {/* 隐私设置：费用为 0 时无需隐藏提示词 */}
+             {/* 隐私设置：有价格时强制隐藏，不可关闭 */}
              <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: token.colorFillAlter, padding: '8px 16px', borderRadius: ROUND_PANEL }}>
-                {(priceToken === 0 || priceToken === '0') ? (
+                {!hasPaidPrice ? (
                   <span style={{ fontSize: 13, color: token.colorTextSecondary }}>
                     <span style={{ marginRight: 8 }}>✓</span>
                     免费作品无需隐藏提示词，所有人可直接查看
                   </span>
                 ) : (
-                  <>
-                    <span style={{ fontSize: 13 }}>
-                      <span style={{ marginRight: 8 }}>🔒</span>
-                      未购买用户隐藏具体 Prompt
-                    </span>
-                    <Form.Item name="isPromptHidden" valuePropName="checked" noStyle>
-                      <Switch size="small" />
-                    </Form.Item>
-                  </>
+                  <span style={{ fontSize: 13 }}>
+                    <span style={{ marginRight: 8 }}>🔒</span>
+                    已设置价格，未购买用户将隐藏具体 Prompt（不可关闭）
+                  </span>
                 )}
+                <Form.Item name="isPromptHidden" valuePropName="checked" hidden>
+                  <Switch size="small" />
+                </Form.Item>
              </div>
 
              <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: token.colorTextSecondary }}>
                <InfoCircleOutlined style={{ color: token.colorPrimary }} />
-               <span>上架后进入审核（约 10 分钟内完成），通过后其他用户购买即可为您赚取积分。</span>
+               <span>上架后立即在商城展示，其他用户购买即可为您赚取积分。</span>
              </div>
 
              {/* 底部：授权方式下拉（无文案）+ 立刻分享（全圆弧） */}

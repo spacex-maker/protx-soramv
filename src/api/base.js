@@ -419,13 +419,33 @@ export const base = {
       return { success: false, message: error.response?.data?.message || '获取余额失败', data: null };
     }
   },
-  // 提示词商品下单并支付（扣 Token、转创作者）
-  orderPromptMarket: async (listingId) => {
+  // 提示词商品下单并支付（扣 Token、转创作者/买断持有人）
+  orderPromptMarket: async (listingId, orderType = 1) => {
     try {
-      const { data } = await axios.post('/productx/prompt-market-listing/order-pay', null, { params: { listingId } });
+      const { data } = await axios.post('/productx/prompt-market-listing/order-pay', null, {
+        params: { listingId, orderType },
+      });
       return data;
     } catch (error) {
       return { success: false, message: error.response?.data?.message || '下单失败', data: null };
+    }
+  },
+  // 我的已购/买断提示词列表
+  getMyAcquiredPrompts: async (params = {}) => {
+    try {
+      const { data } = await axios.get('/productx/prompt-market-listing/my-acquired', { params });
+      return data;
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || '获取失败', data: null };
+    }
+  },
+  // 买断持有人设置转让买断价/授权价
+  updatePromptMarketBuyoutPricing: async (body) => {
+    try {
+      const { data } = await axios.put('/productx/prompt-market-listing/buyout-pricing', body);
+      return data;
+    } catch (error) {
+      return { success: false, message: error.response?.data?.message || '设置失败', data: null };
     }
   },
   // 上架提示词（审核中状态）

@@ -24,7 +24,7 @@ export const gradientShift = keyframes`
 export const PageContainer = styled.div`
   min-height: 100vh;
   /* 适配暗黑模式的背景 */
-  background: ${props => props.theme.mode === 'dark' ? '#000' : '#f5f5f7'};
+  background: ${props => props.theme.mode === 'dark' ? '#000' : '#dfe3e8'};
   color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1d1d1f'};
   font-family: "SF Pro Display", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
   overflow-x: hidden;

@@ -39,12 +39,12 @@ interface SideMenuProps {
 }
 
 const StyledSider = styled(Sider)<{ collapsed?: boolean }>`
-  background: ${props => props.theme.mode === 'dark' 
+  background: ${props => props.theme.mode === 'dark'
     ? '#141414'
-    : '#fff'} !important;
+    : 'var(--ant-color-bg-layout)'} !important;
   border-right: 1px solid ${props => props.theme.mode === 'dark'
     ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(0, 0, 0, 0.06)'};
+    : 'var(--ant-color-border-secondary)'};
   position: fixed;
   left: 0;
   top: 64px;
@@ -57,9 +57,9 @@ const StyledSider = styled(Sider)<{ collapsed?: boolean }>`
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: ${props => props.theme.mode === 'dark' 
+    background: ${props => props.theme.mode === 'dark'
       ? '#141414'
-      : '#fff'};
+      : 'var(--ant-color-bg-layout)'};
   }
 
   @media (max-width: 768px) {
@@ -78,6 +78,11 @@ const StyledMenu = styled(Menu)`
   flex: 1;
   border-inline-end: none !important;
   padding: 8px;
+  background: transparent !important;
+
+  .ant-menu {
+    background: transparent !important;
+  }
   
   .ant-menu-item {
     border-radius: 6px;
@@ -100,9 +105,14 @@ const StyledMenu = styled(Menu)`
 const BottomMenu = styled(Menu)`
   border-inline-end: none !important;
   padding: 8px;
+  background: transparent !important;
   border-top: 1px solid ${props => props.theme.mode === 'dark'
     ? 'rgba(255, 255, 255, 0.08)'
-    : 'rgba(0, 0, 0, 0.06)'};
+    : 'var(--ant-color-border-secondary)'};
+
+  .ant-menu {
+    background: transparent !important;
+  }
   
   .ant-menu-item {
     border-radius: 6px;

@@ -251,27 +251,6 @@ const ChannelCard = styled(motion.article)`
     border-color: rgba(250, 173, 20, 0.35);
   }
 
-  .icon-chip {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 14px;
-    background: ${(p) => `${p.$accent || '#6366f1'}33`};
-    border: 1px solid ${(p) => `${p.$accent || '#6366f1'}55`};
-    color: #fff;
-    font-size: 20px;
-    overflow: hidden;
-
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-  }
-
   h3 {
     margin: 0 0 10px;
     font-size: 24px;
@@ -496,11 +475,6 @@ const CommunitySection = () => {
                       )}
                     </div>
                     <div className="content">
-                      {channel.iconUrl ? (
-                        <div className="icon-chip" $accent={accent}>
-                          <img src={channel.iconUrl} alt="" />
-                        </div>
-                      ) : null}
                       <h3>{channel.name}</h3>
                       <p>
                         {channel.description ||

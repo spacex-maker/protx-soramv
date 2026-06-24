@@ -12,6 +12,8 @@ import { base } from 'api/base';
 import { followUser, unfollowUser, getRelationStatus } from 'api/community';
 import PromptMarketCreatorCard from './PromptMarketCreatorCard';
 import UnlockConfirmModal from './UnlockConfirmModal';
+import PromptMarketPurchaseActions, { PromptMarketPriceDisplay, UnlockModalConfig } from './PromptMarketPurchaseActions';
+import CreatorPromptHiddenHint from './CreatorPromptHiddenHint';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -24,6 +26,13 @@ export interface ListingDetail {
   previewImages?: string;
   priceToken: number;
   originalPriceToken?: number;
+  buyoutPriceToken?: number;
+  buyoutActive?: boolean;
+  effectiveTransferBuyoutPrice?: number;
+  effectiveAuthPrice?: number;
+  transferBuyoutEnabled?: boolean;
+  authEnabled?: boolean;
+  purchaseAction?: string;
   licenseType?: number;
   licenseTypeName?: string;
   viewCount?: number;
@@ -45,6 +54,8 @@ export interface ListingDetail {
   creatorMemberLevel?: number;
   /** 是否完整公开提示词：false 时需付费解锁 */
   promptFullVisible?: boolean;
+  isPromptHidden?: number;
+  viewerIsCreator?: boolean;
 }
 
 interface PromptMarketDetailModalProps {
@@ -274,6 +285,7 @@ const PromptMarketDetailModal: React.FC<PromptMarketDetailModalProps> = ({
   const [relation, setRelation] = useState<{ isFollowing?: boolean; isMutual?: boolean } | null>(null);
   const [followLoading, setFollowLoading] = useState(false);
   const [unlockModalVisible, setUnlockModalVisible] = useState(false);
+  const [unlockConfig, setUnlockConfig] = useState<UnlockModalConfig | null>(null);
 
   useEffect(() => {
     if (visible && listingId) {
@@ -406,6 +418,7 @@ const PromptMarketDetailModal: React.FC<PromptMarketDetailModalProps> = ({
                         <Button type="link" size="small" icon={<CopyOutlined />} onClick={copyPrompt}>Copy</Button>
                       )}
                     </div>
+                    <CreatorPromptHiddenHint detail={detail} isEn={isEn} />
                     <PromptWrapper $isDark={isDark} $locked={promptLocked}>
                       <div className="prompt-content">
                         <PromptContainer $isDark={isDark}>
@@ -415,7 +428,11 @@ const PromptMarketDetailModal: React.FC<PromptMarketDetailModalProps> = ({
                       {promptLocked && (
                         <div className="prompt-overlay">
                           <LockOutlined style={{ fontSize: 18 }} />
-                          <span>{isEn ? 'Unlock after purchase to view full prompt' : '付费解锁后可查看完整提示词'}</span>
+                          <span>
+                            {detail.buyoutActive
+                              ? (isEn ? 'Buyout active — apply for buyout or authorization' : '作品已买断，请申请买断或授权后查看')
+                              : (isEn ? 'Unlock after purchase to view full prompt' : '付费解锁后可查看完整提示词')}
+                          </span>
                         </div>
                       )}
                     </PromptWrapper>
@@ -458,35 +475,17 @@ const PromptMarketDetailModal: React.FC<PromptMarketDetailModalProps> = ({
               </div>
 
               <div style={{ marginTop: 'auto' }}>
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                    {detail.priceToken === 0 ? (
-                      <span style={{ fontSize: 36, fontWeight: 900, color: token.colorPrimary }}>{isEn ? 'Free' : '免费'}</span>
-                    ) : (
-                      <>
-                        <span style={{ fontSize: 36, fontWeight: 900, color: token.colorPrimary }}>{detail.priceToken}</span>
-                        <Text type="secondary" style={{ fontSize: 12 }}>TOKEN</Text>
-                      </>
-                    )}
-                    {detail.originalPriceToken! > detail.priceToken && (
-                      <Text delete type="secondary" style={{ fontSize: 12, marginLeft: 4 }}>{detail.originalPriceToken} TOKEN</Text>
-                    )}
-                  </div>
-                  <Text type="secondary" style={{ fontSize: 11 }}>
-                    <HistoryOutlined /> {isEn ? 'Last update' : '最后更新'}: {detail.updateTime?.split(' ')[0] || 'Recently'}
-                  </Text>
-                </div>
+                <PromptMarketPriceDisplay detail={detail} isEn={isEn} />
 
-                {detail.priceToken > 0 && (
-                  <Button
-                    type="primary"
-                    block
-                    style={{ height: 48, borderRadius: 9999, fontSize: 15, fontWeight: 700 }}
-                    onClick={() => setUnlockModalVisible(true)}
-                  >
-                    {isEn ? 'Unlock Prompt' : '立即解锁作品'}
-                  </Button>
-                )}
+                <PromptMarketPurchaseActions
+                  detail={detail}
+                  isEn={isEn}
+                  block
+                  onOpenUnlock={(config) => {
+                    setUnlockConfig(config);
+                    setUnlockModalVisible(true);
+                  }}
+                />
 
                 <Divider style={{ margin: '24px 0' }} />
 
@@ -509,9 +508,11 @@ const PromptMarketDetailModal: React.FC<PromptMarketDetailModalProps> = ({
       </Spin>
       <UnlockConfirmModal
         visible={unlockModalVisible}
-        onCancel={() => setUnlockModalVisible(false)}
+        onCancel={() => { setUnlockModalVisible(false); setUnlockConfig(null); }}
         listingId={detail?.id ?? 0}
-        priceToken={detail?.priceToken ?? 0}
+        priceToken={unlockConfig?.priceToken ?? detail?.priceToken ?? 0}
+        orderType={unlockConfig?.orderType ?? 1}
+        confirmTitle={unlockConfig?.confirmTitle}
         title={detail?.title}
         isEn={isEn}
         onSuccess={refreshDetail}

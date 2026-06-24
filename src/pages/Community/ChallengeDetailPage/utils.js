@@ -183,7 +183,7 @@ export const parsePostGenerationDetails = (post) => {
     }
   }
 
-  const modelLabel = post?.modelName || params.modelName || post?.modelKey || null;
+  const modelLabel = post?.modelName || params.modelName || null;
 
   let resolution = null;
   if (params.size) {

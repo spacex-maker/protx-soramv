@@ -12,6 +12,8 @@ import { base } from 'api/base';
 import { followUser, unfollowUser, getRelationStatus } from 'api/community';
 import type { ListingDetail } from './PromptMarketDetailModal';
 import UnlockConfirmModal from './UnlockConfirmModal';
+import PromptMarketPurchaseActions, { PromptMarketPriceDisplay, UnlockModalConfig } from './PromptMarketPurchaseActions';
+import CreatorPromptHiddenHint from './CreatorPromptHiddenHint';
 
 const addImageCompressSuffix = (url: string | null | undefined, width = 800): string => {
   if (!url) return '';
@@ -288,6 +290,7 @@ const PromptMarketDetailMobile: React.FC<PromptMarketDetailMobileProps> = ({
   const [relation, setRelation] = useState<{ isFollowing?: boolean; isMutual?: boolean } | null>(null);
   const [followLoading, setFollowLoading] = useState(false);
   const [unlockModalVisible, setUnlockModalVisible] = useState(false);
+  const [unlockConfig, setUnlockConfig] = useState<UnlockModalConfig | null>(null);
 
   useEffect(() => {
     if (visible && listingId) {
@@ -470,6 +473,7 @@ const PromptMarketDetailMobile: React.FC<PromptMarketDetailMobileProps> = ({
                     </Button>
                   )}
                 </div>
+                <CreatorPromptHiddenHint detail={detail} isEn={isEn} />
                 <PromptBlock $isDark={isDark} $locked={promptLocked}>
                   <div className="prompt-content">
                     <PromptBox $isDark={isDark}>
@@ -481,7 +485,11 @@ const PromptMarketDetailMobile: React.FC<PromptMarketDetailMobileProps> = ({
                   {promptLocked && (
                     <div className="prompt-overlay">
                       <LockOutlined style={{ fontSize: 18 }} />
-                      <span>{isEn ? 'Unlock to view full prompt' : '付费解锁后可查看完整提示词'}</span>
+                      <span>
+                        {detail.buyoutActive
+                          ? (isEn ? 'Buyout active — apply for buyout or authorization' : '作品已买断，请申请买断或授权后查看')
+                          : (isEn ? 'Unlock to view full prompt' : '付费解锁后可查看完整提示词')}
+                      </span>
                     </div>
                   )}
                 </PromptBlock>
@@ -515,35 +523,25 @@ const PromptMarketDetailMobile: React.FC<PromptMarketDetailMobileProps> = ({
             </ScrollBody>
 
             <BottomBar $isDark={isDark}>
-              <PriceArea>
-                {detail.priceToken === 0 ? (
-                  <span className="price-num" style={{ color: token.colorPrimary }}>{isEn ? 'Free' : '免费'}</span>
-                ) : (
-                  <>
-                    <span className="price-num" style={{ color: token.colorPrimary }}>{detail.priceToken}</span>
-                    <Text type="secondary" style={{ fontSize: 12 }}>TOKEN</Text>
-                  </>
-                )}
-                {detail.originalPriceToken != null && detail.originalPriceToken > detail.priceToken && (
-                  <Text delete type="secondary" style={{ fontSize: 12 }}>{detail.originalPriceToken} TOKEN</Text>
-                )}
-              </PriceArea>
-              {detail.priceToken > 0 && (
-                <Button
-                  type="primary"
-                  block
-                  style={{ flex: 1, maxWidth: 200, height: 44, borderRadius: 12, fontWeight: 600 }}
-                  onClick={() => setUnlockModalVisible(true)}
-                >
-                  {isEn ? 'Unlock Prompt' : '立即解锁作品'}
-                </Button>
-              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <PromptMarketPriceDisplay detail={detail} isEn={isEn} />
+              </div>
+              <PromptMarketPurchaseActions
+                detail={detail}
+                isEn={isEn}
+                onOpenUnlock={(config) => {
+                  setUnlockConfig(config);
+                  setUnlockModalVisible(true);
+                }}
+              />
             </BottomBar>
             <UnlockConfirmModal
               visible={unlockModalVisible}
-              onCancel={() => setUnlockModalVisible(false)}
+              onCancel={() => { setUnlockModalVisible(false); setUnlockConfig(null); }}
               listingId={detail?.id ?? 0}
-              priceToken={detail?.priceToken ?? 0}
+              priceToken={unlockConfig?.priceToken ?? detail?.priceToken ?? 0}
+              orderType={unlockConfig?.orderType ?? 1}
+              confirmTitle={unlockConfig?.confirmTitle}
               title={detail?.title}
               isEn={isEn}
               onSuccess={refreshDetail}

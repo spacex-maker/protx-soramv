@@ -9,7 +9,13 @@ import {
   RocketFilled,
   ArrowRightOutlined,
   SafetyCertificateFilled,
-  ExperimentOutlined
+  ExperimentOutlined,
+  CrownOutlined,
+  EyeOutlined,
+  SafetyCertificateOutlined,
+  LockOutlined,
+  FileTextOutlined,
+  SwapOutlined,
 } from '@ant-design/icons';
 import { Section, ContentWrapper } from '../styles';
 
@@ -503,6 +509,199 @@ const iconPopVariant = {
   }
 };
 
+// --- 买断与交易机制介绍区 ---
+
+const MechanismSection = styled(motion.div)`
+  max-width: 1100px;
+  width: 100%;
+  margin: 72px auto 48px;
+  position: relative;
+  z-index: 2;
+`;
+
+const MechanismHeader = styled.div`
+  text-align: center;
+  margin-bottom: 40px;
+
+  h3 {
+    font-size: clamp(28px, 4vw, 40px);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 14px;
+    color: ${(p) => (p.theme.mode === 'dark' ? '#f5f5f7' : '#1d1d1f')};
+  }
+
+  p {
+    font-size: 17px;
+    line-height: 1.7;
+    max-width: 720px;
+    margin: 0 auto;
+    color: ${(p) => (p.theme.mode === 'dark' ? '#86868b' : '#6e6e73')};
+  }
+`;
+
+const MechanismGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+
+  > *:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+
+    > *:last-child:nth-child(odd) {
+      grid-column: auto;
+    }
+  }
+`;
+
+const MechanismCard = styled(motion.div)`
+  padding: 24px 26px;
+  border-radius: 20px;
+  background: ${(p) =>
+    p.theme.mode === 'dark'
+      ? 'rgba(28, 28, 30, 0.55)'
+      : 'rgba(255, 255, 255, 0.72)'};
+  backdrop-filter: blur(20px);
+  border: 1px solid ${(p) =>
+    p.theme.mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.08)'
+      : 'rgba(0, 0, 0, 0.06)'};
+  box-shadow: ${(p) =>
+    p.theme.mode === 'dark'
+      ? 'none'
+      : '0 4px 24px -6px rgba(0, 0, 0, 0.06)'};
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+
+  .icon-wrap {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    color: #fff;
+    background: ${(p) => p.$bg || 'linear-gradient(135deg, #2997ff, #5856d6)'};
+    box-shadow: 0 8px 20px -6px rgba(0, 0, 0, 0.25);
+  }
+
+  h4 {
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0 0 4px;
+    color: ${(p) => (p.theme.mode === 'dark' ? '#f5f5f7' : '#1d1d1f')};
+    line-height: 1.35;
+  }
+
+  .card-desc {
+    font-size: 14px;
+    line-height: 1.75;
+    color: ${(p) => (p.theme.mode === 'dark' ? '#a1a1a6' : '#6e6e73')};
+    margin: 0;
+  }
+`;
+
+const MechanismNote = styled(motion.div)`
+  margin-top: 24px;
+  padding: 20px 24px;
+  border-radius: 16px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  background: ${(p) =>
+    p.theme.mode === 'dark'
+      ? 'rgba(99, 102, 241, 0.1)'
+      : 'rgba(99, 102, 241, 0.06)'};
+  border: 1px solid ${(p) =>
+    p.theme.mode === 'dark'
+      ? 'rgba(99, 102, 241, 0.28)'
+      : 'rgba(99, 102, 241, 0.2)'};
+
+  .note-icon {
+    font-size: 20px;
+    color: #6366f1;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .note-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 6px;
+    color: ${(p) => (p.theme.mode === 'dark' ? '#e5e5e5' : '#1e293b')};
+  }
+
+  .note-body {
+    font-size: 13px;
+    line-height: 1.7;
+    margin: 0;
+    color: ${(p) => (p.theme.mode === 'dark' ? '#a3a3a3' : '#64748b')};
+  }
+`;
+
+const MECHANISM_ITEMS = [
+  {
+    id: 'view',
+    icon: EyeOutlined,
+    bg: 'linear-gradient(135deg, #2997ff 0%, #5856d6 100%)',
+    titleId: 'market.mechanism.view.title',
+    descId: 'market.mechanism.view.desc',
+  },
+  {
+    id: 'buyout',
+    icon: CrownOutlined,
+    bg: 'linear-gradient(135deg, #ff9500 0%, #ff3b30 100%)',
+    titleId: 'market.mechanism.buyout.title',
+    descId: 'market.mechanism.buyout.desc',
+  },
+  {
+    id: 'dualPrice',
+    icon: ThunderboltFilled,
+    bg: 'linear-gradient(135deg, #fa8c16 0%, #f59e0b 100%)',
+    titleId: 'market.mechanism.dualPrice.title',
+    descId: 'market.mechanism.dualPrice.desc',
+  },
+  {
+    id: 'protection',
+    icon: LockOutlined,
+    bg: 'linear-gradient(135deg, #30b0c7 0%, #5856d6 100%)',
+    titleId: 'market.mechanism.protection.title',
+    descId: 'market.mechanism.protection.desc',
+  },
+  {
+    id: 'transfer',
+    icon: SwapOutlined,
+    bg: 'linear-gradient(135deg, #ea580c 0%, #fbbf24 100%)',
+    titleId: 'market.mechanism.transfer.title',
+    descId: 'market.mechanism.transfer.desc',
+  },
+  {
+    id: 'auth',
+    icon: SafetyCertificateOutlined,
+    bg: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)',
+    titleId: 'market.mechanism.auth.title',
+    descId: 'market.mechanism.auth.desc',
+  },
+  {
+    id: 'myPrompts',
+    icon: FileTextOutlined,
+    bg: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+    titleId: 'market.mechanism.myPrompts.title',
+    descId: 'market.mechanism.myPrompts.desc',
+  },
+];
+
 // 兼容的 AI 提供商（品牌名保持英文）
 const PROVIDERS = [
   'OpenAI', 'Google', 'Anthropic', 'ByteDance', 'Midjourney', 'Runway', 'Kling',
@@ -694,6 +893,82 @@ const PromptMarketSection = () => {
              </div>
           </GlassCard>
         </BentoGrid>
+
+        <MechanismSection
+          theme={theme}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-40px' }}
+          variants={containerVariants}
+        >
+          <MechanismHeader theme={theme}>
+            <motion.h3 variants={blurTextVariant}>
+              {intl.formatMessage({
+                id: 'market.mechanism.title',
+                defaultMessage: 'Trading & Buyout',
+              })}
+            </motion.h3>
+            <motion.p variants={blurTextVariant}>
+              {intl.formatMessage({
+                id: 'market.mechanism.subtitle',
+                defaultMessage:
+                  'Dual-track pricing with view purchase and exclusive buyout. After buyout, the holder controls transfer and authorization—both off by default until enabled.',
+              })}
+            </motion.p>
+          </MechanismHeader>
+
+          <MechanismGrid>
+            {MECHANISM_ITEMS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <MechanismCard
+                  key={item.id}
+                  theme={theme}
+                  $bg={item.bg}
+                  variants={cardVariant}
+                  className="glass-card"
+                >
+                  <div className="card-top">
+                    <div className="icon-wrap" $bg={item.bg}>
+                      <Icon />
+                    </div>
+                    <h4>
+                      {intl.formatMessage({
+                        id: item.titleId,
+                        defaultMessage: item.id,
+                      })}
+                    </h4>
+                  </div>
+                  <p className="card-desc">
+                    {intl.formatMessage({
+                      id: item.descId,
+                      defaultMessage: '',
+                    })}
+                  </p>
+                </MechanismCard>
+              );
+            })}
+          </MechanismGrid>
+
+          <MechanismNote theme={theme} variants={blurTextVariant}>
+            <ThunderboltFilled className="note-icon" />
+            <div>
+              <p className="note-title">
+                {intl.formatMessage({
+                  id: 'market.mechanism.note.title',
+                  defaultMessage: 'Good to know',
+                })}
+              </p>
+              <p className="note-body">
+                {intl.formatMessage({
+                  id: 'market.mechanism.note.body',
+                  defaultMessage:
+                    'All trades settle in TOKEN. Transfer buyout and authorization are controlled by the current buyout holder—not enabled by default.',
+                })}
+              </p>
+            </div>
+          </MechanismNote>
+        </MechanismSection>
 
         {/* 底部 CTA 按钮 */}
         <motion.div
