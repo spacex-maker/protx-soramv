@@ -1934,7 +1934,7 @@ export default {
   
   // Community 커뮤니티
   'community.explore.title': '커뮤니티 탐색',
-  'community.explore.subtitle': '영감을 발견하고, 워크플로를 리믹스하며, 수천 명의 AI 크리에이터와 연결하세요.',
+  'community.explore.subtitle': '영감을 발견하고, 엄선된 작품을 둘러보며, 수천 명의 AI 크리에이터와 소통하세요.',
   'community.posts': '{count}개 게시물',
   'community.empty': '커뮤니티 채널이 없습니다',
   'community.loadFailed': '로드 실패',

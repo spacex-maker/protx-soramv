@@ -1802,7 +1802,7 @@ export default {
   
   // Community
   'community.explore.title': 'Explorar comunidades',
-  'community.explore.subtitle': 'Descubre inspiración, remezcla flujos de trabajo y conéctate con miles de creadores de IA.',
+  'community.explore.subtitle': 'Descubre inspiración, explora obras seleccionadas y conéctate con miles de creadores de IA.',
   'community.posts': '{count} publicaciones',
   'community.empty': 'No hay canales comunitarios',
   'community.loadFailed': 'Error al cargar',

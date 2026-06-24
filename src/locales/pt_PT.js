@@ -1871,7 +1871,7 @@ export default {
   
   // Community
   'community.explore.title': 'Explorar comunidades',
-  'community.explore.subtitle': 'Descubra inspiração, remixe fluxos de trabalho e conecte-se com milhares de criadores de IA.',
+  'community.explore.subtitle': 'Descubra inspiração, explore obras selecionadas e conecte-se com milhares de criadores de IA.',
   'community.posts': '{count} publicações',
   'community.empty': 'Nenhum canal da comunidade',
   'community.loadFailed': 'Falha ao carregar',

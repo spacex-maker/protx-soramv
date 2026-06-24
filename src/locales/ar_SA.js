@@ -2097,7 +2097,7 @@ export default {
   
   // Community المجتمع
   'community.explore.title': 'استكشف المجتمعات',
-  'community.explore.subtitle': 'اكتشف الإلهام، واعيد مزج سير العمل، وتواصل مع آلاف منشئي الذكاء الاصطناعي.',
+  'community.explore.subtitle': 'اكتشف الإلهام، استكشف الأعمال المختارة، وتواصل مع آلاف منشئي الذكاء الاصطناعي.',
   'community.posts': '{count} منشور',
   'community.empty': 'لا توجد قنوات مجتمعية',
   'community.loadFailed': 'فشل التحميل',

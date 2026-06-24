@@ -2913,7 +2913,7 @@ export default {
   
   // Community
   'community.explore.title': 'Explore Communities',
-  'community.explore.subtitle': 'Discover inspiration, remix workflows, and connect with thousands of AI creators.',
+  'community.explore.subtitle': 'Discover inspiration, explore curated works, and connect with thousands of AI creators.',
   'community.explore.eyebrow': 'Communities',
   'community.explore.pill.curated': 'Curated Channels',
   'community.explore.pill.remix': 'One-Click Remix',

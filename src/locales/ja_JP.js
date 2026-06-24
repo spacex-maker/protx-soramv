@@ -1982,7 +1982,7 @@ export default {
   
   // Community コミュニティ
   'community.explore.title': 'コミュニティを探索',
-  'community.explore.subtitle': 'インスピレーションを発見し、ワークフローをリミックスし、数千人のAIクリエイターとつながりましょう。',
+  'community.explore.subtitle': 'インスピレーションを発見し、厳選作品を閲覧し、数千人のAIクリエイターと交流しましょう。',
   'community.posts': '{count} 投稿',
   'community.empty': 'コミュニティチャンネルがありません',
   'community.loadFailed': '読み込みに失敗しました',

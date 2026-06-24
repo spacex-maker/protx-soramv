@@ -1893,7 +1893,7 @@ export default {
   
   // Community
   'community.explore.title': 'Explorer les communautés',
-  'community.explore.subtitle': 'Découvrez l\'inspiration, remixez les workflows et connectez-vous avec des milliers de créateurs IA.',
+  'community.explore.subtitle': 'Découvrez l\'inspiration, explorez des œuvres sélectionnées et connectez-vous avec des milliers de créateurs IA.',
   'community.posts': '{count} publications',
   'community.empty': 'Aucun canal communautaire',
   'community.loadFailed': 'Échec du chargement',

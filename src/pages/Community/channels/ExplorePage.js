@@ -256,7 +256,7 @@ const CommunityExplorePage = () => {
             <Subtitle variants={heroItem}>
               <FormattedMessage
                 id="community.explore.subtitle"
-                defaultMessage="Discover inspiration, remix workflows, and connect with thousands of AI creators."
+                defaultMessage="Discover inspiration, explore curated works, and connect with thousands of AI creators."
               />
             </Subtitle>
 

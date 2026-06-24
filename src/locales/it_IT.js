@@ -1828,7 +1828,7 @@ export default {
   
   // Community
   'community.explore.title': 'Esplora le comunità',
-  'community.explore.subtitle': 'Scopri ispirazione, remixa i flussi di lavoro e connettiti con migliaia di creatori IA.',
+  'community.explore.subtitle': 'Scopri ispirazione, esplora opere selezionate e connettiti con migliaia di creatori IA.',
   'community.posts': '{count} post',
   'community.empty': 'Nessun canale della comunità',
   'community.loadFailed': 'Caricamento fallito',

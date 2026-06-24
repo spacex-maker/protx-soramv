@@ -1879,7 +1879,7 @@ export default {
   
   // Community
   'community.explore.title': 'Communities erkunden',
-  'community.explore.subtitle': 'Entdecken Sie Inspiration, remixen Sie Workflows und verbinden Sie sich mit Tausenden von KI-Kreativen.',
+  'community.explore.subtitle': 'Entdecken Sie Inspiration, erkunden Sie kuratierte Werke und verbinden Sie sich mit Tausenden von KI-Kreativen.',
   'community.posts': '{count} Beiträge',
   'community.empty': 'Keine Community-Kanäle',
   'community.loadFailed': 'Laden fehlgeschlagen',

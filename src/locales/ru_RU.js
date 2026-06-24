@@ -1808,7 +1808,7 @@ export default {
   
   // Community
   'community.explore.title': 'Исследовать сообщества',
-  'community.explore.subtitle': 'Откройте для себя вдохновение, ремикшируйте рабочие процессы и общайтесь с тысячами создателей ИИ.',
+  'community.explore.subtitle': 'Откройте для себя вдохновение, изучайте отборные работы и общайтесь с тысячами создателей ИИ.',
   'community.posts': '{count} публикаций',
   'community.empty': 'Нет каналов сообщества',
   'community.loadFailed': 'Ошибка загрузки',

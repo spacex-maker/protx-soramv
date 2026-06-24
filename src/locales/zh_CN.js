@@ -2968,7 +2968,7 @@ export default {
   
   // Community 社区
   'community.explore.title': '探索社区',
-  'community.explore.subtitle': '发现灵感，混音工作流，与数千名 AI 创作者连接。',
+  'community.explore.subtitle': '发现灵感，浏览精选作品，与数千名 AI 创作者交流分享。',
   'community.explore.eyebrow': '社区频道',
   'community.explore.pill.curated': '策展频道',
   'community.explore.pill.remix': '一键同款',
