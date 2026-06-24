@@ -3,7 +3,14 @@ import { Button, Empty, Input, Popconfirm, Space, Tag, Tooltip, Typography, mess
 import { DeleteOutlined, SaveOutlined, SettingOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
-import directorApi, { DirectorScene } from 'api/director';
+import directorApi, { DirectorScene, DirectorSceneReferenceImage } from 'api/director';
+import SceneReferenceImagesEditor from './SceneReferenceImagesEditor';
+import {
+  areSceneReferenceImagesEqual,
+  fetchSceneReferenceImagesSafe,
+  mergeSceneReferenceImages,
+  toSceneReferenceSavePayload,
+} from './sceneReferenceUtils';
 
 const { Text } = Typography;
 
@@ -208,6 +215,7 @@ interface SceneDraft {
   location: string;
   timeOfDay: string;
   scriptContent: string;
+  referenceImages: DirectorSceneReferenceImage[];
 }
 
 interface SceneListProps {
@@ -224,16 +232,22 @@ interface SceneListProps {
   onGenerateShots?: (sceneId: number) => void;
 }
 
-const toDraft = (scene: DirectorScene): SceneDraft => ({
+const toDraft = (scene: DirectorScene, referenceImages: DirectorSceneReferenceImage[] = []): SceneDraft => ({
   location: scene.location || '',
   timeOfDay: scene.timeOfDay || '',
   scriptContent: scene.scriptContent || '',
+  referenceImages,
 });
 
-const isDraftDirty = (scene: DirectorScene, draft: SceneDraft) =>
+const isDraftDirty = (
+  scene: DirectorScene,
+  draft: SceneDraft,
+  savedReferenceImages: DirectorSceneReferenceImage[]
+) =>
   (scene.location || '') !== draft.location ||
   (scene.timeOfDay || '') !== draft.timeOfDay ||
-  (scene.scriptContent || '') !== draft.scriptContent;
+  (scene.scriptContent || '') !== draft.scriptContent ||
+  !areSceneReferenceImagesEqual(draft.referenceImages, savedReferenceImages);
 
 const SceneList: React.FC<SceneListProps> = ({
   scenes,
@@ -250,27 +264,70 @@ const SceneList: React.FC<SceneListProps> = ({
 }) => {
   const intl = useIntl();
   const [drafts, setDrafts] = useState<Record<number, SceneDraft>>({});
+  const [savedReferenceImagesMap, setSavedReferenceImagesMap] = useState<
+    Record<number, DirectorSceneReferenceImage[]>
+  >({});
   const [savingId, setSavingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
+  const [refsLoadingMap, setRefsLoadingMap] = useState<Record<number, boolean>>({});
 
   useEffect(() => {
-    const next: Record<number, SceneDraft> = {};
+    const nextDrafts: Record<number, SceneDraft> = {};
+    const nextSavedRefs: Record<number, DirectorSceneReferenceImage[]> = {};
     scenes.forEach((scene) => {
-      next[scene.id] = toDraft(scene);
+      const referenceImages = mergeSceneReferenceImages(scene.referenceImages);
+      nextDrafts[scene.id] = toDraft(scene, referenceImages);
+      nextSavedRefs[scene.id] = referenceImages;
     });
-    setDrafts(next);
+    setDrafts(nextDrafts);
+    setSavedReferenceImagesMap(nextSavedRefs);
+    setRefsLoadingMap({});
   }, [scenes]);
+
+  const targetSceneIdForRefs = mode === 'detail' ? detailSceneId : mode === 'full' ? scenes[0]?.id : null;
+
+  useEffect(() => {
+    if (mode === 'nav' || !targetSceneIdForRefs) return undefined;
+
+    const scene = scenes.find((item) => item.id === targetSceneIdForRefs);
+    if (!scene || scene.referenceImages?.length) return undefined;
+
+    let cancelled = false;
+    setRefsLoadingMap((prev) => ({ ...prev, [targetSceneIdForRefs]: true }));
+
+    fetchSceneReferenceImagesSafe(targetSceneIdForRefs)
+      .then((referenceImages) => {
+        if (cancelled) return;
+        setSavedReferenceImagesMap((prev) => ({ ...prev, [targetSceneIdForRefs]: referenceImages }));
+        setDrafts((prev) => {
+          const current = prev[targetSceneIdForRefs] || toDraft(scene, []);
+          return {
+            ...prev,
+            [targetSceneIdForRefs]: { ...current, referenceImages },
+          };
+        });
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setRefsLoadingMap((prev) => ({ ...prev, [targetSceneIdForRefs]: false }));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, scenes, targetSceneIdForRefs]);
 
   const dirtySceneIds = useMemo(
     () =>
       scenes
         .filter((scene) => {
           const draft = drafts[scene.id];
-          return draft ? isDraftDirty(scene, draft) : false;
+          return draft ? isDraftDirty(scene, draft, savedReferenceImagesMap[scene.id] || []) : false;
         })
         .map((scene) => scene.id),
-    [scenes, drafts]
+    [drafts, savedReferenceImagesMap, scenes]
   );
 
   const updateDraft = (sceneId: number, patch: Partial<SceneDraft>) => {
@@ -285,7 +342,8 @@ const SceneList: React.FC<SceneListProps> = ({
 
   const handleSaveScene = async (scene: DirectorScene) => {
     const draft = drafts[scene.id];
-    if (!draft || !isDraftDirty(scene, draft)) return;
+    const savedReferenceImages = savedReferenceImagesMap[scene.id] || [];
+    if (!draft || !isDraftDirty(scene, draft, savedReferenceImages)) return;
 
     setSavingId(scene.id);
     try {
@@ -294,14 +352,39 @@ const SceneList: React.FC<SceneListProps> = ({
         timeOfDay: draft.timeOfDay.trim() || null,
         scriptContent: draft.scriptContent,
       });
-      if (res.success) {
-        message.success(
-          intl.formatMessage({ id: 'director.script.sceneSaved', defaultMessage: '场次已保存' })
-        );
-        onScenesChange();
-      } else {
+      if (!res.success) {
         message.error(res.message || intl.formatMessage({ id: 'director.script.sceneSaveFailed', defaultMessage: '保存失败' }));
+        return;
       }
+
+      const refsDirty = !areSceneReferenceImagesEqual(draft.referenceImages, savedReferenceImages);
+      if (refsDirty) {
+        const refRes = await directorApi.replaceSceneReferenceImages(scene.id, {
+          images: toSceneReferenceSavePayload(draft.referenceImages),
+        });
+        if (!refRes.success) {
+          message.warning(
+            refRes.message ||
+              intl.formatMessage({
+                id: 'director.scene.referenceImages.saveFailed',
+                defaultMessage: '场景已保存，但参考图保存失败',
+              })
+          );
+          onScenesChange();
+          return;
+        }
+        const nextSaved = mergeSceneReferenceImages(null, refRes.data);
+        setSavedReferenceImagesMap((prev) => ({ ...prev, [scene.id]: nextSaved }));
+        setDrafts((prev) => ({
+          ...prev,
+          [scene.id]: { ...draft, referenceImages: nextSaved },
+        }));
+      }
+
+      message.success(
+        intl.formatMessage({ id: 'director.script.sceneSaved', defaultMessage: '场次已保存' })
+      );
+      onScenesChange();
     } catch (e: unknown) {
       message.error(e instanceof Error ? e.message : intl.formatMessage({ id: 'director.script.sceneSaveFailed', defaultMessage: '保存失败' }));
     } finally {
@@ -353,8 +436,10 @@ const SceneList: React.FC<SceneListProps> = ({
   };
 
   const renderSceneEditor = (scene: DirectorScene) => {
-    const draft = drafts[scene.id] || toDraft(scene);
-    const dirty = isDraftDirty(scene, draft);
+    const draft = drafts[scene.id] || toDraft(scene, savedReferenceImagesMap[scene.id] || []);
+    const savedReferenceImages = savedReferenceImagesMap[scene.id] || [];
+    const dirty = isDraftDirty(scene, draft, savedReferenceImages);
+    const refsLoading = refsLoadingMap[scene.id];
 
     return (
       <SceneCard key={scene.id}>
@@ -438,6 +523,21 @@ const SceneList: React.FC<SceneListProps> = ({
           })}
           onChange={(e) => updateDraft(scene.id, { scriptContent: e.target.value })}
         />
+
+        <SceneMetaLabel type="secondary" style={{ marginTop: 12 }}>
+          <FormattedMessage id="director.scene.referenceImages" defaultMessage="场景参考图" />
+        </SceneMetaLabel>
+        {refsLoading ? (
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            <FormattedMessage id="director.scene.referenceImages.loading" defaultMessage="加载中…" />
+          </Text>
+        ) : (
+          <SceneReferenceImagesEditor
+            compact={mode !== 'detail'}
+            value={draft.referenceImages}
+            onChange={(referenceImages) => updateDraft(scene.id, { referenceImages })}
+          />
+        )}
       </SceneCard>
     );
   };
@@ -466,6 +566,12 @@ const SceneList: React.FC<SceneListProps> = ({
                   { id: 'director.episode.shotCountTag', defaultMessage: '分镜 {count}' },
                   { count: shotCount }
                 ),
+                (scene.referenceImageCount ?? savedReferenceImagesMap[scene.id]?.length ?? 0) > 0
+                  ? intl.formatMessage(
+                      { id: 'director.scene.referenceImages.countTag', defaultMessage: '参考图 {count}' },
+                      { count: scene.referenceImageCount ?? savedReferenceImagesMap[scene.id]?.length ?? 0 }
+                    )
+                  : null,
               ].filter(Boolean);
               return (
                 <SceneNavItem

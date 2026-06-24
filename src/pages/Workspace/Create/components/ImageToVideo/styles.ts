@@ -1,9 +1,9 @@
 import styled, { createGlobalStyle } from 'styled-components';
 import { Card, Select, Button } from 'antd';
 
-// 全局下拉菜单样式
+// Global select dropdown styles
 export const GlobalSelectStyles = createGlobalStyle`
-  /* 任务队列按钮发光动画 */
+  /* Task queue button pulse animation */
   @keyframes taskQueuePulse {
     0%, 100% {
       box-shadow: 0 0 4px rgba(24, 144, 255, 0.4),
@@ -31,69 +31,21 @@ export const GlobalSelectStyles = createGlobalStyle`
     }
   }
 
-  /* 下拉框输入框圆角 */
+  /* Select input border radius */
   .ant-select {
     .ant-select-selector {
       border-radius: 12px !important;
       overflow: hidden !important;
     }
-    
-    &.ant-select-focused .ant-select-selector {
-      border-radius: 12px !important;
-      overflow: hidden !important;
-    }
-    
+
+    &.ant-select-focused .ant-select-selector,
     &:hover .ant-select-selector {
       border-radius: 12px !important;
       overflow: hidden !important;
     }
   }
   
-  /* 模型选择框显示区域样式 */
-  .model-video-select {
-    margin-bottom: 24px !important;
-    
-    .ant-select-selector {
-      padding: 0 !important;
-      min-height: 75px !important;
-      display: flex !important;
-      align-items: center !important;
-      border-radius: 12px !important;
-      overflow: hidden !important;
-    }
-    
-    &.ant-select-focused .ant-select-selector {
-      border-radius: 12px !important;
-      overflow: hidden !important;
-    }
-    
-    &:hover .ant-select-selector {
-      border-radius: 12px !important;
-      overflow: hidden !important;
-    }
-    
-    .ant-select-selection-item {
-      padding: 0 !important;
-      height: auto !important;
-      line-height: normal !important;
-      display: flex !important;
-      align-items: center !important;
-      width: 100% !important;
-      overflow: visible !important;
-    }
-    
-    .ant-select-selection-placeholder {
-      padding: 0 11px !important;
-      line-height: 75px !important;
-    }
-    
-    /* 确保显示内容正确对齐 */
-    .ant-select-selection-item > * {
-      width: 100%;
-    }
-  }
-  
-  /* 下拉选项容器圆角 */
+  /* 涓嬫媺閫夐」瀹瑰櫒鍦嗚 */
   .ant-select-dropdown {
     border-radius: 12px !important;
     overflow: hidden !important;
@@ -147,7 +99,7 @@ export const GlobalSelectStyles = createGlobalStyle`
       }
     }
     
-    /* 只针对模型选择下拉框设置高度和padding */
+    /* 鍙拡瀵规ā鍨嬮€夋嫨涓嬫媺妗嗚缃珮搴﹀拰padding */
     &.model-select-dropdown {
       .ant-select-item {
         padding: 0 !important;
@@ -235,7 +187,7 @@ export const ActionOverlay = styled.div`
   }
 `;
 
-// 图片上传相关样式
+// 鍥剧墖涓婁紶鐩稿叧鏍峰紡
 export const InputImageContainer = styled.div`
   width: 100%;
   height: 260px;
@@ -343,165 +295,6 @@ export const AspectRatioOption = styled.div`
   }
 `;
 
-// 模型选择框显示组件（用于 Select 的显示框）
-export const ModelSelectDisplay = styled.div<{ coverImage?: string | null; isVideo?: boolean }>`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  overflow: hidden;
-  border-radius: 12px;
-  padding: 12px 12px;
-  min-height: 75px;
-  height: 100%;
-  
-  /* 背景图样式：从右到左渐变透明，显示右边部分 */
-  ${(props) =>
-    props.coverImage && !props.isVideo
-      ? `
-    &::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      width: 40%;
-      background-image: url(${props.coverImage});
-      background-size: cover;
-      background-position: center right;
-      background-repeat: no-repeat;
-      z-index: 0;
-      border-radius: 0 12px 12px 0;
-      mask-image: linear-gradient(to left, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0) 100%);
-      -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0) 100%);
-    }
-    /* 添加半透明背景层确保文字可读性 */
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      background: ${props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.3)'};
-      z-index: 0;
-      pointer-events: none;
-    }
-  `
-      : ''}
-  
-  /* 视频背景容器 */
-  ${(props) =>
-    props.coverImage && props.isVideo
-      ? `
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      left: 0;
-      background: ${props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.2)' : 'rgba(255, 255, 255, 0.3)'};
-      z-index: 0;
-      pointer-events: none;
-    }
-  `
-      : ''}
-
-  > *:not(.cover-video) {
-    position: relative;
-    z-index: 1;
-  }
-
-  /* 单路封面视频可用 mask 渐隐，视觉效果与静态图一致 */
-  .cover-video {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 40%;
-    object-fit: cover;
-    object-position: center right;
-    z-index: 0;
-    border-radius: 0 12px 12px 0;
-    mask-image: linear-gradient(to left, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0) 100%);
-    -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.5) 50%, rgba(0,0,0,0) 100%);
-    pointer-events: none;
-  }
-  
-  .model-display-header {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex: 1;
-    min-width: 0;
-  }
-  
-  .model-display-name {
-    font-weight: 600;
-    font-size: 14px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 25%, #f093fb 50%, #4facfe 75%, #00f2fe 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    letter-spacing: 0.3px;
-    background-size: 200% auto;
-    animation: gradient-shift 3s ease infinite;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  @keyframes gradient-shift {
-    0%, 100% {
-      background-position: 0% center;
-    }
-    50% {
-      background-position: 100% center;
-    }
-  }
-  
-  .model-display-code {
-    font-size: 11px;
-    color: #999;
-    white-space: nowrap;
-  }
-  
-  .model-display-price {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 2px;
-    margin-left: auto;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: ${props => props.theme.mode === 'dark' ? 'rgba(82, 196, 26, 0.1)' : 'rgba(82, 196, 26, 0.06)'};
-    flex-shrink: 0;
-  }
-  
-  .model-display-price-amount {
-    font-weight: 600;
-    font-size: 13px;
-    color: #52c41a;
-    line-height: 1.2;
-  }
-  
-  .model-display-price-currency {
-    font-weight: 500;
-    font-size: 10px;
-    color: #8c8c8c;
-    margin-left: 1px;
-  }
-  
-  .model-display-price-unit {
-    font-weight: 400;
-    font-size: 9px;
-    color: #bfbfbf;
-    margin-left: 2px;
-  }
-`;
-
 export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVideo?: boolean }>`
   display: flex;
   flex-direction: column;
@@ -516,7 +309,7 @@ export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVid
   height: 100%;
   padding: 12px;
   
-  /* 背景图样式：从右到左渐变透明，显示右边部分 */
+  /* 鑳屾櫙鍥炬牱寮忥細浠庡彸鍒板乏娓愬彉閫忔槑锛屾樉绀哄彸杈归儴鍒?*/
   ${(props) =>
     props.coverImage && !props.isVideo
       ? `
@@ -536,7 +329,7 @@ export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVid
       -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.2) 70%, rgba(0,0,0,0) 100%);
       transition: mask-image 0.3s ease, -webkit-mask-image 0.3s ease;
     }
-    /* 添加半透明背景层确保文字可读性 */
+    /* 娣诲姞鍗婇€忔槑鑳屾櫙灞傜‘淇濇枃瀛楀彲璇绘€?*/
     &::after {
       content: '';
       position: absolute;
@@ -549,19 +342,19 @@ export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVid
       pointer-events: none;
       transition: background 0.3s ease;
     }
-    /* hover时图片变清晰 */
+    /* hover鏃跺浘鐗囧彉娓呮櫚 */
     &:hover::before {
       mask-image: linear-gradient(to left, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0) 100%);
       -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 40%, rgba(0,0,0,0.4) 70%, rgba(0,0,0,0) 100%);
     }
-    /* hover时减少背景层透明度 */
+    /* hover鏃跺噺灏戣儗鏅眰閫忔槑搴?*/
     &:hover::after {
       background: ${props.theme.mode === 'dark' ? 'rgba(0, 0, 0, 0.15)' : 'rgba(255, 255, 255, 0.25)'};
     }
   `
       : ''}
   
-  /* 视频背景容器 */
+  /* 瑙嗛鑳屾櫙瀹瑰櫒 */
   ${(props) =>
     props.coverImage && props.isVideo
       ? `
@@ -579,13 +372,13 @@ export const ModelOptionWrapper = styled.div<{ coverImage?: string | null; isVid
   `
       : ''}
   
-  /* 确保内容在背景图之上 */
+  /* 纭繚鍐呭鍦ㄨ儗鏅浘涔嬩笂 */
   > * {
     position: relative;
     z-index: 1;
   }
   
-  /* 视频元素样式 */
+  /* 瑙嗛鍏冪礌鏍峰紡 */
   .cover-video {
     position: absolute;
     top: 0;

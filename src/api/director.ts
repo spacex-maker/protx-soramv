@@ -36,6 +36,29 @@ export interface DirectorCharacter {
   referenceImageUrl?: string | null;
   promptSuffix?: string | null;
   sortOrder?: number;
+  propCount?: number;
+}
+
+export interface DirectorProp {
+  id: number;
+  projectId: number;
+  name: string;
+  description?: string | null;
+  referenceImageUrl?: string | null;
+  promptSuffix?: string | null;
+  category?: string | null;
+  sortOrder?: number;
+  characterCount?: number;
+}
+
+export interface DirectorSceneReferenceImage {
+  id?: number;
+  sceneId?: number;
+  /** 客户端临时 key，保存前无 id 时使用 */
+  localKey?: string;
+  imageUrl: string;
+  caption?: string | null;
+  sortOrder?: number;
 }
 
 export interface DirectorScene {
@@ -45,6 +68,8 @@ export interface DirectorScene {
   location?: string | null;
   timeOfDay?: string | null;
   scriptContent?: string | null;
+  referenceImages?: DirectorSceneReferenceImage[];
+  referenceImageCount?: number;
 }
 
 export interface DirectorShot {
@@ -61,6 +86,7 @@ export interface DirectorShot {
   keyframeImageUrl?: string | null;
   endFrameImageUrl?: string | null;
   characterIds?: number[];
+  propIds?: number[];
   status: string;
   genTaskId?: number | null;
   sortOrder?: number;
@@ -70,6 +96,8 @@ export interface DirectorProjectDetail extends DirectorProject {
   episodes?: DirectorEpisode[];
   characters?: DirectorCharacter[];
   characterCount?: number;
+  props?: DirectorProp[];
+  propCount?: number;
 }
 
 export interface DirectorAgentChatResult {
@@ -145,6 +173,39 @@ const directorApi = {
   deleteCharacter: (characterId: number) =>
     instance.delete(`/productx/director/characters/${characterId}`).then((r) => r.data),
 
+  listCharacterProps: (characterId: number) =>
+    instance.get(`/productx/director/characters/${characterId}/props`).then((r) => r.data),
+
+  bindCharacterProps: (characterId: number, body: { propIds: number[] }) =>
+    instance.put(`/productx/director/characters/${characterId}/props`, body).then((r) => r.data),
+
+  listProps: (projectId: number) =>
+    instance.get(`/productx/director/projects/${projectId}/props`).then((r) => r.data),
+
+  createProp: (
+    projectId: number,
+    body: {
+      name: string;
+      description?: string;
+      referenceImageUrl?: string;
+      promptSuffix?: string;
+      category?: string;
+      sortOrder?: number;
+    }
+  ) => instance.post(`/productx/director/projects/${projectId}/props`, body).then((r) => r.data),
+
+  updateProp: (propId: number, body: Record<string, unknown>) =>
+    instance.put(`/productx/director/props/${propId}`, body).then((r) => r.data),
+
+  deleteProp: (propId: number) =>
+    instance.delete(`/productx/director/props/${propId}`).then((r) => r.data),
+
+  listPropCharacters: (propId: number) =>
+    instance.get(`/productx/director/props/${propId}/characters`).then((r) => r.data),
+
+  bindPropCharacters: (propId: number, body: { characterIds: number[] }) =>
+    instance.put(`/productx/director/props/${propId}/characters`, body).then((r) => r.data),
+
   listScenes: (episodeId: number) =>
     instance.get(`/productx/director/episodes/${episodeId}/scenes`).then((r) => r.data),
 
@@ -156,6 +217,14 @@ const directorApi = {
 
   deleteScene: (sceneId: number) =>
     instance.delete(`/productx/director/scenes/${sceneId}`).then((r) => r.data),
+
+  listSceneReferenceImages: (sceneId: number) =>
+    instance.get(`/productx/director/scenes/${sceneId}/reference-images`).then((r) => r.data),
+
+  replaceSceneReferenceImages: (
+    sceneId: number,
+    body: { images: Array<{ imageUrl: string; caption?: string; sortOrder?: number }> }
+  ) => instance.put(`/productx/director/scenes/${sceneId}/reference-images`, body).then((r) => r.data),
 
   listShots: (episodeId: number) =>
     instance.get(`/productx/director/episodes/${episodeId}/shots`).then((r) => r.data),

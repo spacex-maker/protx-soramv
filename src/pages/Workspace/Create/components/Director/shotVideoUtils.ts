@@ -1,8 +1,8 @@
-import { DirectorCharacter, DirectorShot } from 'api/director';
+import { DirectorCharacter, DirectorProp, DirectorSceneReferenceImage, DirectorShot } from 'api/director';
 
 export type ShotVideoContentMode = 'first_last_frame' | 'multimodal_reference';
 
-export type ShotVideoReferenceKind = 'character' | 'custom_image';
+export type ShotVideoReferenceKind = 'character' | 'prop' | 'scene' | 'custom_image';
 
 export interface ShotVideoReferenceAsset {
   id: string;
@@ -10,6 +10,8 @@ export interface ShotVideoReferenceAsset {
   label: string;
   url: string;
   characterId?: number;
+  propId?: number;
+  sceneRefKey?: string | number;
   /** 本地待上传文件 */
   localFile?: File;
 }
@@ -26,7 +28,8 @@ export const isDisplayableImageUrl = (url?: string | null): url is string => {
   return (
     trimmed.startsWith('http://') ||
     trimmed.startsWith('https://') ||
-    trimmed.startsWith('data:image/') ||
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('data:') ||
     trimmed.startsWith('blob:')
   );
 };
@@ -87,13 +90,46 @@ export const resolvePromptReferenceLabels = (
 
 export const buildInitialShotReferences = (
   shot: DirectorShot | undefined,
-  characters: DirectorCharacter[]
+  characters: DirectorCharacter[],
+  props: DirectorProp[] = [],
+  characterPropMap: Record<number, number[]> = {},
+  sceneReferenceImages: DirectorSceneReferenceImage[] = []
 ): ShotVideoReferenceAsset[] => {
-  if (!shot?.characterIds?.length) return [];
-  const byId = new Map(characters.map((c) => [c.id, c]));
+  if (!shot) return [];
+
+  const byCharId = new Map(characters.map((c) => [c.id, c]));
+  const byPropId = new Map(props.map((p) => [p.id, p]));
   const refs: ShotVideoReferenceAsset[] = [];
-  shot.characterIds.forEach((id) => {
-    const character = byId.get(id);
+  const usedPropIds = new Set<number>();
+
+  const pushPropRef = (propId: number) => {
+    if (usedPropIds.has(propId)) return;
+    const prop = byPropId.get(propId);
+    if (!prop || !isDisplayableImageUrl(prop.referenceImageUrl)) return;
+    usedPropIds.add(propId);
+    refs.push({
+      id: `prop-${prop.id}`,
+      kind: 'prop',
+      label: prop.name,
+      url: prop.referenceImageUrl,
+      propId: prop.id,
+    });
+  };
+
+  sceneReferenceImages.forEach((ref, index) => {
+    if (!isDisplayableImageUrl(ref.imageUrl)) return;
+    const label = ref.caption?.trim() || `场景参考${index + 1}`;
+    refs.push({
+      id: `scene-ref-${ref.id ?? ref.localKey ?? index}`,
+      kind: 'scene',
+      label,
+      url: ref.imageUrl,
+      sceneRefKey: ref.id ?? ref.localKey ?? index,
+    });
+  });
+
+  shot.characterIds?.forEach((id) => {
+    const character = byCharId.get(id);
     if (!character || !isDisplayableImageUrl(character.referenceImageUrl)) return;
     refs.push({
       id: `character-${character.id}`,
@@ -102,7 +138,11 @@ export const buildInitialShotReferences = (
       url: character.referenceImageUrl,
       characterId: character.id,
     });
+    (characterPropMap[id] || []).forEach((propId) => pushPropRef(propId));
   });
+
+  shot.propIds?.forEach((id) => pushPropRef(id));
+
   return refs;
 };
 
@@ -113,7 +153,7 @@ export const buildInitialReferencePrompt = (
   const trimmed = basePrompt.trim();
   if (!references.length) return trimmed;
   const mentionLine = references.map((ref) => `@${ref.label}`).join(' ');
-  if (!trimmed) return `${mentionLine}，参考以上角色特征生成画面`;
+  if (!trimmed) return `${mentionLine}，参考以上资产特征生成画面`;
   if (references.some((ref) => trimmed.includes(`@${ref.label}`))) return trimmed;
   return `${mentionLine}，${trimmed}`;
 };

@@ -86,6 +86,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
   variant = 'page',
   embedConfig,
   embedActive = true,
+  embedded = false,
 }) => {
   const intl = useIntl();
   const { locale } = useLocale();
@@ -180,6 +181,12 @@ const TextToImage: React.FC<TextToImageProps> = ({
   const paramColProps = isEmbed
     ? ({ xs: 24 as const, sm: 12 as const })
     : ({ flex: '1' as const, style: { minWidth: 0 } });
+  const aspectRatioColProps = isEmbed
+    ? ({ xs: 24 as const, sm: 13 as const })
+    : ({ flex: '1 1 0' as const, style: { minWidth: 0 } });
+  const imageFormatColProps = isEmbed
+    ? ({ xs: 24 as const, sm: 11 as const })
+    : ({ flex: '0 0 108px' as const, style: { width: 108, maxWidth: 108 } });
   const nestedModalProps = isEmbed
     ? { zIndex: 2100, getContainer: () => document.body }
     : {};
@@ -843,7 +850,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
           <Col xs={24} lg={isEmbed ? 13 : 9}>
             <LeftPanel style={isEmbed ? undefined : { width: '100%' }}>
             <Space direction="vertical" size={isEmbed ? 'large' : 'middle'} style={{ width: '100%' }}>
-              {!isEmbed || !embedConfig?.hideHeader ? (
+              {!embedded && (!isEmbed || !embedConfig?.hideHeader) ? (
               <TitleSection>
                 <Title
                   level={3}
@@ -936,7 +943,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
 
                 {/* 参数设置：embed 模式双列换行，页面模式单行自适应 */}
                 <Row gutter={isEmbed ? [16, 16] : [16, 16]} style={{ marginBottom: isEmbed ? 24 : 20 }}>
-                  <Col {...paramColProps}>
+                  <Col {...aspectRatioColProps}>
                     <Form.Item
                       name="aspectRatio"
                       label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.ratio" defaultMessage="画面比例" /></Space>}
@@ -957,7 +964,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
                       </Select>
                     </Form.Item>
                   </Col>
-                  <Col {...paramColProps}>
+                  <Col {...imageFormatColProps}>
                     <Form.Item
                       name="imageFormat"
                       label={<Space><FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} /><FormattedMessage id="create.image.format" defaultMessage="输出格式" /></Space>}

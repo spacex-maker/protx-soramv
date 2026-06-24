@@ -30,7 +30,6 @@ import {
   CloseOutlined,
   StopOutlined,
   SyncOutlined,
-  UnorderedListOutlined,
   BulbOutlined,
   UndoOutlined,
 } from '@ant-design/icons';
@@ -63,11 +62,12 @@ import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 import { preloadVideoModelCovers } from '../shared/videoModelCoverPreload';
+import VideoTaskQueueButton from '../shared/VideoTaskQueueButton';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-const TextToVideo: React.FC = () => {
+const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const intl = useIntl();
   const { locale } = useLocale();
   const { tokenBalance, balanceLoading } = useTokenBalance();
@@ -116,51 +116,77 @@ const TextToVideo: React.FC = () => {
   const [modelDetailModalVisible, setModelDetailModalVisible] = useState(false);
   const [selectedModelForDetail, setSelectedModelForDetail] = useState<Model | null>(null);
   const [modelPickerVisible, setModelPickerVisible] = useState(false);
+  const updateFormByModelRef = useRef<(model: Model) => void>(() => {});
+  const fetchHistoryTasksRef = useRef<(page?: number, pageSize?: number) => Promise<void>>(async () => {});
+  const fetchPendingTasksRef = useRef<() => Promise<void>>(async () => {});
 
   // 初始化时确保标志为 false
   useEffect(() => {
     isUserSubmitRef.current = false;
   }, []);
 
-  // 获取模型列表
+  // 获取模型列表（独立 effect，避免与历史/队列请求耦合）
   useEffect(() => {
+    let cancelled = false;
+
     const fetchModels = async () => {
       setModelsLoading(true);
       try {
         const response = await instance.get('/productx/sa-ai-models/enabled/by-type', {
-          params: { modelType: 't2v' }
+          params: { modelType: 't2v' },
         });
+        if (cancelled) return;
+
         if (response.data.success && response.data.data && response.data.data.length > 0) {
-          setModels(response.data.data);
-          // 默认选择第一个模型
-          const firstModel = response.data.data[0];
+          const list = response.data.data as Model[];
+          setModels(list);
+          const firstModel = list[0];
           setSelectedModel(firstModel);
-          // 同步更新表单的 modelId 字段
           form.setFieldsValue({ modelId: firstModel.id });
-          updateFormByModel(firstModel);
-          preloadVideoModelCovers(response.data.data, { priorityModelId: firstModel.id });
+          try {
+            updateFormByModelRef.current(firstModel);
+          } catch (err) {
+            console.error('根据模型更新表单失败:', err);
+          }
+          preloadVideoModelCovers(list, { priorityModelId: firstModel.id });
         } else {
-          message.warning(intl.formatMessage({ 
-            id: 'create.model.loadFailed', 
-            defaultMessage: '加载模型列表失败' 
+          setModels([]);
+          setSelectedModel(null);
+          form.setFieldsValue({ modelId: null });
+          message.warning(intl.formatMessage({
+            id: 'create.model.loadFailed',
+            defaultMessage: '加载模型列表失败',
           }));
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        if (cancelled) return;
         console.error('获取模型列表失败:', error);
-        message.error(intl.formatMessage({ 
-          id: 'create.model.loadFailed', 
-          defaultMessage: '加载模型列表失败' 
+        setModels([]);
+        setSelectedModel(null);
+        form.setFieldsValue({ modelId: null });
+        message.error(intl.formatMessage({
+          id: 'create.model.loadFailed',
+          defaultMessage: '加载模型列表失败',
         }));
       } finally {
-        setModelsLoading(false);
+        if (!cancelled) {
+          setModelsLoading(false);
+        }
       }
     };
 
     fetchModels();
-    fetchHistoryTasks();
-    fetchPendingTasks(); // 获取进行中的任务并恢复轮询
 
-    // 组件卸载时清理 AbortController 和轮询定时器
+    return () => {
+      cancelled = true;
+    };
+  }, [form, intl]);
+
+  // 历史记录、进行中任务与卸载清理
+  useEffect(() => {
+    fetchHistoryTasksRef.current();
+    fetchPendingTasksRef.current();
+
     return () => {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -170,7 +196,6 @@ const TextToVideo: React.FC = () => {
         clearInterval(pollingTimerRef.current);
         pollingTimerRef.current = null;
       }
-      // 清理所有任务轮询
       pollingTasksRef.current.forEach((timer) => {
         clearInterval(timer);
       });
@@ -256,6 +281,8 @@ const TextToVideo: React.FC = () => {
       form.setFieldsValue(updates);
     }
   };
+
+  updateFormByModelRef.current = updateFormByModel;
 
   // 处理模型选择变化
   const applySelectedModel = (model: Model) => {
@@ -522,7 +549,7 @@ const TextToVideo: React.FC = () => {
   };
 
   // 获取用户进行中的任务并恢复轮询
-  const fetchPendingTasks = async () => {
+  async function fetchPendingTasks() {
     try {
       const response = await instance.get<{
         success: boolean;
@@ -578,10 +605,12 @@ const TextToVideo: React.FC = () => {
       console.error('获取进行中任务失败:', error);
       // 不显示错误提示，避免干扰用户体验
     }
-  };
+  }
+
+  fetchPendingTasksRef.current = fetchPendingTasks;
 
   // 获取生成记录
-  const fetchHistoryTasks = async (page: number = 1, pageSize: number = 10) => {
+  async function fetchHistoryTasks(page: number = 1, pageSize: number = 10) {
     setHistoryLoading(true);
     try {
       const response = await instance.get<{
@@ -609,7 +638,9 @@ const TextToVideo: React.FC = () => {
     } finally {
       setHistoryLoading(false);
     }
-  };
+  }
+
+  fetchHistoryTasksRef.current = fetchHistoryTasks;
 
   // 获取状态文本
   const getStatusText = (status: number) => {
@@ -959,58 +990,21 @@ const TextToVideo: React.FC = () => {
           {/* --- 左侧：控制面板 --- */}
           <Col xs={24} lg={9}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
-              <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
-                    <FormattedMessage id="create.textToVideo.title" defaultMessage="AI 文生视频" />
-                  </Title>
-                  <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <VideoCameraOutlined style={{ fontSize: 14 }} />
-                    <FormattedMessage 
-                      id="create.textToVideo.subtitle" 
-                      defaultMessage="输入场景描述与镜头控制，生成高品质视频" 
-                    />
-                  </Text>
-                </div>
-                <Button
-                  type="default"
-                  icon={<UnorderedListOutlined />}
-                  onClick={() => setQueueDrawerOpen(true)}
-                  className={waitingTasks.length > 0 ? 'task-queue-button-active' : ''}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 6,
-                    position: 'relative'
-                  }}
-                >
-                  <FormattedMessage 
-                    id="create.video.taskQueue" 
-                    defaultMessage="任务队列" 
+              {!embedded && (
+              <div style={{ marginBottom: 8 }}>
+                <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
+                  <FormattedMessage id="create.textToVideo.title" defaultMessage="AI 文生视频" />
+                </Title>
+                <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <VideoCameraOutlined style={{ fontSize: 14 }} />
+                  <FormattedMessage
+                    id="create.textToVideo.subtitle"
+                    defaultMessage="输入场景描述与镜头控制，生成高品质视频"
                   />
-                  {waitingTasks.length > 0 && (
-                    <span style={{
-                      position: 'absolute',
-                      top: -4,
-                      right: -4,
-                      background: '#ff4d4f',
-                      color: '#fff',
-                      borderRadius: '50%',
-                      width: 18,
-                      height: 18,
-                      fontSize: 11,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 600,
-                      border: '2px solid #fff'
-                    }}>
-                      {waitingTasks.length}
-                    </span>
-                  )}
-                </Button>
+                </Text>
               </div>
+              )}
 
               <div
                 onKeyDown={(e) => {
@@ -1531,9 +1525,7 @@ const TextToVideo: React.FC = () => {
                         disabled={loading || !selectedModel}
                         style={{ height: 48, fontSize: 16, borderRadius: 24 }}
                         onClick={() => {
-                          // 设置用户主动提交标志
                           isUserSubmitRef.current = true;
-                          // 手动触发表单提交
                           form.submit();
                         }}
                       >
@@ -1566,6 +1558,12 @@ const TextToVideo: React.FC = () => {
           {/* --- 右侧：结果展示区 --- */}
           <Col xs={24} lg={15}>
             <ResultArea>
+              <VideoTaskQueueButton
+                waitingCount={waitingTasks.length}
+                onOpen={() => setQueueDrawerOpen(true)}
+                style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}
+              />
+              <div style={{ width: '100%', paddingTop: 40 }}>
               {loading ? (
                 <Space direction="vertical" align="center">
                   <Spin size="large" />
@@ -1627,6 +1625,7 @@ const TextToVideo: React.FC = () => {
                   }
                 />
               )}
+              </div>
             </ResultArea>
           </Col>
         </Row>
@@ -1679,7 +1678,7 @@ const TextToVideo: React.FC = () => {
       <VideoModelSelectionModal
         open={modelPickerVisible}
         onClose={() => setModelPickerVisible(false)}
-        type="family"
+        type={undefined}
         title={intl.formatMessage({
           id: 'create.model.select',
           defaultMessage: '选择模型',

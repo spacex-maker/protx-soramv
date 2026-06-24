@@ -65,6 +65,10 @@ import { handleGenerationApiFailure } from '../../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../../shared/promptTranslateUtils';
+import { T2I_PROMPT_MAX_LENGTH } from '../constants';
+import { GlobalSelectStyles } from '../styles';
+import ModelFamilySelect from '../ModelFamilySelect';
+import StyleModelSelect from '../StyleModelSelect';
 import {
   MobileContainer,
   MobileFormSection,
@@ -132,7 +136,7 @@ const normalizeImageData = (image: any): string | null => {
   return normalizeImageSource(source);
 };
 
-const TextToImageMobile: React.FC = () => {
+const TextToImageMobile: React.FC<{ embedded?: boolean }> = () => {
   const intl = useIntl();
   const { locale } = useLocale();
   const location = useLocation();
@@ -1166,6 +1170,7 @@ const TextToImageMobile: React.FC = () => {
 
   return (
     <MobileContainer>
+      <GlobalSelectStyles />
       {/* 主要表单区域 */}
         <MobileFormSection>
           <Form
@@ -1182,17 +1187,19 @@ const TextToImageMobile: React.FC = () => {
               imageFormat: undefined,
             }}
           >
-            {/* 模型家族选择 */}
-            <Form.Item
-              name="familyId"
+            <ModelFamilySelect
+              form={form}
+              selectedFamily={selectedFamily}
+              familiesLoading={familiesLoading}
+              onOpenModal={() => setFamilyModalVisible(true)}
               label={
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center', 
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   width: '100%',
                   margin: 0,
-                  padding: 0
+                  padding: 0,
                 }}>
                   <Space style={{ margin: 0, padding: 0 }}>
                     <RobotOutlined style={{ color: '#1890ff', fontSize: 14 }} />
@@ -1208,160 +1215,34 @@ const TextToImageMobile: React.FC = () => {
                       e.stopPropagation();
                       setSettingsDrawerVisible(true);
                     }}
-                    style={{ 
-                      padding: 0, 
+                    style={{
+                      padding: 0,
                       height: 'auto',
                       marginLeft: 'auto',
                       minWidth: 'auto',
                       marginTop: 0,
-                      marginBottom: 0
+                      marginBottom: 0,
                     }}
                   />
                 </div>
               }
-            >
-              <div onClick={() => !familiesLoading && setFamilyModalVisible(true)} style={{ cursor: familiesLoading ? 'not-allowed' : 'pointer' }}>
-                <Select
-                  value={selectedFamily?.id}
-                  open={false}
-                  placeholder={intl.formatMessage({
-                    id: 'create.model.family.select.placeholder',
-                    defaultMessage: '请选择模型家族',
-                  })}
-                  loading={familiesLoading}
-                  size="large"
-                  style={{ width: '100%', pointerEvents: 'none' }}
-                >
-                  {selectedFamily && (
-                    <Select.Option key={selectedFamily.id} value={selectedFamily.id}>
-                      <MobileModelOption>
-                        <div className="model-name">{selectedFamily.modelName}</div>
-                        <div className="model-meta">
-                          {isFree(selectedFamily.outputPrice, selectedFamily.currency, selectedFamily.tokenCost) ? (
-                            <span className="model-free">
-                              {intl.formatMessage({
-                                id: 'create.model.free',
-                                defaultMessage: '免费',
-                              })}
-                            </span>
-                          ) : (
-                            (selectedFamily.tokenCost != null && selectedFamily.tokenCost > 0) ? (
-                              <span className="model-price">
-                                {selectedFamily.tokenCost} {intl.formatMessage({ id: 'create.model.token.short', defaultMessage: 'token' })}
-                              </span>
-                            ) : (
-                              selectedFamily.outputPrice != null && (
-                                <span className="model-price">
-                                  {selectedFamily.outputPrice} {selectedFamily.currency || 'USD'}
-                                </span>
-                              )
-                            )
-                          )}
-                          {(selectedFamily.companyName || (selectedFamily.modelName === 'Nano Banana Pro' ? 'Google' : null)) && <span className="model-brand">{selectedFamily.companyName || 'Google'}</span>}
-                        </div>
-                      </MobileModelOption>
-                    </Select.Option>
-                  )}
-                </Select>
-              </div>
-            </Form.Item>
+            />
 
             {/* 艺术风格（可选）- 仅 LOCAL 模型支持 */}
             {!isApiModel && selectedFamily && (
-              <Form.Item
-                name="styleModelId"
-                label={
+              <StyleModelSelect
+                form={form}
+                selectedFamily={selectedFamily}
+                selectedModel={selectedModel}
+                styleModelsLoading={styleModelsLoading}
+                onOpenModal={() => setStyleModalVisible(true)}
+                label={(
                   <Space>
                     <AppstoreOutlined style={{ color: '#1890ff', fontSize: 14 }} />
-                    <FormattedMessage
-                      id="create.style"
-                      defaultMessage="艺术风格"
-                    />
+                    <FormattedMessage id="create.style" defaultMessage="艺术风格" />
                   </Space>
-                }
-              >
-                <div 
-                  onClick={() => !styleModelsLoading && setStyleModalVisible(true)}
-                  style={{ cursor: styleModelsLoading ? 'not-allowed' : 'pointer' }}
-                >
-                  <Select
-                    value={selectedModel?.id ?? null}
-                    open={false}
-                    placeholder={intl.formatMessage({
-                      id: 'create.style.select.placeholder',
-                      defaultMessage:
-                        '请选择艺术风格（可选，默认使用家族模型）',
-                    })}
-                    loading={styleModelsLoading}
-                    disabled={styleModelsLoading}
-                    size="large"
-                    style={{ width: '100%', pointerEvents: 'none' }}
-                  >
-                    {(selectedModel || selectedFamily) && (
-                      <Select.Option
-                        key={selectedModel?.id || `family-${selectedFamily?.id}`}
-                        value={selectedModel?.id ?? null}
-                      >
-                        {selectedModel ? (
-                          <MobileModelOption>
-                            <div className="model-name">{selectedModel.modelName}</div>
-                            <div className="model-meta">
-                              {isFree(selectedModel.outputPrice, selectedModel.currency, selectedModel.tokenCost) ? (
-                                <span className="model-free">
-                                  {intl.formatMessage({
-                                    id: 'create.model.free',
-                                    defaultMessage: '免费',
-                                  })}
-                                </span>
-                              ) : (
-                                (selectedModel.tokenCost != null && selectedModel.tokenCost > 0) ? (
-                                  <span className="model-price">
-                                    {selectedModel.tokenCost} {intl.formatMessage({ id: 'create.model.token.short', defaultMessage: 'token' })}
-                                  </span>
-                                ) : (
-                                  selectedModel.outputPrice != null && (
-                                    <span className="model-price">
-                                      {selectedModel.outputPrice} {selectedModel.currency || 'USD'}
-                                    </span>
-                                  )
-                                )
-                              )}
-                              {(selectedModel.companyName || (selectedModel.modelName === 'Nano Banana Pro' ? 'Google' : null)) && <span className="model-brand">{selectedModel.companyName || 'Google'}</span>}
-                            </div>
-                          </MobileModelOption>
-                        ) : selectedFamily ? (
-                          <MobileModelOption>
-                            <div className="model-name">{selectedFamily.modelName} (默认)</div>
-                            <div className="model-meta">
-                              {isFree(selectedFamily.outputPrice, selectedFamily.currency, selectedFamily.tokenCost) ? (
-                                <span className="model-free">
-                                  {intl.formatMessage({
-                                    id: 'create.model.free',
-                                    defaultMessage: '免费',
-                                  })}
-                                </span>
-                              ) : (
-                                (selectedFamily.tokenCost != null && selectedFamily.tokenCost > 0) ? (
-                                  <span className="model-price">
-                                    {selectedFamily.tokenCost} {intl.formatMessage({ id: 'create.model.token.short', defaultMessage: 'token' })}
-                                  </span>
-                                ) : (
-                                  selectedFamily.outputPrice != null && (
-                                    <span className="model-price">
-                                      {selectedFamily.outputPrice} {selectedFamily.currency || 'USD'}
-                                    </span>
-                                  )
-                                )
-                              )}
-                              {(selectedFamily.companyName || (selectedFamily.modelName === 'Nano Banana Pro' ? 'Google' : null)) && <span className="model-brand">{selectedFamily.companyName || 'Google'}</span>}
-                            </div>
-                          </MobileModelOption>
-                        ) : null}
-                      </Select.Option>
-                    )}
-                  </Select>
-                </div>
-              </Form.Item>
+                )}
+              />
             )}
 
             {/* 提示词输入 */}
@@ -1482,7 +1363,7 @@ const TextToImageMobile: React.FC = () => {
                   }),
                 },
               ]}
-              style={{ marginTop: 24 }}
+              style={{ marginTop: 32 }}
             >
               <TextArea
                 rows={4}
@@ -1491,7 +1372,7 @@ const TextToImageMobile: React.FC = () => {
                   defaultMessage:
                     '例如：一只在太空中漫步的赛博朋克猫咪，霓虹灯背景，高清细节...',
                 })}
-                maxLength={1000}
+                maxLength={T2I_PROMPT_MAX_LENGTH}
                 showCount
                 onChange={(e) => {
                   setPromptValue(e.target.value);

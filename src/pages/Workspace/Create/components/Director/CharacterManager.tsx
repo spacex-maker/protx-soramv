@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Avatar,
   Button,
-  Card,
+  Checkbox,
   Col,
   Empty,
   Form,
@@ -12,6 +12,7 @@ import {
   Popconfirm,
   Row,
   Space,
+  Spin,
   Typography,
   Upload,
   message,
@@ -26,29 +27,38 @@ import {
   UserOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
-import directorApi, { DirectorCharacter } from 'api/director';
+import directorApi, { DirectorCharacter, DirectorProp } from 'api/director';
 import { uploadImageToServer } from '../ImageToImage/utils';
 import { normalizeUrl } from '../ImageToVideo/utils';
 import CharacterProfileTemplateModal from './CharacterProfileTemplateModal';
+import {
+  AssetBody,
+  AssetCard,
+  AssetCover,
+  AssetCoverPlaceholder,
+  AssetDescription,
+  AssetFooter,
+  AssetLibraryCard,
+  AssetName,
+  AssetPromptTag,
+  AssetRelationTag,
+  AssetRelationTags,
+  AssetSortBadge,
+  BindAssetRow,
+  BindAssetThumb,
+} from './directorAssetCardStyles';
+import { isDisplayableImageUrl } from './directorAssetUtils';
 
-const { Text, Paragraph } = Typography;
+const { Text } = Typography;
 const { TextArea } = Input;
-
-const isDisplayableImageUrl = (url?: string | null): url is string => {
-  if (!url?.trim()) return false;
-  const u = url.trim();
-  return (
-    u.startsWith('http://') ||
-    u.startsWith('https://') ||
-    u.startsWith('data:') ||
-    u.startsWith('//')
-  );
-};
 
 export interface CharacterManagerProps {
   projectId: number;
   characters: DirectorCharacter[];
+  props: DirectorProp[];
+  characterPropMap: Record<number, number[]>;
   onCharactersChange?: () => void;
+  onBindingsChange?: () => void;
 }
 
 type CharacterFormValues = {
@@ -62,7 +72,10 @@ type CharacterFormValues = {
 const CharacterManager: React.FC<CharacterManagerProps> = ({
   projectId,
   characters,
+  props,
+  characterPropMap,
   onCharactersChange,
+  onBindingsChange,
 }) => {
   const intl = useIntl();
   const [form] = Form.useForm<CharacterFormValues>();
@@ -74,16 +87,24 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [templateInitial, setTemplateInitial] = useState({ description: '', promptSuffix: '' });
+  const [selectedPropIds, setSelectedPropIds] = useState<number[]>([]);
+  const [bindLoading, setBindLoading] = useState(false);
+
+  const propNameMap = React.useMemo(
+    () => Object.fromEntries(props.map((p) => [p.id, p.name])),
+    [props]
+  );
 
   const openCreate = () => {
     setEditingCharacter(null);
     form.resetFields();
     form.setFieldsValue({ sortOrder: characters.length, referenceImageUrl: undefined });
     setImagePreviewUrl('');
+    setSelectedPropIds([]);
     setModalOpen(true);
   };
 
-  const openEdit = (character: DirectorCharacter) => {
+  const openEdit = async (character: DirectorCharacter) => {
     setEditingCharacter(character);
     const imageUrl = character.referenceImageUrl || '';
     form.setFieldsValue({
@@ -94,7 +115,19 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
       sortOrder: character.sortOrder ?? 0,
     });
     setImagePreviewUrl(isDisplayableImageUrl(imageUrl) ? normalizeUrl(imageUrl) : '');
+    setSelectedPropIds(characterPropMap[character.id] || []);
     setModalOpen(true);
+    setBindLoading(true);
+    try {
+      const res = await directorApi.listCharacterProps(character.id);
+      if (res.success) {
+        setSelectedPropIds((res.data || []).map((p: DirectorProp) => p.id));
+      }
+    } catch {
+      // keep map fallback
+    } finally {
+      setBindLoading(false);
+    }
   };
 
   const resolveUploadFile = (file: unknown): File | null => {
@@ -182,6 +215,19 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
     form.setFieldsValue({ referenceImageUrl: undefined });
   };
 
+  const saveCharacterProps = async (characterId: number) => {
+    const bindRes = await directorApi.bindCharacterProps(characterId, { propIds: selectedPropIds });
+    if (!bindRes.success) {
+      message.warning(
+        bindRes.message ||
+          intl.formatMessage({ id: 'director.characters.bindFailed', defaultMessage: '角色已保存，但道具绑定失败' })
+      );
+      return false;
+    }
+    onBindingsChange?.();
+    return true;
+  };
+
   const handleSave = async () => {
     try {
       const values = await form.validateFields();
@@ -198,16 +244,7 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
         ? await directorApi.updateCharacter(editingCharacter.id, body)
         : await directorApi.createCharacter(projectId, body);
 
-      if (res.success) {
-        message.success(
-          intl.formatMessage({
-            id: editingCharacter ? 'director.characters.updated' : 'director.characters.created',
-            defaultMessage: editingCharacter ? '角色已更新' : '角色已创建',
-          })
-        );
-        setModalOpen(false);
-        onCharactersChange?.();
-      } else {
+      if (!res.success) {
         message.error(
           res.message ||
             intl.formatMessage({
@@ -215,7 +252,22 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
               defaultMessage: '保存失败',
             })
         );
+        return;
       }
+
+      const characterId = editingCharacter?.id ?? res.data?.id;
+      if (characterId) {
+        await saveCharacterProps(characterId);
+      }
+
+      message.success(
+        intl.formatMessage({
+          id: editingCharacter ? 'director.characters.updated' : 'director.characters.created',
+          defaultMessage: editingCharacter ? '角色已更新' : '角色已创建',
+        })
+      );
+      setModalOpen(false);
+      onCharactersChange?.();
     } catch {
       // validation error
     } finally {
@@ -235,6 +287,7 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
           })
         );
         onCharactersChange?.();
+        onBindingsChange?.();
       } else {
         message.error(
           res.message ||
@@ -260,10 +313,10 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
 
   return (
     <>
-      <Card
+      <AssetLibraryCard
         title={intl.formatMessage({ id: 'director.characters.title', defaultMessage: '角色库' })}
         extra={
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreate} style={{ borderRadius: 10 }}>
             <FormattedMessage id="director.characters.add" defaultMessage="添加角色" />
           </Button>
         }
@@ -277,47 +330,74 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
             })}
           />
         ) : (
-          <Row gutter={[16, 16]}>
-            {characters.map((c) => (
+          <Row gutter={[16, 20]}>
+            {characters.map((c) => {
+              const linkedPropIds = characterPropMap[c.id] || [];
+              return (
               <Col xs={24} sm={12} lg={8} xl={6} key={c.id}>
-                <Card
-                  size="small"
-                  hoverable
-                  cover={
-                    isDisplayableImageUrl(c.referenceImageUrl) ? (
-                      <div style={{ height: 160, overflow: 'hidden', background: '#f5f5f5' }}>
-                        <img
-                          src={normalizeUrl(c.referenceImageUrl)}
-                          alt={c.name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      </div>
+                <AssetCard>
+                  <AssetCover className="asset-cover">
+                    {isDisplayableImageUrl(c.referenceImageUrl) ? (
+                      <img src={normalizeUrl(c.referenceImageUrl)} alt={c.name} />
                     ) : (
-                      <div
-                        style={{
-                          height: 120,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: 'rgba(0,0,0,0.02)',
-                        }}
-                      >
-                        <Avatar size={64} icon={<UserOutlined />} />
-                      </div>
-                    )
-                  }
-                  actions={[
+                      <AssetCoverPlaceholder>
+                        <UserOutlined />
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                          <FormattedMessage
+                            id="director.characters.noReferenceImage"
+                            defaultMessage="暂无参考图"
+                          />
+                        </Text>
+                      </AssetCoverPlaceholder>
+                    )}
+                    {typeof c.sortOrder === 'number' ? (
+                      <AssetSortBadge>#{c.sortOrder + 1}</AssetSortBadge>
+                    ) : null}
+                  </AssetCover>
+
+                  <AssetBody>
+                    <AssetName>{c.name}</AssetName>
+                    <AssetDescription>
+                      {c.description || (
+                        <FormattedMessage
+                          id="director.characters.noDescription"
+                          defaultMessage="暂无人物设定"
+                        />
+                      )}
+                    </AssetDescription>
+                    {c.promptSuffix ? (
+                      <AssetPromptTag>
+                        <FormattedMessage
+                          id="director.characters.promptSuffixLabel"
+                          defaultMessage="提示词"
+                        />
+                        ：{c.promptSuffix}
+                      </AssetPromptTag>
+                    ) : null}
+                    {linkedPropIds.length > 0 ? (
+                      <AssetRelationTags>
+                        {linkedPropIds.slice(0, 3).map((propId) => (
+                          <AssetRelationTag key={propId}>
+                            {propNameMap[propId] || `#${propId}`}
+                          </AssetRelationTag>
+                        ))}
+                        {linkedPropIds.length > 3 ? (
+                          <AssetRelationTag>+{linkedPropIds.length - 3}</AssetRelationTag>
+                        ) : null}
+                      </AssetRelationTags>
+                    ) : null}
+                  </AssetBody>
+
+                  <AssetFooter>
                     <Button
-                      key="edit"
-                      type="text"
+                      type="default"
                       size="small"
                       icon={<EditOutlined />}
                       onClick={() => openEdit(c)}
                     >
                       <FormattedMessage id="director.characters.edit" defaultMessage="编辑" />
-                    </Button>,
+                    </Button>
                     <Popconfirm
-                      key="delete"
                       title={intl.formatMessage({
                         id: 'director.characters.deleteConfirm',
                         defaultMessage: '确定删除该角色？已绑定到剧集的关联也会被移除。',
@@ -327,7 +407,7 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
                       cancelText={intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' })}
                     >
                       <Button
-                        type="text"
+                        type="default"
                         size="small"
                         danger
                         icon={<DeleteOutlined />}
@@ -335,43 +415,15 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
                       >
                         <FormattedMessage id="director.characters.delete" defaultMessage="删除" />
                       </Button>
-                    </Popconfirm>,
-                  ]}
-                >
-                  <Card.Meta
-                    title={c.name}
-                    description={
-                      <>
-                        {c.description ? (
-                          <Paragraph ellipsis={{ rows: 2 }} style={{ marginBottom: 4 }}>
-                            {c.description}
-                          </Paragraph>
-                        ) : (
-                          <Text type="secondary" style={{ fontSize: 12 }}>
-                            <FormattedMessage
-                              id="director.characters.noDescription"
-                              defaultMessage="暂无人物设定"
-                            />
-                          </Text>
-                        )}
-                        {c.promptSuffix && (
-                          <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
-                            <FormattedMessage
-                              id="director.characters.promptSuffixLabel"
-                              defaultMessage="提示词"
-                            />
-                            ：{c.promptSuffix}
-                          </Text>
-                        )}
-                      </>
-                    }
-                  />
-                </Card>
+                    </Popconfirm>
+                  </AssetFooter>
+                </AssetCard>
               </Col>
-            ))}
+            );
+            })}
           </Row>
         )}
-      </Card>
+      </AssetLibraryCard>
 
       <Modal
         title={
@@ -387,7 +439,7 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
         onOk={handleSave}
         confirmLoading={saving}
         destroyOnClose
-        width={560}
+        width={600}
         okText={intl.formatMessage({ id: 'common.save', defaultMessage: '保存' })}
         cancelText={intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' })}
       >
@@ -521,6 +573,56 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
               maxLength={500}
               showCount
             />
+          </Form.Item>
+
+          <Form.Item
+            label={intl.formatMessage({ id: 'director.characters.bindProps', defaultMessage: '关联道具' })}
+            extra={intl.formatMessage({
+              id: 'director.characters.bindPropsHint',
+              defaultMessage: '勾选该角色使用或持有的道具，便于 Agent 与分镜创作时引用。',
+            })}
+          >
+            {bindLoading ? (
+              <div style={{ textAlign: 'center', padding: 24 }}>
+                <Spin />
+              </div>
+            ) : props.length === 0 ? (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description={intl.formatMessage({
+                  id: 'director.characters.noPropsHint',
+                  defaultMessage: '请先在「资产管理」中创建道具',
+                })}
+              />
+            ) : (
+              <Checkbox.Group
+                style={{ width: '100%' }}
+                value={selectedPropIds}
+                onChange={(vals) => setSelectedPropIds(vals as number[])}
+              >
+                <Space direction="vertical" style={{ width: '100%' }} size={10}>
+                  {props.map((p) => (
+                    <BindAssetRow key={p.id} htmlFor={`bind-char-prop-${p.id}`}>
+                      <Checkbox id={`bind-char-prop-${p.id}`} value={p.id} />
+                      <BindAssetThumb>
+                        {isDisplayableImageUrl(p.referenceImageUrl) ? (
+                          <img src={normalizeUrl(p.referenceImageUrl)} alt={p.name} />
+                        ) : (
+                          <Avatar size={40} style={{ backgroundColor: '#722ed1' }}>
+                            {p.name?.charAt(0)}
+                          </Avatar>
+                        )}
+                      </BindAssetThumb>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <Text strong style={{ display: 'block', marginBottom: 4 }}>
+                          {p.name}
+                        </Text>
+                      </div>
+                    </BindAssetRow>
+                  ))}
+                </Space>
+              </Checkbox.Group>
+            )}
           </Form.Item>
 
           <Form.Item

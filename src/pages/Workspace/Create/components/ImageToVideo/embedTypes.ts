@@ -21,6 +21,8 @@ export interface ImageToVideoEmbedConfig {
 export interface ImageToVideoProps {
   /** 是否为 Seedance 专用页（仅展示 Seedance 模型、独立路由） */
   seedancePage?: boolean;
+  /** 嵌入视频生成统一 Tab 时隐藏页头标题 */
+  embedded?: boolean;
   variant?: 'page' | 'embed';
   embedConfig?: ImageToVideoEmbedConfig;
   embedActive?: boolean;

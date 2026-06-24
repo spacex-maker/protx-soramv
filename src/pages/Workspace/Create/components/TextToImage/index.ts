@@ -5,7 +5,7 @@ import TextToImageMobile from './mobile/TextToImageMobile';
 
 const { useBreakpoint } = Grid;
 
-const TextToImage: React.FC = () => {
+const TextToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const screens = useBreakpoint();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
 
@@ -18,17 +18,14 @@ const TextToImage: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // 使用 breakpoint 和窗口宽度双重判断
-  // 移动端断点：小于 768px
   const shouldUseMobile = !screens.md || isMobile;
 
-  if (shouldUseMobile) {
-    return React.createElement(TextToImageMobile);
-  } else {
-    return React.createElement(TextToImageDesktop);
-  }
+  return shouldUseMobile ? (
+    React.createElement(TextToImageMobile, { embedded })
+  ) : (
+    React.createElement(TextToImageDesktop, { embedded })
+  );
 };
 
 export default TextToImage;
 export type { ModelFamily, Model } from './types';
-

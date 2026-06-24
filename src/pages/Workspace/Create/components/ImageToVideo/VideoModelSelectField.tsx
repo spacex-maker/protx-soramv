@@ -1,11 +1,14 @@
 import React from 'react';
-import { Form, Select, Space } from 'antd';
+import { Space } from 'antd';
 import { RobotOutlined } from '@ant-design/icons';
-import { FormattedMessage, useIntl } from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 import { Model } from './types';
-import { ModelSelectDisplay } from './styles';
 import { isVideoUrl, modelCoverUrl } from './utils';
-import CoverPreviewVideo from '../shared/CoverPreviewVideo';
+import CreateModelSelectField from '../shared/CreateModelSelectField';
+import {
+  ModelSelectDisplayData,
+  resolveModelBrand,
+} from '../shared/modelSelectDisplayUtils';
 
 export interface VideoModelSelectFieldProps {
   selectedModel: Model | null;
@@ -13,46 +16,32 @@ export interface VideoModelSelectFieldProps {
   onOpenModal: () => void;
   formItemName?: string;
   label?: React.ReactNode;
+  compact?: boolean;
+  marginBottom?: number;
 }
 
-function renderModelSelectDisplay(model: Model | null) {
-  if (!model) return null;
-
+function toDisplayModel(model: Model): ModelSelectDisplayData {
   const cover = modelCoverUrl(model);
-  const isVideo = Boolean(cover && isVideoUrl(cover));
-
-  return (
-    <ModelSelectDisplay coverImage={cover} isVideo={isVideo}>
-      {isVideo && cover && (
-        <CoverPreviewVideo className="cover-video" src={cover} playMode="always" />
-      )}
-      <div className="model-display-header">
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div className="model-display-name">{model.modelName}</div>
-          {model.modelCode && <div className="model-display-code">{model.modelCode}</div>}
-        </div>
-        {model.tokenCost !== null && model.tokenCost !== undefined && (
-          <div className="model-display-price">
-            <span className="model-display-price-amount">{model.tokenCost}</span>
-            <span className="model-display-price-currency">Token</span>
-            <span className="model-display-price-unit">
-              <FormattedMessage id="create.model.price.perSecond" defaultMessage="/秒" />
-            </span>
-          </div>
-        )}
-      </div>
-    </ModelSelectDisplay>
-  );
+  return {
+    modelName: model.modelName,
+    modelCode: model.modelCode,
+    coverImage: cover,
+    coverIsVideo: cover ? isVideoUrl(cover) : false,
+    tokenCost: model.tokenCost,
+    companyName: resolveModelBrand(model.companyName, model.modelName),
+  };
 }
 
+/** 文生视频 / 图生视频模型选择展示（与文生图共用 CreateModelSelectField） */
 const VideoModelSelectField: React.FC<VideoModelSelectFieldProps> = ({
   selectedModel,
   modelsLoading,
   onOpenModal,
   formItemName = 'modelId',
   label,
+  compact = false,
+  marginBottom = 28,
 }) => {
-  const intl = useIntl();
   const defaultLabel = (
     <Space>
       <RobotOutlined style={{ color: '#1890ff' }} />
@@ -61,39 +50,19 @@ const VideoModelSelectField: React.FC<VideoModelSelectFieldProps> = ({
   );
 
   return (
-    <Form.Item
-      name={formItemName}
+    <CreateModelSelectField
+      formItemName={formItemName}
       label={label ?? defaultLabel}
-      style={{ marginBottom: 28 }}
-    >
-      <div
-        onClick={() => !modelsLoading && onOpenModal()}
-        style={{ cursor: modelsLoading ? 'not-allowed' : 'pointer' }}
-      >
-        <Select
-          value={selectedModel?.id}
-          open={false}
-          placeholder={intl.formatMessage({
-            id: 'create.model.select.placeholder',
-            defaultMessage: '请选择要使用的视频生成模型',
-          })}
-          loading={modelsLoading}
-          style={{ width: '100%', pointerEvents: 'none' }}
-          optionLabelProp="label"
-          className="model-video-select"
-        >
-          {selectedModel && (
-            <Select.Option
-              key={selectedModel.id}
-              value={selectedModel.id}
-              label={renderModelSelectDisplay(selectedModel)}
-            >
-              {selectedModel.modelName}
-            </Select.Option>
-          )}
-        </Select>
-      </div>
-    </Form.Item>
+      model={selectedModel ? toDisplayModel(selectedModel) : null}
+      loading={modelsLoading}
+      disabled={modelsLoading}
+      compact={compact}
+      billingMode="video"
+      marginBottom={marginBottom}
+      placeholderMessageId="create.model.select.placeholder"
+      placeholderDefaultMessage="请选择要使用的视频生成模型"
+      onOpen={onOpenModal}
+    />
   );
 };
 

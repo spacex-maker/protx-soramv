@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-  DesktopOutlined,
-  MobileOutlined,
-  TabletOutlined,
-  VideoCameraOutlined,
-  BorderOutlined,
-  AppstoreOutlined,
-} from '@ant-design/icons';
+import AspectRatioIcon from '../shared/AspectRatioIcon';
 
 // 判断是否应该显示"免费"（优先看 tokenCost，>0 则收费）
 export const isFree = (
@@ -49,37 +42,31 @@ export const filterPaidT2iModels = <T extends T2iPriceFields>(models: T[]) =>
   models.filter(isPaidT2iModel);
 export const getAspectRatioOption = (ratio: string, intl: any) => {
   const ratioMap: {
-    [key: string]: { labelKey: string; defaultLabel: string; icon: React.ReactNode };
+    [key: string]: { labelKey: string; defaultLabel: string };
   } = {
     '16:9': {
       labelKey: 'create.aspectRatio.16:9',
       defaultLabel: '16:9 (Landscape)',
-      icon: <DesktopOutlined />,
     },
     '9:16': {
       labelKey: 'create.aspectRatio.9:16',
       defaultLabel: '9:16 (Portrait)',
-      icon: <MobileOutlined />,
     },
     '21:9': {
       labelKey: 'create.aspectRatio.21:9',
       defaultLabel: '21:9 (Cinema)',
-      icon: <VideoCameraOutlined />,
     },
     '1:1': {
       labelKey: 'create.aspectRatio.1:1',
       defaultLabel: '1:1 (Square)',
-      icon: <AppstoreOutlined />,
     },
     '4:3': {
       labelKey: 'create.aspectRatio.4:3',
       defaultLabel: '4:3 (Classic)',
-      icon: <TabletOutlined />,
     },
     '3:4': {
       labelKey: 'create.aspectRatio.3:4',
       defaultLabel: '3:4 (Portrait Classic)',
-      icon: <MobileOutlined />,
     },
   };
 
@@ -91,15 +78,15 @@ export const getAspectRatioOption = (ratio: string, intl: any) => {
         defaultMessage: option.defaultLabel,
       }),
       value: ratio,
-      icon: option.icon,
+      icon: <AspectRatioIcon ratio={ratio} />,
     };
   }
 
-  // 如果没有预定义的比例，返回默认格式
+  // 如果没有预定义的比例，仍按数值比例绘制图标
   return {
     label: ratio,
     value: ratio,
-    icon: <BorderOutlined />,
+    icon: <AspectRatioIcon ratio={ratio} />,
   };
 };
 

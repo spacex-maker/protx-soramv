@@ -1,14 +1,15 @@
 import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Avatar, Input } from 'antd';
-import { PictureOutlined, UserOutlined } from '@ant-design/icons';
+import { PictureOutlined, ToolOutlined, UserOutlined } from '@ant-design/icons';
 import { useIntl } from 'react-intl';
 import styled from 'styled-components';
-import { DirectorCharacter } from 'api/director';
+import { DirectorCharacter, DirectorProp } from 'api/director';
 import { normalizeUrl } from '../ImageToVideo/utils';
 import {
   ShotVideoReferenceAsset,
   applyPromptMention,
   detectPromptMention,
+  isDisplayableImageUrl,
 } from './shotVideoUtils';
 
 const { TextArea } = Input;
@@ -75,8 +76,9 @@ export interface PromptMentionOption {
   label: string;
   thumbnailUrl?: string;
   subtitle?: string;
-  kind: 'reference' | 'character';
+  kind: 'reference' | 'character' | 'prop';
   character?: DirectorCharacter;
+  prop?: DirectorProp;
 }
 
 export interface PromptMentionTextAreaProps {
@@ -84,7 +86,9 @@ export interface PromptMentionTextAreaProps {
   onChange: (value: string) => void;
   references: ShotVideoReferenceAsset[];
   availableCharacters?: DirectorCharacter[];
+  availableProps?: DirectorProp[];
   onAddCharacter?: (character: DirectorCharacter) => void;
+  onAddProp?: (prop: DirectorProp) => void;
   mentionEnabled?: boolean;
   rows?: number;
   placeholder?: string;
@@ -103,7 +107,9 @@ const PromptMentionTextArea = forwardRef<TextAreaRef, PromptMentionTextAreaProps
       onChange,
       references,
       availableCharacters = [],
+      availableProps = [],
       onAddCharacter,
+      onAddProp,
       mentionEnabled = true,
       rows = 3,
       placeholder,
@@ -151,20 +157,40 @@ const PromptMentionTextArea = forwardRef<TextAreaRef, PromptMentionTextAreaProps
 
       const characterOptions: PromptMentionOption[] = availableCharacters
         .filter((character) => matchLabel(character.name))
-        .map((character) => ({
-          id: `character-${character.id}`,
-          label: character.name,
-          thumbnailUrl: character.referenceImageUrl || undefined,
-          subtitle: intl.formatMessage({
-            id: 'director.shot.videoMentionAddCharacter',
-            defaultMessage: '角色库 · 选择后自动添加',
-          }),
-          kind: 'character',
-          character,
-        }));
+        .map((character) => {
+          const hasImage = isDisplayableImageUrl(character.referenceImageUrl);
+          return {
+            id: `character-${character.id}`,
+            label: character.name,
+            thumbnailUrl: hasImage ? (character.referenceImageUrl ?? undefined) : undefined,
+            subtitle: intl.formatMessage({
+              id: hasImage ? 'director.shot.videoMentionAddCharacter' : 'director.shot.videoMentionNoImage',
+              defaultMessage: hasImage ? '角色库 · 选择后自动添加' : '角色库 · 暂无参考图',
+            }),
+            kind: 'character' as const,
+            character,
+          };
+        });
 
-      return [...refOptions, ...characterOptions];
-    }, [availableCharacters, intl, mentionQuery, references]);
+      const propOptions: PromptMentionOption[] = availableProps
+        .filter((prop) => matchLabel(prop.name))
+        .map((prop) => {
+          const hasImage = isDisplayableImageUrl(prop.referenceImageUrl);
+          return {
+            id: `prop-${prop.id}`,
+            label: prop.name,
+            thumbnailUrl: hasImage ? (prop.referenceImageUrl ?? undefined) : undefined,
+            subtitle: intl.formatMessage({
+              id: hasImage ? 'director.shot.videoMentionAddProp' : 'director.shot.videoMentionNoImage',
+              defaultMessage: hasImage ? '道具库 · 选择后自动添加' : '道具库 · 暂无参考图',
+            }),
+            kind: 'prop' as const,
+            prop,
+          };
+        });
+
+      return [...refOptions, ...characterOptions, ...propOptions];
+    }, [availableCharacters, availableProps, intl, mentionQuery, references]);
 
     const syncMentionState = useCallback(
       (nextValue: string, cursorPos: number) => {
@@ -201,6 +227,9 @@ const PromptMentionTextArea = forwardRef<TextAreaRef, PromptMentionTextAreaProps
         if (option.kind === 'character' && option.character) {
           onAddCharacter?.(option.character);
         }
+        if (option.kind === 'prop' && option.prop) {
+          onAddProp?.(option.prop);
+        }
 
         const range = mentionRangeRef.current;
         if (range) {
@@ -220,7 +249,7 @@ const PromptMentionTextArea = forwardRef<TextAreaRef, PromptMentionTextAreaProps
         setMentionOpen(false);
         mentionRangeRef.current = null;
       },
-      [focusTextArea, onAddCharacter, onChange, value]
+      [focusTextArea, onAddCharacter, onAddProp, onChange, value]
     );
 
     const handleChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -295,7 +324,7 @@ const PromptMentionTextArea = forwardRef<TextAreaRef, PromptMentionTextAreaProps
               <MentionEmpty>
                 {intl.formatMessage({
                   id: 'director.shot.videoMentionEmpty',
-                  defaultMessage: '暂无匹配资产，请先在上方添加参考图或角色',
+                  defaultMessage: '暂无匹配资产，请先在上方添加参考图、角色或道具',
                 })}
               </MentionEmpty>
             ) : (
@@ -311,7 +340,15 @@ const PromptMentionTextArea = forwardRef<TextAreaRef, PromptMentionTextAreaProps
                     shape="square"
                     size={36}
                     src={option.thumbnailUrl ? normalizeUrl(option.thumbnailUrl) : undefined}
-                    icon={option.kind === 'character' ? <UserOutlined /> : <PictureOutlined />}
+                    icon={
+                      option.kind === 'character' ? (
+                        <UserOutlined />
+                      ) : option.kind === 'prop' ? (
+                        <ToolOutlined />
+                      ) : (
+                        <PictureOutlined />
+                      )
+                    }
                   />
                   <MentionMeta>
                     <div style={{ fontSize: 13, fontWeight: 500 }}>@{option.label}</div>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { ThemeContext } from "styled-components";
-import { HomeOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { HomeOutlined, AppstoreOutlined, CompassOutlined } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { auth } from "../../../api/auth.js";
 import { base } from "../../../api/base.js";
@@ -10,6 +10,7 @@ import Logo from './Logo';
 import DarkModeToggle from './DarkModeToggle';
 import LanguageSelector from './LanguageSelector';
 import UserMenu from './UserMenu';
+import { COMMUNITY_CHANNELS_PATH } from 'utils/communityRoutes';
 import {
   Header,
   HeaderContent,
@@ -49,6 +50,8 @@ const SimpleHeader = () => {
   // 检测当前路由
   const isHomePage = location.pathname === '/';
   const isWorkspace = location.pathname.startsWith('/workspace');
+  const isCommunityChannels = location.pathname.startsWith('/community/channels')
+    || location.pathname.startsWith('/community/c/');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -191,6 +194,14 @@ const SimpleHeader = () => {
             title={intl.formatMessage({ id: 'header.homepage', defaultMessage: '返回官网' })}
           >
             <HomeOutlined />
+          </IconNavLink>
+
+          <IconNavLink
+            to={COMMUNITY_CHANNELS_PATH}
+            $active={isCommunityChannels}
+            title={intl.formatMessage({ id: 'header.communityChannels', defaultMessage: '社区频道' })}
+          >
+            <CompassOutlined />
           </IconNavLink>
 
           <LanguageSelector 

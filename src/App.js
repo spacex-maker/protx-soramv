@@ -49,6 +49,7 @@ import LegacyCommunityChannelRedirect from './pages/Community/LegacyCommunityCha
 import ChannelDetailPage from './pages/Community/ChannelDetail';
 import PostDetailPage from './pages/Community/PostDetail';
 import MySavedPostsPage from './pages/Community/MySavedPostsPage';
+import CommunityUserProfilePage from './pages/Community/CommunityUserProfilePage';
 import ChallengeDetailPage from './pages/Community/ChallengeDetailPage';
 import ChallengeHubPage from './pages/Community/ChallengeHubPage';
 import ResumePage from './pages/Resume';
@@ -359,7 +360,7 @@ export default function App() {
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/auth/google/callback" element={<GoogleCallback />} />
-              <Route path="/workspace" element={<Navigate to="/workspace/create/text-to-image" replace />} />
+              <Route path="/workspace" element={<Navigate to="/workspace/create/image-generation" replace />} />
               <Route path="/profile" element={
                 <PrivateRoute>
                   <ProfilePage />
@@ -425,7 +426,7 @@ export default function App() {
               } />
               <Route path="/test-crypto" element={<TestCrypto />} />
               <Route path="/resume" element={<ResumePage />} />
-              <Route path="/workspace/create" element={<Navigate to="/workspace/create/text-to-image" replace />} />
+              <Route path="/workspace/create" element={<Navigate to="/workspace/create/image-generation" replace />} />
               {/* 创作用单一路由，切换 Tab 只改 URL 不重挂载页面，已加载的 tab 内容不刷新 */}
               <Route
                 path="/workspace/create/*"
@@ -535,6 +536,7 @@ export default function App() {
               <Route path="/community/daily-challenge" element={
                 <Navigate to="/community/challenge" replace />
               } />
+              <Route path="/community/user/:userId" element={<CommunityUserProfilePage />} />
               <Route path="/community/post/:postId" element={<PostDetailPage />} />
               <Route path="/community/saved" element={
                 <PrivateRoute>
@@ -543,6 +545,7 @@ export default function App() {
               } />
               <Route path="/community/collected" element={<Navigate to="/community/saved?tab=collect" replace />} />
               <Route path="/community/liked" element={<Navigate to="/community/saved?tab=like" replace />} />
+              <Route path="/community/history" element={<Navigate to="/community/saved?tab=history" replace />} />
               <Route path="/community/c/:channelKey" element={<ChannelDetailPage />} />
               <Route path="/community/:channelKey" element={<LegacyCommunityChannelRedirect />} />
               {/* Open Robot X 官网落地页 */}

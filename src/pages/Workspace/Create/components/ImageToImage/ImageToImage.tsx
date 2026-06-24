@@ -21,7 +21,6 @@ import {
   RobotOutlined,
   CloseOutlined,
   SyncOutlined,
-  UnorderedListOutlined,
   InboxOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
@@ -63,7 +62,7 @@ import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
-const ImageToImage: React.FC = () => {
+const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const intl = useIntl();
   const { tokenBalance, balanceLoading } = useTokenBalance();
   const {
@@ -1046,58 +1045,21 @@ const ImageToImage: React.FC = () => {
           {/* --- 左侧：控制面板 --- */}
           <Col xs={24} lg={9}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
-              <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
-                    <FormattedMessage id="create.imageToImage.title" defaultMessage="AI 图生图" />
-                  </Title>
-                  <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <FileImageOutlined style={{ fontSize: 14 }} />
-                    <FormattedMessage 
-                      id="create.imageToImage.subtitle" 
-                      defaultMessage="基于参考图片生成新图片" 
-                    />
-                  </Text>
-                </div>
-                <Button
-                  type="default"
-                  icon={<UnorderedListOutlined />}
-                  onClick={() => setQueueDrawerOpen(true)}
-                  className={waitingTasks.length > 0 ? 'task-queue-button-active' : ''}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 6,
-                    position: 'relative'
-                  }}
-                >
+              {!embedded && (
+              <div style={{ marginBottom: 8 }}>
+                <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
+                  <FormattedMessage id="create.imageToImage.title" defaultMessage="AI 图生图" />
+                </Title>
+                <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <FileImageOutlined style={{ fontSize: 14 }} />
                   <FormattedMessage 
-                    id="create.image.taskQueue" 
-                    defaultMessage="任务队列" 
+                    id="create.imageToImage.subtitle" 
+                    defaultMessage="基于参考图片生成新图片" 
                   />
-                  {waitingTasks.length > 0 && (
-                    <span style={{
-                      position: 'absolute',
-                      top: -4,
-                      right: -4,
-                      background: '#ff4d4f',
-                      color: '#fff',
-                      borderRadius: '50%',
-                      width: 18,
-                      height: 18,
-                      fontSize: 11,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 600,
-                      border: '2px solid #fff'
-                    }}>
-                      {waitingTasks.length}
-                    </span>
-                  )}
-                </Button>
+                </Text>
               </div>
+              )}
 
               <div
                 onKeyDown={(e) => {
@@ -1423,6 +1385,7 @@ const ImageToImage: React.FC = () => {
             waitingTasks={waitingTasks}
             originalImageUrl={originalImageUrl}
             isDark={isDark}
+            onOpenQueue={() => setQueueDrawerOpen(true)}
           />
         </Row>
         

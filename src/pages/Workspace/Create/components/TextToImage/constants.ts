@@ -37,4 +37,17 @@ export const API_ASPECT_RATIOS = [
   '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', 'auto',
 ];
 
+/** 文生图提示词最大字数 */
+export const T2I_PROMPT_MAX_LENGTH = 5000;
+
 export const API_IMAGE_FORMATS = ['png', 'jpg'] as const;
+
+export {
+  MODEL_SELECT_FIELD_HEIGHT,
+  MODEL_SELECT_FIELD_BORDER_RADIUS,
+  MODEL_SELECT_FIELD_BORDER_RADIUS_MOBILE,
+  MODEL_SELECT_FIELD_PADDING,
+  MODEL_SELECT_FIELD_HEIGHT_COMPACT,
+  MODEL_SELECT_FIELD_BORDER_RADIUS_COMPACT,
+  MODEL_SELECT_FIELD_PADDING_COMPACT,
+} from '../shared/modelSelectFieldTokens';

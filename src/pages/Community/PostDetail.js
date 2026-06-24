@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
-  Spin, message, Button, Typography, Tag, Row, Col, Avatar, Tooltip, Divider, Space, Image 
+  Spin, message, Button, Typography, Tag, Row, Col, Avatar, Tooltip, Divider, Space,
 } from 'antd';
 import { 
   HeartOutlined, HeartFilled, StarOutlined, StarFilled, 
@@ -13,10 +13,10 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import styled, { keyframes } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
 import { getPostDetail, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus, followUser, unfollowUser, getRelationStatus, checkReviewPermission } from 'api/community';
-import UserProfileModal from 'components/community/UserProfileModal';
 import PostShelfToggle from 'components/community/PostShelfToggle';
+import PostMediaGallery from 'components/community/PostMediaGallery';
 import { isPostDelisted } from 'utils/communityPostStatus';
-import { addTencentImageCompression, parsePostGenerationDetails } from './ChallengeDetailPage/utils';
+import { parsePostGenerationDetails, getPostMediaUrls } from './ChallengeDetailPage/utils';
 import { buildT2iImportFromPost, persistT2iImportPayload } from 'utils/postT2iImport';
 import { isPostPromptMarketLocked } from 'utils/communityPostPrompt';
 
@@ -80,47 +80,6 @@ const MainContainer = styled.div`
 const MediaSection = styled.div`
   flex: 1;
   min-width: 0; // 防止 flex 子项溢出
-`;
-
-const ImageContainer = styled.div`
-  width: 100%;
-  border-radius: 24px;
-  overflow: hidden;
-  background: ${props => props.theme.mode === 'dark' ? '#1f1f1f' : '#f8f8f8'};
-  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-  position: relative;
-
-  @media (max-width: 768px) {
-    border-radius: 16px;
-  }
-  
-  .ant-image {
-    width: 100%;
-    display: block;
-  }
-  
-  .ant-image-img {
-    width: 100%;
-    height: auto;
-    display: block;
-    transition: transform 0.3s, filter 0.3s ease, opacity 0.3s ease;
-  }
-
-  ${(props) => props.$delisted && `
-    .ant-image-img {
-      filter: grayscale(100%);
-      opacity: 0.55;
-    }
-
-    &::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.12);
-      pointer-events: none;
-      z-index: 2;
-    }
-  `}
 `;
 
 // 右侧：信息与操作区 (Sticky Sidebar)
@@ -737,11 +696,15 @@ const PostDetailPage = () => {
   const [interaction, setInteraction] = useState(null);
   const [relation, setRelation] = useState(null);
   const [followLoading, setFollowLoading] = useState(false);
-  const [userProfileModalVisible, setUserProfileModalVisible] = useState(false);
   const [canModeratePosts, setCanModeratePosts] = useState(false);
+  const [galleryPreviewRestore, setGalleryPreviewRestore] = useState(null);
+  const previewRestoreRef = useRef(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     if (postId) fetchPostDetailData();
+    previewRestoreRef.current = false;
+    setGalleryPreviewRestore(null);
   }, [postId]);
 
   useEffect(() => {
@@ -754,6 +717,23 @@ const PostDetailPage = () => {
       .then(setCanModeratePosts)
       .catch(() => setCanModeratePosts(false));
   }, [postId]);
+
+  useEffect(() => {
+    if (previewRestoreRef.current || !post) return;
+    if (searchParams.get('previewOpen') !== '1') return;
+
+    previewRestoreRef.current = true;
+    const previewIndex = Math.max(0, Number(searchParams.get('previewIndex') || 0));
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('previewOpen');
+    nextParams.delete('previewIndex');
+    nextParams.delete('viewOriginal');
+    setSearchParams(nextParams, { replace: true });
+
+    if (localStorage.getItem('token')) {
+      setGalleryPreviewRestore({ open: true, index: previewIndex });
+    }
+  }, [post, searchParams, setSearchParams]);
 
   const fetchPostDetailData = async () => {
     setLoading(true);
@@ -786,6 +766,11 @@ const PostDetailPage = () => {
   };
 
   // 处理点赞/收藏逻辑 (保持原有逻辑，仅展示 UI 变化)
+  const mediaUrls = useMemo(
+    () => (post ? getPostMediaUrls(post) : []),
+    [post]
+  );
+
   const handleLike = async () => {
     if (!post) return;
     try {
@@ -891,33 +876,18 @@ const PostDetailPage = () => {
       <MainContainer>
         {/* 左侧：图片展示，多图时至少一行两张 */}
         <MediaSection>
-          <Row gutter={[16, 16]}>
-            {post.mediaUrls.map((url, index) => (
-              <Col key={index} xs={post.mediaUrls.length > 1 ? 12 : 24} sm={12}>
-                <ImageContainer $delisted={isPostDelisted(post.status)}>
-                  <Image
-                    src={addTencentImageCompression(url, { quality: 30 })}
-                    alt={`Creation ${index + 1}`}
-                    loading="lazy"
-                    style={{ width: '100%', height: 'auto' }}
-                    preview={{
-                      src: url,
-                      mask: <div style={{ padding: '8px', color: '#fff', fontSize: '14px' }}>查看原图</div>
-                    }}
-                  />
-                  {canModeratePosts && index === 0 && (
-                    <PostShelfToggle
-                      postId={post.id}
-                      status={post.status}
-                      onStatusChange={(_postId, newStatus) => {
-                        setPost((prev) => (prev ? { ...prev, status: newStatus } : prev));
-                      }}
-                    />
-                  )}
-                </ImageContainer>
-              </Col>
-            ))}
-          </Row>
+          <PostMediaGallery
+            urls={mediaUrls}
+            delisted={isPostDelisted(post.status)}
+            postId={post.id}
+            postStatus={post.status}
+            canModerate={canModeratePosts}
+            onShelfStatusChange={(_postId, newStatus) => {
+              setPost((prev) => (prev ? { ...prev, status: newStatus } : prev));
+            }}
+            generationParams={post.generationParams}
+            initialPreview={galleryPreviewRestore}
+          />
         </MediaSection>
 
         {/* 右侧：详情 Sticky Sidebar */}
@@ -928,7 +898,14 @@ const PostDetailPage = () => {
             </Title>
 
             <UserCard>
-                <div className="user-info" onClick={() => setUserProfileModalVisible(true)}>
+                <div
+                  className="user-info"
+                  onClick={() => {
+                    if (post.userId) {
+                      navigate(`/community/user/${post.userId}`);
+                    }
+                  }}
+                >
                     <Avatar src={post.userAvatar} size={48} icon={<EyeOutlined />} />
                     <div>
                         <div className="name">{post.userNickname || <FormattedMessage id="common.creator" defaultMessage="Creator" />}</div>
@@ -979,7 +956,13 @@ const PostDetailPage = () => {
                 </Button>
                 )}
                 
-                <Tooltip title={isLiked ? intl.formatMessage({id: 'common.unlike', defaultMessage: 'Unlike'}) : intl.formatMessage({id: 'common.like', defaultMessage: 'Like'})}>
+                <Tooltip
+                  title={
+                    isLiked
+                      ? intl.formatMessage({ id: 'community.post.unlike', defaultMessage: '取消喜欢' })
+                      : intl.formatMessage({ id: 'community.post.like', defaultMessage: '喜欢' })
+                  }
+                >
                     <button 
                         className={`icon-btn ${isLiked ? 'active' : ''}`} 
                         onClick={handleLike}
@@ -990,7 +973,13 @@ const PostDetailPage = () => {
                     </button>
                 </Tooltip>
 
-                <Tooltip title={isCollected ? intl.formatMessage({id: 'common.unsave', defaultMessage: 'Unsave'}) : intl.formatMessage({id: 'common.save', defaultMessage: 'Save'})}>
+                <Tooltip
+                  title={
+                    isCollected
+                      ? intl.formatMessage({ id: 'community.post.uncollect', defaultMessage: '取消收藏' })
+                      : intl.formatMessage({ id: 'community.post.collect', defaultMessage: '收藏' })
+                  }
+                >
                     <button 
                         className={`icon-btn ${isCollected ? 'active' : ''}`} 
                         onClick={handleCollect}
@@ -1182,13 +1171,6 @@ const PostDetailPage = () => {
         </SidebarSection>
       </MainContainer>
       
-      <UserProfileModal
-        visible={userProfileModalVisible}
-        onCancel={() => setUserProfileModalVisible(false)}
-        userId={post.userId}
-        userNickname={post.userNickname}
-        userAvatar={post.userAvatar}
-      />
     </PageLayout>
   );
 };

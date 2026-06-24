@@ -8,69 +8,10 @@ export const GlobalSpeechStyles = createGlobalStyle`
       width: 100%;
     }
 
-    .ant-select .ant-select-selector {
+    .ant-select:not(.speech-engine-select) .ant-select-selector {
       border-radius: 12px !important;
     }
-    .speech-engine-select {
-      width: 100% !important;
-      margin-bottom: 0 !important;
 
-      &.ant-select {
-        width: 100% !important;
-      }
-
-      .ant-select-selector {
-        width: 100% !important;
-        padding: 0 !important;
-        min-height: 75px !important;
-        display: flex !important;
-        align-items: stretch !important;
-        border-radius: 12px !important;
-        overflow: hidden !important;
-      }
-
-      &.ant-select-focused .ant-select-selector,
-      &:hover .ant-select-selector {
-        border-radius: 12px !important;
-        overflow: hidden !important;
-      }
-
-      .ant-select-selection-wrap,
-      .ant-select-selection-search {
-        width: 100% !important;
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-      }
-
-      .ant-select-selection-item {
-        padding: 0 !important;
-        height: auto !important;
-        min-height: 75px !important;
-        line-height: normal !important;
-        display: flex !important;
-        align-items: stretch !important;
-        width: 100% !important;
-        max-width: 100% !important;
-        overflow: visible !important;
-        flex: 1 1 auto !important;
-      }
-
-      .ant-select-selection-item > * {
-        width: 100% !important;
-        max-width: 100% !important;
-        flex: 1 1 auto !important;
-        min-width: 0 !important;
-      }
-
-      .ant-select-selection-placeholder {
-        padding: 0 16px !important;
-        line-height: 75px !important;
-      }
-
-      .ant-select-arrow {
-        inset-inline-end: 12px;
-      }
-    }
     .ant-input,
     .ant-input-affix-wrapper,
     .ant-input-textarea textarea {

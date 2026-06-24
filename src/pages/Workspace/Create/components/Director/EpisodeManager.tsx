@@ -26,7 +26,7 @@ import {
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
-import directorApi, { DirectorCharacter, DirectorEpisode, DirectorScene, DirectorShot } from 'api/director';
+import directorApi, { DirectorCharacter, DirectorEpisode, DirectorProp, DirectorScene, DirectorShot } from 'api/director';
 import { normalizeUrl } from '../ImageToVideo/utils';
 import CoverImageUpload, {
   getCoverBorderRadius,
@@ -376,6 +376,8 @@ const sortShotsByShotNo = (list: DirectorShot[]): DirectorShot[] =>
 export interface EpisodeManagerProps {
   episodes: DirectorEpisode[];
   characters: DirectorCharacter[];
+  props?: DirectorProp[];
+  characterPropMap?: Record<number, number[]>;
   scenes: DirectorScene[];
   shots: DirectorShot[];
   activeEpisodeId: number | null;
@@ -405,6 +407,8 @@ export interface EpisodeManagerProps {
 const EpisodeManager: React.FC<EpisodeManagerProps> = ({
   episodes,
   characters,
+  props = [],
+  characterPropMap = {},
   scenes,
   shots,
   activeEpisodeId,
@@ -1058,7 +1062,7 @@ const EpisodeManager: React.FC<EpisodeManagerProps> = ({
           <Empty
             description={intl.formatMessage({
               id: 'director.episode.noCharactersHint',
-              defaultMessage: '请先在「角色」Tab 创建项目角色',
+              defaultMessage: '请先在「资产管理」中创建角色',
             })}
           />
         ) : (
@@ -1124,6 +1128,8 @@ const EpisodeManager: React.FC<EpisodeManagerProps> = ({
         episode={activeEpisode || null}
         scenes={scenes}
         characters={characters}
+        props={props}
+        characterPropMap={characterPropMap}
         shotCountForScene={
           (shotCreateSceneId != null ? shotCreateScene : shotSettingsScene)
             ? shotCountBySceneId[(shotCreateSceneId != null ? shotCreateScene : shotSettingsScene)!.id] ?? 0

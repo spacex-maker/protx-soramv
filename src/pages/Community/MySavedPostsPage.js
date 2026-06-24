@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Avatar, Button, Empty, Image, Spin, Tabs, Tooltip, message } from 'antd';
+import { Avatar, Button, Empty, Image, Popconfirm, Spin, Tabs, Tooltip, message } from 'antd';
 import Masonry from 'react-masonry-css';
 import {
   ArrowRightOutlined,
+  ClockCircleOutlined,
+  DeleteOutlined,
   EyeOutlined,
   HeartFilled,
   HeartOutlined,
+  HistoryOutlined,
   StarFilled,
   StarOutlined,
   UserOutlined,
@@ -14,7 +17,14 @@ import {
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
-import { listMyInteractionPosts, uncollectPost, unlikePost } from 'api/community';
+import {
+  clearMyViewHistory,
+  listMyInteractionPosts,
+  listMyViewHistory,
+  removeMyViewHistory,
+  uncollectPost,
+  unlikePost,
+} from 'api/community';
 import { addTencentImageCompression, getPostCardSpecs } from './ChallengeDetailPage/utils';
 
 const HEADER_OFFSET = 72;
@@ -164,6 +174,15 @@ const PostCard = styled.div`
     font-size: 11px;
     color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')};
   }
+
+  .viewed-at {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)')};
+  }
 `;
 
 const ActionBtn = styled.button`
@@ -192,6 +211,12 @@ const ActionBtn = styled.button`
   &:hover {
     transform: scale(1.05);
   }
+`;
+
+const ListToolbar = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 12px;
 `;
 
 const breakpointColumnsObj = {
@@ -323,7 +348,7 @@ const InteractionPostList = ({ interactionType }) => {
                   <Tooltip
                     title={
                       isCollect
-                        ? intl.formatMessage({ id: 'common.unsave', defaultMessage: '取消收藏' })
+                        ? intl.formatMessage({ id: 'community.post.uncollect', defaultMessage: '取消收藏' })
                         : intl.formatMessage({ id: 'community.myLiked.unlike', defaultMessage: '取消喜欢' })
                     }
                   >
@@ -383,9 +408,227 @@ const InteractionPostList = ({ interactionType }) => {
   );
 };
 
+const formatViewedAt = (value) => {
+  if (!value) return '';
+  const normalized = typeof value === 'string' ? value.replace(' ', 'T') : value;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+};
+
+const ViewHistoryPostList = () => {
+  const intl = useIntl();
+  const navigate = useNavigate();
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const loadMoreRef = useRef(null);
+
+  const fetchPosts = useCallback(async (pageNum, append = false) => {
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
+    try {
+      const data = await listMyViewHistory({
+        page: pageNum,
+        pageSize: 20,
+      });
+      setPosts((prev) => (append ? [...prev, ...data] : data));
+      setHasMore(data.length === 20);
+    } catch (error) {
+      message.error(error?.message || intl.formatMessage({ id: 'community.loadFailed', defaultMessage: '加载失败' }));
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [intl]);
+
+  useEffect(() => {
+    setPage(1);
+    setPosts([]);
+    setHasMore(true);
+    fetchPosts(1, false);
+  }, [fetchPosts]);
+
+  useEffect(() => {
+    if (!hasMore || loading || loadingMore || posts.length === 0) return;
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && !loadingMore) {
+          setPage((p) => p + 1);
+        }
+      },
+      { rootMargin: '200px' }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hasMore, loading, loadingMore, posts.length]);
+
+  useEffect(() => {
+    if (page > 1) {
+      fetchPosts(page, true);
+    }
+  }, [page, fetchPosts]);
+
+  const handleRemoveHistory = async (post, e) => {
+    e.stopPropagation();
+    try {
+      await removeMyViewHistory(post.id);
+      setPosts((prev) => prev.filter((p) => p.id !== post.id));
+      message.success(
+        intl.formatMessage({ id: 'community.myHistory.removed', defaultMessage: '已移除浏览记录' })
+      );
+    } catch (error) {
+      message.error(error?.message || intl.formatMessage({ id: 'common.operationFailed', defaultMessage: '操作失败' }));
+    }
+  };
+
+  const handleClearAll = async () => {
+    setClearing(true);
+    try {
+      await clearMyViewHistory();
+      setPosts([]);
+      setHasMore(false);
+      message.success(
+        intl.formatMessage({ id: 'community.myHistory.cleared', defaultMessage: '已清空浏览记录' })
+      );
+    } catch (error) {
+      message.error(error?.message || intl.formatMessage({ id: 'common.operationFailed', defaultMessage: '操作失败' }));
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  const getCoverUrl = (post) => addTencentImageCompression(post.coverUrl || post.mediaUrls?.[0], { quality: 24 });
+
+  if (loading && posts.length === 0) {
+    return <div style={{ textAlign: 'center', padding: 80 }}><Spin size="large" /></div>;
+  }
+
+  if (posts.length === 0) {
+    return (
+      <Empty
+        description={
+          <FormattedMessage
+            id="community.myHistory.empty"
+            defaultMessage="还没有浏览记录"
+          />
+        }
+      >
+        <Button type="primary" onClick={() => navigate('/community')}>
+          <FormattedMessage id="community.exploreNow" defaultMessage="去社区逛逛" />
+        </Button>
+      </Empty>
+    );
+  }
+
+  return (
+    <>
+      <ListToolbar>
+        <Popconfirm
+          title={intl.formatMessage({
+            id: 'community.myHistory.clearConfirm',
+            defaultMessage: '确定清空全部浏览记录吗？',
+          })}
+          okText={intl.formatMessage({ id: 'common.confirm', defaultMessage: '确定' })}
+          cancelText={intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' })}
+          onConfirm={handleClearAll}
+        >
+          <Button danger loading={clearing} icon={<DeleteOutlined />}>
+            <FormattedMessage id="community.myHistory.clearAll" defaultMessage="清空浏览记录" />
+          </Button>
+        </Popconfirm>
+      </ListToolbar>
+      <MasonryGridWrap>
+        <Masonry
+          breakpointCols={breakpointColumnsObj}
+          className="masonry-grid"
+          columnClassName="masonry-grid_column"
+        >
+          {posts.map((post) => {
+            const specs = getPostCardSpecs(post);
+            return (
+              <PostCard key={post.id} onClick={() => navigate(`/community/post/${post.id}`)}>
+                <div className="cover">
+                  <Image src={getCoverUrl(post)} alt={post.title} preview={false} />
+                  <Tooltip
+                    title={intl.formatMessage({
+                      id: 'community.myHistory.remove',
+                      defaultMessage: '移除浏览记录',
+                    })}
+                  >
+                    <ActionBtn type="button" onClick={(e) => handleRemoveHistory(post, e)}>
+                      <DeleteOutlined />
+                    </ActionBtn>
+                  </Tooltip>
+                </div>
+                <div className="body">
+                  {post.viewedAt && (
+                    <div className="viewed-at">
+                      <ClockCircleOutlined />
+                      <FormattedMessage
+                        id="community.myHistory.viewedAt"
+                        defaultMessage="浏览于 {time}"
+                        values={{ time: formatViewedAt(post.viewedAt) }}
+                      />
+                    </div>
+                  )}
+                  <div className="title-row">
+                    <h3 className="title">
+                      {post.title || intl.formatMessage({ id: 'post.untitled', defaultMessage: '未命名作品' })}
+                    </h3>
+                    <ArrowRightOutlined style={{ fontSize: 10, flexShrink: 0, opacity: 0.45 }} />
+                  </div>
+                  {specs.length > 0 && (
+                    <div className="spec-row">
+                      {specs.map((spec) => (
+                        <span key={`${post.id}-${spec.key}`} className="spec-chip">{spec.value}</span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="meta">
+                    <div className="user">
+                      <Avatar size={20} src={post.userAvatar} icon={<UserOutlined />} />
+                      <span className="name">{post.userNickname || 'Anonymous'}</span>
+                    </div>
+                    <div className="stats">
+                      <span><HeartFilled style={{ fontSize: 10 }} /> {post.likeCount || 0}</span>
+                      <span><EyeOutlined style={{ fontSize: 10 }} /> {post.viewCount || 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </PostCard>
+            );
+          })}
+        </Masonry>
+      </MasonryGridWrap>
+      {hasMore && (
+        <>
+          <div ref={loadMoreRef} style={{ height: 1 }} aria-hidden />
+          <div style={{ textAlign: 'center', padding: '24px 0' }}>
+            {loadingMore ? <Spin /> : (
+              <Button shape="round" onClick={() => setPage((p) => p + 1)}>
+                <FormattedMessage id="common.loadMore" defaultMessage="加载更多" />
+              </Button>
+            )}
+          </div>
+        </>
+      )}
+    </>
+  );
+};
+
 const MySavedPostsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeTab = searchParams.get('tab') === 'like' ? 'like' : 'collect';
+  const tabParam = searchParams.get('tab');
+  const activeTab = tabParam === 'like' ? 'like' : tabParam === 'history' ? 'history' : 'collect';
 
   const tabItems = [
     {
@@ -408,6 +651,16 @@ const MySavedPostsPage = () => {
       ),
       children: <InteractionPostList interactionType="like" />,
     },
+    {
+      key: 'history',
+      label: (
+        <span>
+          <HistoryOutlined style={{ marginRight: 6 }} />
+          <FormattedMessage id="community.mySaved.tabHistory" defaultMessage="浏览" />
+        </span>
+      ),
+      children: <ViewHistoryPostList />,
+    },
   ];
 
   return (
@@ -416,7 +669,7 @@ const MySavedPostsPage = () => {
       <Container>
         <PageHeader>
           <h1>
-            <FormattedMessage id="community.mySaved.title" defaultMessage="收藏与喜欢" />
+            <FormattedMessage id="community.mySaved.title" defaultMessage="收藏 · 喜欢 · 浏览" />
           </h1>
         </PageHeader>
         <Tabs

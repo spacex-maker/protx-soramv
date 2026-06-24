@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { auth } from "../../api/auth";
 import { base } from "../../api/base";
 import { loadRememberedLogin, saveRememberedLogin } from "../../utils/loginRemember";
+import { consumeLoginRedirect, persistLoginRedirect } from "../../utils/loginRedirect";
 import { message } from "antd";
 import { ThemeContext } from "styled-components";
 import { useLocale } from 'contexts/LocaleContext';
@@ -16,6 +17,7 @@ import { PhilosophyQuote, PoweredBy } from './components/Footer';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberPassword, setRememberPassword] = useState(false);
@@ -40,6 +42,13 @@ const LoginPage = () => {
   }, []);
 
   useEffect(() => {
+    const redirect = searchParams.get('redirect');
+    if (redirect) {
+      persistLoginRedirect(redirect);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
     const saved = loadRememberedLogin();
     if (saved.remember) {
       setEmail(saved.email);
@@ -58,7 +67,7 @@ const LoginPage = () => {
       if (result.success) {
         saveRememberedLogin(email, password, rememberPassword);
         message.success("登录成功");
-        navigate("/workspace");
+        navigate(consumeLoginRedirect('/workspace'));
       } else if (!result.isUserDisabled && !result.isIpBlocked) {
         setError(result.message || "登录失败");
       }

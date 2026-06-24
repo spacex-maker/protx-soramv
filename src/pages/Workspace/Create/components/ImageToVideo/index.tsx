@@ -30,7 +30,6 @@ import {
   SwapOutlined,
   CloseOutlined,
   SyncOutlined,
-  UnorderedListOutlined,
   InboxOutlined,
   DeleteOutlined,
   AudioOutlined,
@@ -82,6 +81,7 @@ import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 import ImageGenPickerModal, { type ImagePickerTarget } from '../shared/ImageGenPickerModal';
 import SelectedImagePreviewOverlay from '../shared/SelectedImagePreviewOverlay';
 import { preloadVideoModelCovers } from '../shared/videoModelCoverPreload';
+import VideoTaskQueueButton from '../shared/VideoTaskQueueButton';
 import { filterPaidT2iModels } from '../TextToImage/utils';
 import type { ImageToVideoProps } from './embedTypes';
 import { resolvePreferredI2vModel } from './resolvePreferredI2vModel';
@@ -131,6 +131,7 @@ export type { ImageToVideoEmbedConfig, ImageToVideoEmbedTaskPayload, ImageToVide
 
 const ImageToVideo: React.FC<ImageToVideoProps> = ({
   seedancePage = false,
+  embedded = false,
   variant = 'page',
   embedConfig,
   embedActive = true,
@@ -1665,65 +1666,24 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
           <Col xs={24} lg={isEmbed ? 13 : 9}>
             <LeftPanel style={isEmbed ? undefined : { width: '100%' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
-              {(!isEmbed || !embedConfig?.hideHeader) && (
-              <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
-                    {seedancePage ? (
-                      <FormattedMessage id="create.seedance.title" defaultMessage="Seedance 图生视频" />
-                    ) : (
-                      <FormattedMessage id="create.imageToVideo.title" defaultMessage="AI 图生视频" />
-                    )}
-                  </Title>
-                  <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <VideoCameraOutlined style={{ fontSize: 14 }} />
-                    {seedancePage ? (
-                      <FormattedMessage id="create.seedance.subtitle" defaultMessage="字节豆包 Seedance 1.5 / 2.0，图片驱动视频生成" />
-                    ) : (
-                      <FormattedMessage id="create.imageToVideo.subtitle" defaultMessage="赋予静态图片生命，通过提示词控制运动" />
-                    )}
-                  </Text>
-                </div>
-                {(!isEmbed || !embedConfig?.hideTaskQueue) && (
-                <Button
-                  type="default"
-                  icon={<UnorderedListOutlined />}
-                  onClick={() => setQueueDrawerOpen(true)}
-                  className={waitingTasks.length > 0 ? 'task-queue-button-active' : ''}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 6,
-                    position: 'relative'
-                  }}
-                >
-                  <FormattedMessage 
-                    id="create.video.taskQueue" 
-                    defaultMessage="任务队列" 
-                  />
-                  {waitingTasks.length > 0 && (
-                    <span style={{
-                      position: 'absolute',
-                      top: -4,
-                      right: -4,
-                      background: '#ff4d4f',
-                      color: '#fff',
-                      borderRadius: '50%',
-                      width: 18,
-                      height: 18,
-                      fontSize: 11,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontWeight: 600,
-                      border: '2px solid #fff'
-                    }}>
-                      {waitingTasks.length}
-                    </span>
+              {!embedded && (!isEmbed || !embedConfig?.hideHeader) && (
+              <div style={{ marginBottom: 8 }}>
+                <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
+                  {seedancePage ? (
+                    <FormattedMessage id="create.seedance.title" defaultMessage="Seedance 图生视频" />
+                  ) : (
+                    <FormattedMessage id="create.imageToVideo.title" defaultMessage="AI 图生视频" />
                   )}
-                </Button>
-                )}
+                </Title>
+                <Text type="secondary" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <VideoCameraOutlined style={{ fontSize: 14 }} />
+                  {seedancePage ? (
+                    <FormattedMessage id="create.seedance.subtitle" defaultMessage="字节豆包 Seedance 1.5 / 2.0，图片驱动视频生成" />
+                  ) : (
+                    <FormattedMessage id="create.imageToVideo.subtitle" defaultMessage="赋予静态图片生命，通过提示词控制运动" />
+                  )}
+                </Text>
               </div>
               )}
 
@@ -2154,6 +2114,14 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
           {/* --- 右侧：结果展示区 --- */}
           <Col xs={24} lg={isEmbed ? 11 : 15}>
             <ResultArea>
+              {(!isEmbed || !embedConfig?.hideTaskQueue) && (
+                <VideoTaskQueueButton
+                  waitingCount={waitingTasks.length}
+                  onOpen={() => setQueueDrawerOpen(true)}
+                  style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}
+                />
+              )}
+              <div style={{ width: '100%', paddingTop: 40 }}>
               {loading ? (
                 <Space direction="vertical" align="center">
                   <Spin size="large" />
@@ -2292,6 +2260,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
                   }
                 />
               )}
+              </div>
             </ResultArea>
           </Col>
         </Row>

@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Form, Input, Modal, Space, message } from 'antd';
 import { FormattedMessage, useIntl } from 'react-intl';
-import directorApi, { DirectorCharacter, DirectorEpisode, DirectorScene } from 'api/director';
+import directorApi, { DirectorCharacter, DirectorEpisode, DirectorScene, DirectorSceneReferenceImage } from 'api/director';
 import { ApplyScenePayload } from './storyboardAgentUtils';
+import SceneReferenceImagesEditor from './SceneReferenceImagesEditor';
+import { areSceneReferenceImagesEqual, fetchSceneReferenceImagesSafe, mergeSceneReferenceImages, toSceneReferenceSavePayload } from './sceneReferenceUtils';
 import ScriptAgentPanel from './ScriptAgentPanel';
 
 interface SceneSettingsModalProps {
@@ -29,15 +31,40 @@ const SceneSettingsModal: React.FC<SceneSettingsModalProps> = ({
   const intl = useIntl();
   const [form] = Form.useForm();
   const [saving, setSaving] = useState(false);
+  const [referenceImages, setReferenceImages] = useState<DirectorSceneReferenceImage[]>([]);
+  const [savedReferenceImages, setSavedReferenceImages] = useState<DirectorSceneReferenceImage[]>([]);
+  const [refsLoading, setRefsLoading] = useState(false);
 
   useEffect(() => {
-    if (open && scene) {
-      form.setFieldsValue({
-        location: scene.location || '',
-        timeOfDay: scene.timeOfDay || '',
-        scriptContent: scene.scriptContent || '',
+    if (!open || !scene) return;
+
+    form.setFieldsValue({
+      location: scene.location || '',
+      timeOfDay: scene.timeOfDay || '',
+      scriptContent: scene.scriptContent || '',
+    });
+
+    const initialRefs = mergeSceneReferenceImages(scene.referenceImages);
+    setReferenceImages(initialRefs);
+    setSavedReferenceImages(initialRefs);
+
+    if (initialRefs.length > 0) return;
+
+    let cancelled = false;
+    setRefsLoading(true);
+    fetchSceneReferenceImagesSafe(scene.id)
+      .then((loaded) => {
+        if (cancelled) return;
+        setReferenceImages(loaded);
+        setSavedReferenceImages(loaded);
+      })
+      .finally(() => {
+        if (!cancelled) setRefsLoading(false);
       });
-    }
+
+    return () => {
+      cancelled = true;
+    };
   }, [open, scene, form]);
 
   const handleSave = async () => {
@@ -50,13 +77,34 @@ const SceneSettingsModal: React.FC<SceneSettingsModalProps> = ({
         timeOfDay: values.timeOfDay?.trim() || null,
         scriptContent: values.scriptContent,
       });
-      if (res.success) {
-        message.success(intl.formatMessage({ id: 'director.script.sceneSaved', defaultMessage: '场次已保存' }));
-        onSaved();
-        onClose();
-      } else {
+      if (!res.success) {
         message.error(res.message);
+        return;
       }
+
+      const refsDirty = !areSceneReferenceImagesEqual(referenceImages, savedReferenceImages);
+      if (refsDirty) {
+        const refRes = await directorApi.replaceSceneReferenceImages(scene.id, {
+          images: toSceneReferenceSavePayload(referenceImages),
+        });
+        if (!refRes.success) {
+          message.warning(
+            refRes.message ||
+              intl.formatMessage({
+                id: 'director.scene.referenceImages.saveFailed',
+                defaultMessage: '场景已保存，但参考图保存失败',
+              })
+          );
+          onSaved();
+          onClose();
+          return;
+        }
+        setSavedReferenceImages(mergeSceneReferenceImages(null, refRes.data));
+      }
+
+      message.success(intl.formatMessage({ id: 'director.script.sceneSaved', defaultMessage: '场次已保存' }));
+      onSaved();
+      onClose();
     } catch (e: unknown) {
       if (e instanceof Error && e.message) message.error(e.message);
     } finally {
@@ -104,6 +152,17 @@ const SceneSettingsModal: React.FC<SceneSettingsModalProps> = ({
         </Form.Item>
         <Form.Item name="scriptContent" label={intl.formatMessage({ id: 'director.script.content', defaultMessage: '剧本内容' })}>
           <Input.TextArea rows={8} placeholder={intl.formatMessage({ id: 'director.script.contentPlaceholder', defaultMessage: '场次描述、对白、动作指示…' })} />
+        </Form.Item>
+        <Form.Item
+          label={intl.formatMessage({ id: 'director.scene.referenceImages', defaultMessage: '场景参考图' })}
+        >
+          {refsLoading ? (
+            <div style={{ textAlign: 'center', padding: 24 }}>
+              <FormattedMessage id="director.scene.referenceImages.loading" defaultMessage="加载中…" />
+            </div>
+          ) : (
+            <SceneReferenceImagesEditor value={referenceImages} onChange={setReferenceImages} />
+          )}
         </Form.Item>
       </Form>
 

@@ -20,6 +20,7 @@ import styled from 'styled-components';
 import { ImageResult, WaitingTask } from './types';
 import { ResultArea } from './styles'; 
 import { normalizeUrl } from './utils';
+import VideoTaskQueueButton from '../shared/VideoTaskQueueButton';
 
 const { Title, Text } = Typography;
 
@@ -123,6 +124,7 @@ interface ImageResultDisplayProps {
   waitingTasks: WaitingTask[];
   originalImageUrl: string | null;
   isDark: boolean;
+  onOpenQueue: () => void;
 }
 
 const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
@@ -131,6 +133,7 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
   waitingTasks,
   originalImageUrl,
   isDark,
+  onOpenQueue,
 }) => {
   const [useSliderView, setUseSliderView] = useState<boolean>(false);
   const [sliderPosition, setSliderPosition] = useState(50);
@@ -285,7 +288,14 @@ const ImageResultDisplay: React.FC<ImageResultDisplayProps> = ({
   return (
     <Col xs={24} lg={15}>
       <ResultArea>
-        {renderContent()}
+        <VideoTaskQueueButton
+          waitingCount={waitingTasks.length}
+          onOpen={onOpenQueue}
+          style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}
+        />
+        <div style={{ width: '100%', paddingTop: 40 }}>
+          {renderContent()}
+        </div>
       </ResultArea>
     </Col>
   );

@@ -5,8 +5,6 @@ import {
   WifiOutlined,
   PictureOutlined,
   VideoCameraOutlined,
-  SwapOutlined,
-  FileImageOutlined,
   ApartmentOutlined,
   QuestionCircleOutlined,
   CustomerServiceOutlined,
@@ -17,21 +15,23 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { base } from '../../../api/base';
-import TextToImage from './components/TextToImage';
-import TextToVideo from './components/TextToVideo';
-import ImageToImage from './components/ImageToImage';
-import ImageToVideo from './components/ImageToVideo';
+import ImageGeneration from './components/ImageGeneration';
+import VideoGeneration from './components/VideoGeneration';
 import Workflow from './components/Workflow';
 import SpeechGeneration from './components/SpeechGeneration';
 import VoiceClone from './components/VoiceClone';
 import Director from './components/Director';
+import { LEGACY_IMAGE_PATH_TO_MODE, getDefaultImageGenerationMode } from './components/ImageGeneration/types';
+import { LEGACY_VIDEO_PATH_TO_MODE, getDefaultVideoGenerationMode } from './components/VideoGeneration/types';
 
 // 路由路径到 Tab key 的映射
 const pathToTabKey: Record<string, string> = {
-  '/workspace/create/text-to-image': 'textToImage',
-  '/workspace/create/text-to-video': 'textToVideo',
-  '/workspace/create/image-to-image': 'imageToImage',
-  '/workspace/create/image-to-video': 'imageToVideo',
+  '/workspace/create/image-generation': 'imageGeneration',
+  '/workspace/create/text-to-image': 'imageGeneration',
+  '/workspace/create/image-to-image': 'imageGeneration',
+  '/workspace/create/video-generation': 'videoGeneration',
+  '/workspace/create/text-to-video': 'videoGeneration',
+  '/workspace/create/image-to-video': 'videoGeneration',
   '/workspace/create/speech-generation': 'speechGeneration',
   '/workspace/create/voice-clone': 'voiceClone',
   '/workspace/create/workflow': 'workflow',
@@ -42,19 +42,33 @@ const resolveActiveTab = (pathname: string): string => {
   if (pathname.startsWith('/workspace/create/director')) {
     return 'director';
   }
-  return pathToTabKey[pathname] || 'textToImage';
+  return pathToTabKey[pathname] || 'imageGeneration';
 };
 
 // Tab key 到路由路径的映射
 const tabKeyToPath: Record<string, string> = {
-  'textToImage': '/workspace/create/text-to-image',
-  'textToVideo': '/workspace/create/text-to-video',
-  'imageToImage': '/workspace/create/image-to-image',
-  'imageToVideo': '/workspace/create/image-to-video',
+  'imageGeneration': '/workspace/create/image-generation',
+  'videoGeneration': '/workspace/create/video-generation',
   'speechGeneration': '/workspace/create/speech-generation',
   'voiceClone': '/workspace/create/voice-clone',
   'workflow': '/workspace/create/workflow',
   'director': '/workspace/create/director',
+};
+
+const isImageGenerationEnabled = (enabled: Set<string>) =>
+  enabled.has('textToImage') || enabled.has('imageToImage');
+
+const isVideoGenerationEnabled = (enabled: Set<string>) =>
+  enabled.has('textToVideo') || enabled.has('imageToVideo');
+
+const isTabEnabled = (key: string, enabled: Set<string>) => {
+  if (key === 'imageGeneration') {
+    return isImageGenerationEnabled(enabled);
+  }
+  if (key === 'videoGeneration') {
+    return isVideoGenerationEnabled(enabled);
+  }
+  return enabled.has(key);
 };
 
 const { Content } = Layout;
@@ -210,9 +224,49 @@ const Create: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  useEffect(() => {
+    const legacyImageMode = LEGACY_IMAGE_PATH_TO_MODE[location.pathname];
+    if (legacyImageMode) {
+      navigate(`/workspace/create/image-generation?mode=${legacyImageMode}`, {
+        replace: true,
+        state: location.state,
+      });
+      return;
+    }
+    const legacyVideoMode = LEGACY_VIDEO_PATH_TO_MODE[location.pathname];
+    if (legacyVideoMode) {
+      navigate(`/workspace/create/video-generation?mode=${legacyVideoMode}`, {
+        replace: true,
+        state: location.state,
+      });
+    }
+  }, [location.pathname, location.state, navigate]);
+
+  const getNavigatePathForTab = (key: string) => {
+    if (key === 'imageGeneration') {
+      const mode = getDefaultImageGenerationMode({
+        textToImage: enabledTypes.has('textToImage'),
+        imageToImage: enabledTypes.has('imageToImage'),
+      });
+      return mode
+        ? `/workspace/create/image-generation?mode=${mode}`
+        : tabKeyToPath.imageGeneration;
+    }
+    if (key === 'videoGeneration') {
+      const mode = getDefaultVideoGenerationMode({
+        textToVideo: enabledTypes.has('textToVideo'),
+        imageToVideo: enabledTypes.has('imageToVideo'),
+      });
+      return mode
+        ? `/workspace/create/video-generation?mode=${mode}`
+        : tabKeyToPath.videoGeneration;
+    }
+    return tabKeyToPath[key];
+  };
+
   // 切换 Tab 时更新路由
   const handleTabChange = (key: string) => {
-    const path = tabKeyToPath[key];
+    const path = getNavigatePathForTab(key);
     if (path) {
       navigate(path);
     }
@@ -234,10 +288,41 @@ const Create: React.FC = () => {
         
         // 如果当前选中的 tab 被禁用，则导航到第一个启用的 tab
         const currentTab = resolveActiveTab(location.pathname);
-        if (enabled.size > 0 && !enabled.has(currentTab)) {
-          const firstEnabled = settings.find(s => s.enabled);
-          if (firstEnabled && tabKeyToPath[firstEnabled.key]) {
-            navigate(tabKeyToPath[firstEnabled.key], { replace: true });
+        const enabledTabOrder = [
+          'imageGeneration',
+          'videoGeneration',
+          'speechGeneration',
+          'voiceClone',
+          'director',
+          'workflow',
+        ];
+        if (enabled.size > 0 && !isTabEnabled(currentTab, enabled)) {
+          const firstEnabledKey = enabledTabOrder.find((key) => isTabEnabled(key, enabled));
+          if (firstEnabledKey) {
+            const path = firstEnabledKey === 'imageGeneration'
+              ? (() => {
+                  const mode = getDefaultImageGenerationMode({
+                    textToImage: enabled.has('textToImage'),
+                    imageToImage: enabled.has('imageToImage'),
+                  });
+                  return mode
+                    ? `/workspace/create/image-generation?mode=${mode}`
+                    : tabKeyToPath.imageGeneration;
+                })()
+              : firstEnabledKey === 'videoGeneration'
+              ? (() => {
+                  const mode = getDefaultVideoGenerationMode({
+                    textToVideo: enabled.has('textToVideo'),
+                    imageToVideo: enabled.has('imageToVideo'),
+                  });
+                  return mode
+                    ? `/workspace/create/video-generation?mode=${mode}`
+                    : tabKeyToPath.videoGeneration;
+                })()
+              : tabKeyToPath[firstEnabledKey];
+            if (path) {
+              navigate(path, { replace: true });
+            }
           }
         }
       } else {
@@ -256,17 +341,31 @@ const Create: React.FC = () => {
     fetchCreationTypeSettings();
   }, []);
 
+  const imageEnabledModes = React.useMemo(
+    () => ({
+      textToImage: enabledTypes.has('textToImage'),
+      imageToImage: enabledTypes.has('imageToImage'),
+    }),
+    [enabledTypes]
+  );
+
+  const videoEnabledModes = React.useMemo(
+    () => ({
+      textToVideo: enabledTypes.has('textToVideo'),
+      imageToVideo: enabledTypes.has('imageToVideo'),
+    }),
+    [enabledTypes]
+  );
+
   // Tab 内容用 useMemo 固定引用，避免切换时被当作新组件而重新挂载
   const tabContentMap = React.useMemo(() => ({
-    textToImage: <TextToImage />,
-    textToVideo: <TextToVideo />,
-    imageToImage: <ImageToImage />,
-    imageToVideo: <ImageToVideo />,
+    imageGeneration: <ImageGeneration enabledModes={imageEnabledModes} />,
+    videoGeneration: <VideoGeneration enabledModes={videoEnabledModes} />,
     speechGeneration: <SpeechGeneration />,
     voiceClone: <VoiceClone />,
     workflow: <Workflow />,
     director: <Director />,
-  }), []);
+  }), [imageEnabledModes, videoEnabledModes]);
 
   const loadingPlaceholder = React.useMemo(() => (
     <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 0 }}>
@@ -277,44 +376,24 @@ const Create: React.FC = () => {
   // 所有可用的 tab 定义（label 每次渲染可新，children 用稳定引用）
   const allTabItems = [
     {
-      key: 'textToImage',
+      key: 'imageGeneration',
       label: (
         <Space>
           <PictureOutlined />
-          <FormattedMessage id="create.tab.textToImage" defaultMessage="文生图" />
+          <FormattedMessage id="create.tab.imageGeneration" defaultMessage="图片生成" />
         </Space>
       ),
-      children: loading ? loadingPlaceholder : tabContentMap.textToImage,
+      children: loading ? loadingPlaceholder : tabContentMap.imageGeneration,
     },
     {
-      key: 'textToVideo',
+      key: 'videoGeneration',
       label: (
         <Space>
           <VideoCameraOutlined />
-          <FormattedMessage id="create.tab.textToVideo" defaultMessage="文生视频" />
+          <FormattedMessage id="create.tab.videoGeneration" defaultMessage="视频生成" />
         </Space>
       ),
-      children: loading ? loadingPlaceholder : tabContentMap.textToVideo,
-    },
-    {
-      key: 'imageToImage',
-      label: (
-        <Space>
-          <SwapOutlined />
-          <FormattedMessage id="create.tab.imageToImage" defaultMessage="图生图" />
-        </Space>
-      ),
-      children: loading ? loadingPlaceholder : tabContentMap.imageToImage,
-    },
-    {
-      key: 'imageToVideo',
-      label: (
-        <Space>
-          <FileImageOutlined />
-          <FormattedMessage id="create.tab.imageToVideo" defaultMessage="图生视频" />
-        </Space>
-      ),
-      children: loading ? loadingPlaceholder : tabContentMap.imageToVideo,
+      children: loading ? loadingPlaceholder : tabContentMap.videoGeneration,
     },
     {
       key: 'speechGeneration',
@@ -362,7 +441,7 @@ const Create: React.FC = () => {
   ];
 
   // 根据设置过滤显示的 tab
-  const tabItems = allTabItems.filter(item => enabledTypes.has(item.key));
+  const tabItems = allTabItems.filter(item => isTabEnabled(item.key, enabledTypes));
 
   // 加载失败，显示网络错误提示
   if (loadError) {

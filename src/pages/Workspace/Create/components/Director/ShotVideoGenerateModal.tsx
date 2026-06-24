@@ -25,13 +25,14 @@ import {
   PictureOutlined,
   PlusOutlined,
   ThunderboltOutlined,
+  ToolOutlined,
   UploadOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
 import instance from 'api/axios';
-import directorApi, { DirectorCharacter, DirectorShot } from 'api/director';
+import directorApi, { DirectorCharacter, DirectorProp, DirectorSceneReferenceImage, DirectorShot } from 'api/director';
 import { uploadImageToServer } from '../ImageToImage/utils';
 import { normalizeUrl } from '../ImageToVideo/utils';
 import { Model } from '../ImageToVideo/types';
@@ -53,6 +54,7 @@ import {
   splitSeedanceRefLines,
   extractVideoGenerateError,
 } from './shotVideoUtils';
+import { fetchSceneReferenceImagesSafe, mergeSceneReferenceImages } from './sceneReferenceUtils';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -131,6 +133,9 @@ export interface ShotVideoGenerateModalProps {
   shot?: DirectorShot | null;
   productionPrompt?: string;
   characters: DirectorCharacter[];
+  props?: DirectorProp[];
+  characterPropMap?: Record<number, number[]>;
+  sceneId?: number | null;
   aspectRatio?: string;
   defaultI2vModelCode?: string | null;
   onClose?: () => void;
@@ -146,6 +151,9 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
   shot: shotProp,
   productionPrompt: productionPromptProp,
   characters,
+  props = [],
+  characterPropMap = {},
+  sceneId,
   aspectRatio = '16:9',
   defaultI2vModelCode,
   onClose,
@@ -154,6 +162,7 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
 }) => {
   const intl = useIntl();
   const shot = shotProp || context?.shot;
+  const effectiveSceneId = sceneId ?? shot?.sceneId ?? null;
   const baseProductionPrompt = productionPromptProp ?? context?.initialPrompt ?? '';
   const promptRef = useRef<any>(null);
   const [form] = Form.useForm();
@@ -163,6 +172,7 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
   const [contentMode, setContentMode] = useState<ShotVideoContentMode>('first_last_frame');
   const [prompt, setPrompt] = useState('');
   const [references, setReferences] = useState<ShotVideoReferenceAsset[]>([]);
+  const [sceneReferenceImages, setSceneReferenceImages] = useState<DirectorSceneReferenceImage[]>([]);
   const [startFrameUrl, setStartFrameUrl] = useState<string | null>(null);
   const [startFrameFile, setStartFrameFile] = useState<File | null>(null);
   const [endFrameUrl, setEndFrameUrl] = useState<string | null>(null);
@@ -193,7 +203,13 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
 
   const resetFromContext = useCallback(() => {
     if (!shot) return;
-    const initialRefs = buildInitialShotReferences(shot, characters);
+    const initialRefs = buildInitialShotReferences(
+      shot,
+      characters,
+      props,
+      characterPropMap,
+      sceneReferenceImages
+    );
     const mode = pickDefaultContentMode(shot, initialRefs);
     const initialPrompt = buildInitialReferencePrompt(baseProductionPrompt, initialRefs);
     setContentMode(mode);
@@ -215,9 +231,23 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
       seedanceGenerateAudio: false,
       seedanceWatermark: false,
     });
-  }, [baseProductionPrompt, characters, form, shot, useStudioFrames]);
+  }, [baseProductionPrompt, characterPropMap, characters, form, props, sceneReferenceImages, shot, useStudioFrames]);
 
   const isActive = embedded ? active : open;
+
+  useEffect(() => {
+    if (!isActive || !effectiveSceneId) {
+      setSceneReferenceImages([]);
+      return undefined;
+    }
+    let cancelled = false;
+    fetchSceneReferenceImagesSafe(effectiveSceneId).then((loaded) => {
+      if (!cancelled) setSceneReferenceImages(loaded);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveSceneId, isActive]);
 
   useEffect(() => {
     if (!isActive) return;
@@ -273,12 +303,53 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
     fetchModels();
   }, [defaultI2vModelCode, intl, isActive]);
 
-  const availableCharacters = useMemo(() => {
-    const used = new Set(references.filter((r) => r.characterId).map((r) => r.characterId));
-    return characters.filter(
-      (c) => isDisplayableImageUrl(c.referenceImageUrl) && !used.has(c.id)
-    );
-  }, [characters, references]);
+  const usedCharacterIds = useMemo(
+    () => new Set(references.filter((r) => r.characterId).map((r) => r.characterId)),
+    [references]
+  );
+  const usedPropIds = useMemo(
+    () => new Set(references.filter((r) => r.propId).map((r) => r.propId)),
+    [references]
+  );
+
+  /** 快捷添加 Tag：需有参考图且尚未加入参考列表 */
+  const availableCharacters = useMemo(
+    () =>
+      characters.filter(
+        (c) => isDisplayableImageUrl(c.referenceImageUrl) && !usedCharacterIds.has(c.id)
+      ),
+    [characters, usedCharacterIds]
+  );
+
+  const availableProps = useMemo(
+    () =>
+      props.filter((p) => isDisplayableImageUrl(p.referenceImageUrl) && !usedPropIds.has(p.id)),
+    [props, usedPropIds]
+  );
+
+  /** @ 提及候选：展示全部未加入参考列表的资产（无参考图也可搜索，选择时会提示） */
+  const mentionCharacters = useMemo(
+    () => characters.filter((c) => !usedCharacterIds.has(c.id)),
+    [characters, usedCharacterIds]
+  );
+
+  const mentionProps = useMemo(
+    () => props.filter((p) => !usedPropIds.has(p.id)),
+    [props, usedPropIds]
+  );
+
+  const getReferenceKindLabel = (kind: ShotVideoReferenceAsset['kind']) => {
+    if (kind === 'character') {
+      return intl.formatMessage({ id: 'director.shot.videoRefKindCharacter', defaultMessage: '角色' });
+    }
+    if (kind === 'prop') {
+      return intl.formatMessage({ id: 'director.shot.videoRefKindProp', defaultMessage: '道具' });
+    }
+    if (kind === 'scene') {
+      return intl.formatMessage({ id: 'director.shot.videoRefKindScene', defaultMessage: '场景' });
+    }
+    return intl.formatMessage({ id: 'director.shot.videoRefKindCustom', defaultMessage: '自定义' });
+  };
 
   const insertMention = (label: string) => {
     setPrompt((prev) => {
@@ -314,6 +385,29 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
         label: character.name,
         url: referenceUrl,
         characterId: character.id,
+      },
+    ]);
+  };
+
+  const addPropReference = (prop: DirectorProp) => {
+    const referenceUrl = prop.referenceImageUrl;
+    if (!isDisplayableImageUrl(referenceUrl)) {
+      message.warning(
+        intl.formatMessage({
+          id: 'director.shot.videoPropNoImage',
+          defaultMessage: '该道具尚未上传参考图',
+        })
+      );
+      return;
+    }
+    setReferences((prev) => [
+      ...prev,
+      {
+        id: `prop-${prop.id}`,
+        kind: 'prop' as const,
+        label: prop.name,
+        url: referenceUrl,
+        propId: prop.id,
       },
     ]);
   };
@@ -574,7 +668,7 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
               ) : (
                 <FormattedMessage
                   id="director.shot.videoModeReferenceHint"
-                  defaultMessage="引用角色/参考图/音视频，在描述中用 @名称 或 图片1 关联素材（需 Seedance 2.0）"
+                  defaultMessage="引用角色/道具/参考图/音视频，在描述中用 @名称 或 图片1 关联素材（需 Seedance 2.0）"
                 />
               )}
             </Text>
@@ -711,6 +805,25 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
                   </Space>
                 </div>
               ) : null}
+              {availableProps.length > 0 ? (
+                <div style={{ marginBottom: 10 }}>
+                  <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
+                    <FormattedMessage id="director.shot.videoAddProp" defaultMessage="从道具库添加" />
+                  </Text>
+                  <Space wrap>
+                    {availableProps.map((p) => (
+                      <Tag
+                        key={p.id}
+                        icon={<ToolOutlined />}
+                        style={{ cursor: 'pointer', padding: '4px 8px' }}
+                        onClick={() => addPropReference(p)}
+                      >
+                        {p.name}
+                      </Tag>
+                    ))}
+                  </Space>
+                </div>
+              ) : null}
               <Space style={{ marginBottom: 10 }}>
                 <Upload accept="image/*" showUploadList={false} customRequest={handleCustomReferenceUpload}>
                   <Button size="small" icon={<PlusOutlined />} loading={uploadingRef}>
@@ -729,7 +842,8 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
                       <div>
                         <Text type="secondary" style={{ fontSize: 11 }}>
                           图片{index + 1}
-                          {ref.kind === 'character' ? ' · 角色' : ' · 自定义'}
+                          {' · '}
+                          {getReferenceKindLabel(ref.kind)}
                         </Text>
                       </div>
                     </div>
@@ -783,12 +897,14 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
               value={prompt}
               onChange={setPrompt}
               references={references}
-              availableCharacters={availableCharacters}
+              availableCharacters={mentionCharacters}
+              availableProps={mentionProps}
               onAddCharacter={addCharacterReference}
+              onAddProp={addPropReference}
               mentionEnabled={contentMode === 'multimodal_reference'}
               placeholder={intl.formatMessage({
                 id: 'director.shot.videoPromptPlaceholder',
-                defaultMessage: '描述画面与运镜；多资产模式下可用 @角色名 引用参考图',
+                defaultMessage: '描述画面与运镜；多资产模式下可用 @角色名 或 @道具名 引用参考图',
               })}
             />
           </Section>

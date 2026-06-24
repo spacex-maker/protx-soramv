@@ -18,4 +18,5 @@ export interface TextToImageProps {
   variant?: 'page' | 'embed';
   embedConfig?: TextToImageEmbedConfig;
   embedActive?: boolean;
+  embedded?: boolean;
 }

@@ -31,6 +31,7 @@ export interface CommunityPost {
   challengeScore?: number;
   isLiked?: boolean;
   isCollected?: boolean;
+  viewedAt?: string;
   tags?: string[];
   createTime: string;
   isPromptHidden?: boolean;
@@ -114,14 +115,24 @@ export const createPost = async (request: CreatePostRequest): Promise<number> =>
 /**
  * 查询作品列表
  */
-export const listPosts = async (params: {
+export type ListPostsParams = {
   channelId?: number;
+  channelKey?: string;
   challengeId?: number;
+  userId?: number;
   page?: number;
   pageSize?: number;
   sortBy?: 'latest' | 'popular';
   promptAccess?: 'free' | 'paid';
-}): Promise<CommunityPost[]> => {
+};
+
+const CHANNELS_CACHE_TTL_MS = 5 * 60 * 1000;
+let channelsCache: { data: CommunityChannel[]; at: number } | null = null;
+
+export const getCachedChannelId = (channelKey: string): number | undefined =>
+  channelsCache?.data.find((channel) => channel.channelKey === channelKey)?.id;
+
+export const listPosts = async (params: ListPostsParams): Promise<CommunityPost[]> => {
   const response = await instance.get<ApiResponse<CommunityPost[]>>(
     '/productx/community/post/list',
     { params }
@@ -137,6 +148,49 @@ export const getPostDetail = async (postId: number): Promise<CommunityPost> => {
     `/productx/community/post/${postId}`
   );
   return response.data.data;
+};
+
+export interface CommunityUserProfile {
+  userId: number;
+  username?: string;
+  nickname?: string;
+  avatar?: string;
+  coverImage?: string;
+  description?: string;
+  city?: string;
+  country?: string;
+  createTime?: string;
+  postCount: number;
+  followersCount: number;
+  followingCount: number;
+  totalLikeCount?: number;
+  isFollowing?: boolean;
+  isMutual?: boolean;
+  isSelf?: boolean;
+}
+
+/** 获取社区用户公开主页 */
+export const getCommunityUserProfile = async (userId: number): Promise<CommunityUserProfile> => {
+  const response = await instance.get<ApiResponse<CommunityUserProfile>>(
+    `/productx/community/user/${userId}/profile`
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '加载失败');
+  }
+  return response.data.data;
+};
+
+/** 获取用户发布的公开作品 */
+export const listUserCommunityPosts = async (
+  userId: number,
+  params?: { page?: number; pageSize?: number; sortBy?: 'latest' | 'popular' }
+): Promise<CommunityPost[]> => {
+  return listPosts({
+    userId,
+    page: params?.page,
+    pageSize: params?.pageSize,
+    sortBy: params?.sortBy,
+  });
 };
 
 /**
@@ -170,13 +224,61 @@ export const listMyInteractionPosts = async (params: {
 };
 
 /**
+ * 查询当前用户浏览记录
+ */
+export const listMyViewHistory = async (params: {
+  page?: number;
+  pageSize?: number;
+}): Promise<CommunityPost[]> => {
+  const response = await instance.get<ApiResponse<CommunityPost[]>>(
+    '/productx/community/post/my-views',
+    { params }
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '加载失败');
+  }
+  return response.data.data || [];
+};
+
+/**
+ * 移除单条浏览记录
+ */
+export const clearMyViewHistory = async (): Promise<void> => {
+  const response = await instance.delete<ApiResponse<null>>(
+    '/productx/community/post/my-views'
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '操作失败');
+  }
+};
+
+export const removeMyViewHistory = async (postId: number): Promise<void> => {
+  const response = await instance.delete<ApiResponse<null>>(
+    `/productx/community/post/my-views/${postId}`
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '操作失败');
+  }
+};
+
+/**
  * 查询所有启用的频道
  */
-export const listChannels = async (): Promise<CommunityChannel[]> => {
+export const listChannels = async (options?: { force?: boolean }): Promise<CommunityChannel[]> => {
+  if (
+    !options?.force
+    && channelsCache
+    && Date.now() - channelsCache.at < CHANNELS_CACHE_TTL_MS
+  ) {
+    return channelsCache.data;
+  }
+
   const response = await instance.get<ApiResponse<CommunityChannel[]>>(
     '/productx/community/channel/list'
   );
-  return response.data.data;
+  const data = response.data.data || [];
+  channelsCache = { data, at: Date.now() };
+  return data;
 };
 
 /**

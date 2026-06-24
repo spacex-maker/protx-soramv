@@ -1,0 +1,260 @@
+import React, { useEffect, useMemo } from 'react';
+import {
+  EditOutlined,
+  PictureOutlined,
+} from '@ant-design/icons';
+import { FormattedMessage, useIntl } from 'react-intl';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import styled from 'styled-components';
+import TextToImage from '../TextToImage';
+import ImageToImage from '../ImageToImage';
+import {
+  getDefaultImageGenerationMode,
+  resolveImageGenerationModeWithEnabled,
+  ImageGenerationEnabledModes,
+  ImageGenerationMode,
+} from './types';
+
+interface ImageGenerationProps {
+  enabledModes: ImageGenerationEnabledModes;
+}
+
+interface ModeConfig {
+  value: ImageGenerationMode;
+  icon: React.ReactNode;
+  accent: string;
+  accentSoft: string;
+  titleId: string;
+  titleDefault: string;
+  descId: string;
+  descDefault: string;
+}
+
+const MODE_CONFIGS: ModeConfig[] = [
+  {
+    value: 'textToImage',
+    icon: <EditOutlined />,
+    accent: '#1890ff',
+    accentSoft: 'rgba(24, 144, 255, 0.12)',
+    titleId: 'create.tab.textToImage',
+    titleDefault: '文生图',
+    descId: 'create.textToImage.subtitle',
+    descDefault: '输入描述，让 AI 绘制您想象中的画面',
+  },
+  {
+    value: 'imageToImage',
+    icon: <PictureOutlined />,
+    accent: '#722ed1',
+    accentSoft: 'rgba(114, 46, 209, 0.12)',
+    titleId: 'create.tab.imageToImage',
+    titleDefault: '图生图',
+    descId: 'create.imageToImage.subtitle',
+    descDefault: '基于参考图片生成新图片',
+  },
+];
+
+const Container = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+`;
+
+const ModeSwitcher = styled.div`
+  margin-bottom: 20px;
+  padding: 6px;
+  border-radius: 18px;
+  background: ${(props) => (props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : '#f4f6f9')};
+  border: 1px solid ${(props) => (props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#e8ecf1')};
+`;
+
+const ModeGrid = styled.div<{ $count: number }>`
+  display: grid;
+  grid-template-columns: repeat(${(p) => p.$count}, minmax(0, 1fr));
+  gap: 8px;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const ModeCard = styled.button<{ $active?: boolean; $accent: string; $accentSoft: string }>`
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid
+    ${(props) =>
+      props.$active
+        ? props.$accent
+        : props.theme.mode === 'dark'
+          ? 'rgba(255, 255, 255, 0.08)'
+          : 'transparent'};
+  border-radius: 14px;
+  background: ${(props) =>
+    props.$active
+      ? props.theme.mode === 'dark'
+        ? props.$accentSoft
+        : '#fff'
+      : props.theme.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.02)'
+        : 'transparent'};
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.22s ease;
+  box-shadow: ${(props) =>
+    props.$active
+      ? props.theme.mode === 'dark'
+        ? `0 8px 24px -12px ${props.$accent}55`
+        : '0 8px 24px -14px rgba(15, 23, 42, 0.12)'
+      : 'none'};
+
+  &:hover {
+    background: ${(props) => (props.theme.mode === 'dark' ? props.$accentSoft : '#fff')};
+    border-color: ${(props) => props.$accent}88;
+    transform: translateY(-1px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${(props) => props.$accent};
+    outline-offset: 2px;
+  }
+`;
+
+const ModeIcon = styled.div<{ $accent: string; $accentSoft: string; $active?: boolean }>`
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  color: ${(props) => (props.$active ? '#fff' : props.$accent)};
+  background: ${(props) =>
+    props.$active
+      ? `linear-gradient(135deg, ${props.$accent}, ${props.$accent}cc)`
+      : props.$accentSoft};
+  transition: all 0.22s ease;
+`;
+
+const ModeText = styled.div`
+  min-width: 0;
+  flex: 1;
+`;
+
+const ModeTitle = styled.div<{ $active?: boolean; $accent?: string }>`
+  font-size: 15px;
+  font-weight: ${(props) => (props.$active ? 600 : 500)};
+  color: ${(props) =>
+    props.$active
+      ? props.$accent
+      : props.theme.mode === 'dark'
+        ? 'rgba(255, 255, 255, 0.88)'
+        : '#1f2937'};
+  line-height: 1.3;
+`;
+
+const ModeDesc = styled.div`
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: ${(props) => (props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.45)')};
+`;
+
+const ToolContent = styled.div`
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+`;
+
+const IMAGE_GENERATION_PATHS = new Set([
+  '/workspace/create/image-generation',
+  '/workspace/create/text-to-image',
+  '/workspace/create/image-to-image',
+]);
+
+const ImageGeneration: React.FC<ImageGenerationProps> = ({ enabledModes }) => {
+  const intl = useIntl();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const isActiveRoute = IMAGE_GENERATION_PATHS.has(location.pathname);
+
+  const availableModes = useMemo(
+    () => MODE_CONFIGS.filter((item) => enabledModes[item.value]),
+    [enabledModes]
+  );
+
+  const defaultMode = getDefaultImageGenerationMode(enabledModes);
+  const mode =
+    resolveImageGenerationModeWithEnabled(searchParams.get('mode'), enabledModes) ?? defaultMode;
+
+  useEffect(() => {
+    if (!mode || !isActiveRoute) return;
+    if (searchParams.get('mode') !== mode) {
+      navigate(`/workspace/create/image-generation?mode=${mode}`, { replace: true });
+    }
+  }, [mode, navigate, searchParams, isActiveRoute]);
+
+  const handleModeChange = (nextMode: ImageGenerationMode) => {
+    if (nextMode === mode) return;
+    navigate(`/workspace/create/image-generation?mode=${nextMode}`);
+  };
+
+  if (!mode || availableModes.length === 0) {
+    return null;
+  }
+
+  return (
+    <Container>
+      {availableModes.length > 1 && (
+        <ModeSwitcher
+          role="tablist"
+          aria-label={intl.formatMessage({
+            id: 'create.imageGeneration.modeSelect',
+            defaultMessage: '选择图片生成方式',
+          })}
+        >
+          <ModeGrid $count={availableModes.length}>
+            {availableModes.map((item) => {
+              const active = mode === item.value;
+              return (
+                <ModeCard
+                  key={item.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  $active={active}
+                  $accent={item.accent}
+                  $accentSoft={item.accentSoft}
+                  onClick={() => handleModeChange(item.value)}
+                >
+                  <ModeIcon $accent={item.accent} $accentSoft={item.accentSoft} $active={active}>
+                    {item.icon}
+                  </ModeIcon>
+                  <ModeText>
+                    <ModeTitle $active={active} $accent={item.accent}>
+                      <FormattedMessage id={item.titleId} defaultMessage={item.titleDefault} />
+                    </ModeTitle>
+                    <ModeDesc>
+                      <FormattedMessage id={item.descId} defaultMessage={item.descDefault} />
+                    </ModeDesc>
+                  </ModeText>
+                </ModeCard>
+              );
+            })}
+          </ModeGrid>
+        </ModeSwitcher>
+      )}
+
+      <ToolContent role="tabpanel">
+        {mode === 'textToImage' ? <TextToImage embedded /> : <ImageToImage embedded />}
+      </ToolContent>
+    </Container>
+  );
+};
+
+export default ImageGeneration;

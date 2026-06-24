@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Col, Form, Input, InputNumber, Modal, Row, Select, Space, Tabs, Tag, Typography, message } from 'antd';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
-import directorApi, { DirectorCharacter, DirectorEpisode, DirectorScene, DirectorShot } from 'api/director';
+import directorApi, { DirectorCharacter, DirectorEpisode, DirectorProp, DirectorScene, DirectorShot } from 'api/director';
 import { ApplyStoryboardShotPayload } from './storyboardAgentUtils';
 import ScriptAgentPanel from './ScriptAgentPanel';
 import ShotVisualPanel from './ShotVisualPanel';
@@ -105,6 +105,8 @@ interface ShotSettingsModalProps {
   episode?: DirectorEpisode | null;
   scenes: DirectorScene[];
   characters: DirectorCharacter[];
+  props?: DirectorProp[];
+  characterPropMap?: Record<number, number[]>;
   shotCountForScene: number;
   defaultShotNo?: string;
   aspectRatio?: string;
@@ -124,6 +126,8 @@ const ShotSettingsModal: React.FC<ShotSettingsModalProps> = ({
   episode,
   scenes,
   characters,
+  props = [],
+  characterPropMap = {},
   shotCountForScene,
   defaultShotNo = '',
   aspectRatio = '16:9',
@@ -505,6 +509,9 @@ const ShotSettingsModal: React.FC<ShotSettingsModalProps> = ({
                   shot={contextShot}
                   productionPrompt={videoProductionPrompt}
                   characters={characters}
+                  props={props}
+                  characterPropMap={characterPropMap}
+                  sceneId={contextShot?.sceneId}
                   aspectRatio={aspectRatio}
                   defaultI2vModelCode={defaultI2vModelCode}
                   onApplied={onSaved}

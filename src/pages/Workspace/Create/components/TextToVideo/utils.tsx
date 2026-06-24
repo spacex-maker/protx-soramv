@@ -103,12 +103,12 @@ export const getModelAspectRatios = (model: { videoAspectRatios?: string | null;
   
   // 优先使用 videoAspectRatios
   if (model.videoAspectRatios) {
-    return model.videoAspectRatios.split(',').map(r => r.trim()).filter(r => r);
+    return String(model.videoAspectRatios).split(',').map(r => r.trim()).filter(r => r);
   }
   
   // 如果 videoAspectRatios 为空，使用 videoAspectRatiosEnum（以逗号分隔的枚举值）
   if (model.videoAspectRatiosEnum) {
-    return model.videoAspectRatiosEnum.split(',').map(r => r.trim()).filter(r => r);
+    return String(model.videoAspectRatiosEnum).split(',').map(r => r.trim()).filter(r => r);
   }
   
   return [];
@@ -128,7 +128,7 @@ export const getModelDurationOptions = (model: { videoDuration?: number | null; 
   
   // 如果 videoDuration 为空，使用 videoDurationEnum（以逗号分隔的枚举值，如 "10,15,25"）
   if (model.videoDurationEnum) {
-    return model.videoDurationEnum.split(',').map(d => {
+    return String(model.videoDurationEnum).split(',').map(d => {
       const num = parseInt(d.trim(), 10);
       return isNaN(num) ? null : num;
     }).filter((d): d is number => d !== null);

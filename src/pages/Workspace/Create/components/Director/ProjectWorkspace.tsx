@@ -16,8 +16,8 @@ import {
 } from 'antd';
 import {
   ArrowLeftOutlined,
+  AppstoreOutlined,
   OrderedListOutlined,
-  TeamOutlined,
   VideoCameraOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -28,6 +28,7 @@ import directorApi, {
   DirectorCharacter,
   DirectorEpisode,
   DirectorProjectDetail,
+  DirectorProp,
   DirectorScene,
   DirectorShot,
 } from 'api/director';
@@ -37,16 +38,14 @@ import VideoModelSelectField from '../ImageToVideo/VideoModelSelectField';
 import VideoModelDetailModal from '../ImageToVideo/ModelDetailModal';
 import { GlobalSelectStyles } from '../ImageToVideo/styles';
 import { Model as VideoModel } from '../ImageToVideo/types';
-import ModelFamilySelect from '../TextToImage/ModelFamilySelect';
-import StyleModelSelect from '../TextToImage/StyleModelSelect';
+import T2iModelSelectField from '../TextToImage/T2iModelSelectField';
 import T2iModelSelectionModal from '../TextToImage/ModelSelectionModal';
-import { GlobalSelectStyles as T2iGlobalSelectStyles } from '../TextToImage/styles';
-import { ModelFamily, Model as ImageModel } from '../TextToImage/types';
+import { ModelFamily } from '../TextToImage/types';
 import { isFree } from '../TextToImage/utils';
 import ModelDetailModal, { ModelDetail } from '../ModelDetailModal';
 import { preloadVideoModelCovers } from '../shared/videoModelCoverPreload';
 import EpisodeManager from './EpisodeManager';
-import CharacterManager from './CharacterManager';
+import AssetManager from './AssetManager';
 import CoverImageUpload, { resolveCoverDisplayUrl } from './CoverImageUpload';
 
 type T2iPriceFields = Pick<ModelFamily, 'outputPrice' | 'currency' | 'tokenCost'>;
@@ -55,9 +54,7 @@ type T2iPriceFields = Pick<ModelFamily, 'outputPrice' | 'currency' | 'tokenCost'
 const isPaidT2iModel = (model: T2iPriceFields) =>
   !isFree(model.outputPrice, model.currency, model.tokenCost);
 
-const filterPaidT2iFamilies = (families: ModelFamily[]) => families.filter(isPaidT2iModel);
-
-const filterPaidT2iStyleModels = (models: ImageModel[]) => models.filter(isPaidT2iModel);
+const filterPaidT2iModels = (models: ModelFamily[]) => models.filter(isPaidT2iModel);
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -222,27 +219,8 @@ const ContentCard = styled(Card)`
   }
 `;
 
-/** 导演设置：图生视频 / 文生图模型选择框等高 */
-const DirectorModelSettingsRow = styled(Row)`
-  .model-video-select,
-  .model-family-select-compact,
-  .model-style-select-compact {
-    .ant-select-selector {
-      min-height: 75px !important;
-      height: 75px !important;
-    }
-
-    .ant-select-selection-placeholder {
-      line-height: 75px !important;
-    }
-
-    .ant-select-selection-item > div {
-      min-height: 75px !important;
-      height: 75px !important;
-      box-sizing: border-box;
-    }
-  }
-`;
+/** 导演设置：图生视频 / 文生图模型选择框等高（紧凑模式由 ModelSelectBar compact 控制） */
+const DirectorModelSettingsRow = styled(Row)``;
 
 const SettingsFormFooter = styled.div`
   margin-top: 24px;
@@ -254,7 +232,7 @@ const SettingsFormFooter = styled.div`
   }
 `;
 
-type WorkspaceTab = 'overview' | 'episodes' | 'characters';
+type WorkspaceTab = 'overview' | 'episodes' | 'assets';
 
 interface EpisodeWorkspaceState {
   scenes: DirectorScene[];
@@ -291,6 +269,8 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
   const [scenes, setScenes] = useState<DirectorScene[]>([]);
   const [shots, setShots] = useState<DirectorShot[]>([]);
   const [characters, setCharacters] = useState<DirectorCharacter[]>([]);
+  const [props, setProps] = useState<DirectorProp[]>([]);
+  const [characterPropMap, setCharacterPropMap] = useState<Record<number, number[]>>({});
 
   const [i2vModels, setI2vModels] = useState<VideoModel[]>([]);
   const [selectedI2vModel, setSelectedI2vModel] = useState<VideoModel | null>(null);
@@ -298,14 +278,10 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
   const [i2vModelPickerVisible, setI2vModelPickerVisible] = useState(false);
   const [i2vModelDetailVisible, setI2vModelDetailVisible] = useState(false);
   const [selectedI2vModelForDetail, setSelectedI2vModelForDetail] = useState<VideoModel | null>(null);
-  const [t2iModelFamilies, setT2iModelFamilies] = useState<ModelFamily[]>([]);
-  const [selectedT2iFamily, setSelectedT2iFamily] = useState<ModelFamily | null>(null);
-  const [t2iFamiliesLoading, setT2iFamiliesLoading] = useState(false);
-  const [t2iStyleModels, setT2iStyleModels] = useState<ImageModel[]>([]);
-  const [selectedT2iStyleModel, setSelectedT2iStyleModel] = useState<ImageModel | null>(null);
-  const [t2iStyleModelsLoading, setT2iStyleModelsLoading] = useState(false);
-  const [t2iFamilyModalVisible, setT2iFamilyModalVisible] = useState(false);
-  const [t2iStyleModalVisible, setT2iStyleModalVisible] = useState(false);
+  const [t2iModels, setT2iModels] = useState<ModelFamily[]>([]);
+  const [selectedT2iModel, setSelectedT2iModel] = useState<ModelFamily | null>(null);
+  const [t2iModelsLoading, setT2iModelsLoading] = useState(false);
+  const [t2iModelPickerVisible, setT2iModelPickerVisible] = useState(false);
   const [t2iModelDetailVisible, setT2iModelDetailVisible] = useState(false);
   const [selectedT2iModelForDetail, setSelectedT2iModelForDetail] = useState<ModelDetail | null>(null);
   const [settingsForm] = Form.useForm();
@@ -333,6 +309,37 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
   );
   const episodeCount = project?.episodes?.length ?? 0;
   const characterCount = characters.length;
+  const propCount = props.length;
+
+  const propCharacterMap = useMemo(() => {
+    const map: Record<number, number[]> = {};
+    Object.entries(characterPropMap).forEach(([characterId, propIds]) => {
+      propIds.forEach((propId) => {
+        if (!map[propId]) map[propId] = [];
+        map[propId].push(Number(characterId));
+      });
+    });
+    return map;
+  }, [characterPropMap]);
+
+  const loadCharacterPropBindings = useCallback(async (chars: DirectorCharacter[]) => {
+    if (chars.length === 0) {
+      setCharacterPropMap({});
+      return;
+    }
+    const entries = await Promise.all(
+      chars.map(async (character) => {
+        try {
+          const res = await directorApi.listCharacterProps(character.id);
+          const propIds = res.success ? (res.data || []).map((item: DirectorProp) => item.id) : [];
+          return [character.id, propIds] as const;
+        } catch {
+          return [character.id, []] as const;
+        }
+      })
+    );
+    setCharacterPropMap(Object.fromEntries(entries));
+  }, []);
 
   const loadEpisodeData = useCallback(async (episodeId: number, agentState?: Partial<EpisodeWorkspaceState>) => {
     setEpisodeDataLoading(true);
@@ -385,7 +392,10 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
         setLoading(true);
       }
       try {
-        const res = await directorApi.getProject(pid);
+        const [res, propsRes] = await Promise.all([
+          directorApi.getProject(pid),
+          directorApi.listProps(pid),
+        ]);
         if (res.success) {
           setProject(res.data);
           let nextEpisodeId = options?.selectEpisodeId ?? null;
@@ -400,6 +410,11 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
           setActiveEpisodeId(nextEpisodeId);
           if (res.data.characters) {
             setCharacters(res.data.characters);
+          }
+          if (propsRes.success) {
+            setProps(propsRes.data || []);
+          } else if (res.data.props) {
+            setProps(res.data.props);
           }
           settingsForm.setFieldsValue({
             stylePrompt: res.data.stylePrompt,
@@ -468,96 +483,18 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
     if (project?.characters) {
       setCharacters(project.characters);
     }
-  }, [project?.characters]);
+    if (project?.props) {
+      setProps(project.props);
+    }
+  }, [project?.characters, project?.props]);
 
-  const loadT2iStyleModels = useCallback(
-    async (parentModelCode: string, preserveModelCode?: string, defaultToFirstStyle = false) => {
-      setT2iStyleModelsLoading(true);
-      try {
-        const response = await instance.get('/productx/sa-ai-models/image/models/by-family', {
-          params: { parentModelCode },
-        });
-        if (response.data.success && response.data.data?.length) {
-          const list = filterPaidT2iStyleModels(response.data.data as ImageModel[]);
-          setT2iStyleModels(list);
-          if (preserveModelCode) {
-            const match = list.find((m) => m.modelCode === preserveModelCode);
-            if (match) {
-              setSelectedT2iStyleModel(match);
-              settingsForm.setFieldsValue({ defaultT2iStyleModelId: match.id });
-              return;
-            }
-          }
-          if (defaultToFirstStyle && list.length > 0) {
-            const firstStyle = list[0];
-            setSelectedT2iStyleModel(firstStyle);
-            settingsForm.setFieldsValue({ defaultT2iStyleModelId: firstStyle.id });
-            return;
-          }
-          setSelectedT2iStyleModel(null);
-          settingsForm.setFieldsValue({ defaultT2iStyleModelId: null });
-        } else {
-          setT2iStyleModels([]);
-          setSelectedT2iStyleModel(null);
-          settingsForm.setFieldsValue({ defaultT2iStyleModelId: null });
-        }
-      } catch {
-        setT2iStyleModels([]);
-        setSelectedT2iStyleModel(null);
-        settingsForm.setFieldsValue({ defaultT2iStyleModelId: null });
-      } finally {
-        setT2iStyleModelsLoading(false);
-      }
-    },
-    [settingsForm]
-  );
+  useEffect(() => {
+    loadCharacterPropBindings(characters);
+  }, [characters, loadCharacterPropBindings]);
 
-  const restoreT2iSelection = useCallback(
-    async (code: string, families: ModelFamily[]): Promise<boolean> => {
-      const familyMatch = families.find((f) => f.modelCode === code);
-      if (familyMatch) {
-        setSelectedT2iFamily(familyMatch);
-        settingsForm.setFieldsValue({ defaultT2iFamilyId: familyMatch.id });
-        await loadT2iStyleModels(familyMatch.modelCode);
-        return true;
-      }
-
-      for (const family of families) {
-        try {
-          const response = await instance.get('/productx/sa-ai-models/image/models/by-family', {
-            params: { parentModelCode: family.modelCode },
-          });
-          if (!response.data.success || !response.data.data?.length) {
-            continue;
-          }
-          const list = filterPaidT2iStyleModels(response.data.data as ImageModel[]);
-          const styleMatch = list.find((m) => m.modelCode === code);
-          if (styleMatch) {
-            setSelectedT2iFamily(family);
-            setT2iStyleModels(list);
-            setSelectedT2iStyleModel(styleMatch);
-            settingsForm.setFieldsValue({
-              defaultT2iFamilyId: family.id,
-              defaultT2iStyleModelId: styleMatch.id,
-            });
-            return true;
-          }
-        } catch {
-          // continue searching
-        }
-      }
-      return false;
-    },
-    [loadT2iStyleModels, settingsForm]
-  );
-
-  const applyDefaultT2iSelection = useCallback(async () => {
-    if (t2iModelFamilies.length === 0) return;
-    const firstFamily = t2iModelFamilies[0];
-    setSelectedT2iFamily(firstFamily);
-    settingsForm.setFieldsValue({ defaultT2iFamilyId: firstFamily.id });
-    await loadT2iStyleModels(firstFamily.modelCode, undefined, true);
-  }, [t2iModelFamilies, loadT2iStyleModels, settingsForm]);
+  const refreshAssetBindings = useCallback(() => {
+    loadCharacterPropBindings(characters);
+  }, [characters, loadCharacterPropBindings]);
 
   useEffect(() => {
     const fetchI2vModels = async () => {
@@ -582,31 +519,31 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
       }
     };
 
-    const fetchT2iFamilies = async () => {
-      setT2iFamiliesLoading(true);
+    const fetchT2iModels = async () => {
+      setT2iModelsLoading(true);
       try {
         const response = await instance.get('/productx/sa-ai-models/image/families', {
           params: { lang: locale || 'en' },
         });
         if (response.data.success && response.data.data?.length) {
-          setT2iModelFamilies(filterPaidT2iFamilies(response.data.data));
+          setT2iModels(filterPaidT2iModels(response.data.data));
         } else {
-          setT2iModelFamilies([]);
+          setT2iModels([]);
         }
       } catch {
         message.error(
           intl.formatMessage({
-            id: 'create.model.family.loadFailed',
-            defaultMessage: '加载模型家族列表失败',
+            id: 'create.model.loadFailed',
+            defaultMessage: '加载模型列表失败',
           })
         );
       } finally {
-        setT2iFamiliesLoading(false);
+        setT2iModelsLoading(false);
       }
     };
 
     fetchI2vModels();
-    fetchT2iFamilies();
+    fetchT2iModels();
   }, [intl, locale]);
 
   useEffect(() => {
@@ -624,38 +561,17 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
   }, [project, project?.defaultI2vModelCode, i2vModels, settingsForm]);
 
   useEffect(() => {
-    if (!project || t2iModelFamilies.length === 0) return;
+    if (!project || t2iModels.length === 0) return;
 
-    let cancelled = false;
-    const initT2iSelection = async () => {
-      if (project.defaultT2iModelCode) {
-        const restored = await restoreT2iSelection(project.defaultT2iModelCode, t2iModelFamilies);
-        if (restored || cancelled) return;
-      }
-      if (!cancelled) {
-        await applyDefaultT2iSelection();
-      }
-    };
+    const matched = project.defaultT2iModelCode
+      ? t2iModels.find((m) => m.modelCode === project.defaultT2iModelCode)
+      : undefined;
+    const model = matched || t2iModels[0];
+    if (!model) return;
 
-    initT2iSelection();
-    return () => {
-      cancelled = true;
-    };
-  }, [project, project?.defaultT2iModelCode, t2iModelFamilies, restoreT2iSelection, applyDefaultT2iSelection]);
-
-  const isT2iApiModel = useMemo(
-    () =>
-      (selectedT2iStyleModel?.modelSource ?? selectedT2iFamily?.modelSource ?? '').toUpperCase() === 'API',
-    [selectedT2iStyleModel, selectedT2iFamily]
-  );
-
-  const isT2iVolcSeedream = useMemo(() => {
-    const family = selectedT2iFamily as (ModelFamily & { companyCode?: string }) | null;
-    const style = selectedT2iStyleModel as (ImageModel & { companyCode?: string }) | null;
-    const companyCode = family?.companyCode ?? style?.companyCode ?? '';
-    const modelCode = family?.modelCode ?? style?.modelCode ?? '';
-    return companyCode === 'Volc' && modelCode.toLowerCase().includes('seedream');
-  }, [selectedT2iFamily, selectedT2iStyleModel]);
+    setSelectedT2iModel(model);
+    settingsForm.setFieldsValue({ defaultT2iModelId: model.id });
+  }, [project, project?.defaultT2iModelCode, t2iModels, settingsForm]);
 
   const applySelectedI2vModel = (model: VideoModel) => {
     setSelectedI2vModel(model);
@@ -663,38 +579,24 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
     setI2vModelPickerVisible(false);
   };
 
-  const applySelectedT2iFamily = (family: ModelFamily) => {
-    setSelectedT2iFamily(family);
-    settingsForm.setFieldsValue({ defaultT2iFamilyId: family.id });
-    setT2iFamilyModalVisible(false);
-    loadT2iStyleModels(family.modelCode, undefined, true);
-  };
-
-  const applySelectedT2iStyle = (model: ImageModel | ModelFamily) => {
-    const isFamilyDefault = !t2iStyleModels.find((m) => m.id === (model as ImageModel).id);
-    if (isFamilyDefault) {
-      setSelectedT2iStyleModel(null);
-      settingsForm.setFieldsValue({ defaultT2iStyleModelId: null });
-    } else {
-      setSelectedT2iStyleModel(model as ImageModel);
-      settingsForm.setFieldsValue({ defaultT2iStyleModelId: (model as ImageModel).id });
-    }
-    setT2iStyleModalVisible(false);
+  const applySelectedT2iModel = (model: ModelFamily) => {
+    setSelectedT2iModel(model);
+    settingsForm.setFieldsValue({ defaultT2iModelId: model.id });
+    setT2iModelPickerVisible(false);
   };
 
   const saveSettings = async () => {
     const values = await settingsForm.validateFields();
     const {
       defaultI2vModelId: _i2vModelId,
-      defaultT2iFamilyId: _t2iFamilyId,
-      defaultT2iStyleModelId: _t2iStyleModelId,
+      defaultT2iModelId: _t2iModelId,
       ...rest
     } = values;
     const res = await directorApi.updateProject(pid, {
       ...rest,
       coverUrl: values.coverUrl || '',
       defaultI2vModelCode: selectedI2vModel?.modelCode,
-      defaultT2iModelCode: selectedT2iStyleModel?.modelCode || selectedT2iFamily?.modelCode,
+      defaultT2iModelCode: selectedT2iModel?.modelCode,
     });
     if (res.success) {
       message.success(intl.formatMessage({ id: 'director.settings.saved', defaultMessage: '设置已保存' }));
@@ -842,6 +744,12 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
                     { count: characterCount }
                   )}
                 </HeroStatTag>
+                <HeroStatTag>
+                  {intl.formatMessage(
+                    { id: 'director.project.propCountTag', defaultMessage: '{count} 道具' },
+                    { count: propCount }
+                  )}
+                </HeroStatTag>
               </ProjectHeroMeta>
             </ProjectHeroMain>
           </ProjectHeroBottom>
@@ -873,11 +781,11 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
               ),
             },
             {
-              value: 'characters',
+              value: 'assets',
               label: (
                 <Space size={6}>
-                  <TeamOutlined />
-                  <span>{intl.formatMessage({ id: 'director.tab.characters', defaultMessage: '角色' })}</span>
+                  <AppstoreOutlined />
+                  <span>{intl.formatMessage({ id: 'director.tab.assets', defaultMessage: '资产管理' })}</span>
                 </Space>
               ),
             },
@@ -889,7 +797,6 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
           <div style={{ display: activeTab === 'overview' ? 'block' : 'none' }}>
             <ContentCard title={intl.formatMessage({ id: 'director.settings.title', defaultMessage: '项目设置' })}>
               <GlobalSelectStyles />
-              <T2iGlobalSelectStyles />
               <Form form={settingsForm} layout="vertical" onFinish={saveSettings}>
                 <DirectorModelSettingsRow gutter={[16, 16]}>
                   <Col xs={24} md={12}>
@@ -905,29 +812,16 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
                     />
                   </Col>
                   <Col xs={24} md={12}>
-                    <ModelFamilySelect
-                      form={settingsForm}
-                      formItemName="defaultT2iFamilyId"
+                    <T2iModelSelectField
+                      formItemName="defaultT2iModelId"
                       label={intl.formatMessage({
                         id: 'director.settings.t2iModel',
                         defaultMessage: '默认文生图模型',
                       })}
-                      selectedFamily={selectedT2iFamily}
-                      familiesLoading={t2iFamiliesLoading}
-                      onOpenModal={() => setT2iFamilyModalVisible(true)}
-                      compact
+                      selectedModel={selectedT2iModel}
+                      modelsLoading={t2iModelsLoading}
+                      onOpenModal={() => setT2iModelPickerVisible(true)}
                     />
-                    {!isT2iApiModel && !isT2iVolcSeedream && (
-                      <StyleModelSelect
-                        form={settingsForm}
-                        formItemName="defaultT2iStyleModelId"
-                        selectedFamily={selectedT2iFamily}
-                        selectedModel={selectedT2iStyleModel}
-                        styleModelsLoading={t2iStyleModelsLoading}
-                        onOpenModal={() => setT2iStyleModalVisible(true)}
-                        compact
-                      />
-                    )}
                   </Col>
                   <Col span={24}>
                     <Form.Item
@@ -951,6 +845,8 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
             <EpisodeManager
               episodes={project.episodes || []}
               characters={characters}
+              props={props}
+              characterPropMap={characterPropMap}
               scenes={scenes}
               shots={shots}
               activeEpisodeId={activeEpisodeId}
@@ -973,11 +869,16 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
             />
           </div>
 
-          <div style={{ display: activeTab === 'characters' ? 'block' : 'none' }}>
-            <CharacterManager
+          <div style={{ display: activeTab === 'assets' ? 'block' : 'none' }}>
+            <AssetManager
               projectId={pid}
               characters={characters}
+              props={props}
+              characterPropMap={characterPropMap}
+              propCharacterMap={propCharacterMap}
               onCharactersChange={() => loadProject({ silent: true })}
+              onPropsChange={() => loadProject({ silent: true })}
+              onBindingsChange={refreshAssetBindings}
             />
           </div>
       </WorkspaceBody>
@@ -1007,36 +908,18 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
       />
 
       <T2iModelSelectionModal
-        open={t2iFamilyModalVisible}
-        onClose={() => setT2iFamilyModalVisible(false)}
+        open={t2iModelPickerVisible}
+        onClose={() => setT2iModelPickerVisible(false)}
         type="family"
-        title={intl.formatMessage({
-          id: 'create.model.family.select',
-          defaultMessage: '选择模型家族',
-        })}
-        models={t2iModelFamilies}
-        selectedModel={selectedT2iFamily}
-        onSelect={(model) => applySelectedT2iFamily(model as ModelFamily)}
+        title={intl.formatMessage({ id: 'create.model.select', defaultMessage: '选择模型' })}
+        models={t2iModels}
+        selectedModel={selectedT2iModel}
+        onSelect={(model) => applySelectedT2iModel(model as ModelFamily)}
         onShowDetail={(model) => {
           setSelectedT2iModelForDetail(model as ModelDetail);
           setT2iModelDetailVisible(true);
         }}
-        loading={t2iFamiliesLoading}
-      />
-
-      <T2iModelSelectionModal
-        open={t2iStyleModalVisible}
-        onClose={() => setT2iStyleModalVisible(false)}
-        type="style"
-        title={intl.formatMessage({ id: 'create.style', defaultMessage: '艺术风格' })}
-        models={selectedT2iFamily ? [selectedT2iFamily, ...t2iStyleModels] : t2iStyleModels}
-        selectedModel={selectedT2iStyleModel || selectedT2iFamily}
-        onSelect={(model) => applySelectedT2iStyle(model as ImageModel | ModelFamily)}
-        onShowDetail={(model) => {
-          setSelectedT2iModelForDetail(model as ModelDetail);
-          setT2iModelDetailVisible(true);
-        }}
-        loading={t2iStyleModelsLoading}
+        loading={t2iModelsLoading}
       />
 
       <ModelDetailModal

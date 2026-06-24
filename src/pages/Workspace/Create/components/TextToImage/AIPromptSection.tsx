@@ -5,6 +5,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import instance from 'api/axios';
 import PromptVersionHistoryModal from 'components/common/PromptVersionHistoryModal';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
+import { T2I_PROMPT_MAX_LENGTH } from './constants';
 
 const { TextArea } = Input;
 
@@ -268,7 +269,7 @@ const AIPromptSection: React.FC<AIPromptSectionProps> = ({ form, locale }) => {
             }),
           },
         ]}
-        style={{ marginTop: 32, marginBottom: 20 }}
+        style={{ marginTop: 40, marginBottom: 20 }}
       >
         <TextArea
           rows={5}
@@ -277,7 +278,7 @@ const AIPromptSection: React.FC<AIPromptSectionProps> = ({ form, locale }) => {
             defaultMessage:
               '例如：一只在太空中漫步的赛博朋克猫咪，霓虹灯背景，高清细节...',
           })}
-          maxLength={1000}
+          maxLength={T2I_PROMPT_MAX_LENGTH}
           showCount
           style={{ resize: 'none' }}
           onChange={(e) => setPromptValue(e.target.value)}

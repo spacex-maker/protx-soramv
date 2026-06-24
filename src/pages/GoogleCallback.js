@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Spin, message } from 'antd';
 import styled from 'styled-components';
 import { auth } from '../api/auth';
+import { consumeLoginRedirect } from '../utils/loginRedirect';
 
 const Container = styled.div`
   display: flex;
@@ -44,7 +45,7 @@ const GoogleCallback = () => {
 
         if (result.success) {
           message.success('登录成功');
-          navigate('/workspace');
+          navigate(consumeLoginRedirect('/workspace'));
         } else {
           message.error(result.message || '登录失败');
           navigate('/login');

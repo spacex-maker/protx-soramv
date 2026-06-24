@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Spin, message, Button, Typography, Empty, Select, Avatar, Tooltip, Tag, Image, Space } from 'antd';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Spin, message, Button, Typography, Empty, Avatar, Tooltip, Tag, Image, Space } from 'antd';
 import Masonry from 'react-masonry-css';
 import { 
   HeartOutlined, HeartFilled, 
@@ -9,16 +9,16 @@ import {
   FireOutlined, ClockCircleOutlined,
   PictureOutlined, RobotOutlined,
   ArrowRightOutlined,
-  LoadingOutlined,
   FilterOutlined,
   LockOutlined,
   UnlockOutlined,
   FileTextOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled, { keyframes, css } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
-import { getChannelByKey, listPosts, likePost, unlikePost, collectPost, uncollectPost, listChannels, incrementPostView, checkReviewPermission } from 'api/community';
+import { getChannelByKey, listPosts, likePost, unlikePost, collectPost, uncollectPost, listChannels, incrementPostView, checkReviewPermission, getCachedChannelId } from 'api/community';
 import { checkAiOperatorManagePermission } from 'api/communityAiOperator';
 import UserRoleCard from 'components/community/UserRoleCard';
 import ChannelAiOperatorModal from 'components/community/ChannelAiOperatorModal';
@@ -173,16 +173,48 @@ const HeroSection = styled.div`
   height: 460px;
   margin-bottom: 40px;
   background-color: ${props => props.bgColor || '#1890ff'};
-  overflow: hidden;
+  overflow: visible;
   display: flex;
-  align-items: flex-end;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-end;
   box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+
+  @media (min-width: 1200px) {
+    height: 540px;
+  }
+
+  @media (min-width: 1600px) {
+    height: 620px;
+  }
+
+  @media (min-width: 1920px) {
+    height: 680px;
+  }
 
   @media (hover: hover) and (pointer: fine) {
     transition: height 1.5s cubic-bezier(0.22, 1, 0.36, 1);
 
     &:hover {
       height: min(56vh, 560px);
+    }
+
+    @media (min-width: 1200px) {
+      &:hover {
+        height: min(58vh, 640px);
+      }
+    }
+
+    @media (min-width: 1600px) {
+      &:hover {
+        height: min(62vh, 720px);
+      }
+    }
+
+    @media (min-width: 1920px) {
+      &:hover {
+        height: min(65vh, 800px);
+      }
     }
   }
 
@@ -247,32 +279,52 @@ const HeroBackdrop = styled.div`
   }
 `;
 
-/* Hero 内部底部区域：标题 + 频道列表，与下方 Container 同宽 */
+/* Hero 内部：标题区域（限宽居中） */
 const HeroInner = styled.div`
   position: relative;
   z-index: 2;
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
-  padding: 0 40px 28px;
+  padding: 0 40px;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 20px;
 
   @media (max-width: 768px) {
-    padding: 0 max(16px, env(safe-area-inset-left)) 20px max(16px, env(safe-area-inset-right));
-    gap: 16px;
+    padding: 0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right));
   }
 `;
 
-/* 头部频道快捷列表：与帖子同宽，放在 Hero 内 */
-const ChannelNavWrap = styled.div`
-  margin-bottom: 0;
+/* 频道切换：横向铺满视口两端 */
+const ChannelNavSection = styled.div`
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  margin-top: 20px;
+  padding-bottom: 8px;
+  overflow: visible;
 
   @media (max-width: 768px) {
-    margin-bottom: 0;
+    margin-top: 16px;
+    padding-bottom: 4px;
   }
+`;
+
+const ChannelNavLabelRow = styled.div`
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 40px;
+
+  @media (max-width: 768px) {
+    padding: 0 max(16px, env(safe-area-inset-left)) 0 max(16px, env(safe-area-inset-right));
+  }
+`;
+
+/* 头部频道快捷列表 */
+const ChannelNavWrap = styled.div`
+  margin-bottom: 0;
 `;
 
 const ChannelNavLabel = styled.div`
@@ -292,67 +344,100 @@ const ChannelNavLabel = styled.div`
 
 const ChannelNavScroll = styled.div`
   display: flex;
-  align-items: center;
-  gap: 14px;
+  align-items: flex-start;
+  gap: 16px;
   overflow-x: auto;
-  overflow-y: visible;
-  padding: 16px 0 10px 0;
+  overflow-y: hidden;
+  width: 100%;
+  box-sizing: border-box;
+  /* 预留 hover 上移、放大与阴影空间（transform 不参与布局高度计算） */
+  padding: 68px max(24px, env(safe-area-inset-right)) 80px max(24px, env(safe-area-inset-left));
+  min-height: 114px;
   min-width: 0;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
   scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: ${props => props.$dragging ? 'grabbing' : 'grab'};
+  user-select: ${props => props.$dragging ? 'none' : 'auto'};
 
   &::-webkit-scrollbar {
-    height: 6px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: transparent;
-    border-radius: 3px;
-    transition: background 0.2s ease;
-  }
-  &::-webkit-scrollbar-track {
-    background: transparent;
-    border-radius: 3px;
-    transition: background 0.2s ease;
+    display: none;
+    width: 0;
+    height: 0;
   }
 
-  &:hover {
-    scrollbar-width: thin;
+  @media (min-width: 1200px) {
+    min-height: 126px;
   }
 
-  &:hover::-webkit-scrollbar-thumb {
-    background: ${props => props.theme.mode === 'dark' ? '#444' : 'rgba(0,0,0,0.22)'};
+  @media (min-width: 1600px) {
+    min-height: 140px;
   }
 
-  &:hover::-webkit-scrollbar-track {
-    background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'};
+  @media (max-width: 768px) {
+    align-items: center;
+    padding: 16px max(16px, env(safe-area-inset-right)) 20px max(16px, env(safe-area-inset-left));
+    min-height: 84px;
+    cursor: auto;
+    user-select: auto;
+    touch-action: auto;
   }
 `;
 
 const ChannelNavItem = styled.div`
   flex-shrink: 0;
-  width: 168px;
-  height: 96px;
-  border-radius: 14px;
+  width: 200px;
+  height: 114px;
+  border-radius: 16px;
   overflow: visible;
-  cursor: pointer;
+  cursor: ${props => props.$navDragging ? 'grabbing' : 'grab'};
   position: relative;
   background: ${props => props.theme.mode === 'dark' ? '#222' : '#e8e8e8'};
-  transition: transform 0.2s ease, box-shadow 0.2s;
+  transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.38s ease;
   border: 2px solid transparent;
   transform-origin: center center;
+  z-index: 1;
+
+  @media (min-width: 1200px) {
+    width: 224px;
+    height: 126px;
+  }
+
+  @media (min-width: 1600px) {
+    width: 248px;
+    height: 140px;
+  }
 
   &.active {
-    transform: scale(1.1);
-    border-color: ${props => props.theme.mode === 'dark' ? '#1890ff' : '#1890ff'};
-    box-shadow: 0 0 0 1px rgba(24, 144, 255, 0.3);
-    z-index: 1;
+    transform: scale(1.14);
+    border-color: #1890ff;
+    box-shadow: 0 8px 28px rgba(24, 144, 255, 0.35);
+    z-index: 2;
   }
 
-  &:hover {
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      z-index: 6;
+      box-shadow: 0 24px 56px rgba(0, 0, 0, 0.45);
+    }
+
+    &:hover:not(.active) {
+      transform: translateY(-20px) scale(1.32);
+    }
+
+    &.active:hover {
+      transform: translateY(-18px) scale(1.34);
+    }
   }
-  &:hover:not(.active) {
-    transform: translateY(-2px);
+
+  .media {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    transform-origin: center center;
   }
 
   .cover {
@@ -360,43 +445,157 @@ const ChannelNavItem = styled.div`
     inset: 0;
     background-size: cover;
     background-position: center;
-    transition: transform 0.3s;
     border-radius: inherit;
+    transition: transform 0.38s cubic-bezier(0.22, 1, 0.36, 1);
   }
-  &:hover .cover {
-    transform: scale(1.05);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover .cover {
+      transform: scale(1.12);
+    }
   }
 
   .mask {
     position: absolute;
     inset: 0;
-    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.2) 50%, transparent 100%);
+    background: linear-gradient(to top, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.28) 52%, transparent 100%);
     border-radius: inherit;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
   }
 
-  .name {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover .mask {
+      opacity: 0;
+    }
+
+    &:hover .info {
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+    }
+
+    &:hover .name,
+    &:hover .meta,
+    &:hover .desc {
+      text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85);
+    }
+  }
+
+  .info {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    padding: 10px 12px;
-    font-size: 13px;
-    font-weight: 600;
+    z-index: 2;
+    padding: 12px 14px;
+    pointer-events: none;
+  }
+
+  .name {
+    font-size: 14px;
+    font-weight: 700;
     color: #fff;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.55);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+
+  .meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 0;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease, opacity 0.3s ease, margin-top 0.35s ease;
+  }
+
+  .tag {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 100px;
+    background: rgba(255, 255, 255, 0.22);
+    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    line-height: 1.4;
+  }
+
+  .posts {
+    font-size: 11px;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.4;
+  }
+
+  .vip {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 100px;
+    background: rgba(250, 173, 20, 0.28);
+    color: #ffe58f;
+    border: 1px solid rgba(250, 173, 20, 0.45);
+    line-height: 1.4;
+  }
+
+  .desc {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1.45;
+    margin-top: 0;
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    transition: max-height 0.35s ease, opacity 0.3s ease, margin-top 0.35s ease;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover .meta,
+    &.active .meta {
+      margin-top: 5px;
+      max-height: 28px;
+      opacity: 1;
+    }
+
+    &:hover .desc,
+    &.active .desc {
+      margin-top: 6px;
+      max-height: 34px;
+      opacity: 1;
+    }
   }
 
   @media (max-width: 768px) {
-    width: 132px;
-    height: 78px;
+    width: 148px;
+    height: 84px;
     border-radius: 12px;
-    .name { font-size: 12px; padding: 8px 10px; }
+    cursor: pointer;
+
+    .info { padding: 8px 10px; }
+    .name { font-size: 12px; }
 
     &.active {
-      transform: scale(1.08);
+      transform: scale(1.06);
+    }
+
+    .meta {
+      margin-top: 3px;
+      max-height: 22px;
+      opacity: 1;
+    }
+
+    .desc {
+      display: none;
     }
   }
 `;
@@ -472,39 +671,180 @@ const Container = styled.div`
 
 const ToolBar = styled.div`
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+  gap: 0;
   margin-bottom: 32px;
-  background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.05)' : '#fff'};
-  padding: 16px 24px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  background: ${props => props.theme.mode === 'dark'
+    ? 'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%)'
+    : 'linear-gradient(180deg, #ffffff 0%, #fafbfc 100%)'};
+  padding: 18px 22px 20px;
+  border-radius: 16px;
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+  box-shadow: ${props => props.theme.mode === 'dark'
+    ? '0 8px 32px rgba(0,0,0,0.24)'
+    : '0 4px 20px rgba(0,0,0,0.04)'};
+  backdrop-filter: blur(12px);
 
   @media (max-width: 768px) {
-    flex-wrap: wrap;
-    gap: 12px;
     margin-bottom: 20px;
-    padding: 12px 16px;
-    border-radius: 10px;
+    padding: 14px 14px 16px;
+    border-radius: 14px;
   }
 `;
 
-const FilterGroup = styled.div`
+const ToolBarMain = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+`;
+
+const FilterBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+    padding-top: 14px;
+    margin-top: 14px;
+  }
+`;
+
+const FilterBlock = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 
-  .label {
-    font-weight: 600;
-    color: ${props => props.theme.mode === 'dark' ? '#aaa' : '#666'};
-    margin-right: 8px;
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
   }
+`;
+
+const FilterBlockLabel = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 72px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.42)' : 'rgba(0,0,0,0.42)'};
+  white-space: nowrap;
+
+  .anticon {
+    font-size: 13px;
+    opacity: 0.85;
+  }
+`;
+
+const SegmentGroup = styled.div`
+  display: inline-flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 12px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(0,0,0,0.22)' : 'rgba(0,0,0,0.04)'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'};
+  gap: 4px;
+  flex-wrap: wrap;
 
   @media (max-width: 768px) {
     width: 100%;
-    justify-content: space-between;
-    .label { font-size: 14px; margin-right: 0; }
-    .ant-select { min-width: 120px !important; }
+  }
+`;
+
+const SegmentButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+  white-space: nowrap;
+  color: ${props => (props.$active
+    ? (props.theme.mode === 'dark' ? '#fff' : '#111827')
+    : (props.theme.mode === 'dark' ? 'rgba(255,255,255,0.52)' : 'rgba(0,0,0,0.52)'))};
+  background: ${props => (props.$active
+    ? (props.theme.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#fff')
+    : 'transparent')};
+  box-shadow: ${props => (props.$active ? '0 2px 10px rgba(0,0,0,0.08)' : 'none')};
+
+  .anticon {
+    font-size: 14px;
+  }
+
+  &:hover {
+    color: ${props => props.theme.mode === 'dark' ? '#fff' : '#111827'};
+    background: ${props => (props.$active
+      ? (props.theme.mode === 'dark' ? 'rgba(255,255,255,0.12)' : '#fff')
+      : (props.theme.mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.72)'))};
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  ${props => props.$variant === 'free' && props.$active && css`
+    color: #389e0d;
+    background: ${props.theme.mode === 'dark' ? 'rgba(82, 196, 26, 0.18)' : 'rgba(246, 255, 237, 0.98)'};
+    box-shadow: 0 2px 10px rgba(82, 196, 26, 0.12);
+  `}
+
+  ${props => props.$variant === 'paid' && props.$active && css`
+    color: #7c3aed;
+    background: ${props.theme.mode === 'dark' ? 'rgba(124, 58, 237, 0.18)' : 'rgba(245, 243, 255, 0.98)'};
+    box-shadow: 0 2px 10px rgba(124, 58, 237, 0.12);
+  `}
+
+  @media (max-width: 768px) {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+`;
+
+const FilterDivider = styled.div`
+  width: 1px;
+  align-self: stretch;
+  min-height: 28px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'};
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+const FilterBarActions = styled.div`
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+
+  @media (max-width: 768px) {
+    margin-left: 0;
+    width: 100%;
+
+    .ant-btn {
+      width: 100%;
+    }
   }
 `;
 
@@ -668,6 +1008,7 @@ const ModernCard = styled.div`
   width: 100%;
   padding-top: 0;
   height: auto;
+  min-height: 360px;
   border-radius: 16px;
   overflow: hidden;
   background: ${props => props.theme.mode === 'dark' ? '#222' : '#f0f2f5'};
@@ -681,6 +1022,7 @@ const ModernCard = styled.div`
   }
 
   @media (max-width: 768px) {
+    min-height: 300px;
     border-radius: 12px;
     &:hover {
       transform: translateY(-2px);
@@ -694,25 +1036,38 @@ const ModernCard = styled.div`
 const CardImageWrapper = styled.div`
   position: relative;
   width: 100%;
+  min-height: 360px;
   height: auto;
   z-index: 1;
-  cursor: zoom-in;
+  cursor: default;
 
   .ant-image {
     width: 100%;
     display: block;
+    min-height: inherit;
   }
 
   .ant-image-img {
     width: 100%;
+    min-height: 360px;
     height: auto;
     display: block;
     vertical-align: top;
+    object-fit: cover;
+    object-position: center;
     transition: transform 0.7s ease, filter 0.3s ease, opacity 0.3s ease;
   }
 
   ${ModernCard}:hover & .ant-image-img {
     transform: scale(1.02);
+  }
+
+  @media (max-width: 768px) {
+    min-height: 300px;
+
+    .ant-image-img {
+      min-height: 300px;
+    }
   }
 
   ${(props) => props.$delisted && css`
@@ -757,8 +1112,8 @@ const FloatingActions = styled.div`
     opacity: 1;
     transform: translateX(0);
     flex-direction: row;
-    top: auto;
-    bottom: 56px;
+    top: 48px;
+    bottom: auto;
     right: 10px;
     gap: 6px;
   }
@@ -803,6 +1158,8 @@ const CardContent = styled.div`
   left: 0;
   width: 100%;
   z-index: 10;
+  box-sizing: border-box;
+  min-height: 108px;
   padding: 12px 16px;
 
   background: ${props => props.theme.mode === 'dark'
@@ -840,6 +1197,7 @@ const CardContent = styled.div`
   }
 
   @media (max-width: 768px) {
+    min-height: 96px;
     padding: 10px 12px;
   }
 `;
@@ -864,12 +1222,76 @@ const CardTitle = styled.h3`
 const CardTitleRow = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
   margin-bottom: 6px;
+  min-width: 0;
 
   @media (max-width: 768px) {
     margin-bottom: 4px;
+  }
+`;
+
+const CardCenterActions = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 18;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease, background 0.3s ease;
+  background: rgba(0, 0, 0, 0);
+
+  ${ModernCard}:hover & {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.32);
+    pointer-events: auto;
+  }
+
+  @media (hover: none), (pointer: coarse) {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.22);
+    pointer-events: auto;
+  }
+`;
+
+const CardGlassActionBtn = styled.button`
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.96);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.2s ease, transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.55);
+    border-color: rgba(255, 255, 255, 0.48);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  @media (max-width: 768px) {
+    padding: 8px 14px;
+    font-size: 12px;
   }
 `;
 
@@ -895,26 +1317,6 @@ const SpecChip = styled.span`
   color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.88)' : 'rgba(0,0,0,0.75)')};
   background: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)')};
   border: 1px solid ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')};
-`;
-
-const DetailLink = styled.button`
-  flex-shrink: 0;
-  border: none;
-  background: transparent;
-  padding: 0;
-  font-size: 12px;
-  font-weight: 600;
-  color: ${props => props.theme.mode === 'dark' ? '#93c5fd' : '#2563eb'};
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  opacity: 0.88;
-
-  &:hover {
-    opacity: 1;
-    text-decoration: underline;
-  }
 `;
 
 const MetaRow = styled.div`
@@ -1020,18 +1422,6 @@ const PromptAccessBadge = styled.div`
   }
 `;
 
-const AdvancedFilterWrap = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-
-  @media (max-width: 768px) {
-    width: 100%;
-    justify-content: flex-end;
-  }
-`;
-
 const ChannelDetailPage = () => {
   const intl = useIntl();
   const navigate = useNavigate();
@@ -1046,10 +1436,12 @@ const ChannelDetailPage = () => {
   const [promptAccess, setPromptAccess] = useState('all');
   const [animatingPost, setAnimatingPost] = useState(null);
   const viewedPreviewRef = useRef(new Set());
-  const [previewOriginalIds, setPreviewOriginalIds] = useState(() => new Set());
-  const [previewLoadingOriginalId, setPreviewLoadingOriginalId] = useState(null);
   const [stackPreviewPost, setStackPreviewPost] = useState(null);
   const [stackPreviewIndex, setStackPreviewIndex] = useState(0);
+  const [stackPreviewShowOriginal, setStackPreviewShowOriginal] = useState(false);
+  const previewRestoreRef = useRef(false);
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Drag state
   const [cardPosition, setCardPosition] = useState({ top: 100, right: 40 });
@@ -1059,6 +1451,9 @@ const ChannelDetailPage = () => {
 
   // 头部频道列表（快捷跳转）
   const [channelsList, setChannelsList] = useState([]);
+  const channelNavScrollRef = useRef(null);
+  const navDragRef = useRef({ active: false, dragging: false, startX: 0, scrollLeft: 0, moved: false });
+  const [isNavDragging, setIsNavDragging] = useState(false);
 
   // AI 运营管理（超级管理员 / 社区运营官）
   const [canManageAiOperator, setCanManageAiOperator] = useState(false);
@@ -1071,6 +1466,28 @@ const ChannelDetailPage = () => {
   const loadMoreRef = useRef(null);
   const postsLoadingRef = useRef(postsLoading);
   postsLoadingRef.current = postsLoading;
+  const postsFetchSeqRef = useRef(0);
+  const channelRef = useRef(null);
+  const channelKeyRef = useRef(channelKey);
+  const prevFiltersRef = useRef({ sortBy, promptAccess });
+  const isInitialChannelLoadRef = useRef(true);
+  channelRef.current = channel;
+
+  const buildPostListParams = (pageNum, channelId) => ({
+    channelId,
+    page: pageNum,
+    pageSize: 20,
+    sortBy,
+    ...(promptAccess !== 'all' ? { promptAccess } : {}),
+  });
+
+  useEffect(() => {
+    listChannels().catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    previewRestoreRef.current = false;
+  }, [channelKey]);
 
   useEffect(() => {
     if (!hasMore || postsLoading || posts.length === 0) return;
@@ -1089,29 +1506,202 @@ const ChannelDetailPage = () => {
   }, [hasMore, postsLoading, posts.length]);
 
   useEffect(() => {
-    if (channelKey) {
-      if (channelKey === 'daily-challenge') {
-        navigate('/community/challenge', { replace: true });
+    if (!channelKey) return;
+    if (channelKey === 'daily-challenge') {
+      navigate('/community/challenge', { replace: true });
+      return;
+    }
+
+    const channelKeyChanged = channelKeyRef.current !== channelKey;
+    if (channelKeyChanged) {
+      channelKeyRef.current = channelKey;
+      isInitialChannelLoadRef.current = true;
+      channelRef.current = null;
+      setChannel(null);
+      prevFiltersRef.current = { sortBy, promptAccess };
+      if (page !== 1) {
+        setPage(1);
         return;
       }
-      fetchChannel();
-    }
-  }, [channelKey, navigate]);
-
-  useEffect(() => {
-    if (channel?.id) {
-      setPage(1);
       setPosts([]);
       setHasMore(true);
     }
-  }, [channel?.id, sortBy, promptAccess]);
+
+    const filtersChanged =
+      prevFiltersRef.current.sortBy !== sortBy
+      || prevFiltersRef.current.promptAccess !== promptAccess;
+
+    if (filtersChanged) {
+      prevFiltersRef.current = { sortBy, promptAccess };
+      if (page !== 1) {
+        setPage(1);
+        return;
+      }
+      setPosts([]);
+      setHasMore(true);
+    }
+
+    const seq = ++postsFetchSeqRef.current;
+    let cancelled = false;
+
+    const loadPosts = async () => {
+      const isFirstPage = page === 1;
+
+      if (isInitialChannelLoadRef.current && isFirstPage) {
+        setLoading(true);
+      }
+      setPostsLoading(true);
+
+      try {
+        if (isInitialChannelLoadRef.current && isFirstPage) {
+          const cachedChannelId = getCachedChannelId(channelKey);
+          const initialPostParams = cachedChannelId
+            ? buildPostListParams(1, cachedChannelId)
+            : {
+                channelKey,
+                page: 1,
+                pageSize: 20,
+                sortBy,
+                ...(promptAccess !== 'all' ? { promptAccess } : {}),
+              };
+
+          const [channelData, postsDataOrNull] = await Promise.all([
+            getChannelByKey(channelKey),
+            listPosts(initialPostParams).catch(() => null),
+          ]);
+
+          if (cancelled || seq !== postsFetchSeqRef.current) return;
+
+          channelRef.current = channelData;
+          setChannel(channelData);
+          isInitialChannelLoadRef.current = false;
+
+          let postsData = postsDataOrNull;
+          if (!postsData) {
+            postsData = await listPosts(buildPostListParams(1, channelData.id));
+          }
+
+          if (cancelled || seq !== postsFetchSeqRef.current) return;
+
+          setPosts(postsData || []);
+          setHasMore((postsData || []).length === 20);
+          return;
+        }
+
+        const activeChannel = channelRef.current;
+        if (!activeChannel?.id) return;
+
+        const postsData = await listPosts(buildPostListParams(page, activeChannel.id));
+        if (cancelled || seq !== postsFetchSeqRef.current) return;
+
+        if (isFirstPage) {
+          setPosts(postsData || []);
+        } else {
+          setPosts((prev) => [...prev, ...(postsData || [])]);
+        }
+        setHasMore((postsData || []).length === 20);
+      } catch (error) {
+        if (!cancelled) {
+          message.error(error?.response?.data?.message || 'Load failed');
+        }
+      } finally {
+        if (!cancelled && seq === postsFetchSeqRef.current) {
+          setPostsLoading(false);
+          setLoading(false);
+        }
+      }
+    };
+
+    loadPosts();
+    return () => {
+      cancelled = true;
+    };
+  }, [channelKey, page, sortBy, promptAccess, navigate]);
 
   useEffect(() => {
-    if (!channel) return;
-    listChannels()
-      .then((data) => setChannelsList(data || []))
-      .catch(() => setChannelsList([]));
+    if (!channel?.id) return;
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      listChannels()
+        .then((data) => {
+          if (!cancelled) setChannelsList(data || []);
+        })
+        .catch(() => {
+          if (!cancelled) setChannelsList([]);
+        });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [channel?.id]);
+
+  useEffect(() => {
+    const el = channelNavScrollRef.current;
+    if (!el || channelsList.length === 0) return;
+
+    const onWheel = (event) => {
+      if (el.scrollWidth <= el.clientWidth) return;
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      el.scrollLeft += event.deltaY;
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [channelsList.length]);
+
+  const handleNavPointerDown = (e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (e.pointerType === 'mouse' && window.matchMedia('(max-width: 768px)').matches) return;
+
+    const el = channelNavScrollRef.current;
+    if (!el) return;
+
+    navDragRef.current = {
+      active: true,
+      dragging: false,
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      scrollLeft: el.scrollLeft,
+      moved: false,
+    };
+  };
+
+  const handleNavPointerMove = (e) => {
+    if (!navDragRef.current.active || e.pointerId !== navDragRef.current.pointerId) return;
+
+    const el = channelNavScrollRef.current;
+    if (!el) return;
+
+    const dx = e.clientX - navDragRef.current.startX;
+    if (!navDragRef.current.dragging) {
+      if (Math.abs(dx) <= 5) return;
+      navDragRef.current.dragging = true;
+      navDragRef.current.moved = true;
+      setIsNavDragging(true);
+      if (!el.hasPointerCapture(e.pointerId)) {
+        el.setPointerCapture(e.pointerId);
+      }
+    }
+
+    el.scrollLeft = navDragRef.current.scrollLeft - dx;
+    e.preventDefault();
+  };
+
+  const endNavPointerDrag = (e) => {
+    if (!navDragRef.current.active || e.pointerId !== navDragRef.current.pointerId) return;
+
+    const el = channelNavScrollRef.current;
+    if (el?.hasPointerCapture(e.pointerId)) {
+      el.releasePointerCapture(e.pointerId);
+    }
+    navDragRef.current.active = false;
+    navDragRef.current.dragging = false;
+    setIsNavDragging(false);
+  };
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -1120,56 +1710,42 @@ const ChannelDetailPage = () => {
       setCanModeratePosts(false);
       return;
     }
-    checkAiOperatorManagePermission()
-      .then(setCanManageAiOperator)
-      .catch(() => setCanManageAiOperator(false));
-    checkReviewPermission()
-      .then(setCanModeratePosts)
-      .catch(() => setCanModeratePosts(false));
+
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      Promise.all([
+        checkAiOperatorManagePermission().catch(() => false),
+        checkReviewPermission().catch(() => false),
+      ]).then(([canManageAi, canModerate]) => {
+        if (cancelled) return;
+        setCanManageAiOperator(canManageAi);
+        setCanModeratePosts(canModerate);
+      });
+    }, 0);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
   }, [channel?.id]);
 
-  useEffect(() => {
-    if (channel?.id) {
-      fetchPosts();
-    }
-  }, [channel?.id, page, sortBy, promptAccess]);
+  const reloadPosts = async () => {
+    if (!channelRef.current?.id) return;
 
-  const fetchChannel = async () => {
-    setLoading(true);
-    try {
-      const data = await getChannelByKey(channelKey);
-      setChannel(data);
-    } catch (error) {
-      message.error(error?.response?.data?.message || 'Load failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchPosts = async () => {
-    if (!channel?.id) return;
-    
+    const seq = ++postsFetchSeqRef.current;
     setPostsLoading(true);
     try {
-      const data = await listPosts({
-        channelId: channel.id,
-        page,
-        pageSize: 20,
-        sortBy: sortBy,
-        ...(promptAccess !== 'all' ? { promptAccess } : {}),
-      });
-      
-      if (page === 1) {
-        setPosts(data);
-      } else {
-        setPosts(prev => [...prev, ...data]);
-      }
-      
-      setHasMore(data.length === 20);
+      const data = await listPosts(buildPostListParams(1, channelRef.current.id));
+      if (seq !== postsFetchSeqRef.current) return;
+      setPage(1);
+      setPosts(data || []);
+      setHasMore((data || []).length === 20);
     } catch (error) {
       message.error(error?.response?.data?.message || 'Load failed');
     } finally {
-      setPostsLoading(false);
+      if (seq === postsFetchSeqRef.current) {
+        setPostsLoading(false);
+      }
     }
   };
 
@@ -1232,18 +1808,18 @@ const ChannelDetailPage = () => {
     navigate(`/community/post/${post.id}`);
   };
 
+  const handlePostPreviewClick = (post, e) => {
+    e?.stopPropagation();
+    e?.preventDefault();
+    handleOpenStackPreview(post);
+  };
+
   const handlePostShelfStatusChange = (postId, newStatus) => {
     setPosts((prev) => prev.map((p) => (p.id === postId ? { ...p, status: newStatus } : p)));
   };
 
   const handlePreviewVisibleChange = async (post, visible) => {
     if (!visible) {
-      setPreviewOriginalIds((prev) => {
-        const next = new Set(prev);
-        next.delete(post.id);
-        return next;
-      });
-      setPreviewLoadingOriginalId((id) => (id === post.id ? null : id));
       return;
     }
     if (viewedPreviewRef.current.has(post.id)) {
@@ -1265,19 +1841,27 @@ const ChannelDetailPage = () => {
     options
   );
 
-  const getPostOriginalUrl = (post) => post.coverUrl || post.mediaUrls?.[0] || '';
-
   const getPostPreviewUrls = (post, options = {}) => {
     return getPostMediaUrls(post).map((url) => addTencentImageCompression(url, options));
   };
 
   const handleOpenStackPreview = (post) => {
     const urls = getPostMediaUrls(post);
-    if (urls.length <= 1) return;
+    if (urls.length === 0) return;
     setStackPreviewIndex(0);
+    setStackPreviewShowOriginal(false);
     setStackPreviewPost(post);
     handlePreviewVisibleChange(post, true);
   };
+
+  const buildPreviewLoginReturnTo = useCallback((post, index) => {
+    const params = new URLSearchParams({
+      previewPost: String(post.id),
+      previewIndex: String(index),
+      viewOriginal: '1',
+    });
+    return `${location.pathname}?${params.toString()}`;
+  }, [location.pathname]);
 
   const handleCloseStackPreview = () => {
     if (stackPreviewPost) {
@@ -1285,62 +1869,31 @@ const ChannelDetailPage = () => {
     }
     setStackPreviewPost(null);
     setStackPreviewIndex(0);
+    setStackPreviewShowOriginal(false);
   };
 
-  const handleLoadOriginalInPreview = (postId) => {
-    setPreviewLoadingOriginalId(postId);
-    setPreviewOriginalIds((prev) => new Set(prev).add(postId));
-  };
+  useEffect(() => {
+    if (previewRestoreRef.current || postsLoading) return;
+    const previewPostId = searchParams.get('previewPost');
+    if (!previewPostId) return;
 
-  const buildPostPreviewConfig = (post) => {
-    const originalUrl = getPostOriginalUrl(post);
-    const showOriginal = previewOriginalIds.has(post.id);
-    const previewSrc = showOriginal
-      ? originalUrl
-      : getPostImageUrl(post, { quality: 90, width: 1920 });
+    const previewIndex = Math.max(0, Number(searchParams.get('previewIndex') || 0));
+    const viewOriginal = searchParams.get('viewOriginal') === '1';
+    const post = posts.find((p) => String(p.id) === previewPostId);
+    if (!post) return;
 
-    return {
-      src: previewSrc,
-      onVisibleChange: (visible) => handlePreviewVisibleChange(post, visible),
-      imageRender: (originalNode) => React.cloneElement(originalNode, {
-        onLoad: () => {
-          if (previewLoadingOriginalId === post.id) {
-            setPreviewLoadingOriginalId(null);
-          }
-        },
-      }),
-      toolbarRender: (originalNode) => {
-        if (showOriginal || !originalUrl) {
-          return originalNode;
-        }
-        return React.cloneElement(originalNode, {
-          children: (
-            <>
-              {originalNode.props.children}
-              <div
-                className="ant-image-preview-operations-operation"
-                role="button"
-                aria-label={intl.formatMessage({ id: 'post.viewOriginal', defaultMessage: '原图' })}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleLoadOriginalInPreview(post.id);
-                }}
-              >
-                {previewLoadingOriginalId === post.id ? (
-                  <LoadingOutlined />
-                ) : (
-                  <PictureOutlined />
-                )}
-                <span style={{ marginLeft: 6, fontSize: 13 }}>
-                  <FormattedMessage id="post.viewOriginal" defaultMessage="原图" />
-                </span>
-              </div>
-            </>
-          ),
-        });
-      },
-    };
-  };
+    previewRestoreRef.current = true;
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('previewPost');
+    nextParams.delete('previewIndex');
+    nextParams.delete('viewOriginal');
+    setSearchParams(nextParams, { replace: true });
+
+    setStackPreviewIndex(previewIndex);
+    setStackPreviewShowOriginal(viewOriginal && Boolean(localStorage.getItem('token')));
+    setStackPreviewPost(post);
+    handlePreviewVisibleChange(post, true);
+  }, [posts, postsLoading, searchParams, setSearchParams]);
 
   const handleChannelClick = (ch) => {
     if (ch.channelKey === channelKey) return;
@@ -1457,111 +2010,182 @@ const ChannelDetailPage = () => {
               </div>
             </TitleWrapper>
           </HeroContent>
-          {channelsList.length > 0 && (
-            <ChannelNavWrap>
-              <ChannelNavLabel>
-                <FormattedMessage id="community.switchChannel" defaultMessage="Switch Channel" />
-              </ChannelNavLabel>
-              <ChannelNavScroll>
-                {channelsList.map((ch) => (
-                  <ChannelNavItem
-                    key={ch.id}
-                    className={ch.channelKey === channelKey ? 'active' : ''}
-                    onClick={() => handleChannelClick(ch)}
-                  >
+        </HeroInner>
+        {channelsList.length > 0 && (
+          <ChannelNavSection>
+            <ChannelNavLabelRow>
+              <ChannelNavWrap>
+                <ChannelNavLabel>
+                  <FormattedMessage id="community.switchChannel" defaultMessage="Switch Channel" />
+                </ChannelNavLabel>
+              </ChannelNavWrap>
+            </ChannelNavLabelRow>
+            <ChannelNavScroll
+              ref={channelNavScrollRef}
+              $dragging={isNavDragging}
+              onPointerDown={handleNavPointerDown}
+              onPointerMove={handleNavPointerMove}
+              onPointerUp={endNavPointerDrag}
+              onPointerCancel={endNavPointerDrag}
+            >
+              {channelsList.map((ch) => (
+                <ChannelNavItem
+                  key={ch.id}
+                  className={ch.channelKey === channelKey ? 'active' : ''}
+                  $navDragging={isNavDragging}
+                  onClick={() => {
+                    if (navDragRef.current.moved) {
+                      navDragRef.current.moved = false;
+                      return;
+                    }
+                    handleChannelClick(ch);
+                  }}
+                >
+                  <div className="media">
                     <div
                       className="cover"
                       style={{
-                        backgroundImage: ch.coverUrl ? `url(${ch.coverUrl})` : 'linear-gradient(135deg, #667eea, #764ba2)',
+                        backgroundImage: ch.coverUrl
+                          ? `url(${ch.coverUrl})`
+                          : `linear-gradient(135deg, ${ch.themeColor || '#667eea'}, #764ba2)`,
                       }}
                     />
                     <div className="mask" />
+                  </div>
+                  <div className="info">
                     <div className="name">{ch.name}</div>
-                  </ChannelNavItem>
-                ))}
-              </ChannelNavScroll>
-            </ChannelNavWrap>
-          )}
-        </HeroInner>
+                    <div className="meta">
+                      <span className="tag">#{ch.channelKey}</span>
+                      <span className="posts">
+                        {intl.formatMessage(
+                          { id: 'community.posts', defaultMessage: '{count} posts' },
+                          { count: ch.postCount || 0 }
+                        )}
+                      </span>
+                      {ch.isVipOnly && (
+                        <span className="vip">
+                          <LockOutlined />
+                          <FormattedMessage id="community.channel.vip" defaultMessage="VIP" />
+                        </span>
+                      )}
+                    </div>
+                    {ch.description && (
+                      <div className="desc">{ch.description}</div>
+                    )}
+                  </div>
+                </ChannelNavItem>
+              ))}
+            </ChannelNavScroll>
+          </ChannelNavSection>
+        )}
       </HeroSection>
 
       <Container>
         {/* Tool Bar */}
         <ToolBar>
-          <ToolBarLeft>
-            <Tag color={channel.themeColor || "blue"} style={{ padding: '4px 12px', fontSize: 14 }}>
-              #{channelKey}
-            </Tag>
-            <Text type="secondary" style={{ fontSize: 'inherit' }}>
-              <FormattedMessage id="community.totalPosts" defaultMessage="{count} artworks" values={{ count: <b>{channel.postCount || 0}</b> }} />
-            </Text>
-            {canManageAiOperator && (
-              <Button
-                type="default"
-                icon={<RobotOutlined />}
-                onClick={() => setAiOperatorModalOpen(true)}
-              >
-                <FormattedMessage id="community.aiOperator.manageButton" defaultMessage="AI 运营" />
-              </Button>
-            )}
-          </ToolBarLeft>
+          <ToolBarMain>
+            <ToolBarLeft>
+              <Tag color={channel.themeColor || 'blue'} style={{ padding: '4px 12px', fontSize: 14, margin: 0 }}>
+                #{channelKey}
+              </Tag>
+              <Text type="secondary" style={{ fontSize: 'inherit' }}>
+                <FormattedMessage id="community.totalPosts" defaultMessage="{count} artworks" values={{ count: <b>{channel.postCount || 0}</b> }} />
+              </Text>
+              {canManageAiOperator && (
+                <Button
+                  type="default"
+                  icon={<RobotOutlined />}
+                  onClick={() => setAiOperatorModalOpen(true)}
+                >
+                  <FormattedMessage id="community.aiOperator.manageButton" defaultMessage="AI 运营" />
+                </Button>
+              )}
+            </ToolBarLeft>
+          </ToolBarMain>
 
-          <AdvancedFilterWrap>
-            <FilterGroup>
-              <span className="label">
+          <FilterBar>
+            <FilterBlock>
+              <FilterBlockLabel>
+                <ClockCircleOutlined />
                 <FormattedMessage id="community.sortBy" defaultMessage="Sort By" />
-              </span>
-              <Select
-                value={sortBy}
-                onChange={setSortBy}
-                size="large"
-                bordered={false}
-                style={{ width: 140, background: 'rgba(0,0,0,0.04)', borderRadius: 8 }}
-                options={[
-                  { value: 'latest', label: <><ClockCircleOutlined /> Latest</> },
-                  { value: 'popular', label: <><FireOutlined /> Popular</> },
-                ]}
-              />
-            </FilterGroup>
+              </FilterBlockLabel>
+              <SegmentGroup role="tablist" aria-label={intl.formatMessage({ id: 'community.sortBy', defaultMessage: 'Sort By' })}>
+                <SegmentButton
+                  type="button"
+                  role="tab"
+                  aria-selected={sortBy === 'latest'}
+                  $active={sortBy === 'latest'}
+                  onClick={() => setSortBy('latest')}
+                >
+                  <ClockCircleOutlined />
+                  <FormattedMessage id="community.sort.latest" defaultMessage="Latest" />
+                </SegmentButton>
+                <SegmentButton
+                  type="button"
+                  role="tab"
+                  aria-selected={sortBy === 'popular'}
+                  $active={sortBy === 'popular'}
+                  onClick={() => setSortBy('popular')}
+                >
+                  <FireOutlined />
+                  <FormattedMessage id="community.sort.popular" defaultMessage="Popular" />
+                </SegmentButton>
+              </SegmentGroup>
+            </FilterBlock>
 
-            <FilterGroup>
-              <span className="label">
-                <FilterOutlined style={{ marginRight: 4 }} />
-                <FormattedMessage id="community.advancedFilter" defaultMessage="高级筛选" />
-              </span>
-              <Select
-                value={promptAccess}
-                onChange={setPromptAccess}
-                size="large"
-                bordered={false}
-                style={{ width: 168, background: 'rgba(0,0,0,0.04)', borderRadius: 8 }}
-                options={[
-                  {
-                    value: 'all',
-                    label: intl.formatMessage({ id: 'community.promptAccess.all', defaultMessage: '全部提示词' }),
-                  },
-                  {
-                    value: 'free',
-                    label: (
-                      <Space size={6}>
-                        <UnlockOutlined style={{ color: '#52c41a' }} />
-                        {intl.formatMessage({ id: 'community.promptAccess.free', defaultMessage: '免费开放' })}
-                      </Space>
-                    ),
-                  },
-                  {
-                    value: 'paid',
-                    label: (
-                      <Space size={6}>
-                        <LockOutlined style={{ color: '#7c3aed' }} />
-                        {intl.formatMessage({ id: 'community.promptAccess.paid', defaultMessage: '需购买' })}
-                      </Space>
-                    ),
-                  },
-                ]}
-              />
-            </FilterGroup>
-          </AdvancedFilterWrap>
+            <FilterDivider aria-hidden />
+
+            <FilterBlock>
+              <FilterBlockLabel>
+                <FilterOutlined />
+                <FormattedMessage id="community.advancedFilter" defaultMessage="Advanced filters" />
+              </FilterBlockLabel>
+              <SegmentGroup role="tablist" aria-label={intl.formatMessage({ id: 'community.advancedFilter', defaultMessage: 'Advanced filters' })}>
+                <SegmentButton
+                  type="button"
+                  role="tab"
+                  aria-selected={promptAccess === 'all'}
+                  $active={promptAccess === 'all'}
+                  onClick={() => setPromptAccess('all')}
+                >
+                  <FormattedMessage id="community.promptAccess.all" defaultMessage="All prompts" />
+                </SegmentButton>
+                <SegmentButton
+                  type="button"
+                  role="tab"
+                  aria-selected={promptAccess === 'free'}
+                  $active={promptAccess === 'free'}
+                  $variant="free"
+                  onClick={() => setPromptAccess('free')}
+                >
+                  <UnlockOutlined />
+                  <FormattedMessage id="community.promptAccess.free" defaultMessage="Free access" />
+                </SegmentButton>
+                <SegmentButton
+                  type="button"
+                  role="tab"
+                  aria-selected={promptAccess === 'paid'}
+                  $active={promptAccess === 'paid'}
+                  $variant="paid"
+                  onClick={() => setPromptAccess('paid')}
+                >
+                  <LockOutlined />
+                  <FormattedMessage id="community.promptAccess.paid" defaultMessage="Purchase required" />
+                </SegmentButton>
+              </SegmentGroup>
+            </FilterBlock>
+
+            <FilterBarActions>
+              <Button
+                type="primary"
+                shape="round"
+                icon={<PlusOutlined />}
+                onClick={() => navigate('/workspace/create/text-to-image')}
+              >
+                <FormattedMessage id="community.publish" defaultMessage="Publish artwork" />
+              </Button>
+            </FilterBarActions>
+          </FilterBar>
         </ToolBar>
 
         {/* --- Art Grid：JS 瀑布流，新帖子严格出现在底部 --- */}
@@ -1583,14 +2207,11 @@ const ChannelDetailPage = () => {
               return (
                 <div key={post.id}>
                   <ModernCard>
-                    <CardImageWrapper
-                      $delisted={delisted}
-                      onClick={hasMultipleImages ? () => handleOpenStackPreview(post) : undefined}
-                    >
+                    <CardImageWrapper $delisted={delisted}>
                       <Image
                         src={getPostImageUrl(post, { quality: 20 })}
                         alt={post.title}
-                        preview={hasMultipleImages ? false : buildPostPreviewConfig(post)}
+                        preview={false}
                       />
                       {hasMultipleImages && (
                         <MultiImageBadge>
@@ -1624,10 +2245,33 @@ const ChannelDetailPage = () => {
                           onStatusChange={handlePostShelfStatusChange}
                         />
                       )}
+                      <CardCenterActions>
+                        <CardGlassActionBtn
+                          type="button"
+                          onClick={(e) => handlePostPreviewClick(post, e)}
+                        >
+                          <EyeOutlined />
+                          <FormattedMessage id="post.preview" defaultMessage="Preview" />
+                        </CardGlassActionBtn>
+                        <CardGlassActionBtn
+                          type="button"
+                          onClick={(e) => handlePostDetailClick(post, e)}
+                        >
+                          <FormattedMessage id="post.viewDetail" defaultMessage="Details" />
+                          <ArrowRightOutlined style={{ fontSize: 10 }} />
+                        </CardGlassActionBtn>
+                      </CardCenterActions>
                     </CardImageWrapper>
 
                     <FloatingActions>
-                      <Tooltip title={isLiked ? "Unlike" : "Like"} placement="left">
+                      <Tooltip
+                        title={
+                          isLiked
+                            ? intl.formatMessage({ id: 'community.post.unlike', defaultMessage: '取消喜欢' })
+                            : intl.formatMessage({ id: 'community.post.like', defaultMessage: '喜欢' })
+                        }
+                        placement="left"
+                      >
                         <GlassBtn
                           active={isLiked}
                           activeColor="#ff4d4f"
@@ -1637,7 +2281,14 @@ const ChannelDetailPage = () => {
                           {isLiked ? <HeartFilled /> : <HeartOutlined />}
                         </GlassBtn>
                       </Tooltip>
-                      <Tooltip title={isCollected ? "Uncollect" : "Collect"} placement="left">
+                      <Tooltip
+                        title={
+                          isCollected
+                            ? intl.formatMessage({ id: 'community.post.uncollect', defaultMessage: '取消收藏' })
+                            : intl.formatMessage({ id: 'community.post.collect', defaultMessage: '收藏' })
+                        }
+                        placement="left"
+                      >
                         <GlassBtn
                           active={isCollected}
                           activeColor="#faad14"
@@ -1651,12 +2302,6 @@ const ChannelDetailPage = () => {
                     <CardContent>
                       <CardTitleRow>
                         <CardTitle title={post.title}>{post.title || intl.formatMessage({ id: 'post.untitled', defaultMessage: 'Untitled Creation' })}</CardTitle>
-                        <DetailLink
-                          onClick={(e) => handlePostDetailClick(post, e)}
-                        >
-                          <FormattedMessage id="post.viewDetail" defaultMessage="Details" />
-                          <ArrowRightOutlined style={{ fontSize: 10 }} />
-                        </DetailLink>
                       </CardTitleRow>
                       {cardSpecs.length > 0 && (
                         <CardSpecRow>
@@ -1671,7 +2316,15 @@ const ChannelDetailPage = () => {
                         </CardSpecRow>
                       )}
                       <MetaRow>
-                        <UserInfo>
+                        <UserInfo
+                          onClick={(e) => {
+                            if (post.userId) {
+                              e.stopPropagation();
+                              navigate(`/community/user/${post.userId}`);
+                            }
+                          }}
+                          style={{ cursor: post.userId ? 'pointer' : 'default' }}
+                        >
                           <Avatar
                             size={22}
                             src={post.userAvatar}
@@ -1685,10 +2338,10 @@ const ChannelDetailPage = () => {
                           <span className="name">{post.userNickname || 'Anonymous'}</span>
                         </UserInfo>
                         <StatsInfo>
-                          <Tooltip title="Likes">
+                          <Tooltip title={intl.formatMessage({ id: 'community.post.likesTooltip', defaultMessage: '点赞数' })}>
                             <span><HeartFilled style={{ fontSize: 11 }} /> {post.likeCount || 0}</span>
                           </Tooltip>
-                          <Tooltip title="Views">
+                          <Tooltip title={intl.formatMessage({ id: 'community.post.viewsTooltip', defaultMessage: '浏览数' })}>
                             <span><EyeOutlined style={{ fontSize: 11 }} /> {post.viewCount || 0}</span>
                           </Tooltip>
                         </StatsInfo>
@@ -1742,34 +2395,18 @@ const ChannelDetailPage = () => {
         channelId={channel?.id}
         channelName={channel?.name}
         onClose={() => setAiOperatorModalOpen(false)}
-        onPostTriggered={async () => {
-          if (!channel?.id) return;
-          setPage(1);
-          setPostsLoading(true);
-          try {
-            const data = await listPosts({
-              channelId: channel.id,
-              page: 1,
-              pageSize: 20,
-              sortBy,
-              ...(promptAccess !== 'all' ? { promptAccess } : {}),
-            });
-            setPosts(data);
-            setHasMore(data.length === 20);
-          } catch (error) {
-            message.error(error?.response?.data?.message || 'Load failed');
-          } finally {
-            setPostsLoading(false);
-          }
-        }}
+        onPostTriggered={reloadPosts}
       />
 
       <PostStackImagePreview
         open={Boolean(stackPreviewPost)}
         images={stackPreviewPost ? getPostPreviewUrls(stackPreviewPost, { quality: 90, width: 1920 }) : []}
+        originalImages={stackPreviewPost ? getPostMediaUrls(stackPreviewPost) : []}
         currentIndex={stackPreviewIndex}
         onChange={setStackPreviewIndex}
         onClose={handleCloseStackPreview}
+        loginReturnTo={stackPreviewPost ? buildPreviewLoginReturnTo(stackPreviewPost, stackPreviewIndex) : undefined}
+        initialShowOriginal={stackPreviewShowOriginal}
       />
     </PageLayout>
   );
