@@ -6,7 +6,7 @@ import React from 'react';
 import { Typography, theme, Button, Space } from 'antd';
 import { CompassOutlined, HomeOutlined, BulbOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import ExploreChannels from '../../Community/ExploreChannels';
+import ExploreChannels from '../../Community/channels/ExploreChannels';
 
 const { Title, Paragraph, Text } = Typography;
 

@@ -14,7 +14,7 @@ import RealitySlider from './RealitySlider';
 import BentoGrid from './BentoGrid';
 import RecipeTimeline from './RecipeTimeline';
 import MaterialLab from './MaterialLab';
-import ExploreChannels from './ExploreChannels';
+import ExploreChannels from './channels/ExploreChannels';
 
 const { Title, Paragraph, Text } = Typography;
 

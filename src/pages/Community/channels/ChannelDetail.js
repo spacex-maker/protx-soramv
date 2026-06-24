@@ -26,7 +26,7 @@ import PostShelfToggle from 'components/community/PostShelfToggle';
 import { isPostDelisted } from 'utils/communityPostStatus';
 import { communityChannelPath } from 'utils/communityRoutes';
 import PostStackImagePreview from 'components/community/PostStackImagePreview';
-import { getPostCardSpecs, getPostMediaUrls } from './ChallengeDetailPage/utils';
+import { getPostCardSpecs, getPostMediaUrls } from '../ChallengeDetailPage/utils';
 import { getPostPromptAccessType } from 'utils/communityPostPrompt';
 
 const { Text } = Typography;

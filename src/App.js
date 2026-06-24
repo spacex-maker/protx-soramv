@@ -44,9 +44,11 @@ import TermsOfServicePage from './pages/TermsOfService';
 import PrivacyPolicyPage from './pages/PrivacyPolicy';
 import GoogleCallback from './pages/GoogleCallback';
 import CommunityPage from './pages/Community';
-import CommunityExplorePage from './pages/Community/ExplorePage';
-import LegacyCommunityChannelRedirect from './pages/Community/LegacyCommunityChannelRedirect';
-import ChannelDetailPage from './pages/Community/ChannelDetail';
+import {
+  CommunityExplorePage,
+  ChannelDetailPage,
+  LegacyCommunityChannelRedirect,
+} from './pages/Community/channels';
 import PostDetailPage from './pages/Community/PostDetail';
 import MySavedPostsPage from './pages/Community/MySavedPostsPage';
 import CommunityUserProfilePage from './pages/Community/CommunityUserProfilePage';
