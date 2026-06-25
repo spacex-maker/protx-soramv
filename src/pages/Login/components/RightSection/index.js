@@ -14,7 +14,7 @@ import {
   MailOutlined,
   LockOutlined,
 } from '@ant-design/icons';
-import GoogleGIcon from './GoogleGIcon';
+import CaptchaField from 'components/security/CaptchaField';
 import { 
   SiWechat, 
   SiTencentqq, 
@@ -67,8 +67,9 @@ const LOGIN_METHOD_ICONS = {
   password: LockOutlined,
 };
 
-// 暂时隐藏前 N 个登录方式（恢复时改为 0）
-const HIDE_FIRST_LOGIN_METHODS = 3;
+// 社交登录已接入的方式（邮箱密码为表单主登录，不在此列展示）
+const SUPPORTED_SOCIAL_LOGIN_CODES = new Set(['google']);
+const FORM_LOGIN_CODES = new Set(['email', 'password']);
 
 const emailSuffixes = [
   "@qq.com",
@@ -101,6 +102,10 @@ export const RightSection = ({
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [loginMethods, setLoginMethods] = useState([]);
+  const [captchaId, setCaptchaId] = useState('');
+  const [captchaCode, setCaptchaCode] = useState('');
+  const [captchaFocused, setCaptchaFocused] = useState(false);
+  const captchaRefreshRef = useRef(null);
   const dropdownRef = useRef(null);
   const emailSuffixButtonRef = useRef(null);
   const inputWrapperRef = useRef(null);
@@ -190,7 +195,14 @@ export const RightSection = ({
   };
 
   // 处理社交登录按钮点击
-  const handleSocialLogin = async (methodCode) => {
+  const handleSocialLogin = async (methodCode, isSupported) => {
+    if (!isSupported) {
+      message.info(intl.formatMessage({
+        id: 'login.social.comingSoon',
+        defaultMessage: '该登录方式正在开发中',
+      }));
+      return;
+    }
     if (methodCode === 'google') {
       // 谷歌登录
       const result = await auth.getGoogleAuthUrl();
@@ -211,13 +223,21 @@ export const RightSection = ({
     setShowSuffixDropdown(!showSuffixDropdown);
   };
 
+  const handleFormSubmit = (e) => {
+    handleSubmit(e, {
+      captchaId,
+      captchaCode,
+      refreshCaptcha: () => captchaRefreshRef.current?.(),
+    });
+  };
+
   return (
     <RightSectionWrapper>
       <LoginBox>
         <Logo>
           <FormattedMessage id="login.title" />
         </Logo>
-        <Form onSubmit={handleSubmit} autoComplete="off">
+        <Form onSubmit={handleFormSubmit} autoComplete="off">
           <FormItem>
             <InputWrapper ref={inputWrapperRef}>
               <Input
@@ -306,12 +326,29 @@ export const RightSection = ({
             </FormOptionsRow>
           </FormItem>
 
+          <FormItem>
+            <InputWrapper>
+              <CaptchaField
+                variant="pill"
+                captchaId={captchaId}
+                captchaCode={captchaCode}
+                onCaptchaIdChange={setCaptchaId}
+                onCaptchaCodeChange={setCaptchaCode}
+                onRegisterRefresh={(fn) => { captchaRefreshRef.current = fn; }}
+                onFocusChange={setCaptchaFocused}
+              />
+              <BorderGlow className={captchaFocused ? 'active' : ''} />
+            </InputWrapper>
+          </FormItem>
+
           {error && <ErrorText>{error}</ErrorText>}
 
           <SubmitButton type="submit" disabled={loading}>
-            <FormattedMessage 
-              id={loading ? 'login.loading' : 'login.button'} 
-            />
+            <span>
+              <FormattedMessage 
+                id={loading ? 'login.loading' : 'login.button'} 
+              />
+            </span>
           </SubmitButton>
 
           <Divider>
@@ -322,11 +359,13 @@ export const RightSection = ({
 
           <SocialLogin>
             {loginMethods
-              .filter((method, i) => method.code === 'google' || i >= HIDE_FIRST_LOGIN_METHODS)
+              .filter((method) => !FORM_LOGIN_CODES.has(method.code))
               .map((method, index) => {
               const IconComponent = LOGIN_METHOD_ICONS[method.code];
               const isGoogle = method.code === 'google';
-              const hasIcon = isGoogle || IconComponent;
+              const hasMappedIcon = isGoogle || IconComponent;
+              const hasIconUrl = Boolean(method.iconUrl);
+              const isSupported = SUPPORTED_SOCIAL_LOGIN_CODES.has(method.code);
               // 解析多语言名称，获取当前语言的名称
               let methodName = method.code;
               try {
@@ -339,18 +378,29 @@ export const RightSection = ({
               // 将 phone_sms 映射为 phone 类型以匹配样式
               const socialType = method.code === 'phone_sms' ? 'phone' : method.code;
               
-              return hasIcon ? (
+              if (!hasMappedIcon && !hasIconUrl) {
+                return null;
+              }
+
+              return (
                 <SocialButton 
                   key={method.code}
                   type="button" 
                   socialType={socialType} 
                   index={index} 
                   title={methodName}
-                  onClick={() => handleSocialLogin(method.code)}
+                  $unsupported={!isSupported}
+                  onClick={() => handleSocialLogin(method.code, isSupported)}
                 >
-                  {isGoogle ? <GoogleGIcon size={20} /> : <IconComponent />}
+                  {hasIconUrl ? (
+                    <img src={method.iconUrl} alt="" width={20} height={20} style={{ objectFit: 'contain' }} />
+                  ) : isGoogle ? (
+                    <GoogleGIcon size={20} />
+                  ) : (
+                    <IconComponent />
+                  )}
                 </SocialButton>
-              ) : null;
+              );
             })}
           </SocialLogin>
 

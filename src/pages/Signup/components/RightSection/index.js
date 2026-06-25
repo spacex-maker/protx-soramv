@@ -27,6 +27,7 @@ import {
   VerifyCodeButton,
   RuleHint
 } from './styles';
+import CaptchaField from 'components/security/CaptchaField';
 
 // 邮箱后缀列表
 const emailSuffixes = [
@@ -70,6 +71,11 @@ export const RightSection = ({
   handleSubmit,
   inviteCode,
   setInviteCode,
+  captchaId,
+  captchaCode,
+  onCaptchaIdChange,
+  onCaptchaCodeChange,
+  onRegisterCaptchaRefresh,
 }) => {
   const intl = useIntl();
   const [usernameFocused, setUsernameFocused] = React.useState(false);
@@ -322,6 +328,16 @@ export const RightSection = ({
             </InputWrapper>
           </FormItem>
 
+          <FormItem index={2.5}>
+            <CaptchaField
+              captchaId={captchaId}
+              captchaCode={captchaCode}
+              onCaptchaIdChange={onCaptchaIdChange}
+              onCaptchaCodeChange={onCaptchaCodeChange}
+              onRegisterRefresh={onRegisterCaptchaRefresh}
+            />
+          </FormItem>
+
           <FormItem index={3}>
             <InputWrapper>
               <Input
@@ -436,11 +452,13 @@ export const RightSection = ({
           {error && <ErrorText>{error}</ErrorText>}
 
           <SubmitButton type="submit" disabled={loading}>
-            {loading ? (
-              <FormattedMessage id="signup.loading" />
-            ) : (
-              <FormattedMessage id="signup.button" />
-            )}
+            <span>
+              {loading ? (
+                <FormattedMessage id="signup.loading" />
+              ) : (
+                <FormattedMessage id="signup.button" />
+              )}
+            </span>
           </SubmitButton>
         </Form>
         <Footer>

@@ -36,6 +36,9 @@ const SignupPage = () => {
   const [countdown, setCountdown] = useState(0);
   const [isSending, setIsSending] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
+  const [captchaId, setCaptchaId] = useState('');
+  const [captchaCode, setCaptchaCode] = useState('');
+  const captchaRefreshRef = useRef(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -154,17 +157,22 @@ const SignupPage = () => {
     try {
       const response = await axios.post('/base/productx/user/register-send-email', {
         email,
-        locale: locale
+        locale: locale,
+        captchaId,
+        captchaCode,
       });
 
       if (response.data.success) {
         message.success(intl.formatMessage({ id: 'signup.verificationCode.success' }));
         startCountdown();
+        captchaRefreshRef.current?.();
       } else {
         setError(response.data.message || intl.formatMessage({ id: 'signup.verificationCode.error' }));
+        captchaRefreshRef.current?.();
       }
     } catch (error) {
       setError(error.response?.data?.message || intl.formatMessage({ id: 'signup.verificationCode.error' }));
+      captchaRefreshRef.current?.();
     } finally {
       setIsSending(false);
     }
@@ -274,6 +282,11 @@ const SignupPage = () => {
           handleSubmit={handleSubmit}
           inviteCode={inviteCode}
           setInviteCode={setInviteCode}
+          captchaId={captchaId}
+          captchaCode={captchaCode}
+          onCaptchaIdChange={setCaptchaId}
+          onCaptchaCodeChange={setCaptchaCode}
+          onRegisterCaptchaRefresh={(fn) => { captchaRefreshRef.current = fn; }}
         />
         <PhilosophyQuote>
           {intl.formatMessage({ id: 'common.philosophy' })}

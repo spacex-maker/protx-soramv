@@ -91,7 +91,7 @@ const categoryConfig = {
   OTHER: '其他'
 };
 
-const FeedbackModal = ({ open, onClose }) => {
+const FeedbackModal = ({ open, onClose, zIndex = 1000 }) => {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -370,6 +370,7 @@ const FeedbackModal = ({ open, onClose }) => {
       cancelText="取消"
       confirmLoading={submitting}
       width={800}
+      zIndex={zIndex}
     >
       <Tabs 
         activeKey={activeTab} 

@@ -122,12 +122,32 @@ export const PageContainer = styled.div`
   }
 `;
 
-export const VersionTag = styled.div`
+export const VersionTag = styled.button`
   position: absolute;
   top: 1.5rem;
   left: 1.5rem;
   font-size: 0.75rem;
   color: var(--ant-color-text-quaternary);
-  opacity: 0.7;
+  opacity: 0.85;
   z-index: 10;
+  cursor: pointer;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid ${props => props.theme.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.12)'
+    : 'rgba(0, 0, 0, 0.08)'};
+  border-radius: 9999px;
+  background: ${props => props.theme.mode === 'dark'
+    ? 'rgba(255, 255, 255, 0.06)'
+    : 'rgba(255, 255, 255, 0.55)'};
+  backdrop-filter: blur(8px);
+  transition: opacity 0.2s, color 0.2s, border-color 0.2s, background 0.2s;
+
+  &:hover {
+    opacity: 1;
+    color: var(--ant-color-primary);
+    border-color: var(--ant-color-primary-border);
+    background: ${props => props.theme.mode === 'dark'
+      ? 'rgba(59, 130, 246, 0.12)'
+      : 'rgba(59, 130, 246, 0.08)'};
+  }
 `; 

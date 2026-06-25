@@ -208,7 +208,7 @@ const categoryConfig = {
   OTHER: '其他'
 };
 
-const MobileFeedbackModal = ({ open, onClose }) => {
+const MobileFeedbackModal = ({ open, onClose, zIndex = 1000 }) => {
   const [form] = Form.useForm();
   const [submitting, setSubmitting] = useState(false);
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -502,6 +502,7 @@ const MobileFeedbackModal = ({ open, onClose }) => {
     <MobileDrawer
       open={open}
       onClose={onClose}
+      zIndex={zIndex}
       title={
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: '16px', fontWeight: 500 }}>需求管理</span>

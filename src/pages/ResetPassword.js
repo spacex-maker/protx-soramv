@@ -6,6 +6,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { Helmet } from 'react-helmet';
 import axios from '../api/axios';
 import { base } from '../api/base';
+import CaptchaField from 'components/security/CaptchaField';
 import {
   GlobalOutlined,
   SunOutlined,
@@ -490,7 +491,10 @@ const ResetPasswordContent = () => {
   // Dropdown State
   const [showSuffix, setShowSuffix] = useState(false);
   const dropdownRef = useRef(null);
+  const captchaRefreshRef = useRef(null);
   const [languages, setLanguages] = useState([]);
+  const [captchaId, setCaptchaId] = useState('');
+  const [captchaCode, setCaptchaCode] = useState('');
 
   // Fetch Languages
   useEffect(() => {
@@ -553,15 +557,22 @@ const ResetPasswordContent = () => {
     
     setIsSending(true);
     try {
-      const res = await axios.post('/base/productx/user/reset-pass-send-email', { email });
+      const res = await axios.post('/base/productx/user/reset-pass-send-email', {
+        email,
+        captchaId,
+        captchaCode,
+      });
       if (res.data.success) {
         message.success(intl.formatMessage({ id: 'resetPassword.success.codeSent', defaultMessage: '验证码已发送' }));
         setCountdown(60);
+        captchaRefreshRef.current?.();
       } else {
         message.error(res.data.message || intl.formatMessage({ id: 'resetPassword.error.sendFailed', defaultMessage: '发送失败' }));
+        captchaRefreshRef.current?.();
       }
     } catch (err) {
-      message.error(intl.formatMessage({ id: 'resetPassword.error.sendFailed', defaultMessage: '发送失败，请稍后重试' }));
+      message.error(err.response?.data?.message || intl.formatMessage({ id: 'resetPassword.error.sendFailed', defaultMessage: '发送失败，请稍后重试' }));
+      captchaRefreshRef.current?.();
     } finally {
       setIsSending(false);
     }
@@ -675,6 +686,16 @@ const ResetPasswordContent = () => {
                         )}
                       </AnimatePresence>
                     </InputGroup>
+
+                    <div style={{ marginBottom: 20 }}>
+                      <CaptchaField
+                        captchaId={captchaId}
+                        captchaCode={captchaCode}
+                        onCaptchaIdChange={setCaptchaId}
+                        onCaptchaCodeChange={setCaptchaCode}
+                        onRegisterRefresh={(fn) => { captchaRefreshRef.current = fn; }}
+                      />
+                    </div>
 
                     {/* Code Input */}
                     <InputGroup $token={token}>

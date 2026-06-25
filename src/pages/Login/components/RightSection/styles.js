@@ -1,6 +1,32 @@
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { Link } from 'react-router-dom';
 import { slideInFromRight, fadeInScale, marqueeGlow } from '../../styles';
+
+const gradientShift = keyframes`
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+`;
+
+const submitShimmer = keyframes`
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+`;
+
+const submitGlowPulse = keyframes`
+  0%, 100% {
+    box-shadow:
+      0 0 16px rgba(59, 130, 246, 0.45),
+      0 0 32px rgba(139, 92, 246, 0.28),
+      0 4px 14px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 22px rgba(59, 130, 246, 0.65),
+      0 0 40px rgba(236, 72, 153, 0.35),
+      0 6px 20px rgba(139, 92, 246, 0.3);
+  }
+`;
 
 // 社交媒体的品牌颜色（Google 用白底+边框，与官方「通过 Google 登录」一致）
 const SOCIAL_COLORS = {
@@ -86,9 +112,9 @@ export const RightSectionWrapper = styled.div`
   padding: 2rem;
   background: ${props => props.theme.mode === 'dark' 
     ? 'rgba(30, 27, 75, 0.4)'
-    : 'rgba(255, 255, 255, 0.55)'};
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+    : 'transparent'};
+  backdrop-filter: ${props => props.theme.mode === 'dark' ? 'blur(20px)' : 'none'};
+  -webkit-backdrop-filter: ${props => props.theme.mode === 'dark' ? 'blur(20px)' : 'none'};
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   height: 100%;
@@ -107,7 +133,7 @@ export const LoginBox = styled.div`
   padding: 2rem;
   background: ${props => props.theme.mode === 'dark' 
     ? 'transparent' 
-    : '#ffffff'};
+    : 'transparent'};
   border-radius: 1rem;
   box-shadow: none;
   animation: ${fadeInScale} 0.8s ease-out 0.5s both;
@@ -316,31 +342,94 @@ export const PasswordToggle = styled.button`
 
 export const SubmitButton = styled.button`
   width: 100%;
-  padding: 0.875rem;
-  border-radius: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-radius: 9999px;
   border: none;
-  background: var(--ant-color-primary);
-  color: ${props => props.theme.mode === 'dark' ? '#ffffff' : '#000000'};
-  font-weight: 500;
-  font-size: 0.875rem;
+  font-weight: 600;
+  font-size: 1rem;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: transform 0.25s ease, filter 0.25s ease;
   margin-top: 0.5rem;
   position: relative;
   overflow: hidden;
+  z-index: 1;
+  color: #ffffff;
+  background: linear-gradient(
+    135deg,
+    #3b82f6 0%,
+    #6366f1 18%,
+    #8b5cf6 36%,
+    #ec4899 54%,
+    #f59e0b 72%,
+    #3b82f6 100%
+  );
+  background-size: 300% 300%;
+  animation: ${gradientShift} 4s ease infinite, ${submitGlowPulse} 2.5s ease-in-out infinite;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 
-  &:hover {
-    background: var(--ant-color-primary-hover);
-    transform: translateY(-1px);
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.35),
+      transparent
+    );
+    animation: ${submitShimmer} 2.8s ease-in-out infinite;
+    pointer-events: none;
   }
 
-  &:active {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 2px;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.35),
+      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0.35)
+    );
+    background-size: 200% 100%;
+    animation: ${marqueeGlow} 3s linear infinite;
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.85;
+  }
+
+  span, & > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    filter: brightness(1.06);
+  }
+
+  &:active:not(:disabled) {
     transform: translateY(0);
+    filter: brightness(0.98);
   }
 
   &:disabled {
-    opacity: 0.7;
+    opacity: 0.72;
     cursor: not-allowed;
+    animation: none;
+    filter: grayscale(0.15);
   }
 `;
 
@@ -369,7 +458,9 @@ export const Divider = styled.div`
 export const SocialLogin = styled.div`
   display: flex;
   justify-content: center;
-  gap: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  max-width: 100%;
 `;
 
 export const SocialButton = styled.button`
@@ -385,10 +476,11 @@ export const SocialButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
+  cursor: ${props => props.$unsupported ? 'not-allowed' : 'pointer'};
   transition: all 0.3s;
   font-size: 1.25rem;
-  opacity: 0;
+  opacity: ${props => props.$unsupported ? 0.45 : 0};
+  filter: ${props => props.$unsupported ? 'grayscale(1)' : 'none'};
   animation: ${fadeInScale} 0.5s ease-out forwards;
   animation-delay: ${props => props.index * 0.1 + 0.8}s;
 
@@ -397,15 +489,19 @@ export const SocialButton = styled.button`
     height: 20px;
   }
 
+  img {
+    display: block;
+  }
+
   &:hover {
     background: ${props => getSocialColor(props.socialType, 'hoverColor')};
     ${props => getSocialColor(props.socialType, 'hoverBorderColor') ? `border-color: ${getSocialColor(props.socialType, 'hoverBorderColor')};` : ''}
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+    transform: ${props => props.$unsupported ? 'none' : 'translateY(-2px)'};
+    box-shadow: ${props => props.$unsupported ? 'none' : '0 4px 8px rgba(0, 0, 0, 0.08)'};
   }
 
   &:active {
-    transform: translateY(0);
+    transform: ${props => props.$unsupported ? 'none' : 'translateY(0)'};
   }
 `;
 

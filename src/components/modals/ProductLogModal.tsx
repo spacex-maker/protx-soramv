@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Timeline, Spin, Typography, Tag, Modal, Upload, Progress, message, Alert } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -28,6 +29,11 @@ interface PaginationResponse {
   totalNum: number;
 }
 
+/** 产品日志全屏层 */
+const PRODUCT_LOG_Z_INDEX = 1100;
+/** 产品日志内打开的子弹窗（提需求、发布更新） */
+const PRODUCT_LOG_CHILD_Z_INDEX = 1200;
+
 const FullScreenOverlay = styled.div<{ visible: boolean }>`
   position: fixed;
   top: 0;
@@ -38,7 +44,7 @@ const FullScreenOverlay = styled.div<{ visible: boolean }>`
     ? 'rgba(0, 0, 0, 0.2)'
     : 'rgba(255, 255, 255, 0.2)'};
   backdrop-filter: blur(8px);
-  z-index: 1000;
+  z-index: ${PRODUCT_LOG_Z_INDEX};
   display: ${props => props.visible ? 'flex' : 'none'};
   flex-direction: column;
   align-items: center;
@@ -49,20 +55,30 @@ const Header = styled.div`
   top: 0;
   left: 0;
   right: 0;
-  z-index: 1002;
-  padding: 16px;
+  z-index: ${PRODUCT_LOG_Z_INDEX + 2};
+  padding: 0 16px;
   background: ${props => props.theme.mode === 'dark'
     ? 'rgba(0, 0, 0, 0.3)'
     : 'rgba(255, 255, 255, 0.3)'};
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  display: flex;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
+  gap: 12px;
   height: 64px;
   box-shadow: 0 1px 20px ${props => props.theme.mode === 'dark'
     ? 'rgba(0, 0, 0, 0.15)'
     : 'rgba(255, 255, 255, 0.15)'};
+`;
+
+const HeaderActions = styled.div`
+  grid-column: 3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
 `;
 
 const ScrollContainer = styled.div`
@@ -92,7 +108,6 @@ const ContentContainer = styled.div`
 `;
 
 const ActionButton = styled.button`
-  position: fixed;
   background: ${props => props.theme.mode === 'dark'
     ? 'rgba(0, 0, 0, 0.6)'
     : 'rgba(255, 255, 255, 0.6)'};
@@ -113,9 +128,9 @@ const ActionButton = styled.button`
   box-shadow: 0 2px 8px ${props => props.theme.mode === 'dark'
     ? 'rgba(0, 0, 0, 0.3)'
     : 'rgba(0, 0, 0, 0.1)'};
-  z-index: 1003;
   padding: 0 16px;
   font-weight: 500;
+  flex-shrink: 0;
 
   &:hover {
     background: ${props => props.theme.mode === 'dark'
@@ -129,15 +144,18 @@ const ActionButton = styled.button`
   }
 `;
 
-const FeedbackButton = styled(ActionButton)`
-  top: 12px;
-  right: 64px;
+const HeaderIconButton = styled(ActionButton)`
+  width: 40px;
+  padding: 0;
+  font-size: 20px;
+  border-radius: 50%;
 `;
 
 const DeployButton = styled(ActionButton)`
+  position: fixed;
   bottom: 24px;
   right: 24px;
-  top: auto;
+  z-index: ${PRODUCT_LOG_Z_INDEX + 3};
   background: ${props => props.theme.mode === 'dark'
     ? 'rgba(24, 144, 255, 0.85)'
     : 'rgba(24, 144, 255, 0.92)'};
@@ -150,21 +168,14 @@ const DeployButton = styled(ActionButton)`
   }
 `;
 
-const CloseButton = styled(ActionButton)`
-  top: 12px;
-  right: 12px;
-  width: 40px;
-  padding: 0;
-  font-size: 20px;
-  border-radius: 50%;
-`;
-
 const Title = styled.h1`
+  grid-column: 2;
   text-align: center;
   color: ${props => props.theme.mode === 'dark' ? '#fff' : '#000'};
   margin: 0;
   font-size: 24px;
   font-weight: 600;
+  white-space: nowrap;
 `;
 
 const StyledTimeline = styled(Timeline)`
@@ -377,19 +388,26 @@ const ProductLogModal: React.FC<ProductLogModalProps> = ({ open, onClose }) => {
     }
   };
 
-  return (
+  if (!open) {
+    return null;
+  }
+
+  const modalContent = (
+    <>
     <FullScreenOverlay visible={open}>
       <Header>
         <Title>
           <FormattedMessage id="productLog.title" defaultMessage="产品更新日志" />
         </Title>
-        <FeedbackButton onClick={() => setIsFeedbackVisible(true)}>
-          <BulbOutlined />
-          <FormattedMessage id="productLog.feedback" defaultMessage="提需求" />
-        </FeedbackButton>
-        <CloseButton onClick={onClose}>
-          <CloseOutlined />
-        </CloseButton>
+        <HeaderActions>
+          <ActionButton type="button" onClick={() => setIsFeedbackVisible(true)}>
+            <BulbOutlined />
+            <FormattedMessage id="productLog.feedback" defaultMessage="提需求" />
+          </ActionButton>
+          <HeaderIconButton type="button" onClick={onClose} aria-label="close">
+            <CloseOutlined />
+          </HeaderIconButton>
+        </HeaderActions>
       </Header>
       <ScrollContainer ref={containerRef}>
         <ContentContainer>
@@ -429,10 +447,6 @@ const ProductLogModal: React.FC<ProductLogModalProps> = ({ open, onClose }) => {
           )}
         </ContentContainer>
       </ScrollContainer>
-      <FeedbackModalEntry
-        open={isFeedbackVisible}
-        onClose={() => setIsFeedbackVisible(false)}
-      />
 
       {canDeployCore && (
         <DeployButton onClick={() => setDeployModalOpen(true)}>
@@ -443,6 +457,7 @@ const ProductLogModal: React.FC<ProductLogModalProps> = ({ open, onClose }) => {
 
       <Modal
         open={deployModalOpen}
+        zIndex={PRODUCT_LOG_CHILD_Z_INDEX}
         title={intl.formatMessage({ id: 'productLog.deployTitle', defaultMessage: '发布 Core 更新' })}
         okText={intl.formatMessage({ id: 'productLog.deployConfirm', defaultMessage: '上传并发布' })}
         cancelText={intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' })}
@@ -497,7 +512,16 @@ const ProductLogModal: React.FC<ProductLogModalProps> = ({ open, onClose }) => {
         )}
       </Modal>
     </FullScreenOverlay>
+
+    <FeedbackModalEntry
+      open={isFeedbackVisible}
+      onClose={() => setIsFeedbackVisible(false)}
+      zIndex={PRODUCT_LOG_CHILD_Z_INDEX}
+    />
+    </>
   );
+
+  return createPortal(modalContent, document.body);
 };
 
 export default ProductLogModal; 

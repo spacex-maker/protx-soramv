@@ -14,6 +14,8 @@ import { PageContainer, VersionTag } from './styles';
 import { TopControls } from './components/TopControls';
 import { RightSection } from './components/RightSection';
 import { PhilosophyQuote, PoweredBy } from './components/Footer';
+import ProductLogModal from 'components/modals/ProductLogModal';
+import instance from 'api/axios';
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -28,6 +30,31 @@ const LoginPage = () => {
   const { locale, changeLocale } = useLocale();
   const intl = useIntl();
   const [languages, setLanguages] = useState([]);
+  const [productLogOpen, setProductLogOpen] = useState(false);
+  const [latestVersion, setLatestVersion] = useState('');
+
+  const formatVersionLabel = (version) => {
+    if (!version) return '';
+    const trimmed = String(version).trim();
+    return trimmed.startsWith('v') ? trimmed : `v${trimmed}`;
+  };
+
+  // 获取产品日志最新版本号
+  useEffect(() => {
+    const fetchLatestVersion = async () => {
+      try {
+        const response = await instance.get('/productx/product-update-log/list', {
+          params: { currentPage: 1, pageSize: 1 },
+        });
+        if (response.data?.success && response.data.data?.data?.length) {
+          setLatestVersion(formatVersionLabel(response.data.data.data[0].version));
+        }
+      } catch (error) {
+        console.error('Failed to fetch latest product version:', error);
+      }
+    };
+    fetchLatestVersion();
+  }, []);
 
   // 获取支持的语言列表
   useEffect(() => {
@@ -57,23 +84,30 @@ const LoginPage = () => {
     }
   }, []);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, captcha) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const result = await auth.login({ email, password });
+      const result = await auth.login({
+        email,
+        password,
+        captchaId: captcha?.captchaId,
+        captchaCode: captcha?.captchaCode,
+      });
       if (result.success) {
         saveRememberedLogin(email, password, rememberPassword);
         message.success("登录成功");
         navigate(consumeLoginRedirect('/workspace'));
       } else if (!result.isUserDisabled && !result.isIpBlocked) {
         setError(result.message || "登录失败");
+        captcha?.refreshCaptcha?.();
       }
     } catch (error) {
       if (!error?.isUserDisabled && !error?.isIpBlocked) {
         setError(error.response?.data?.message || '登录失败，请稍后重试');
+        captcha?.refreshCaptcha?.();
       }
     } finally {
       setLoading(false);
@@ -111,7 +145,21 @@ const LoginPage = () => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
       </SEO>
       <PageContainer>
-        <VersionTag>v1.4.3</VersionTag>
+        <VersionTag
+          type="button"
+          onClick={() => setProductLogOpen(true)}
+          title={intl.formatMessage({
+            id: 'login.version.changelog',
+            defaultMessage: '查看产品更新日志',
+          })}
+        >
+          {latestVersion || intl.formatMessage({ id: 'login.version.loading', defaultMessage: '版本加载中…' })}
+        </VersionTag>
+
+        <ProductLogModal
+          open={productLogOpen}
+          onClose={() => setProductLogOpen(false)}
+        />
         
         <TopControls 
           isDark={isDark} 

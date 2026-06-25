@@ -2,11 +2,13 @@ import axios from './axios';
 
 export const auth = {
   // 登录
-  login: async ({ email, password }) => {
+  login: async ({ email, password, captchaId, captchaCode }) => {
     try {
       const { data } = await axios.post('/productx/user/login', { 
         username: email, 
-        password 
+        password,
+        captchaId,
+        captchaCode,
       });
       
       if (data.success) {
