@@ -265,3 +265,29 @@ export const saveChannelAiOperatorBudget = async (
   }
   return response.data.data;
 };
+
+export interface AiOperatorRuntimeStatus {
+  runtimeEnabled?: boolean;
+}
+
+export const getAiOperatorRuntimeStatus = async (): Promise<AiOperatorRuntimeStatus> => {
+  const response = await instance.get<ApiResponse<AiOperatorRuntimeStatus>>(
+    '/productx/community/ai-operator/runtime-status'
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '加载运行状态失败');
+  }
+  return response.data.data || { runtimeEnabled: true };
+};
+
+export const setAiOperatorRuntimeEnabled = async (enabled: boolean): Promise<AiOperatorRuntimeStatus> => {
+  const response = await instance.post<ApiResponse<AiOperatorRuntimeStatus>>(
+    '/productx/community/ai-operator/runtime-switch',
+    null,
+    { params: { enabled } }
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '设置运行状态失败');
+  }
+  return response.data.data || { runtimeEnabled: enabled };
+};

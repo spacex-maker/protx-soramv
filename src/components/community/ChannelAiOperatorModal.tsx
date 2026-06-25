@@ -36,6 +36,7 @@ import {
   ClockCircleOutlined,
   CrownOutlined,
   SendOutlined,
+  PauseCircleOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useNavigate } from 'react-router-dom';
@@ -53,6 +54,8 @@ import {
   updateChannelAiOperator,
   getChannelAiOperatorBudget,
   AiOperatorBudgetStatus,
+  getAiOperatorRuntimeStatus,
+  setAiOperatorRuntimeEnabled,
 } from 'api/communityAiOperator';
 import { CommunityChannel, listChannels } from 'api/community';
 import AiOperatorTriggerPostModal from './AiOperatorTriggerPostModal';
@@ -199,6 +202,50 @@ const ToolbarRow = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+`;
+
+const GlobalRuntimeBar = styled.div<{ $paused?: boolean }>`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: ${(p) =>
+    p.$paused
+      ? p.theme.mode === 'dark'
+        ? 'rgba(239,68,68,0.12)'
+        : '#fef2f2'
+      : p.theme.mode === 'dark'
+        ? 'rgba(34,197,94,0.1)'
+        : '#f0fdf4'};
+  border: 1px solid ${(p) =>
+    p.$paused
+      ? p.theme.mode === 'dark'
+        ? 'rgba(239,68,68,0.35)'
+        : '#fecaca'
+      : p.theme.mode === 'dark'
+        ? 'rgba(34,197,94,0.3)'
+        : '#bbf7d0'};
+
+  .runtime-main {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .runtime-title {
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
+
+  .runtime-desc {
+    font-size: 12px;
+    color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.45)')};
+    line-height: 1.35;
+  }
 `;
 
 const ChannelOptionWrap = styled.div`
@@ -1381,6 +1428,7 @@ interface OperatorConfigPanelProps {
   modelOptions: { value: string; label: string }[];
   channels: CommunityChannel[];
   saving: boolean;
+  runtimeEnabled: boolean;
   onDraftChange: (patch: Partial<CommunityAiOperator>) => void;
   onSave: () => void;
   onTrigger: () => void;
@@ -1391,6 +1439,7 @@ const OperatorConfigPanel: React.FC<OperatorConfigPanelProps> = ({
   modelOptions,
   channels,
   saving,
+  runtimeEnabled,
   onDraftChange,
   onSave,
   onTrigger,
@@ -1513,7 +1562,12 @@ const OperatorConfigPanel: React.FC<OperatorConfigPanelProps> = ({
         </Button>
         <Tooltip
           title={
-            !draft.canPost
+            !runtimeEnabled
+              ? intl.formatMessage({
+                  id: 'community.aiOperator.runtime.pausedHint',
+                  defaultMessage: '已暂停全部自动调度与手动触发，开启后恢复',
+                })
+              : !draft.canPost
               ? intl.formatMessage({ id: 'community.aiOperator.needCanPost', defaultMessage: '请先开启「允许发帖」' })
               : intl.formatMessage({
                   id: 'community.aiOperator.triggerHint',
@@ -1521,7 +1575,11 @@ const OperatorConfigPanel: React.FC<OperatorConfigPanelProps> = ({
                 })
           }
         >
-          <Button icon={<PlayCircleOutlined />} disabled={!draft.canPost} onClick={onTrigger}>
+          <Button
+            icon={<PlayCircleOutlined />}
+            disabled={!draft.canPost || !runtimeEnabled}
+            onClick={onTrigger}
+          >
             <FormattedMessage id="community.aiOperator.triggerPost" defaultMessage="立即发帖" />
           </Button>
         </Tooltip>
@@ -1550,6 +1608,41 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
   const [activeChannelId, setActiveChannelId] = useState<number | undefined>(channelId);
   const [budgetStatus, setBudgetStatus] = useState<AiOperatorBudgetStatus | null>(null);
   const [budgetRefreshKey, setBudgetRefreshKey] = useState(0);
+  const [runtimeEnabled, setRuntimeEnabled] = useState(true);
+  const [runtimeSwitching, setRuntimeSwitching] = useState(false);
+
+  const loadRuntimeStatus = useCallback(async () => {
+    try {
+      const status = await getAiOperatorRuntimeStatus();
+      setRuntimeEnabled(Boolean(status.runtimeEnabled));
+    } catch {
+      setRuntimeEnabled(true);
+    }
+  }, []);
+
+  const handleRuntimeToggle = async (enabled: boolean) => {
+    setRuntimeSwitching(true);
+    try {
+      const status = await setAiOperatorRuntimeEnabled(enabled);
+      setRuntimeEnabled(Boolean(status.runtimeEnabled));
+      message.success(
+        enabled
+          ? intl.formatMessage({
+              id: 'community.aiOperator.runtime.enabled',
+              defaultMessage: 'AI 运营已全局开启',
+            })
+          : intl.formatMessage({
+              id: 'community.aiOperator.runtime.paused',
+              defaultMessage: 'AI 运营已全局暂停',
+            })
+      );
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      message.error(err?.message || intl.formatMessage({ id: 'common.failed', defaultMessage: '操作失败' }));
+    } finally {
+      setRuntimeSwitching(false);
+    }
+  };
 
   const loadData = useCallback(async (targetChannelId?: number) => {
     const cid = targetChannelId ?? activeChannelId;
@@ -1583,6 +1676,12 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
       setLoading(false);
     }
   }, [activeChannelId, intl]);
+
+  useEffect(() => {
+    if (open) {
+      loadRuntimeStatus();
+    }
+  }, [open, loadRuntimeStatus]);
 
   useEffect(() => {
     if (open && channelId) {
@@ -1737,6 +1836,44 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
       }}
     >
       <ModalBody>
+        <GlobalRuntimeBar $paused={!runtimeEnabled}>
+          <div className="runtime-main">
+            {runtimeEnabled ? (
+              <RobotOutlined style={{ fontSize: 18, color: '#16a34a' }} />
+            ) : (
+              <PauseCircleOutlined style={{ fontSize: 18, color: '#ef4444' }} />
+            )}
+            <div>
+              <div className="runtime-title">
+                <FormattedMessage
+                  id="community.aiOperator.runtime.title"
+                  defaultMessage="全局运行开关"
+                />
+              </div>
+              <div className="runtime-desc">
+                {runtimeEnabled ? (
+                  <FormattedMessage
+                    id="community.aiOperator.runtime.runningHint"
+                    defaultMessage="所有 AI 运营账号将按计划自动发帖、互动"
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="community.aiOperator.runtime.pausedHint"
+                    defaultMessage="已暂停全部自动调度与手动触发，开启后恢复"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+          <Switch
+            checked={runtimeEnabled}
+            loading={runtimeSwitching}
+            onChange={handleRuntimeToggle}
+            checkedChildren={intl.formatMessage({ id: 'community.aiOperator.runtime.on', defaultMessage: '运行' })}
+            unCheckedChildren={intl.formatMessage({ id: 'community.aiOperator.runtime.off', defaultMessage: '暂停' })}
+          />
+        </GlobalRuntimeBar>
+
         <ToolbarRow>
           <RichChannelSelect
             style={{ minWidth: 240, flex: 1, maxWidth: 400 }}
@@ -1836,6 +1973,7 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
                               modelOptions={modelOptions}
                               channels={channels}
                               saving={savingId === selectedId}
+                              runtimeEnabled={runtimeEnabled}
                               onDraftChange={(patch) => updateDraft(selectedId, patch)}
                               onSave={() => handleSave(selectedId)}
                               onTrigger={() => handleOpenTriggerModal(selectedId)}

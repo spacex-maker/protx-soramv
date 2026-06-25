@@ -20,6 +20,7 @@ interface CosCredentialPayload {
   host: string;
   bucketName?: string;
   region?: string;
+  cosKey?: string;
 }
 
 export const checkCoreDeployPermission = async (): Promise<boolean> => {
@@ -42,17 +43,35 @@ const fetchCoreDeployCosCredential = async (): Promise<CosCredentialPayload> => 
   return data.data as CosCredentialPayload;
 };
 
-/**
- * 浏览器直传 core JAR 到 COS 固定路径，不经过后端业务服务器上传接口。
- */
-export const uploadCoreJar = async (
+/** 经后端 multipart 上传（旧版接口，cos-credential 不可用时的回退） */
+const uploadCoreJarViaServer = async (
   file: File,
   onProgress?: (percent: number) => void
 ): Promise<{ success: boolean; message?: string; data?: CoreDeployUploadResult }> => {
-  const cred = await fetchCoreDeployCosCredential();
-  const bucket = cred.bucketName || 'px-1258150206';
+  const formData = new FormData();
+  formData.append('file', file);
+  const { data } = await instance.post('/productx/core-deploy/upload-jar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (event) => {
+      if (onProgress && event.total) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    },
+  });
+  if (!data?.success) {
+    return { success: false, message: data?.message || '上传失败' };
+  }
+  return { success: true, message: data.message, data: data.data as CoreDeployUploadResult };
+};
+
+const uploadCoreJarDirectToCos = async (
+  file: File,
+  cred: CosCredentialPayload,
+  onProgress?: (percent: number) => void
+): Promise<CoreDeployUploadResult> => {
+  const bucket = cred.bucketName || 'public-1258150206';
   const region = cred.region || 'ap-nanjing';
-  const key = CORE_JAR_COS_KEY;
+  const key = cred.cosKey || CORE_JAR_COS_KEY;
 
   const cos = new COS({
     SecretId: cred.secretId,
@@ -108,13 +127,33 @@ export const uploadCoreJar = async (
   const host = cred.host?.endsWith('/') ? cred.host : `${cred.host}/`;
 
   return {
-    success: true,
-    data: {
-      cosKey: key,
-      jarFileName: 'core-0.0.1.jar',
-      fileSize: file.size,
-      uploadedAt: new Date().toISOString(),
-      downloadUrl: `${host}${key}`,
-    },
+    cosKey: key,
+    jarFileName: 'core-0.0.1.jar',
+    fileSize: file.size,
+    uploadedAt: new Date().toISOString(),
+    downloadUrl: `${host}${key}`,
   };
+};
+
+/**
+ * 上传 core JAR：优先浏览器直传 COS；若 cos-credential 接口不可用则回退经后端上传。
+ */
+export const uploadCoreJar = async (
+  file: File,
+  onProgress?: (percent: number) => void
+): Promise<{ success: boolean; message?: string; data?: CoreDeployUploadResult }> => {
+  try {
+    const cred = await fetchCoreDeployCosCredential();
+    const data = await uploadCoreJarDirectToCos(file, cred, onProgress);
+    return { success: true, data };
+  } catch (directError) {
+    try {
+      return await uploadCoreJarViaServer(file, onProgress);
+    } catch (serverError: unknown) {
+      const directMsg = directError instanceof Error ? directError.message : String(directError);
+      const serverErr = serverError as { response?: { data?: { message?: string } }; message?: string };
+      const serverMsg = serverErr?.response?.data?.message || serverErr?.message || '上传失败';
+      throw new Error(serverMsg || directMsg);
+    }
+  }
 };
