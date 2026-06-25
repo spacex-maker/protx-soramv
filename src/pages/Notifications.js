@@ -6,6 +6,7 @@ import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
 import {
   getNotifications,
+  getUnreadNotificationCount,
   markNotificationRead,
   markAllNotificationsRead,
   deleteNotification,
@@ -20,7 +21,10 @@ import {
   Tooltip,
   Popconfirm,
   Segmented,
-  Divider
+  Divider,
+  Pagination,
+  Spin,
+  Tag,
 } from "antd";
 import { 
   BellOutlined,
@@ -33,7 +37,11 @@ import {
   ReloadOutlined,
   ClockCircleOutlined,
   ReadOutlined,
-  FilterOutlined
+  FilterOutlined,
+  TeamOutlined,
+  ThunderboltOutlined,
+  WalletOutlined,
+  DollarOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -57,10 +65,66 @@ const PageLayout = styled.div`
 `;
 
 const ContentContainer = styled(motion.div)`
-  max-width: 800px;
+  max-width: 860px;
   width: 95%;
   margin: 0 auto;
   padding-bottom: 60px;
+`;
+
+const StatsBar = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+
+  .stat-item {
+    flex: 1;
+    min-width: 120px;
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: ${(p) => p.$token.colorBgContainer};
+    border: 1px solid ${(p) => p.$token.colorBorderSecondary};
+
+    .label {
+      font-size: 12px;
+      color: ${(p) => p.$token.colorTextTertiary};
+      margin-bottom: 4px;
+    }
+
+    .value {
+      font-size: 22px;
+      font-weight: 700;
+      color: ${(p) => p.$token.colorText};
+      line-height: 1.2;
+    }
+  }
+`;
+
+const ListPanel = styled.div`
+  position: relative;
+  min-height: 200px;
+`;
+
+const PaginationWrap = styled.div`
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
+  padding: 16px 0 8px;
+`;
+
+const FilterLabel = styled.span`
+  font-size: 12px;
+  color: ${(p) => p.$token.colorTextTertiary};
+  margin-right: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+`;
+
+const FilterRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 `;
 
 const PageHeader = styled.div`
@@ -185,34 +249,28 @@ const DateHeader = styled.h3`
 const NotificationCard = styled(motion.div)`
   position: relative;
   background: ${props => props.$read ? props.$token.colorBgContainer : props.$token.colorBgElevated};
-  border: 1px solid ${props => props.$read ? 'transparent' : props.$token.colorPrimaryBorder};
-  border-bottom: 1px solid ${props => props.$token.colorBorderSecondary};
-  padding: 16px 20px; /* 稍微调小一点 padding */
-  margin-bottom: 8px;
-  border-radius: 16px;
+  border: 1px solid ${props => props.$read ? props.$token.colorBorderSecondary : props.$token.colorPrimaryBorder};
+  padding: 16px 18px;
+  margin-bottom: 10px;
+  border-radius: 14px;
   transition: all 0.2s ease;
   cursor: pointer;
+  overflow: hidden;
 
   ${props => !props.$read && css`
-    background: ${props.$token.colorPrimaryBg}40;
-    &::before {
-      content: '';
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: ${props.$token.colorPrimary};
-    }
+    background: linear-gradient(
+      135deg,
+      ${props.$token.colorPrimaryBg}55 0%,
+      ${props.$token.colorBgContainer} 100%
+    );
+    box-shadow: inset 3px 0 0 ${props.$token.colorPrimary};
   `}
 
   &:hover {
-    background: ${props => props.$token.colorBgContainer};
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(0,0,0,0.06);
+    border-color: ${props => props.$token.colorPrimaryBorder};
     z-index: 1;
-    border-color: transparent;
     
     .action-buttons { opacity: 1; }
   }
@@ -242,48 +300,39 @@ const IconBox = styled.div`
 
 const TextContent = styled.div`
   flex: 1;
-  padding-right: 24px;
+  min-width: 0;
+  padding-right: 12px;
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
 
   h4 {
-    margin: 0 0 4px 0;
+    margin: 0;
     font-size: 15px;
     font-weight: 600;
     color: ${props => props.$token.colorText};
   }
 
   p {
-    margin: 0 0 6px 0;
+    margin: 0 0 8px 0;
     font-size: 13px;
     color: ${props => props.$token.colorTextSecondary};
-    line-height: 1.5;
+    line-height: 1.55;
+    word-break: break-word;
   }
 
   .meta {
     font-size: 12px;
     color: ${props => props.$token.colorTextTertiary};
-  }
-`;
-
-const ActionButtons = styled.div`
-  position: absolute;
-  top: 50%;
-  right: 20px;
-  transform: translateY(-50%);
-  display: flex;
-  gap: 8px;
-  opacity: 0;
-  transition: all 0.2s ease;
-  background: ${props => props.$token.colorBgContainer};
-  padding-left: 12px;
-  
-  @media (max-width: 768px) {
-    position: static;
-    opacity: 1;
-    transform: none;
-    justify-content: flex-end;
-    margin-top: 8px;
-    background: transparent;
-    padding-left: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 `;
 
@@ -310,6 +359,32 @@ const ActionButton = styled.button`
 // 2. 逻辑组件
 // ==========================================
 
+const ActionButtons = styled.div`
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: all 0.2s ease;
+  
+  @media (max-width: 768px) {
+    position: static;
+    opacity: 1;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
+`;
+
+const PAGE_SIZE_DEFAULT = 15;
+
+const CATEGORY_ICON = {
+  community: TeamOutlined,
+  task: ThunderboltOutlined,
+  billing: WalletOutlined,
+  recharge: DollarOutlined,
+};
+
 const NotificationsContent = () => {
   const { token } = theme.useToken();
   const intl = useIntl();
@@ -317,10 +392,16 @@ const NotificationsContent = () => {
   const [loading, setLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [filterType, setFilterType] = useState('all');
-  const [category, setCategory] = useState('all');
+  const [displayType, setDisplayType] = useState('all');
+  const [bizCategory, setBizCategory] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_DEFAULT);
+  const [totalNum, setTotalNum] = useState(0);
+  const [unreadTotal, setUnreadTotal] = useState(0);
 
   const mapNotification = useCallback((item) => ({
     id: item.id,
+    category: item.category || 'system',
     type: item.type || 'info',
     title: item.title,
     description: item.messageText || '',
@@ -329,17 +410,30 @@ const NotificationsContent = () => {
     actionUrl: item.actionUrl,
   }), []);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchUnreadCount = useCallback(async () => {
+    try {
+      const res = await getUnreadNotificationCount();
+      if (res?.data?.success) {
+        setUnreadTotal(res.data.data?.unreadCount ?? 0);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const fetchNotifications = useCallback(async (page = currentPage, size = pageSize) => {
     setLoading(true);
     try {
       const res = await getNotifications({
-        currentPage: 1,
-        pageSize: 100,
+        currentPage: page,
+        pageSize: size,
         filterType,
-        type: category,
+        type: displayType,
+        category: bizCategory,
       });
       if (res?.data?.success && res.data.data?.data) {
         setNotifications(res.data.data.data.map(mapNotification));
+        setTotalNum(Number(res.data.data.totalNum) || 0);
       } else {
         message.error(res?.data?.message || intl.formatMessage({ id: 'notifications.fetchFailed', defaultMessage: '加载通知失败' }));
       }
@@ -348,17 +442,31 @@ const NotificationsContent = () => {
     } finally {
       setLoading(false);
     }
-  }, [filterType, category, intl, mapNotification]);
+  }, [bizCategory, currentPage, displayType, filterType, intl, mapNotification, pageSize]);
 
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    fetchUnreadCount();
+  }, [fetchUnreadCount]);
+
+  useEffect(() => {
+    fetchNotifications(currentPage, pageSize);
+  }, [fetchNotifications, currentPage, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, displayType, bizCategory]);
+
+  const handleRefresh = () => {
+    fetchUnreadCount();
+    fetchNotifications(currentPage, pageSize);
+  };
 
   const handleMarkAllRead = async () => {
     try {
       const res = await markAllNotificationsRead();
       if (res?.data?.success) {
         setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        setUnreadTotal(0);
         message.success(intl.formatMessage({ id: 'notifications.markAllReadSuccess', defaultMessage: '全部已读' }));
       }
     } catch (error) {
@@ -370,8 +478,18 @@ const NotificationsContent = () => {
     try {
       const res = await deleteNotification(id);
       if (res?.data?.success) {
+        const deleted = notifications.find(n => n.id === id);
         setNotifications(prev => prev.filter(n => n.id !== id));
+        setTotalNum(prev => Math.max(prev - 1, 0));
+        if (deleted && !deleted.read) {
+          setUnreadTotal(prev => Math.max(prev - 1, 0));
+        }
         message.success(intl.formatMessage({ id: 'notifications.deleteSuccess', defaultMessage: '已删除' }));
+        if (notifications.length === 1 && currentPage > 1) {
+          setCurrentPage(currentPage - 1);
+        } else if (notifications.length === 1) {
+          fetchNotifications(1, pageSize);
+        }
       }
     } catch (error) {
       message.error(intl.formatMessage({ id: 'notifications.deleteFailed', defaultMessage: '删除失败' }));
@@ -379,9 +497,13 @@ const NotificationsContent = () => {
   };
 
   const handleMarkRead = async (id) => {
+    const wasUnread = notifications.some(n => n.id === id && !n.read);
     try {
       const res = await markNotificationRead(id);
       if (res?.data?.success) {
+        if (wasUnread) {
+          setUnreadTotal(count => Math.max(count - 1, 0));
+        }
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
       }
     } catch (error) {
@@ -406,6 +528,34 @@ const NotificationsContent = () => {
     error: intl.formatMessage({ id: 'notifications.type.error', defaultMessage: 'Error' }),
   };
 
+  const categoryLabels = {
+    all: intl.formatMessage({ id: 'notifications.category.all', defaultMessage: '全部分类' }),
+    community: intl.formatMessage({ id: 'notifications.category.community', defaultMessage: '社区' }),
+    task: intl.formatMessage({ id: 'notifications.category.task', defaultMessage: '生成任务' }),
+    billing: intl.formatMessage({ id: 'notifications.category.billing', defaultMessage: '账单' }),
+    recharge: intl.formatMessage({ id: 'notifications.category.recharge', defaultMessage: '充值' }),
+    system: intl.formatMessage({ id: 'notifications.category.system', defaultMessage: '系统' }),
+  };
+
+  const categoryColors = {
+    community: 'blue',
+    task: 'purple',
+    billing: 'orange',
+    recharge: 'green',
+    system: 'default',
+  };
+
+  const renderNotificationIcon = (item) => {
+    const CategoryIcon = CATEGORY_ICON[item.category];
+    if (CategoryIcon) {
+      return <CategoryIcon />;
+    }
+    if (item.type === 'success') return <CheckCircleFilled />;
+    if (item.type === 'error') return <CloseCircleFilled />;
+    if (item.type === 'warning') return <ExclamationCircleFilled />;
+    return <InfoCircleFilled />;
+  };
+
   const filteredList = notifications;
 
   const groupedNotifications = useMemo(() => {
@@ -421,7 +571,7 @@ const NotificationsContent = () => {
     return groups;
   }, [filteredList]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = unreadTotal;
 
   const renderGroup = (title, items) => {
     if (items.length === 0) return null;
@@ -440,41 +590,56 @@ const NotificationsContent = () => {
               layout
               onClick={() => handleOpenNotification(item)}
             >
-              <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                <NotificationContent>
-                  <IconBox $type={item.type} $token={token}>
-                    {item.type === 'success' && <CheckCircleFilled />}
-                    {item.type === 'error' && <CloseCircleFilled />}
-                    {item.type === 'warning' && <ExclamationCircleFilled />}
-                    {item.type === 'info' && <InfoCircleFilled />}
-                  </IconBox>
-                  <TextContent $read={item.read} $token={token}>
+              <NotificationContent>
+                <IconBox $type={item.type} $token={token}>
+                  {renderNotificationIcon(item)}
+                </IconBox>
+                <TextContent $token={token}>
+                  <div className="head">
                     <h4>{item.title}</h4>
-                    <p>{item.description}</p>
-                    <div className="meta">
-                      {dayjs(item.createTime).fromNow()}
-                    </div>
-                  </TextContent>
-                </NotificationContent>
-                <ActionButtons className="action-buttons" $token={token}>
-                  {!item.read && (
-                    <Tooltip title={intl.formatMessage({ id: 'notifications.markRead', defaultMessage: '标记已读' })}>
-                      <ActionButton $token={token} onClick={(e) => { e.stopPropagation(); handleMarkRead(item.id); }}>
-                        <CheckOutlined />
-                      </ActionButton>
-                    </Tooltip>
-                  )}
-                  <Popconfirm
-                    title={intl.formatMessage({ id: 'notifications.deleteConfirm', defaultMessage: '确认删除?' })}
-                    onConfirm={(e) => { e?.stopPropagation?.(); handleDelete(item.id); }}
-                    onCancel={(e) => e?.stopPropagation?.()}
-                  >
-                    <ActionButton $token={token} onClick={(e) => e.stopPropagation()}>
-                      <DeleteOutlined />
+                    {!item.read && (
+                      <Tag color="processing" style={{ margin: 0, fontSize: 11 }}>
+                        {intl.formatMessage({ id: 'notifications.unreadBadge', defaultMessage: '未读' })}
+                      </Tag>
+                    )}
+                    {item.category && item.category !== 'system' && (
+                      <Tag color={categoryColors[item.category] || 'default'} style={{ margin: 0, fontSize: 11 }}>
+                        {categoryLabels[item.category] || item.category}
+                      </Tag>
+                    )}
+                  </div>
+                  <p>{item.description}</p>
+                  <div className="meta">
+                    <span>{dayjs(item.createTime).format('YYYY-MM-DD HH:mm')}</span>
+                    <span>·</span>
+                    <span>{dayjs(item.createTime).fromNow()}</span>
+                    {item.actionUrl && (
+                      <>
+                        <span>·</span>
+                        <span>{intl.formatMessage({ id: 'notifications.clickToView', defaultMessage: '点击查看' })}</span>
+                      </>
+                    )}
+                  </div>
+                </TextContent>
+              </NotificationContent>
+              <ActionButtons className="action-buttons" $token={token}>
+                {!item.read && (
+                  <Tooltip title={intl.formatMessage({ id: 'notifications.markRead', defaultMessage: '标记已读' })}>
+                    <ActionButton $token={token} onClick={(e) => { e.stopPropagation(); handleMarkRead(item.id); }}>
+                      <CheckOutlined />
                     </ActionButton>
-                  </Popconfirm>
-                </ActionButtons>
-              </div>
+                  </Tooltip>
+                )}
+                <Popconfirm
+                  title={intl.formatMessage({ id: 'notifications.deleteConfirm', defaultMessage: '确认删除?' })}
+                  onConfirm={(e) => { e?.stopPropagation?.(); handleDelete(item.id); }}
+                  onCancel={(e) => e?.stopPropagation?.()}
+                >
+                  <ActionButton $token={token} onClick={(e) => e.stopPropagation()}>
+                    <DeleteOutlined />
+                  </ActionButton>
+                </Popconfirm>
+              </ActionButtons>
             </NotificationCard>
           ))}
         </AnimatePresence>
@@ -496,15 +661,30 @@ const NotificationsContent = () => {
             <p>{intl.formatMessage({ id: 'notifications.subtitle', defaultMessage: '集中管理您的所有系统消息与提醒' })}</p>
           </div>
           <div className="actions">
-             <Button icon={<ReloadOutlined />} onClick={fetchNotifications} loading={loading}>
+             <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={loading}>
                {intl.formatMessage({ id: 'notifications.refresh', defaultMessage: '刷新' })}
              </Button>
           </div>
         </PageHeader>
 
-        {/* 修复后的双层工具栏 */}
+        <StatsBar $token={token}>
+          <div className="stat-item">
+            <div className="label">{intl.formatMessage({ id: 'notifications.statTotal', defaultMessage: '消息总数' })}</div>
+            <div className="value">{totalNum}</div>
+          </div>
+          <div className="stat-item">
+            <div className="label">{intl.formatMessage({ id: 'notifications.statUnread', defaultMessage: '未读消息' })}</div>
+            <div className="value" style={{ color: unreadCount > 0 ? token.colorPrimary : undefined }}>{unreadCount}</div>
+          </div>
+          <div className="stat-item">
+            <div className="label">{intl.formatMessage({ id: 'notifications.statPage', defaultMessage: '当前页' })}</div>
+            <div className="value" style={{ fontSize: 18 }}>
+              {totalNum === 0 ? '0 / 0' : `${currentPage} / ${Math.ceil(totalNum / pageSize)}`}
+            </div>
+          </div>
+        </StatsBar>
+
         <ToolbarContainer $token={token}>
-          {/* 第一行：主要筛选 + 操作 */}
           <ToolbarTopRow>
             <Segmented
               value={filterType}
@@ -529,31 +709,78 @@ const NotificationsContent = () => {
 
           <Divider style={{ margin: 0 }} />
 
-          {/* 第二行：分类标签 (Chip) */}
-          <ToolbarBottomRow>
-            <FilterOutlined style={{ color: token.colorTextTertiary, marginRight: 8 }} />
+          <FilterRow>
+            <FilterLabel $token={token}>
+              {intl.formatMessage({ id: 'notifications.categoryFilter', defaultMessage: '分类' })}
+            </FilterLabel>
+            {['all', 'community', 'task', 'billing', 'recharge', 'system'].map(cat => (
+              <Chip
+                key={cat}
+                $active={bizCategory === cat}
+                $token={token}
+                onClick={() => setBizCategory(cat)}
+              >
+                {categoryLabels[cat] || cat}
+              </Chip>
+            ))}
+          </FilterRow>
+
+          <FilterRow>
+            <FilterOutlined style={{ color: token.colorTextTertiary, marginRight: 0 }} />
+            <FilterLabel $token={token}>
+              {intl.formatMessage({ id: 'notifications.typeFilter', defaultMessage: '类型' })}
+            </FilterLabel>
             {['all', 'success', 'info', 'warning', 'error'].map(type => (
               <Chip 
                 key={type} 
-                $active={category === type} 
+                $active={displayType === type} 
                 $token={token}
-                onClick={() => setCategory(type)}
+                onClick={() => setDisplayType(type)}
               >
                 {typeLabels[type] || type}
               </Chip>
             ))}
-          </ToolbarBottomRow>
+          </FilterRow>
         </ToolbarContainer>
 
-        {/* 通知列表 */}
-        {filteredList.length === 0 ? (
-          <Empty description={intl.formatMessage({ id: 'notifications.empty', defaultMessage: '暂无通知' })} style={{ marginTop: 60 }} />
-        ) : (
-          <>
-            {renderGroup(intl.formatMessage({ id: 'notifications.group.today', defaultMessage: '今天' }), groupedNotifications.today)}
-            {renderGroup(intl.formatMessage({ id: 'notifications.group.yesterday', defaultMessage: '昨天' }), groupedNotifications.yesterday)}
-            {renderGroup(intl.formatMessage({ id: 'notifications.group.earlier', defaultMessage: '更早' }), groupedNotifications.earlier)}
-          </>
+        <ListPanel>
+          <Spin spinning={loading}>
+            {filteredList.length === 0 && !loading ? (
+              <Empty description={intl.formatMessage({ id: 'notifications.empty', defaultMessage: '暂无通知' })} style={{ marginTop: 60 }} />
+            ) : (
+              <>
+                {renderGroup(intl.formatMessage({ id: 'notifications.group.today', defaultMessage: '今天' }), groupedNotifications.today)}
+                {renderGroup(intl.formatMessage({ id: 'notifications.group.yesterday', defaultMessage: '昨天' }), groupedNotifications.yesterday)}
+                {renderGroup(intl.formatMessage({ id: 'notifications.group.earlier', defaultMessage: '更早' }), groupedNotifications.earlier)}
+              </>
+            )}
+          </Spin>
+        </ListPanel>
+
+        {totalNum > 0 && (
+          <PaginationWrap>
+            <Pagination
+              current={currentPage}
+              pageSize={pageSize}
+              total={totalNum}
+              showSizeChanger
+              pageSizeOptions={[10, 15, 20, 50]}
+              disabled={loading}
+              showTotal={(total) =>
+                intl.formatMessage(
+                  { id: 'notifications.paginationTotal', defaultMessage: '共 {total} 条' },
+                  { total }
+                )
+              }
+              onChange={(page, size) => {
+                setCurrentPage(page);
+                if (size !== pageSize) {
+                  setPageSize(size);
+                }
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            />
+          </PaginationWrap>
         )}
       </ContentContainer>
     </PageLayout>

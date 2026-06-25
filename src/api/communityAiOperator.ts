@@ -32,6 +32,7 @@ export interface CommunityAiOperator {
   postFrequencyDays?: number;
   lastActionTime?: string;
   createTime?: string;
+  periodUsedTokens?: number;
 }
 
 export interface CommunityAiOperatorUpdateRequest {
@@ -165,6 +166,31 @@ export interface CommunityAiOperatorPostRecord {
   createTime?: string;
 }
 
+export interface CommunityAiOperatorPostRecordStats {
+  totalPosts?: number;
+  postSuccess?: number;
+  postFailed?: number;
+  totalGenerates?: number;
+  generateSuccess?: number;
+  generateFailed?: number;
+  totalActions?: number;
+  firstActionTime?: string;
+  lastActionTime?: string;
+}
+
+export const getAiOperatorPostRecordStats = async (
+  operatorId: number
+): Promise<CommunityAiOperatorPostRecordStats> => {
+  const response = await instance.get<ApiResponse<CommunityAiOperatorPostRecordStats>>(
+    '/productx/community/ai-operator/post-records/stats',
+    { params: { operatorId } }
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '加载失败');
+  }
+  return response.data.data || {};
+};
+
 export const listAiOperatorPostRecords = async (
   operatorId: number,
   page = 1,
@@ -179,4 +205,63 @@ export const listAiOperatorPostRecords = async (
     throw new Error(response.data.message || '加载失败');
   }
   return response.data.data || { data: [], totalNum: 0 };
+};
+
+export interface AiOperatorBudgetStatus {
+  channelId?: number;
+  policyId?: number;
+  enabled?: boolean;
+  periodType?: string;
+  periodKey?: string;
+  budgetLimit?: number;
+  usedTokens?: number;
+  remainingTokens?: number | null;
+  usagePercent?: number;
+  warning?: boolean;
+  exceeded?: boolean;
+  warningThresholdPercent?: number;
+  exceedAction?: string;
+  remark?: string;
+  operatorBreakdown?: Array<{
+    operatorId: number;
+    displayName?: string;
+    avatar?: string;
+    status?: boolean;
+    usedTokens?: number;
+    lastPostTime?: string;
+  }>;
+}
+
+export interface AiOperatorBudgetSaveRequest {
+  channelId: number;
+  enabled?: boolean;
+  periodType?: string;
+  budgetLimit?: number;
+  warningThresholdPercent?: number;
+  exceedAction?: string;
+  remark?: string;
+}
+
+export const getChannelAiOperatorBudget = async (channelId: number): Promise<AiOperatorBudgetStatus> => {
+  const response = await instance.get<ApiResponse<AiOperatorBudgetStatus>>(
+    '/productx/community/ai-operator/budget',
+    { params: { channelId } }
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '加载预算失败');
+  }
+  return response.data.data;
+};
+
+export const saveChannelAiOperatorBudget = async (
+  request: AiOperatorBudgetSaveRequest
+): Promise<AiOperatorBudgetStatus> => {
+  const response = await instance.post<ApiResponse<AiOperatorBudgetStatus>>(
+    '/productx/community/ai-operator/budget/save',
+    request
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '保存预算失败');
+  }
+  return response.data.data;
 };

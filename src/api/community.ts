@@ -18,6 +18,8 @@ export interface CommunityPost {
   likeCount: number;
   commentCount: number;
   collectCount: number;
+  shareCount?: number;
+  downloadCount?: number;
   status: number; // 0=审核中, 1=公开, 2=私有, 9=违规下架
   reviewerId?: number;
   reviewerNickname?: string;
@@ -122,7 +124,7 @@ export type ListPostsParams = {
   userId?: number;
   page?: number;
   pageSize?: number;
-  sortBy?: 'latest' | 'popular';
+  sortBy?: 'latest' | 'popular' | 'shared' | 'downloaded';
   promptAccess?: 'free' | 'paid';
 };
 
@@ -199,6 +201,26 @@ export const listUserCommunityPosts = async (
 export const incrementPostView = async (postId: number): Promise<number> => {
   const response = await instance.post<ApiResponse<number>>(
     `/productx/community/post/${postId}/view`
+  );
+  return response.data.data;
+};
+
+/**
+ * 记录分享作品（通知作者，返回最新分享次数）
+ */
+export const recordPostShare = async (postId: number): Promise<number> => {
+  const response = await instance.post<ApiResponse<number>>(
+    `/productx/community/post/${postId}/share`
+  );
+  return response.data.data;
+};
+
+/**
+ * 记录下载作品（通知作者，返回最新下载次数）
+ */
+export const recordPostDownload = async (postId: number): Promise<number> => {
+  const response = await instance.post<ApiResponse<number>>(
+    `/productx/community/post/${postId}/download`
   );
   return response.data.data;
 };
@@ -339,6 +361,87 @@ export const getPostInteractionStatus = async (postId: number): Promise<Communit
     `/productx/community/interaction/${postId}/status`
   );
   return response.data.data;
+};
+
+export interface CommunityPostComment {
+  id: number;
+  postId: number;
+  parentId: number;
+  userId: number;
+  replyToUserId?: number;
+  replyToNickname?: string;
+  nickname?: string;
+  avatar?: string;
+  content: string;
+  likeCount?: number;
+  replyCount?: number;
+  isLiked?: boolean;
+  createTime?: string;
+  children?: CommunityPostComment[];
+}
+
+export interface CommunityPostCommentPage {
+  data: CommunityPostComment[];
+  totalNum: number;
+}
+
+export const listPostComments = async (
+  postId: number,
+  page = 1,
+  pageSize = 20
+): Promise<CommunityPostCommentPage> => {
+  const response = await instance.get<ApiResponse<CommunityPostCommentPage>>(
+    `/productx/community/post/${postId}/comments`,
+    { params: { page, pageSize, parentId: 0 } }
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '加载评论失败');
+  }
+  return response.data.data || { data: [], totalNum: 0 };
+};
+
+export const createPostComment = async (
+  postId: number,
+  payload: { content: string; parentId?: number; replyToUserId?: number }
+): Promise<boolean> => {
+  const response = await instance.post<ApiResponse<boolean>>(
+    `/productx/community/post/${postId}/comments`,
+    { postId, ...payload }
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '评论失败');
+  }
+  return Boolean(response.data.data);
+};
+
+export const deletePostComment = async (commentId: number): Promise<boolean> => {
+  const response = await instance.delete<ApiResponse<boolean>>(
+    `/productx/community/post/comment/${commentId}`
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '删除失败');
+  }
+  return Boolean(response.data.data);
+};
+
+export const likePostComment = async (commentId: number): Promise<boolean> => {
+  const response = await instance.post<ApiResponse<boolean>>(
+    `/productx/community/post/comment/${commentId}/like`
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '操作失败');
+  }
+  return Boolean(response.data.data);
+};
+
+export const unlikePostComment = async (commentId: number): Promise<boolean> => {
+  const response = await instance.post<ApiResponse<boolean>>(
+    `/productx/community/post/comment/${commentId}/unlike`
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '操作失败');
+  }
+  return Boolean(response.data.data);
 };
 
 /**
@@ -674,6 +777,8 @@ export interface ReviewPost {
   likeCount: number;
   commentCount: number;
   collectCount: number;
+  shareCount?: number;
+  downloadCount?: number;
   status: number; // 0=审核中, 1=公开, 2=私有, 9=违规下架
   isFeatured?: boolean;
   isChallengeEntry?: boolean;

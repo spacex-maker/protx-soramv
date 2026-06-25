@@ -7,6 +7,7 @@ import {
   StarOutlined, StarFilled, 
   EyeOutlined, UserOutlined,
   FireOutlined, ClockCircleOutlined,
+  ShareAltOutlined, DownloadOutlined,
   PictureOutlined, RobotOutlined,
   ArrowRightOutlined,
   FilterOutlined,
@@ -2130,6 +2131,26 @@ const ChannelDetailPage = () => {
                   <FireOutlined />
                   <FormattedMessage id="community.sort.popular" defaultMessage="Popular" />
                 </SegmentButton>
+                <SegmentButton
+                  type="button"
+                  role="tab"
+                  aria-selected={sortBy === 'shared'}
+                  $active={sortBy === 'shared'}
+                  onClick={() => setSortBy('shared')}
+                >
+                  <ShareAltOutlined />
+                  <FormattedMessage id="community.sort.shared" defaultMessage="Most shared" />
+                </SegmentButton>
+                <SegmentButton
+                  type="button"
+                  role="tab"
+                  aria-selected={sortBy === 'downloaded'}
+                  $active={sortBy === 'downloaded'}
+                  onClick={() => setSortBy('downloaded')}
+                >
+                  <DownloadOutlined />
+                  <FormattedMessage id="community.sort.downloaded" defaultMessage="Most downloaded" />
+                </SegmentButton>
               </SegmentGroup>
             </FilterBlock>
 
@@ -2343,6 +2364,12 @@ const ChannelDetailPage = () => {
                           </Tooltip>
                           <Tooltip title={intl.formatMessage({ id: 'community.post.viewsTooltip', defaultMessage: '浏览数' })}>
                             <span><EyeOutlined style={{ fontSize: 11 }} /> {post.viewCount || 0}</span>
+                          </Tooltip>
+                          <Tooltip title={intl.formatMessage({ id: 'community.post.sharesTooltip', defaultMessage: '分享数' })}>
+                            <span><ShareAltOutlined style={{ fontSize: 11 }} /> {post.shareCount || 0}</span>
+                          </Tooltip>
+                          <Tooltip title={intl.formatMessage({ id: 'community.post.downloadsTooltip', defaultMessage: '下载数' })}>
+                            <span><DownloadOutlined style={{ fontSize: 11 }} /> {post.downloadCount || 0}</span>
                           </Tooltip>
                         </StatsInfo>
                       </MetaRow>

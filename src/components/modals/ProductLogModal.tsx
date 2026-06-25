@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Timeline, Spin, Typography, Tag, Modal, Upload, Progress, message } from 'antd';
+import { Timeline, Spin, Typography, Tag, Modal, Upload, Progress, message, Alert } from 'antd';
 import type { UploadFile } from 'antd/es/upload/interface';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled from 'styled-components';
 import instance from 'api/axios';
 import { CloseOutlined, BulbOutlined, CloudUploadOutlined } from '@ant-design/icons';
 import FeedbackModalEntry from 'components/modals/FeedbackModalEntry';
-import { checkCoreDeployPermission, uploadCoreJar } from 'api/coreDeploy';
+import { checkCoreDeployPermission, uploadCoreJar, CORE_JAR_COS_KEY } from 'api/coreDeploy';
 
 const { Text } = Typography;
 
@@ -362,9 +362,10 @@ const ProductLogModal: React.FC<ProductLogModalProps> = ({ open, onClose }) => {
         }));
       }
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
+      const err = error as { message?: string; response?: { data?: { message?: string } } };
       message.error(
         err?.response?.data?.message
+          || err?.message
           || intl.formatMessage({
             id: 'productLog.deploy.failed',
             defaultMessage: '上传失败',
@@ -455,10 +456,22 @@ const ProductLogModal: React.FC<ProductLogModalProps> = ({ open, onClose }) => {
         }}
         destroyOnClose
       >
+        <Alert
+          type="info"
+          showIcon
+          style={{ marginBottom: 16 }}
+          message={
+            <FormattedMessage
+              id="productLog.deployDirectNote"
+              defaultMessage="文件由浏览器直传对象存储，不经过后端业务服务器。"
+            />
+          }
+        />
         <Typography.Paragraph type="secondary">
           <FormattedMessage
             id="productLog.deployDesc"
-            defaultMessage="上传 core JAR 到 COS 固定路径（deploy/core/core-0.0.1.jar），覆盖后请在产线服务器执行 scripts/deploy-core.sh 完成替换与重启。"
+            defaultMessage="上传 core JAR 到 COS 固定路径（{cosKey}），覆盖后请在产线服务器执行 scripts/deploy-core.sh 完成替换与重启。"
+            values={{ cosKey: CORE_JAR_COS_KEY }}
           />
         </Typography.Paragraph>
         <Upload.Dragger

@@ -13,6 +13,8 @@ import {
   Switch,
   Tabs,
   Tag,
+  TimePicker,
+  Timeline,
   Tooltip,
   Typography,
   message,
@@ -20,6 +22,7 @@ import {
 import {
   CheckCircleOutlined,
   CloseCircleOutlined,
+  FileImageOutlined,
   HistoryOutlined,
   LinkOutlined,
   PlayCircleOutlined,
@@ -29,31 +32,251 @@ import {
   SettingOutlined,
   CopyOutlined,
   UserOutlined,
+  WalletOutlined,
+  ClockCircleOutlined,
+  CrownOutlined,
+  SendOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+import dayjs, { Dayjs } from 'dayjs';
 import {
   CommunityAiOperator,
   CommunityAiOperatorPostRecord,
+  CommunityAiOperatorPostRecordStats,
+  getAiOperatorPostRecordStats,
   listAiOperatorPostRecords,
   listChannelAiOperators,
   listTextToImageModels,
   TextToImageModel,
   updateChannelAiOperator,
+  getChannelAiOperatorBudget,
+  AiOperatorBudgetStatus,
 } from 'api/communityAiOperator';
 import { CommunityChannel, listChannels } from 'api/community';
 import AiOperatorTriggerPostModal from './AiOperatorTriggerPostModal';
+import ChannelAiOperatorBudgetPanel from './ChannelAiOperatorBudgetPanel';
 
 const { Text, Paragraph } = Typography;
 
 const ModalBody = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  max-height: min(72vh, 720px);
+  gap: 12px;
+  max-height: min(78vh, 760px);
   overflow: hidden;
 `;
+
+const SplitLayout = styled.div`
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+
+  @media (max-width: 640px) {
+    flex-direction: column;
+  }
+`;
+
+const OperatorSidebar = styled.div`
+  width: 268px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+
+  @media (max-width: 640px) {
+    width: 100%;
+    max-height: 220px;
+  }
+`;
+
+const OperatorList = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-right: 2px;
+`;
+
+const OperatorListItem = styled.button<{ $active?: boolean }>`
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid ${(p) =>
+    p.$active
+      ? '#3b82f6'
+      : p.theme.mode === 'dark'
+        ? '#2a2a2a'
+        : '#e8e8e8'};
+  background: ${(p) =>
+    p.$active
+      ? p.theme.mode === 'dark'
+        ? 'rgba(59,130,246,0.12)'
+        : 'rgba(59,130,246,0.06)'
+      : p.theme.mode === 'dark'
+        ? '#141414'
+        : '#fff'};
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+
+  &:hover {
+    border-color: #3b82f6;
+  }
+
+  .avatar-wrap {
+    flex-shrink: 0;
+  }
+
+  .body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .head {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  .name {
+    flex: 1;
+    font-size: 13px;
+    font-weight: ${(p) => (p.$active ? 600 : 500)};
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: ${(p) => (p.theme.mode === 'dark' ? '#f0f0f0' : '#1f1f1f')};
+  }
+
+  .meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+    color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')};
+  }
+`;
+
+const MainPanel = styled.div`
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+`;
+
+const BudgetBar = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: ${(p) => (p.theme.mode === 'dark' ? '#1a1a1a' : '#f0f7ff')};
+  border: 1px solid ${(p) => (p.theme.mode === 'dark' ? '#2a2a2a' : '#d6e8ff')};
+  font-size: 12px;
+`;
+
+const ToolbarRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+`;
+
+const ChannelOptionWrap = styled.div`
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 6px 2px;
+  min-width: 300px;
+  max-width: 420px;
+`;
+
+const ChannelThumb = styled.div<{ $color?: string; $cover?: string }>`
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  background: ${(p) =>
+    p.$cover
+      ? `url(${p.$cover}) center/cover no-repeat`
+      : `linear-gradient(135deg, ${p.$color || '#3b82f6'} 0%, ${p.$color || '#6366f1'}99 100%)`};
+  border: 1px solid ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)')};
+`;
+
+const ChannelMetaRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+`;
+
+const SelectedChannelLabel = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 2px 0;
+
+  .name {
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .key {
+    font-size: 12px;
+    color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')};
+    white-space: nowrap;
+  }
+`;
+
+const PillChannelSelect = styled(Select)`
+  &.ant-select-single:not(.ant-select-customize-input) .ant-select-selector {
+    height: auto !important;
+    min-height: 46px;
+    padding: 6px 18px !important;
+    border-radius: 9999px !important;
+    display: flex;
+    align-items: center;
+  }
+
+  &.ant-select-single .ant-select-selection-item {
+    line-height: 1.4;
+    padding-inline-end: 28px;
+  }
+
+  &.ant-select-single .ant-select-selection-search-input {
+    height: 32px !important;
+  }
+` as typeof Select;
 
 const ScrollArea = styled.div`
   flex: 1;
@@ -234,11 +457,93 @@ const RecordsToolbar = styled.div`
   border-bottom: 1px solid ${(p) => (p.theme.mode === 'dark' ? '#2a2a2a' : '#f0f0f0')};
 `;
 
-const RecordList = styled.div`
+const RecordStatsPanel = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid ${(p) => (p.theme.mode === 'dark' ? '#2a2a2a' : '#f0f0f0')};
+  background: ${(p) => (p.theme.mode === 'dark' ? '#111' : '#fafbfc')};
+`;
+
+const StatCard = styled.div`
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid ${(p) => (p.theme.mode === 'dark' ? '#2a2a2a' : '#eee')};
+  background: ${(p) => (p.theme.mode === 'dark' ? '#141414' : '#fff')};
+
+  .label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')};
+    margin-bottom: 4px;
+  }
+
+  .value {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: ${(p) => (p.theme.mode === 'dark' ? '#f0f0f0' : '#1f1f1f')};
+  }
+
+  .sub {
+    margin-top: 4px;
+    font-size: 11px;
+    color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')};
+  }
+`;
+
+const RecordTimelineWrap = styled.div`
+  padding: 16px;
+
+  .ant-timeline-item-content {
+    min-width: 0;
+  }
+`;
+
+const ImageCountGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  width: 100%;
+`;
+
+const ImageCountChip = styled.button<{ $active?: boolean }>`
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid
+    ${(p) =>
+      p.$active
+        ? '#3b82f6'
+        : p.theme.mode === 'dark'
+          ? '#333'
+          : '#d9d9d9'};
+  background: ${(p) =>
+    p.$active
+      ? p.theme.mode === 'dark'
+        ? 'rgba(59, 130, 246, 0.15)'
+        : 'rgba(59, 130, 246, 0.08)'
+      : p.theme.mode === 'dark'
+        ? '#141414'
+        : '#fff'};
+  color: ${(p) => (p.$active ? '#3b82f6' : p.theme.mode === 'dark' ? '#f0f0f0' : '#1f1f1f')};
+  font-size: 13px;
+  font-weight: ${(p) => (p.$active ? 600 : 400)};
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    border-color: #3b82f6;
+  }
+`;
+
+const ActiveTimeWrap = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 12px 16px 16px;
+  gap: 8px;
+  width: 100%;
 `;
 
 const RecordItem = styled.div`
@@ -332,10 +637,171 @@ interface ChannelAiOperatorModalProps {
 type DraftMap = Record<number, Partial<CommunityAiOperator>>;
 type RecordFilter = 'ALL' | 'POST_PUBLISH' | 'GENERATE_IMAGE';
 
+const POST_SOURCE_LABEL: Record<string, string> = {
+  AI_GENERATE: 'AI 生图',
+  STOCK_POOL: '素材库',
+};
+
 const POST_SOURCE_OPTIONS = [
   { value: 'AI_GENERATE', label: 'AI 生图发帖' },
   { value: 'STOCK_POOL', label: '素材库发帖' },
 ];
+
+const getPostSourceLabel = (type?: string) => POST_SOURCE_LABEL[type || ''] || type || '-';
+
+const CHANNEL_TYPE_LABEL: Record<string, string> = {
+  SYSTEM: '系统',
+  TAG: '标签',
+  MANUAL: '手动',
+};
+
+const LAYOUT_MODE_LABEL: Record<string, string> = {
+  MASONRY: '瀑布流',
+  GRID: '网格',
+  FEED: '信息流',
+};
+
+const filterChannelOption = (input: string, ch: CommunityChannel) => {
+  const q = input.trim().toLowerCase();
+  if (!q) return true;
+  return [ch.name, ch.channelKey, ch.description, ch.type, ch.layoutMode].some(
+    (v) => v && String(v).toLowerCase().includes(q)
+  );
+};
+
+interface RichChannelSelectProps {
+  channels: CommunityChannel[];
+  value?: number;
+  onChange?: (value: number) => void;
+  placeholder?: string;
+  className?: string;
+  style?: React.CSSProperties;
+  operatorCount?: number;
+}
+
+const RichChannelSelect: React.FC<RichChannelSelectProps> = ({
+  channels,
+  value,
+  onChange,
+  placeholder,
+  className,
+  style,
+  operatorCount,
+}) => {
+  const intl = useIntl();
+
+  const renderOption = (ch: CommunityChannel, count?: number) => (
+    <ChannelOptionWrap>
+      <ChannelThumb $color={ch.themeColor} $cover={ch.iconUrl || ch.coverUrl}>
+        {!ch.iconUrl && !ch.coverUrl ? (ch.name?.[0] || '#') : null}
+      </ChannelThumb>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <Text strong style={{ fontSize: 13 }}>{ch.name}</Text>
+          {ch.isVipOnly && (
+            <Tag icon={<CrownOutlined />} color="gold" style={{ margin: 0, fontSize: 10 }}>
+              VIP
+            </Tag>
+          )}
+          {count != null && count > 0 && (
+            <Tag icon={<RobotOutlined />} color="processing" style={{ margin: 0, fontSize: 10 }}>
+              {count} {intl.formatMessage({ id: 'community.aiOperator.channel.aiOps', defaultMessage: 'AI运营' })}
+            </Tag>
+          )}
+        </div>
+        <Text type="secondary" style={{ fontSize: 11 }}>
+          /{ch.channelKey}
+        </Text>
+        {ch.description && (
+          <Text
+            type="secondary"
+            ellipsis
+            style={{ fontSize: 11, display: 'block', marginTop: 2, lineHeight: 1.4 }}
+          >
+            {ch.description}
+          </Text>
+        )}
+        <ChannelMetaRow>
+          {ch.type && (
+            <Tag style={{ margin: 0, fontSize: 10 }}>
+              {CHANNEL_TYPE_LABEL[ch.type] || ch.type}
+            </Tag>
+          )}
+          {ch.layoutMode && (
+            <Tag style={{ margin: 0, fontSize: 10 }}>
+              {LAYOUT_MODE_LABEL[ch.layoutMode] || ch.layoutMode}
+            </Tag>
+          )}
+          {ch.postCount != null && ch.postCount >= 0 && (
+            <Tag style={{ margin: 0, fontSize: 10 }}>
+              {intl.formatMessage(
+                { id: 'community.aiOperator.channel.postCount', defaultMessage: '{count} 帖' },
+                { count: ch.postCount }
+              )}
+            </Tag>
+          )}
+          {ch.allowUserPost === false && (
+            <Tag style={{ margin: 0, fontSize: 10 }}>
+              {intl.formatMessage({ id: 'community.aiOperator.channel.noUserPost', defaultMessage: '禁用户发帖' })}
+            </Tag>
+          )}
+        </ChannelMetaRow>
+      </div>
+    </ChannelOptionWrap>
+  );
+
+  const selectedChannel = channels.find((ch) => ch.id === value);
+
+  return (
+    <PillChannelSelect
+      className={className}
+      style={style}
+      showSearch
+      value={value}
+      placeholder={placeholder}
+      popupMatchSelectWidth={false}
+      dropdownStyle={{ minWidth: 340 }}
+      optionLabelProp="label"
+      onChange={onChange}
+      filterOption={(input, option) => {
+        const data = option as { channel?: CommunityChannel; data?: { channel?: CommunityChannel } };
+        const ch = data.channel ?? data.data?.channel;
+        return ch ? filterChannelOption(input, ch) : false;
+      }}
+      labelRender={() => {
+        if (!selectedChannel) return null;
+        return (
+          <SelectedChannelLabel>
+            <Avatar
+              size={32}
+              src={selectedChannel.iconUrl}
+              style={{ backgroundColor: selectedChannel.themeColor || '#3b82f6', flexShrink: 0 }}
+            >
+              {selectedChannel.name?.[0]}
+            </Avatar>
+            <span className="name">{selectedChannel.name}</span>
+            <span className="key">/{selectedChannel.channelKey}</span>
+            {selectedChannel.isVipOnly && (
+              <Tag color="gold" style={{ margin: 0, fontSize: 10, lineHeight: '16px' }}>VIP</Tag>
+            )}
+          </SelectedChannelLabel>
+        );
+      }}
+      options={channels.map((ch) => ({
+        value: ch.id,
+        label: ch.name || ch.channelKey,
+        channel: ch,
+      }))}
+      optionRender={(option) => {
+        const data = option.data as { channel?: CommunityChannel } | undefined;
+        const ch = data?.channel ?? channels.find((c) => c.id === option.value);
+        if (!ch) return null;
+        const count = ch.id === value ? operatorCount : undefined;
+        return renderOption(ch, count);
+      }}
+    />
+  );
+};
 
 const ACTION_TYPE_LABEL: Record<string, string> = {
   POST_PUBLISH: '发帖',
@@ -349,6 +815,100 @@ const PUBLISH_STATUS_LABEL: Record<string, string> = {
   SKIPPED: '未自动发布',
   ALREADY_PUBLISHED: '已发布过',
 };
+
+const ACTIVE_TIME_PRESETS = [
+  { key: 'allDay', value: '' },
+  { key: 'daytime', value: '09:00-18:00' },
+  { key: 'business', value: '09:00-22:00' },
+  { key: 'evening', value: '19:00-23:00' },
+  { key: 'night', value: '22:00-06:00' },
+] as const;
+
+const parseActiveTimeRange = (value?: string): [Dayjs, Dayjs] | null => {
+  if (!value?.trim()) return null;
+  const parts = value.split('-');
+  if (parts.length !== 2) return null;
+  const start = dayjs(parts[0].trim(), 'HH:mm', true);
+  const end = dayjs(parts[1].trim(), 'HH:mm', true);
+  if (!start.isValid() || !end.isValid()) return null;
+  return [start, end];
+};
+
+const formatActiveTimeRange = (range: [Dayjs, Dayjs] | null): string => {
+  if (!range) return '';
+  return `${range[0].format('HH:mm')}-${range[1].format('HH:mm')}`;
+};
+
+interface ActiveTimeRangeFieldProps {
+  value?: string;
+  onChange: (value: string) => void;
+}
+
+const ActiveTimeRangeField: React.FC<ActiveTimeRangeFieldProps> = ({ value, onChange }) => {
+  const intl = useIntl();
+  const normalized = value?.trim() || '';
+  const parsed = useMemo(() => parseActiveTimeRange(normalized), [normalized]);
+  const isAllDay = !normalized;
+
+  return (
+    <ActiveTimeWrap>
+      <Space wrap size={[6, 6]}>
+        {ACTIVE_TIME_PRESETS.map((preset) => (
+          <Tag.CheckableTag
+            key={preset.key}
+            checked={preset.value === normalized}
+            onChange={() => onChange(preset.value)}
+          >
+            {intl.formatMessage({
+              id: `community.aiOperator.activeTimePreset.${preset.key}`,
+              defaultMessage: preset.key,
+            })}
+          </Tag.CheckableTag>
+        ))}
+      </Space>
+      <TimePicker.RangePicker
+        format="HH:mm"
+        minuteStep={15}
+        needConfirm={false}
+        placeholder={[
+          intl.formatMessage({ id: 'community.aiOperator.activeTimeStart', defaultMessage: '开始时间' }),
+          intl.formatMessage({ id: 'community.aiOperator.activeTimeEnd', defaultMessage: '结束时间' }),
+        ]}
+        value={parsed}
+        onChange={(times) => onChange(formatActiveTimeRange(times as [Dayjs, Dayjs] | null))}
+        style={{ width: '100%' }}
+      />
+      <Text type="secondary" style={{ fontSize: 11 }}>
+        {isAllDay
+          ? intl.formatMessage({ id: 'community.aiOperator.activeTimeAllDayHint', defaultMessage: '全天活跃，不限时段' })
+          : intl.formatMessage(
+              { id: 'community.aiOperator.activeTimeCustomHint', defaultMessage: '当前时段：{range}' },
+              { range: normalized }
+            )}
+      </Text>
+    </ActiveTimeWrap>
+  );
+};
+
+interface ImageCountQuickSelectProps {
+  value: number;
+  onChange: (value: number) => void;
+}
+
+const ImageCountQuickSelect: React.FC<ImageCountQuickSelectProps> = ({ value, onChange }) => (
+  <ImageCountGrid>
+    {Array.from({ length: 15 }, (_, index) => index + 1).map((count) => (
+      <ImageCountChip
+        key={count}
+        type="button"
+        $active={value === count}
+        onClick={() => onChange(count)}
+      >
+        {count}
+      </ImageCountChip>
+    ))}
+  </ImageCountGrid>
+);
 
 const renderSizeLabel = (record: CommunityAiOperatorPostRecord) => {
   if (record.size) return record.size;
@@ -387,11 +947,92 @@ interface OperatorPostRecordsProps {
   operatorId: number;
 }
 
+const RecordTimelineContent: React.FC<{
+  record: CommunityAiOperatorPostRecord;
+  postStatus: { color: string; label: string } | null;
+  isSuccess: boolean;
+  intl: ReturnType<typeof useIntl>;
+  navigate: ReturnType<typeof useNavigate>;
+}> = ({ record, postStatus, isSuccess, intl, navigate }) => (
+  <RecordItem style={{ marginTop: 4 }}>
+    <RecordThumb>
+      {record.imageUrl ? (
+        <img src={record.imageUrl} alt="" />
+      ) : (
+        <RobotOutlined style={{ fontSize: 18, opacity: 0.35 }} />
+      )}
+    </RecordThumb>
+    <RecordMeta>
+      <div className="tags">
+        <Tag style={{ margin: 0 }}>{ACTION_TYPE_LABEL[record.actionType] || record.actionType}</Tag>
+        <Tag
+          style={{ margin: 0 }}
+          icon={isSuccess ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
+          color={isSuccess ? 'success' : 'error'}
+        >
+          {isSuccess
+            ? intl.formatMessage({ id: 'community.aiOperator.record.success', defaultMessage: '成功' })
+            : intl.formatMessage({ id: 'community.aiOperator.record.failed', defaultMessage: '失败' })}
+        </Tag>
+        {postStatus && <Tag style={{ margin: 0 }} color={postStatus.color}>{postStatus.label}</Tag>}
+        {record.postId != null && <Tag style={{ margin: 0 }} color="blue">#{record.postId}</Tag>}
+      </div>
+      {record.actionDescription && <div className="desc">{record.actionDescription}</div>}
+      {record.modelCode && (
+        <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+          {intl.formatMessage({ id: 'community.aiOperator.model', defaultMessage: '生图模型' })}: {record.modelCode}
+        </Text>
+      )}
+      {renderGenerationParamItems(record, intl).length > 0 && (
+        <div className="params">
+          {renderGenerationParamItems(record, intl).map((item) => (
+            <span key={item} className="param-item">{item}</span>
+          ))}
+        </div>
+      )}
+      {record.negativePrompt && (
+        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
+          {intl.formatMessage({ id: 'community.aiOperator.record.negativePrompt', defaultMessage: '负向提示词' })}: {record.negativePrompt}
+        </Text>
+      )}
+      {record.prompt && (
+        <Paragraph className="prompt" ellipsis={{ rows: 2, expandable: true, symbol: 'more' }}>
+          {record.prompt}
+        </Paragraph>
+      )}
+      {record.postLikeCount != null && record.postViewCount != null && (
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          {intl.formatMessage(
+            { id: 'community.aiOperator.record.stats', defaultMessage: '浏览 {views} · 点赞 {likes}' },
+            { views: record.postViewCount, likes: record.postLikeCount }
+          )}
+        </Text>
+      )}
+      {(record.errorMessage || record.publishError) && (
+        <div className="error">{record.publishError || record.errorMessage}</div>
+      )}
+      {record.postId && (
+        <Button
+          type="link"
+          size="small"
+          icon={<LinkOutlined />}
+          style={{ padding: 0, height: 'auto', marginTop: 4 }}
+          onClick={() => navigate(`/community/post/${record.postId}`)}
+        >
+          <FormattedMessage id="community.aiOperator.record.viewPost" defaultMessage="查看帖子" />
+        </Button>
+      )}
+    </RecordMeta>
+  </RecordItem>
+);
+
 const OperatorPostRecords: React.FC<OperatorPostRecordsProps> = ({ operatorId }) => {
   const intl = useIntl();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<RecordFilter>('ALL');
   const [loading, setLoading] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(false);
+  const [stats, setStats] = useState<CommunityAiOperatorPostRecordStats | null>(null);
   const [records, setRecords] = useState<CommunityAiOperatorPostRecord[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -407,6 +1048,18 @@ const OperatorPostRecords: React.FC<OperatorPostRecordsProps> = ({ operatorId })
     };
     return map[status] || null;
   };
+
+  const loadStats = useCallback(async () => {
+    setStatsLoading(true);
+    try {
+      const data = await getAiOperatorPostRecordStats(operatorId);
+      setStats(data);
+    } catch {
+      setStats(null);
+    } finally {
+      setStatsLoading(false);
+    }
+  }, [operatorId]);
 
   const loadRecords = useCallback(async (nextPage = 1, append = false) => {
     setLoading(true);
@@ -424,6 +1077,14 @@ const OperatorPostRecords: React.FC<OperatorPostRecordsProps> = ({ operatorId })
     }
   }, [filter, intl, operatorId]);
 
+  const refreshAll = useCallback(async () => {
+    await Promise.all([loadStats(), loadRecords(1, false)]);
+  }, [loadStats, loadRecords]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
   useEffect(() => {
     loadRecords(1, false);
   }, [loadRecords]);
@@ -432,6 +1093,58 @@ const OperatorPostRecords: React.FC<OperatorPostRecordsProps> = ({ operatorId })
 
   return (
     <SectionCard>
+      <RecordStatsPanel>
+        <StatCard>
+          <div className="label">
+            <SendOutlined />
+            <FormattedMessage id="community.aiOperator.record.statPosts" defaultMessage="发帖" />
+          </div>
+          <div className="value">{statsLoading ? '—' : (stats?.totalPosts ?? 0)}</div>
+          <div className="sub">
+            <FormattedMessage
+              id="community.aiOperator.record.statSuccessFailed"
+              defaultMessage="成功 {success} · 失败 {failed}"
+              values={{ success: stats?.postSuccess ?? 0, failed: stats?.postFailed ?? 0 }}
+            />
+          </div>
+        </StatCard>
+        <StatCard>
+          <div className="label">
+            <FileImageOutlined />
+            <FormattedMessage id="community.aiOperator.record.statGenerates" defaultMessage="生图" />
+          </div>
+          <div className="value">{statsLoading ? '—' : (stats?.totalGenerates ?? 0)}</div>
+          <div className="sub">
+            <FormattedMessage
+              id="community.aiOperator.record.statSuccessFailed"
+              defaultMessage="成功 {success} · 失败 {failed}"
+              values={{ success: stats?.generateSuccess ?? 0, failed: stats?.generateFailed ?? 0 }}
+            />
+          </div>
+        </StatCard>
+        <StatCard>
+          <div className="label">
+            <HistoryOutlined />
+            <FormattedMessage id="community.aiOperator.record.statTotal" defaultMessage="总行为" />
+          </div>
+          <div className="value">{statsLoading ? '—' : (stats?.totalActions ?? 0)}</div>
+          <div className="sub">
+            {stats?.firstActionTime && stats?.lastActionTime ? (
+              <FormattedMessage
+                id="community.aiOperator.record.statRange"
+                defaultMessage="{first} ~ {last}"
+                values={{
+                  first: dayjs(stats.firstActionTime).format('MM-DD HH:mm'),
+                  last: dayjs(stats.lastActionTime).format('MM-DD HH:mm'),
+                }}
+              />
+            ) : (
+              <FormattedMessage id="community.aiOperator.record.statNoRange" defaultMessage="暂无时间范围" />
+            )}
+          </div>
+        </StatCard>
+      </RecordStatsPanel>
+
       <RecordsToolbar>
         <Radio.Group
           size="small"
@@ -450,7 +1163,7 @@ const OperatorPostRecords: React.FC<OperatorPostRecordsProps> = ({ operatorId })
             {intl.formatMessage({ id: 'community.aiOperator.record.generate', defaultMessage: '生图' })}
           </Radio.Button>
         </Radio.Group>
-        <Button size="small" icon={<ReloadOutlined />} loading={loading} onClick={() => loadRecords(1, false)}>
+        <Button size="small" icon={<ReloadOutlined />} loading={loading || statsLoading} onClick={refreshAll}>
           <FormattedMessage id="common.refresh" defaultMessage="刷新" />
         </Button>
       </RecordsToolbar>
@@ -465,85 +1178,35 @@ const OperatorPostRecords: React.FC<OperatorPostRecordsProps> = ({ operatorId })
         />
       ) : (
         <>
-          <RecordList>
-            {records.map((record) => {
-              const postStatus = getPostStatus(record.postStatus);
-              const isSuccess = record.actionResult === 'SUCCESS';
-              return (
-                <RecordItem key={record.id}>
-                  <RecordThumb>
-                    {record.imageUrl ? (
-                      <img src={record.imageUrl} alt="" />
-                    ) : (
-                      <RobotOutlined style={{ fontSize: 18, opacity: 0.35 }} />
-                    )}
-                  </RecordThumb>
-                  <RecordMeta>
-                    <div className="tags">
-                      <Tag style={{ margin: 0 }}>{ACTION_TYPE_LABEL[record.actionType] || record.actionType}</Tag>
-                      <Tag
-                        style={{ margin: 0 }}
-                        icon={isSuccess ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
-                        color={isSuccess ? 'success' : 'error'}
-                      >
-                        {isSuccess
-                          ? intl.formatMessage({ id: 'community.aiOperator.record.success', defaultMessage: '成功' })
-                          : intl.formatMessage({ id: 'community.aiOperator.record.failed', defaultMessage: '失败' })}
-                      </Tag>
-                      {postStatus && <Tag style={{ margin: 0 }} color={postStatus.color}>{postStatus.label}</Tag>}
-                      {record.postId != null && <Tag style={{ margin: 0 }} color="blue">#{record.postId}</Tag>}
-                    </div>
-                    <div className="time">{record.createTime}</div>
-                    {record.actionDescription && <div className="desc">{record.actionDescription}</div>}
-                    {record.modelCode && (
-                      <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
-                        {intl.formatMessage({ id: 'community.aiOperator.model', defaultMessage: '生图模型' })}: {record.modelCode}
-                      </Text>
-                    )}
-                    {renderGenerationParamItems(record, intl).length > 0 && (
-                      <div className="params">
-                        {renderGenerationParamItems(record, intl).map((item) => (
-                          <span key={item} className="param-item">{item}</span>
-                        ))}
-                      </div>
-                    )}
-                    {record.negativePrompt && (
-                      <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 4 }}>
-                        {intl.formatMessage({ id: 'community.aiOperator.record.negativePrompt', defaultMessage: '负向提示词' })}: {record.negativePrompt}
-                      </Text>
-                    )}
-                    {record.prompt && (
-                      <Paragraph className="prompt" ellipsis={{ rows: 2, expandable: true, symbol: 'more' }}>
-                        {record.prompt}
-                      </Paragraph>
-                    )}
-                    {record.postLikeCount != null && record.postViewCount != null && (
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        {intl.formatMessage(
-                          { id: 'community.aiOperator.record.stats', defaultMessage: '浏览 {views} · 点赞 {likes}' },
-                          { views: record.postViewCount, likes: record.postLikeCount }
-                        )}
-                      </Text>
-                    )}
-                    {(record.errorMessage || record.publishError) && (
-                      <div className="error">{record.publishError || record.errorMessage}</div>
-                    )}
-                    {record.postId && (
-                      <Button
-                        type="link"
-                        size="small"
-                        icon={<LinkOutlined />}
-                        style={{ padding: 0, height: 'auto', marginTop: 4 }}
-                        onClick={() => navigate(`/community/post/${record.postId}`)}
-                      >
-                        <FormattedMessage id="community.aiOperator.record.viewPost" defaultMessage="查看帖子" />
-                      </Button>
-                    )}
-                  </RecordMeta>
-                </RecordItem>
-              );
-            })}
-          </RecordList>
+          <RecordTimelineWrap>
+            <Timeline
+              mode="left"
+              items={records.map((record) => {
+                const postStatus = getPostStatus(record.postStatus);
+                const isSuccess = record.actionResult === 'SUCCESS';
+                const isPost = record.actionType === 'POST_PUBLISH';
+                return {
+                  key: record.id,
+                  color: isSuccess ? 'green' : 'red',
+                  dot: isPost ? <SendOutlined /> : <FileImageOutlined />,
+                  label: (
+                    <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                      {record.createTime ? dayjs(record.createTime).format('MM-DD HH:mm') : '—'}
+                    </Text>
+                  ),
+                  children: (
+                    <RecordTimelineContent
+                      record={record}
+                      postStatus={postStatus}
+                      isSuccess={isSuccess}
+                      intl={intl}
+                      navigate={navigate}
+                    />
+                  ),
+                };
+              })}
+            />
+          </RecordTimelineWrap>
           {hasMore && (
             <div style={{ textAlign: 'center', paddingBottom: 16 }}>
               <Button loading={loading} onClick={() => loadRecords(page + 1, true)}>
@@ -716,7 +1379,7 @@ const OperatorProfilePanel: React.FC<OperatorProfilePanelProps> = ({ operator })
 interface OperatorConfigPanelProps {
   draft: Partial<CommunityAiOperator>;
   modelOptions: { value: string; label: string }[];
-  channelOptions: { value: number; label: string }[];
+  channels: CommunityChannel[];
   saving: boolean;
   onDraftChange: (patch: Partial<CommunityAiOperator>) => void;
   onSave: () => void;
@@ -726,7 +1389,7 @@ interface OperatorConfigPanelProps {
 const OperatorConfigPanel: React.FC<OperatorConfigPanelProps> = ({
   draft,
   modelOptions,
-  channelOptions,
+  channels,
   saving,
   onDraftChange,
   onSave,
@@ -742,16 +1405,14 @@ const OperatorConfigPanel: React.FC<OperatorConfigPanelProps> = ({
           <span className="label">
             <FormattedMessage id="community.aiOperator.channel" defaultMessage="发帖频道" />
           </span>
-          <Select
-            showSearch
-            optionFilterProp="label"
+          <RichChannelSelect
             className="control"
+            channels={channels}
+            value={draft.channelId}
             placeholder={intl.formatMessage({
               id: 'community.aiOperator.channelPlaceholder',
               defaultMessage: '选择发帖频道',
             })}
-            value={draft.channelId}
-            options={channelOptions}
             onChange={(value) => onDraftChange({ channelId: value })}
           />
         </FieldRow>
@@ -799,26 +1460,30 @@ const OperatorConfigPanel: React.FC<OperatorConfigPanelProps> = ({
             <span className="label">
               <FormattedMessage id="community.aiOperator.generationImageCount" defaultMessage="生图数量" />
             </span>
-            <InputNumber
-              className="control"
-              style={{ width: '100%' }}
-              min={1}
-              max={4}
-              value={draft.generationImageCount ?? 1}
-              onChange={(value) => onDraftChange({ generationImageCount: value ?? 1 })}
-            />
+            <div className="control">
+              <ImageCountQuickSelect
+                value={draft.generationImageCount ?? 1}
+                onChange={(count) => onDraftChange({ generationImageCount: count })}
+              />
+              <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 6 }}>
+                <FormattedMessage
+                  id="community.aiOperator.generationImageCountHint"
+                  defaultMessage="每次发帖 AI 生成的图片数量（1-15 张）"
+                />
+              </Text>
+            </div>
           </FieldRow>
         )}
         <FieldRow>
           <span className="label">
             <FormattedMessage id="community.aiOperator.activeTime" defaultMessage="活跃时段" />
           </span>
-          <Input
-            className="control"
-            value={draft.activeTimeRange || ''}
-            placeholder="09:00-22:00"
-            onChange={(e) => onDraftChange({ activeTimeRange: e.target.value })}
-          />
+          <div className="control">
+            <ActiveTimeRangeField
+              value={draft.activeTimeRange || ''}
+              onChange={(activeTimeRange) => onDraftChange({ activeTimeRange })}
+            />
+          </div>
         </FieldRow>
         <FieldRow>
           <span className="label">
@@ -882,19 +1547,25 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
   const [triggerOperatorId, setTriggerOperatorId] = useState<number | null>(null);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [contentTab, setContentTab] = useState('config');
+  const [activeChannelId, setActiveChannelId] = useState<number | undefined>(channelId);
+  const [budgetStatus, setBudgetStatus] = useState<AiOperatorBudgetStatus | null>(null);
+  const [budgetRefreshKey, setBudgetRefreshKey] = useState(0);
 
-  const loadData = useCallback(async () => {
-    if (!channelId) return;
+  const loadData = useCallback(async (targetChannelId?: number) => {
+    const cid = targetChannelId ?? activeChannelId;
+    if (!cid) return;
     setLoading(true);
     try {
-      const [operatorList, modelList, channelList] = await Promise.all([
-        listChannelAiOperators(channelId),
+      const [operatorList, modelList, channelList, budget] = await Promise.all([
+        listChannelAiOperators(cid),
         listTextToImageModels().catch(() => []),
         listChannels().catch(() => []),
+        getChannelAiOperatorBudget(cid).catch(() => null),
       ]);
       setOperators(operatorList);
       setModels(modelList);
       setChannels(channelList.filter((ch) => ch.channelKey !== 'daily-challenge'));
+      setBudgetStatus(budget);
       const initialDrafts: DraftMap = {};
       operatorList.forEach((op) => {
         initialDrafts[op.id] = { ...op };
@@ -911,14 +1582,20 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [channelId, intl]);
+  }, [activeChannelId, intl]);
 
   useEffect(() => {
     if (open && channelId) {
-      loadData();
+      setActiveChannelId(channelId);
+    }
+  }, [open, channelId]);
+
+  useEffect(() => {
+    if (open && activeChannelId) {
+      loadData(activeChannelId);
       setContentTab('config');
     }
-  }, [open, channelId, loadData]);
+  }, [open, activeChannelId, loadData]);
 
   const selectedOperator = useMemo(
     () => operators.find((op) => op.id === selectedId) || null,
@@ -951,7 +1628,7 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
         postFrequencyDays: currentDraft.postFrequencyDays,
       });
 
-      const transferred = updated.channelId != null && updated.channelId !== channelId;
+      const transferred = updated.channelId != null && updated.channelId !== activeChannelId;
       if (transferred) {
         setOperators((prev) => {
           const remaining = prev.filter((op) => op.id !== operatorId);
@@ -997,7 +1674,31 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
 
   const handleTriggerSuccess = async () => {
     onPostTriggered?.();
-    await loadData();
+    await loadData(activeChannelId);
+    setBudgetRefreshKey((k) => k + 1);
+  };
+
+  const activeChannelName = useMemo(() => {
+    if (activeChannelId === channelId && channelName) return channelName;
+    return channels.find((ch) => ch.id === activeChannelId)?.name;
+  }, [activeChannelId, channelId, channelName, channels]);
+
+  const renderOperatorMeta = (op: CommunityAiOperator) => {
+    const d = drafts[op.id] || op;
+    const modelLabel = modelOptions.find((m) => m.value === d.generationModelCode)?.label
+      || d.generationModelCode
+      || '-';
+    return (
+      <>
+        <span>{getPostSourceLabel(d.postSourceType)} · {modelLabel}</span>
+        {d.lastActionTime && (
+          <span><ClockCircleOutlined style={{ marginRight: 4 }} />{d.lastActionTime}</span>
+        )}
+        {d.periodUsedTokens != null && d.periodUsedTokens > 0 && (
+          <span>{d.periodUsedTokens} Token {intl.formatMessage({ id: 'community.aiOperator.budget.usedToday', defaultMessage: '今日' })}</span>
+        )}
+      </>
+    );
   };
 
   const triggerOperator = useMemo(
@@ -1008,11 +1709,6 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
   const modelOptions = models.map((m) => ({
     value: m.modelCode,
     label: m.modelName || m.modelNameEn || m.modelCode,
-  }));
-
-  const channelOptions = channels.map((ch) => ({
-    value: ch.id,
-    label: ch.name || ch.channelKey,
   }));
 
   const getDisplayName = (op: CommunityAiOperator) => {
@@ -1027,7 +1723,7 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
         <Space wrap>
           <RobotOutlined />
           <FormattedMessage id="community.aiOperator.title" defaultMessage="AI 运营管理" />
-          {channelName && <Text type="secondary">· {channelName}</Text>}
+          {activeChannelName && <Text type="secondary">· {activeChannelName}</Text>}
         </Space>
       }
       open={open}
@@ -1035,118 +1731,153 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
       footer={null}
       destroyOnClose
       centered
-      width="min(820px, calc(100vw - 32px))"
+      width="min(960px, calc(100vw - 32px))"
       styles={{
         body: { paddingTop: 12, overflow: 'hidden' },
       }}
     >
       <ModalBody>
-        <Space wrap style={{ width: '100%', justifyContent: 'flex-end' }}>
-          <Button size="small" icon={<ReloadOutlined />} onClick={loadData} loading={loading}>
+        <ToolbarRow>
+          <RichChannelSelect
+            style={{ minWidth: 240, flex: 1, maxWidth: 400 }}
+            channels={channels}
+            value={activeChannelId}
+            operatorCount={operators.length}
+            onChange={(value) => {
+              setActiveChannelId(value);
+              setSelectedId(null);
+            }}
+            placeholder={intl.formatMessage({ id: 'community.aiOperator.channelPlaceholder', defaultMessage: '选择频道' })}
+          />
+          <Button size="small" icon={<ReloadOutlined />} onClick={() => loadData(activeChannelId)} loading={loading}>
             <FormattedMessage id="common.refresh" defaultMessage="刷新" />
           </Button>
-        </Space>
+        </ToolbarRow>
+
+        {budgetStatus?.enabled && (budgetStatus.budgetLimit ?? 0) > 0 && (
+          <BudgetBar>
+            <WalletOutlined />
+            <Text style={{ fontSize: 12 }}>
+              <FormattedMessage id="community.aiOperator.budget.today" defaultMessage="今日预算" />
+              : {budgetStatus.usedTokens ?? 0} / {budgetStatus.budgetLimit} Token
+            </Text>
+            {budgetStatus.exceeded && (
+              <Tag color="error" style={{ margin: 0 }}>
+                <FormattedMessage id="community.aiOperator.budget.exceeded" defaultMessage="已超额" />
+              </Tag>
+            )}
+            {budgetStatus.warning && !budgetStatus.exceeded && (
+              <Tag color="warning" style={{ margin: 0 }}>
+                <FormattedMessage id="community.aiOperator.budget.warning" defaultMessage="接近上限" />
+              </Tag>
+            )}
+          </BudgetBar>
+        )}
 
         {loading && operators.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>
         ) : operators.length === 0 ? (
           <Empty description={<FormattedMessage id="community.aiOperator.empty" defaultMessage="当前频道暂无 AI 运营配置" />} />
         ) : (
-          <>
-            <OperatorBar>
-              {operators.length > 4 ? (
-                <Select
-                  style={{ width: '100%' }}
-                  value={selectedId ?? undefined}
-                  onChange={setSelectedId}
-                  optionLabelProp="label"
-                  options={operators.map((op) => {
-                    const d = drafts[op.id] || op;
-                    const name = getDisplayName(op);
-                    return {
-                      value: op.id,
-                      label: (
-                        <Space>
-                          <Avatar src={d.avatar} size={20} icon={<RobotOutlined />} />
-                          <span>{name}</span>
-                          <Tag color={d.status ? 'green' : 'default'} style={{ margin: 0 }}>
-                            {d.status
-                              ? intl.formatMessage({ id: 'community.aiOperator.running', defaultMessage: '运行中' })
-                              : intl.formatMessage({ id: 'community.aiOperator.paused', defaultMessage: '已暂停' })}
-                          </Tag>
-                        </Space>
-                      ),
-                    };
-                  })}
-                />
-              ) : (
-                operators.map((op) => {
+          <SplitLayout>
+            <OperatorSidebar>
+              <Text type="secondary" style={{ fontSize: 12, padding: '0 4px' }}>
+                <FormattedMessage id="community.aiOperator.operatorList" defaultMessage="AI 运营 ({count})" values={{ count: operators.length }} />
+              </Text>
+              <OperatorList>
+                {operators.map((op) => {
                   const d = drafts[op.id] || op;
                   const name = getDisplayName(op);
                   return (
-                    <OperatorChip
+                    <OperatorListItem
                       key={op.id}
                       type="button"
                       $active={selectedId === op.id}
                       onClick={() => setSelectedId(op.id)}
                     >
-                      <Avatar src={d.avatar} size={24} icon={<RobotOutlined />} />
-                      <span className="name">{name}</span>
-                      {d.status ? (
-                        <Tag color="green" style={{ margin: 0, fontSize: 11 }}>ON</Tag>
-                      ) : (
-                        <Tag style={{ margin: 0, fontSize: 11 }}>OFF</Tag>
-                      )}
-                    </OperatorChip>
+                      <div className="avatar-wrap">
+                        <Avatar src={d.avatar} size={40} icon={<RobotOutlined />} />
+                      </div>
+                      <div className="body">
+                        <div className="head">
+                          <span className="name">{name}</span>
+                          <Tag color={d.status ? 'green' : 'default'} style={{ margin: 0, fontSize: 10 }}>
+                            {d.status ? 'ON' : 'OFF'}
+                          </Tag>
+                        </div>
+                        <div className="meta">{renderOperatorMeta(op)}</div>
+                      </div>
+                    </OperatorListItem>
                   );
-                })
-              )}
-            </OperatorBar>
+                })}
+              </OperatorList>
+            </OperatorSidebar>
 
-            {selectedOperator && draft && selectedId && (
-              <ScrollArea>
-                <Tabs
-                  activeKey={contentTab}
-                  onChange={setContentTab}
-                  items={[
-                    {
-                      key: 'config',
-                      label: (
-                        <Space size={4}>
-                          <SettingOutlined />
-                          <FormattedMessage id="community.aiOperator.tab.config" defaultMessage="配置" />
-                        </Space>
-                      ),
-                      children: (
-                        <ConfigStack>
-                          <OperatorProfilePanel operator={draft} />
-                          <OperatorConfigPanel
-                            draft={draft}
-                            modelOptions={modelOptions}
-                            channelOptions={channelOptions}
-                            saving={savingId === selectedId}
-                            onDraftChange={(patch) => updateDraft(selectedId, patch)}
-                            onSave={() => handleSave(selectedId)}
-                            onTrigger={() => handleOpenTriggerModal(selectedId)}
+            <MainPanel>
+              {selectedOperator && draft && selectedId && (
+                <ScrollArea>
+                  <Tabs
+                    activeKey={contentTab}
+                    onChange={setContentTab}
+                    items={[
+                      {
+                        key: 'config',
+                        label: (
+                          <Space size={4}>
+                            <SettingOutlined />
+                            <FormattedMessage id="community.aiOperator.tab.config" defaultMessage="配置" />
+                          </Space>
+                        ),
+                        children: (
+                          <ConfigStack>
+                            <OperatorProfilePanel operator={draft} />
+                            <OperatorConfigPanel
+                              draft={draft}
+                              modelOptions={modelOptions}
+                              channels={channels}
+                              saving={savingId === selectedId}
+                              onDraftChange={(patch) => updateDraft(selectedId, patch)}
+                              onSave={() => handleSave(selectedId)}
+                              onTrigger={() => handleOpenTriggerModal(selectedId)}
+                            />
+                          </ConfigStack>
+                        ),
+                      },
+                      {
+                        key: 'records',
+                        label: (
+                          <Space size={4}>
+                            <HistoryOutlined />
+                            <FormattedMessage id="community.aiOperator.tab.records" defaultMessage="发帖记录" />
+                          </Space>
+                        ),
+                        children: <OperatorPostRecords operatorId={selectedId} />,
+                      },
+                      {
+                        key: 'budget',
+                        label: (
+                          <Space size={4}>
+                            <WalletOutlined />
+                            <FormattedMessage id="community.aiOperator.tab.budget" defaultMessage="频道预算" />
+                          </Space>
+                        ),
+                        children: (
+                          <ChannelAiOperatorBudgetPanel
+                            channelId={activeChannelId}
+                            refreshKey={budgetRefreshKey}
+                            onUpdated={() => {
+                              loadData(activeChannelId);
+                              setBudgetRefreshKey((k) => k + 1);
+                            }}
                           />
-                        </ConfigStack>
-                      ),
-                    },
-                    {
-                      key: 'records',
-                      label: (
-                        <Space size={4}>
-                          <HistoryOutlined />
-                          <FormattedMessage id="community.aiOperator.tab.records" defaultMessage="发帖记录" />
-                        </Space>
-                      ),
-                      children: <OperatorPostRecords operatorId={selectedId} />,
-                    },
-                  ]}
-                />
-              </ScrollArea>
-            )}
-          </>
+                        ),
+                      },
+                    ]}
+                  />
+                </ScrollArea>
+              )}
+            </MainPanel>
+          </SplitLayout>
         )}
       </ModalBody>
     </Modal>

@@ -8,19 +8,49 @@ import {
   EyeOutlined, ArrowLeftOutlined, CopyOutlined, ShareAltOutlined,
   ThunderboltFilled, DownloadOutlined, UserAddOutlined, CheckOutlined,
   ShopOutlined, LockOutlined, ArrowRightOutlined, CheckCircleFilled,
+  MessageOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled, { keyframes } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
-import { getPostDetail, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus, followUser, unfollowUser, getRelationStatus, checkReviewPermission } from 'api/community';
+import { getPostDetail, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus, followUser, unfollowUser, getRelationStatus, checkReviewPermission, recordPostDownload } from 'api/community';
 import PostShelfToggle from 'components/community/PostShelfToggle';
 import PostMediaGallery from 'components/community/PostMediaGallery';
+import PostCommentSection from 'components/community/PostCommentSection';
+import PostShareCardModal from 'components/community/PostShareCardModal';
 import { isPostDelisted } from 'utils/communityPostStatus';
 import { parsePostGenerationDetails, getPostMediaUrls } from './ChallengeDetailPage/utils';
 import { buildT2iImportFromPost, persistT2iImportPayload } from 'utils/postT2iImport';
 import { isPostPromptMarketLocked } from 'utils/communityPostPrompt';
+import { buildLoginPath } from 'utils/loginRedirect';
+import { downloadFile } from 'utils/file';
 
 const { Title, Text, Paragraph } = Typography;
+
+const getMediaFileExtension = (url, mediaType) => {
+  const match = String(url).match(/\.([a-zA-Z0-9]+)(?:\?|#|$)/);
+  if (match) return match[1].toLowerCase();
+  return mediaType === 'VIDEO' ? 'mp4' : 'jpg';
+};
+
+const downloadMediaUrl = async (url, fileName) => {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('fetch failed');
+    const blob = await response.blob();
+    downloadFile(blob, fileName);
+    return true;
+  } catch {
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    return false;
+  }
+};
 
 // --- Styled Components ---
 
@@ -112,6 +142,57 @@ const SidebarSection = styled.div`
     position: static;
     max-height: none;
   }
+`;
+
+const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+`;
+
+const StatCard = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)')};
+  border: 1px solid ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')};
+  min-width: 0;
+
+  .stat-icon {
+    font-size: 18px;
+    color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')};
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  .stat-body {
+    min-width: 0;
+  }
+
+  .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: ${(p) => (p.theme.mode === 'dark' ? '#fff' : '#111827')};
+  }
+
+  .stat-label {
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.2;
+    color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')};
+  }
+`;
+
+const StatsDateRow = styled.div`
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding: 8px 4px 0;
+  text-align: center;
+  font-size: 12px;
+  color: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')};
 `;
 
 // 作者卡片
@@ -697,6 +778,9 @@ const PostDetailPage = () => {
   const [relation, setRelation] = useState(null);
   const [followLoading, setFollowLoading] = useState(false);
   const [canModeratePosts, setCanModeratePosts] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [downloading, setDownloading] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
   const [galleryPreviewRestore, setGalleryPreviewRestore] = useState(null);
   const previewRestoreRef = useRef(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -711,7 +795,17 @@ const PostDetailPage = () => {
     const token = localStorage.getItem('token');
     if (!token) {
       setCanModeratePosts(false);
+      setCurrentUserId(null);
       return;
+    }
+    try {
+      const storedUserInfo = localStorage.getItem('userInfo');
+      if (storedUserInfo) {
+        const parsed = JSON.parse(storedUserInfo);
+        setCurrentUserId(parsed?.id || parsed?.userId || null);
+      }
+    } catch {
+      setCurrentUserId(null);
     }
     checkReviewPermission()
       .then(setCanModeratePosts)
@@ -815,6 +909,66 @@ const PostDetailPage = () => {
     message.success(intl.formatMessage({ id: 'common.copied', defaultMessage: '已复制' }));
   };
 
+  const getLoginReturnPath = () =>
+    postId ? `/community/post/${postId}` : `${window.location.pathname}${window.location.search}`;
+
+  const requireLogin = (loginMessageId, loginDefaultMessage) => {
+    if (localStorage.getItem('token')) return true;
+    message.warning(intl.formatMessage({ id: loginMessageId, defaultMessage: loginDefaultMessage }));
+    navigate(buildLoginPath(getLoginReturnPath()));
+    return false;
+  };
+
+  const handleShare = () => {
+    if (!requireLogin('post.share.loginRequired', '登录后可分享帖子')) return;
+    setShareModalOpen(true);
+  };
+
+  const handleDownload = async () => {
+    if (!post) return;
+    if (!requireLogin('post.download.loginRequired', '登录后可下载作品')) return;
+    const urls = mediaUrls.length > 0 ? mediaUrls : (post.coverUrl ? [post.coverUrl] : []);
+    if (urls.length === 0) {
+      message.warning(intl.formatMessage({ id: 'post.download.noMedia', defaultMessage: '暂无可下载的媒体文件' }));
+      return;
+    }
+    setDownloading(true);
+    try {
+      let successCount = 0;
+      for (let i = 0; i < urls.length; i += 1) {
+        const url = urls[i];
+        const ext = getMediaFileExtension(url, post.mediaType);
+        const fileName = urls.length > 1
+          ? `post-${post.id}-${i + 1}.${ext}`
+          : `post-${post.id}.${ext}`;
+        const ok = await downloadMediaUrl(url, fileName);
+        if (ok) successCount += 1;
+        if (i < urls.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        }
+      }
+      if (successCount > 0) {
+        message.success(
+          intl.formatMessage(
+            { id: 'post.download.success', defaultMessage: '已开始下载 {count} 个文件' },
+            { count: successCount }
+          )
+        );
+        recordPostDownload(post.id)
+          .then((downloadCount) => {
+            setPost((prev) => (prev ? { ...prev, downloadCount } : prev));
+          })
+          .catch(() => {});
+      } else {
+        message.info(intl.formatMessage({ id: 'post.download.openedInNewTab', defaultMessage: '已在新标签页打开，请手动保存' }));
+      }
+    } catch {
+      message.error(intl.formatMessage({ id: 'post.download.failed', defaultMessage: '下载失败，请稍后重试' }));
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const t2iImportPayload = useMemo(() => buildT2iImportFromPost(post), [post]);
   const canGenerateSameStyle = Boolean(t2iImportPayload);
 
@@ -868,8 +1022,23 @@ const PostDetailPage = () => {
           <FormattedMessage id="common.back" defaultMessage="返回" />
         </Button>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Button icon={<ShareAltOutlined />} shape="circle" style={{ minWidth: 44, minHeight: 44 }} />
-          <Button icon={<DownloadOutlined />} shape="circle" style={{ minWidth: 44, minHeight: 44 }} />
+          <Tooltip title={intl.formatMessage({ id: 'post.share', defaultMessage: '分享' })}>
+            <Button
+              icon={<ShareAltOutlined />}
+              shape="circle"
+              style={{ minWidth: 44, minHeight: 44 }}
+              onClick={handleShare}
+            />
+          </Tooltip>
+          <Tooltip title={intl.formatMessage({ id: 'post.download', defaultMessage: '下载' })}>
+            <Button
+              icon={<DownloadOutlined />}
+              shape="circle"
+              style={{ minWidth: 44, minHeight: 44 }}
+              loading={downloading}
+              onClick={handleDownload}
+            />
+          </Tooltip>
         </div>
       </NavBar>
 
@@ -1162,14 +1331,61 @@ const PostDetailPage = () => {
             
             <Divider />
             
-            {/* 4. 统计信息 */}
-            <Space size="large" style={{ color: '#888' }}>
-                <span><EyeOutlined /> <FormattedMessage id="common.viewCount" defaultMessage="{count} Views" values={{count: post.viewCount}} /></span>
-                <span>{new Date(post.createTime).toLocaleDateString()}</span>
-            </Space>
+            <StatsGrid>
+              {[
+                { icon: EyeOutlined, value: post.viewCount ?? 0, labelId: 'post.stats.views', defaultMessage: '浏览' },
+                { icon: ShareAltOutlined, value: post.shareCount ?? 0, labelId: 'post.stats.shares', defaultMessage: '分享' },
+                { icon: DownloadOutlined, value: post.downloadCount ?? 0, labelId: 'post.stats.downloads', defaultMessage: '下载' },
+                { icon: MessageOutlined, value: post.commentCount ?? 0, labelId: 'post.stats.comments', defaultMessage: '评论' },
+              ].map(({ icon: Icon, value, labelId, defaultMessage }) => (
+                <StatCard key={labelId}>
+                  <Icon className="stat-icon" />
+                  <div className="stat-body">
+                    <div className="stat-value">{Number(value).toLocaleString()}</div>
+                    <div className="stat-label">
+                      <FormattedMessage id={labelId} defaultMessage={defaultMessage} />
+                    </div>
+                  </div>
+                </StatCard>
+              ))}
+              <StatsDateRow>
+                <FormattedMessage
+                  id="post.stats.publishedAt"
+                  defaultMessage="发布于 {date}"
+                  values={{
+                    date: intl.formatDate(new Date(post.createTime), {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    }),
+                  }}
+                />
+              </StatsDateRow>
+            </StatsGrid>
 
         </SidebarSection>
       </MainContainer>
+
+      <PostCommentSection
+        postId={post.id}
+        commentCount={post.commentCount}
+        currentUserId={currentUserId ?? undefined}
+        onCommentCountChange={(delta) =>
+          setPost((prev) =>
+            prev ? { ...prev, commentCount: Math.max((prev.commentCount ?? 0) + delta, 0) } : prev
+          )
+        }
+      />
+
+      <PostShareCardModal
+        open={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        post={post}
+        coverUrl={mediaUrls[0] || post.coverUrl}
+        onShareRecorded={(shareCount) =>
+          setPost((prev) => (prev ? { ...prev, shareCount } : prev))
+        }
+      />
       
     </PageLayout>
   );
