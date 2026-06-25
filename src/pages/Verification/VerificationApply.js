@@ -42,7 +42,7 @@ import { useVerificationStatus } from './useVerificationStatus';
 
 const { Option } = Select;
 
-const MAX_ID_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_ID_IMAGE_BYTES = 20 * 1024 * 1024;
 
 const isLikelyImageFile = (file) => {
   if (!file) return false;
@@ -112,7 +112,7 @@ const VerificationApply = () => {
     }
     if (file.size > MAX_ID_IMAGE_BYTES) {
       message.error(
-        intl.formatMessage({ id: 'verification.upload.sizeLimit', defaultMessage: '文件大小不能超过 5MB' })
+        intl.formatMessage({ id: 'verification.upload.sizeLimit', defaultMessage: '文件大小不能超过 20MB' })
       );
       return false;
     }
@@ -197,8 +197,8 @@ const VerificationApply = () => {
       formData.append('realName', values.realName);
       formData.append('idType', values.idType || currentKycConfig?.primaryIdType || 'PASSPORT');
       formData.append('cardNum', values.cardNum);
-      if (idCardFront) formData.append('idCoverImage1', idCardFront);
-      if (idCardBack) formData.append('idCoverImage2', idCardBack);
+      if (idCardFront) formData.append('idCoverImage1', idCardFront, idCardFront.name || 'id-front.jpg');
+      if (idCardBack) formData.append('idCoverImage2', idCardBack, idCardBack.name || 'id-back.jpg');
 
       const response = await instance.post('/productx/user/verification', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -215,10 +215,19 @@ const VerificationApply = () => {
       }
     } catch (error) {
       console.error('提交认证失败:', error);
-      message.error(
-        error.response?.data?.message ||
-          intl.formatMessage({ id: 'verification.submit.error', defaultMessage: '提交失败，请稍后重试' })
-      );
+      const status = error.response?.status;
+      const serverMessage = error.response?.data?.message;
+      let fallback = intl.formatMessage({
+        id: 'verification.submit.error',
+        defaultMessage: '提交失败，请稍后重试',
+      });
+      if (status === 413) {
+        fallback = intl.formatMessage({
+          id: 'verification.submit.tooLarge',
+          defaultMessage: '图片过大，请压缩后重试或换一张较小的照片',
+        });
+      }
+      message.error(serverMessage || fallback);
     } finally {
       setLoading(false);
     }
@@ -483,7 +492,7 @@ const VerificationApply = () => {
                         <p className="ant-upload-hint" style={{ fontSize: 12, color: token.colorTextSecondary }}>
                           {intl.formatMessage({
                             id: 'verification.upload.hint',
-                            defaultMessage: '支持 JPG/PNG，单张不超过 5MB',
+                            defaultMessage: '支持 JPG/PNG/HEIC 等，单张不超过 20MB',
                           })}
                         </p>
                       </>
@@ -540,7 +549,7 @@ const VerificationApply = () => {
                         <p className="ant-upload-hint" style={{ fontSize: 12, color: token.colorTextSecondary }}>
                           {intl.formatMessage({
                             id: 'verification.upload.hint',
-                            defaultMessage: '支持 JPG/PNG，单张不超过 5MB',
+                            defaultMessage: '支持 JPG/PNG/HEIC 等，单张不超过 20MB',
                           })}
                         </p>
                       </>
