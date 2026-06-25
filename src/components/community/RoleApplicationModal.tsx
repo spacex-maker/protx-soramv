@@ -3,6 +3,8 @@ import { Modal, Form, Input, message, Card, Tag, Space, Steps, Alert } from 'ant
 import { CrownOutlined, FileTextOutlined, TrophyOutlined, PhoneOutlined, CheckCircleOutlined, SendOutlined } from '@ant-design/icons';
 import styled, { keyframes } from 'styled-components';
 import { getAvailableRoles, applyForRole, CommunityRole, RoleApplicationRequest } from 'api/community';
+import { communityModalMobileCss } from './communityModalStyled';
+import { useCommunityModalProps } from './useCommunityModalProps';
 
 const { TextArea } = Input;
 
@@ -18,6 +20,8 @@ const fadeIn = keyframes`
 `;
 
 const StyledModal = styled(Modal)`
+  ${communityModalMobileCss}
+
   .ant-modal-body {
     padding: 24px;
     max-height: 70vh;
@@ -187,6 +191,7 @@ const RoleApplicationModal: React.FC<RoleApplicationModalProps> = ({
   const [roles, setRoles] = useState<CommunityRole[]>([]);
   const [selectedRole, setSelectedRole] = useState<number | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
+  const { isMobile, ...modalProps } = useCommunityModalProps(700);
 
   useEffect(() => {
     if (visible) {
@@ -271,12 +276,14 @@ const RoleApplicationModal: React.FC<RoleApplicationModalProps> = ({
         </span>
       }
       cancelText="取消"
-      width={700}
       destroyOnClose
+      {...modalProps}
     >
       <Steps
         current={currentStep}
-        style={{ marginBottom: 32 }}
+        direction={isMobile ? 'vertical' : 'horizontal'}
+        size={isMobile ? 'small' : 'default'}
+        style={{ marginBottom: isMobile ? 20 : 32 }}
         items={[
           { title: '选择角色', icon: <CrownOutlined /> },
           { title: '填写信息', icon: <FileTextOutlined /> },

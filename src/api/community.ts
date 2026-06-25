@@ -20,6 +20,7 @@ export interface CommunityPost {
   collectCount: number;
   shareCount?: number;
   downloadCount?: number;
+  shareCode?: string;
   status: number; // 0=审核中, 1=公开, 2=私有, 9=违规下架
   reviewerId?: number;
   reviewerNickname?: string;
@@ -142,6 +143,18 @@ export const listPosts = async (params: ListPostsParams): Promise<CommunityPost[
   return response.data.data;
 };
 
+/** 官网 Hero：从社区频道公开图片随机抽取（不含社区广场类频道） */
+export const listHeroImages = async (limit = 60): Promise<string[]> => {
+  const response = await instance.get<ApiResponse<string[]>>(
+    '/productx/community/post/hero-images',
+    { params: { limit } }
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '获取 Hero 图片失败');
+  }
+  return response.data.data || [];
+};
+
 /**
  * 查询作品详情
  */
@@ -149,6 +162,16 @@ export const getPostDetail = async (postId: number): Promise<CommunityPost> => {
   const response = await instance.get<ApiResponse<CommunityPost>>(
     `/productx/community/post/${postId}`
   );
+  return response.data.data;
+};
+
+export const getPostDetailByShareCode = async (shareCode: string): Promise<CommunityPost> => {
+  const response = await instance.get<ApiResponse<CommunityPost>>(
+    `/productx/community/post/share/${encodeURIComponent(shareCode)}`
+  );
+  if (!response.data.success || !response.data.data) {
+    throw new Error(response.data.message || '作品不存在');
+  }
   return response.data.data;
 };
 
@@ -779,6 +802,7 @@ export interface ReviewPost {
   collectCount: number;
   shareCount?: number;
   downloadCount?: number;
+  shareCode?: string;
   status: number; // 0=审核中, 1=公开, 2=私有, 9=违规下架
   isFeatured?: boolean;
   isChallengeEntry?: boolean;

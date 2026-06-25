@@ -8,6 +8,7 @@ import { generatePostShareImage } from 'utils/generatePostShareImage';
 import { downloadFile } from 'utils/file';
 import { isPostPromptMarketLocked } from 'utils/communityPostPrompt';
 import { recordPostShare } from 'api/community';
+import { buildPostShareUrl } from 'utils/communityPostRoutes';
 
 const { Text, Paragraph } = Typography;
 
@@ -128,7 +129,7 @@ interface PostShareCardModalProps {
     userNickname?: string;
     coverUrl?: string;
     isPromptHidden?: boolean;
-    promptMarketListingId?: number;
+    shareCode?: string;
   };
   coverUrl?: string;
   onShareRecorded?: (shareCount: number) => void;
@@ -165,9 +166,10 @@ const PostShareCardModal: React.FC<PostShareCardModalProps> = ({
   };
 
   const shareUrl = useMemo(() => {
+    if (post?.shareCode) return buildPostShareUrl(post.shareCode);
     if (!post?.id) return '';
     return `${window.location.origin}/community/post/${post.id}`;
-  }, [post?.id]);
+  }, [post?.id, post?.shareCode]);
 
   const promptLocked = isPostPromptMarketLocked(post);
 

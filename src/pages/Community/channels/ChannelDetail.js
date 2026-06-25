@@ -22,10 +22,12 @@ import SimpleHeader from 'components/headers/simple';
 import { getChannelByKey, listPosts, likePost, unlikePost, collectPost, uncollectPost, listChannels, incrementPostView, checkReviewPermission, getCachedChannelId } from 'api/community';
 import { checkAiOperatorManagePermission } from 'api/communityAiOperator';
 import UserRoleCard from 'components/community/UserRoleCard';
+import DraggableFloatingCard from 'components/community/DraggableFloatingCard';
 import ChannelAiOperatorModal from 'components/community/ChannelAiOperatorModal';
 import PostShelfToggle from 'components/community/PostShelfToggle';
 import { isPostDelisted } from 'utils/communityPostStatus';
 import { communityChannelPath } from 'utils/communityRoutes';
+import { buildPostDetailPath } from 'utils/communityPostRoutes';
 import PostStackImagePreview from 'components/community/PostStackImagePreview';
 import { getPostCardSpecs, getPostMediaUrls } from '../ChallengeDetailPage/utils';
 import { getPostPromptAccessType } from 'utils/communityPostPrompt';
@@ -115,56 +117,6 @@ const PageLayout = styled.div`
   @media (max-width: 768px) {
     padding-top: 56px;
     padding-bottom: env(safe-area-inset-bottom, 0);
-  }
-`;
-
-const UserCardWrapper = styled.div`
-  position: fixed;
-  top: ${props => props.top}px;
-  right: ${props => props.right}px;
-  z-index: 100;
-  animation: ${fadeInUp} 0.8s ease-out;
-  transition: ${props => props.isDragging ? 'none' : 'all 0.2s ease'};
-  user-select: none;
-  
-  > *:not([data-drag-handle]) {
-    pointer-events: ${props => props.isDragging ? 'none' : 'auto'};
-  }
-  
-  @media (max-width: 1200px) {
-    display: none;
-  }
-`;
-
-const DragHandle = styled.div`
-  position: absolute;
-  top: -36px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 32px;
-  cursor: ${props => props.isDragging ? 'grabbing' : 'grab'};
-  z-index: 10;
-  background: ${props => props.isDragging ? 'rgba(24, 144, 255, 0.15)' : 'rgba(0,0,0,0.08)'};
-  transition: all 0.2s;
-  border-radius: 16px 16px 0 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(4px);
-  pointer-events: auto;
-  
-  &:hover {
-    background: rgba(24, 144, 255, 0.2);
-    transform: translateX(-50%) translateY(-2px);
-  }
-  
-  &::before {
-    content: '⋮⋮';
-    color: ${props => props.isDragging ? '#1890ff' : 'rgba(0,0,0,0.35)'};
-    font-size: 14px;
-    font-weight: bold;
-    letter-spacing: 3px;
   }
 `;
 
@@ -1443,12 +1395,6 @@ const ChannelDetailPage = () => {
   const previewRestoreRef = useRef(false);
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  
-  // Drag state
-  const [cardPosition, setCardPosition] = useState({ top: 100, right: 40 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [hasMoved, setHasMoved] = useState(false);
 
   // 头部频道列表（快捷跳转）
   const [channelsList, setChannelsList] = useState([]);
@@ -1806,7 +1752,7 @@ const ChannelDetailPage = () => {
   const handlePostDetailClick = (post, e) => {
     e?.stopPropagation();
     e?.preventDefault();
-    navigate(`/community/post/${post.id}`);
+    navigate(buildPostDetailPath(post));
   };
 
   const handlePostPreviewClick = (post, e) => {
@@ -1905,53 +1851,6 @@ const ChannelDetailPage = () => {
     }
   };
 
-  // Drag handlers
-  const handleMouseDown = (e) => {
-    if (e.button !== 0) return;
-    setIsDragging(true);
-    setHasMoved(false);
-    setDragStart({
-      x: e.clientX - (window.innerWidth - cardPosition.right),
-      y: e.clientY - cardPosition.top,
-      startX: e.clientX,
-      startY: e.clientY,
-    });
-    e.preventDefault();
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging) return;
-    const deltaX = Math.abs(e.clientX - dragStart.startX);
-    const deltaY = Math.abs(e.clientY - dragStart.startY);
-    if (deltaX > 5 || deltaY > 5) setHasMoved(true);
-    
-    const newRight = window.innerWidth - e.clientX + dragStart.x;
-    const newTop = e.clientY - dragStart.y;
-    
-    setCardPosition({
-      top: Math.max(60, Math.min(newTop, window.innerHeight - 100)),
-      right: Math.max(20, Math.min(newRight, window.innerWidth - 100)),
-    });
-  };
-
-  const handleMouseUp = () => {
-    setTimeout(() => {
-      setIsDragging(false);
-      setHasMoved(false);
-    }, 100);
-  };
-
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, dragStart, cardPosition]);
-
   if (loading) {
     return (
       <PageLayout>
@@ -1978,19 +1877,9 @@ const ChannelDetailPage = () => {
     <PageLayout>
       <SimpleHeader />
 
-      <UserCardWrapper 
-        top={cardPosition.top} 
-        right={cardPosition.right}
-        isDragging={isDragging || hasMoved}
-      >
-        <DragHandle 
-          data-drag-handle="true"
-          isDragging={isDragging}
-          onMouseDown={handleMouseDown}
-          title="Drag to move"
-        />
+      <DraggableFloatingCard zIndex={100}>
         <UserRoleCard showRoles={true} maxRoleDisplay={1} />
-      </UserCardWrapper>
+      </DraggableFloatingCard>
 
       {/* Hero Banner：标题 + Switch Channel 均在内部 */}
       <HeroSection bgColor={channel.themeColor} coverUrl={channel.coverUrl}>

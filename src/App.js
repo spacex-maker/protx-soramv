@@ -24,6 +24,7 @@ import WorksPage from "pages/Works";
 import WorkSharePage from "pages/Works/WorkSharePage";
 import NotificationsPage from "pages/Notifications";
 import InvitePage from "pages/Invite";
+import UserLevelPage from "pages/UserLevel";
 import FeedbackPage from "pages/Feedback";
 import HelpPage from "pages/Help";
 import AboutPage from "pages/About";
@@ -424,6 +425,11 @@ export default function App() {
                   <InvitePage />
                 </PrivateRoute>
               } />
+              <Route path="/user-level" element={
+                <PrivateRoute>
+                  <UserLevelPage />
+                </PrivateRoute>
+              } />
               <Route path="/feedback" element={<FeedbackPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/about" element={<AboutPage />} />
@@ -555,6 +561,7 @@ export default function App() {
                 <Navigate to="/community/challenge" replace />
               } />
               <Route path="/community/user/:userId" element={<CommunityUserProfilePage />} />
+              <Route path="/community/s/:shareCode" element={<PostDetailPage />} />
               <Route path="/community/post/:postId" element={<PostDetailPage />} />
               <Route path="/community/saved" element={
                 <PrivateRoute>

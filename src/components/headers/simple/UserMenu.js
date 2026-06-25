@@ -815,7 +815,7 @@ const UserMenu = ({ userInfo, onLogout }) => {
                         $token={token}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setAchievementModalOpen(true);
+                          navigate('/user-level');
                         }}
                         style={{ cursor: 'pointer' }}
                       >

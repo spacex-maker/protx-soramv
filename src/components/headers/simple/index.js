@@ -10,12 +10,14 @@ import Logo from './Logo';
 import DarkModeToggle from './DarkModeToggle';
 import LanguageSelector from './LanguageSelector';
 import UserMenu from './UserMenu';
+import MobileNavMenu from './MobileNavMenu';
 import { COMMUNITY_CHANNELS_PATH } from 'utils/communityRoutes';
 import {
   Header,
   HeaderContent,
   LeftSection,
   RightSection,
+  DesktopNav,
   NavLink,
   PrimaryLink,
   IconNavLink
@@ -188,58 +190,73 @@ const SimpleHeader = () => {
         </LeftSection>
 
         <RightSection>
-          <IconNavLink 
-            to="/" 
-            $active={isHomePage}
-            title={intl.formatMessage({ id: 'header.homepage', defaultMessage: '返回官网' })}
-          >
-            <HomeOutlined />
-          </IconNavLink>
+          <DesktopNav>
+            <IconNavLink 
+              to="/" 
+              $active={isHomePage}
+              title={intl.formatMessage({ id: 'header.homepage', defaultMessage: '返回官网' })}
+            >
+              <HomeOutlined />
+            </IconNavLink>
 
-          <IconNavLink
-            to={COMMUNITY_CHANNELS_PATH}
-            $active={isCommunityChannels}
-            title={intl.formatMessage({ id: 'header.communityChannels', defaultMessage: '社区频道' })}
-          >
-            <CompassOutlined />
-          </IconNavLink>
+            <IconNavLink
+              to={COMMUNITY_CHANNELS_PATH}
+              $active={isCommunityChannels}
+              title={intl.formatMessage({ id: 'header.communityChannels', defaultMessage: '社区频道' })}
+            >
+              <CompassOutlined />
+            </IconNavLink>
 
-          <LanguageSelector 
+            <LanguageSelector 
+              locale={locale}
+              languages={languages}
+              onLanguageChange={changeLocale}
+            />
+
+            <DarkModeToggle 
+              isDark={isDark}
+              toggleDarkMode={toggleDarkMode}
+            />
+            
+            {userInfo ? (
+              <>
+                <IconNavLink 
+                  to="/workspace" 
+                  $active={isWorkspace}
+                  title={intl.formatMessage({ id: 'header.workspace', defaultMessage: '工作空间' })}
+                >
+                  <AppstoreOutlined />
+                </IconNavLink>
+                <UserMenu 
+                  userInfo={userInfo}
+                  isDark={isDark}
+                  onLogout={handleLogout}
+                />
+              </>
+            ) : (
+              <>
+                <NavLink to="/login">
+                  <FormattedMessage id="login.button" defaultMessage="登录" />
+                </NavLink>
+                <PrimaryLink to="/signup">
+                  <FormattedMessage id="signup.button" defaultMessage="注册" />
+                </PrimaryLink>
+              </>
+            )}
+          </DesktopNav>
+
+          <MobileNavMenu
+            userInfo={userInfo}
+            isDark={isDark}
+            toggleDarkMode={toggleDarkMode}
+            onLogout={handleLogout}
             locale={locale}
             languages={languages}
             onLanguageChange={changeLocale}
+            isHomePage={isHomePage}
+            isWorkspace={isWorkspace}
+            isCommunityChannels={isCommunityChannels}
           />
-
-          <DarkModeToggle 
-            isDark={isDark}
-            toggleDarkMode={toggleDarkMode}
-          />
-          
-          {userInfo ? (
-            <>
-              <IconNavLink 
-                to="/workspace" 
-                $active={isWorkspace}
-                title={intl.formatMessage({ id: 'header.workspace', defaultMessage: '工作空间' })}
-              >
-                <AppstoreOutlined />
-              </IconNavLink>
-              <UserMenu 
-                userInfo={userInfo}
-                isDark={isDark}
-                onLogout={handleLogout}
-              />
-            </>
-          ) : (
-            <>
-              <NavLink to="/login">
-                <FormattedMessage id="login.button" defaultMessage="登录" />
-              </NavLink>
-              <PrimaryLink to="/signup">
-                <FormattedMessage id="signup.button" defaultMessage="注册" />
-              </PrimaryLink>
-            </>
-          )}
         </RightSection>
       </HeaderContent>
     </Header>

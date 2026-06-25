@@ -13,11 +13,15 @@ import {
   CommunityChannel 
 } from 'api/community';
 import PostReviewModal from './PostReviewModal';
+import { communityModalMobileCss } from './communityModalStyled';
+import { useCommunityModalProps } from './useCommunityModalProps';
 
 const { Search } = Input;
 const { Option } = Select;
 
 const StyledModal = styled(Modal)`
+  ${communityModalMobileCss}
+
   .ant-modal-body {
     padding: 16px;
     max-height: 75vh;
@@ -55,6 +59,14 @@ const FilterBar = styled.div`
   gap: 12px;
   margin-bottom: 16px;
   flex-wrap: wrap;
+
+  @media (max-width: 768px) {
+    flex-direction: column;
+
+    .ant-select {
+      width: 100% !important;
+    }
+  }
 `;
 
 interface PostManageModalProps {
@@ -63,6 +75,9 @@ interface PostManageModalProps {
 }
 
 const PostManageModal: React.FC<PostManageModalProps> = ({ visible, onCancel }) => {
+  const { isMobile, ...manageModalProps } = useCommunityModalProps(1000, {
+    bodyMaxHeight: 'min(75vh, 720px)',
+  });
   const [activeTab, setActiveTab] = useState('pending');
   const [pendingData, setPendingData] = useState<ReviewPost[]>([]);
   const [reviewedData, setReviewedData] = useState<ReviewPost[]>([]);
@@ -392,6 +407,7 @@ const PostManageModal: React.FC<PostManageModalProps> = ({ visible, onCancel }) 
             loading={loading}
             pagination={false}
             size="small"
+            scroll={{ x: isMobile ? 640 : undefined }}
           />
           {pendingTotal > 0 && (
             <div style={{ marginTop: 16, textAlign: 'right' }}>
@@ -496,13 +512,13 @@ const PostManageModal: React.FC<PostManageModalProps> = ({ visible, onCancel }) 
         open={visible}
         onCancel={onCancel}
         footer={null}
-        width={1000}
-        centered
         destroyOnClose
+        {...manageModalProps}
       >
-        <Tabs 
-          activeKey={activeTab} 
+        <Tabs
+          activeKey={activeTab}
           onChange={handleTabChange}
+          size={isMobile ? 'small' : 'middle'}
           items={tabItems}
         />
       </StyledModal>

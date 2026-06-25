@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Typography, Button } from 'antd';
-import { FormattedMessage, useIntl } from 'react-intl';
+import { FormattedMessage } from 'react-intl';
 import styled, { keyframes } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
 import { RightOutlined, CompassOutlined } from '@ant-design/icons';
 import FooterSection from 'pages/Home/components/FooterSection';
 import UserStatusDock from 'components/community/UserStatusDock';
+import DraggableFloatingCard from 'components/community/DraggableFloatingCard';
 
 // 引入你之前设计的组件
 import CommunityContributors from './CommunityContributors';
@@ -152,58 +153,6 @@ const HeroWrapper = styled.div`
   }
 `;
 
-// --- 顶部用户状态栏 ---
-
-const UserStatusDockWrapper = styled.div`
-  position: fixed;
-  top: ${props => props.top}px;
-  right: ${props => props.right}px;
-  z-index: 50;
-  transition: ${props => props.isDragging ? 'none' : 'all 0.2s ease'};
-  user-select: none;
-
-  /* 拖动时禁用内部点击 */
-  > *:not([data-drag-handle]) {
-    pointer-events: ${props => props.isDragging ? 'none' : 'auto'};
-  }
-
-  @media (max-width: 1200px) {
-    display: none;
-  }
-`;
-
-const DragHandle = styled.div`
-  position: absolute;
-  top: -36px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 32px;
-  cursor: ${props => props.isDragging ? 'grabbing' : 'grab'};
-  z-index: 10;
-  background: ${props => props.isDragging ? 'rgba(24, 144, 255, 0.15)' : 'rgba(0,0,0,0.08)'};
-  transition: all 0.2s;
-  border-radius: 16px 16px 0 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(4px);
-  pointer-events: auto;
-  
-  &:hover {
-    background: rgba(24, 144, 255, 0.2);
-    transform: translateX(-50%) translateY(-2px);
-  }
-  
-  &::before {
-    content: '⋮⋮';
-    color: ${props => props.isDragging ? '#1890ff' : 'rgba(0,0,0,0.35)'};
-    font-size: 14px;
-    font-weight: bold;
-    letter-spacing: 3px;
-  }
-`;
-
 // --- 标题组件 ---
 
 const SectionHeader = styled.div`
@@ -251,70 +200,6 @@ const SectionHeader = styled.div`
 // --- 主页面组件 ---
 
 const CommunityPage = () => {
-  const intl = useIntl();
-  
-  // 用户卡片拖动状态
-  const [cardPosition, setCardPosition] = useState({ top: 100, right: 40 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [hasMoved, setHasMoved] = useState(false);
-
-  // 拖动处理函数
-  const handleMouseDown = (e) => {
-    if (e.button !== 0) return;
-    
-    setIsDragging(true);
-    setHasMoved(false);
-    setDragStart({
-      x: e.clientX - (window.innerWidth - cardPosition.right),
-      y: e.clientY - cardPosition.top,
-      startX: e.clientX,
-      startY: e.clientY,
-    });
-    
-    e.preventDefault();
-  };
-
-  const handleMouseMove = (e) => {
-    if (!isDragging) return;
-    
-    const deltaX = Math.abs(e.clientX - dragStart.startX);
-    const deltaY = Math.abs(e.clientY - dragStart.startY);
-    
-    if (deltaX > 5 || deltaY > 5) {
-      setHasMoved(true);
-    }
-    
-    const newRight = window.innerWidth - e.clientX + dragStart.x;
-    const newTop = e.clientY - dragStart.y;
-    
-    const maxRight = window.innerWidth - 100;
-    const maxTop = window.innerHeight - 100;
-    
-    setCardPosition({
-      top: Math.max(60, Math.min(newTop, maxTop)),
-      right: Math.max(20, Math.min(newRight, maxRight)),
-    });
-  };
-
-  const handleMouseUp = () => {
-    setTimeout(() => {
-      setIsDragging(false);
-      setHasMoved(false);
-    }, 100);
-  };
-
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, dragStart, cardPosition]);
-
   return (
     <PageLayout>
       <AmbientBackground>
@@ -324,20 +209,9 @@ const CommunityPage = () => {
 
       <SimpleHeader />
 
-      {/* 侧边悬浮的用户信息，只在大屏显示，不干扰主视觉 */}
-      <UserStatusDockWrapper 
-        top={cardPosition.top} 
-        right={cardPosition.right}
-        isDragging={isDragging || hasMoved}
-      >
-        <DragHandle 
-          data-drag-handle="true"
-          isDragging={isDragging}
-          onMouseDown={handleMouseDown}
-          title="拖动以移动位置"
-        />
+      <DraggableFloatingCard zIndex={50}>
         <UserStatusDock />
-      </UserStatusDockWrapper>
+      </DraggableFloatingCard>
 
       <MainContent>
         

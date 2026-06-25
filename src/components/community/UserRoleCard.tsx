@@ -8,6 +8,7 @@ import RoleApplicationModal from './RoleApplicationModal';
 import MyApplicationsModal from './MyApplicationsModal';
 import PostManageModal from './PostManageModal';
 import dayjs from 'dayjs';
+import { useCommunityModalProps } from './useCommunityModalProps';
 
 const fadeIn = keyframes`
   from { 
@@ -25,6 +26,8 @@ const Container = styled.div`
   align-items: center;
   gap: 16px;
   padding: 10px 24px 10px 10px;
+  max-width: min(280px, calc(100vw - 24px));
+  box-sizing: border-box;
   background: ${props => props.theme.mode === 'dark' 
     ? 'rgba(255, 255, 255, 0.05)' 
     : 'rgba(0, 0, 0, 0.02)'};
@@ -282,6 +285,29 @@ const ModalContent = styled.div`
       }
     }
   }
+
+  @media (max-width: 768px) {
+    .user-header {
+      padding: 14px;
+      gap: 12px;
+    }
+
+    .user-header .user-avatar {
+      flex-shrink: 0;
+    }
+
+    .role-header {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .role-actions {
+      width: 100%;
+      .ant-btn {
+        width: 100%;
+      }
+    }
+  }
 `;
 
 const UserRoleCard: React.FC<UserRoleCardProps> = ({ 
@@ -295,6 +321,7 @@ const UserRoleCard: React.FC<UserRoleCardProps> = ({
   const [applyModalVisible, setApplyModalVisible] = useState(false);
   const [applicationsModalVisible, setApplicationsModalVisible] = useState(false);
   const [manageModalVisible, setManageModalVisible] = useState(false);
+  const { isMobile, ...roleModalProps } = useCommunityModalProps(600);
 
   useEffect(() => {
     loadUserInfo();
@@ -367,8 +394,8 @@ const UserRoleCard: React.FC<UserRoleCardProps> = ({
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
-        width={600}
-        centered
+        destroyOnClose
+        {...roleModalProps}
       >
         <ModalContent>
           {/* 用户信息 */}
@@ -388,17 +415,23 @@ const UserRoleCard: React.FC<UserRoleCardProps> = ({
           </div>
 
           {/* 操作按钮 */}
-          <Space style={{ marginBottom: 16, width: '100%' }}>
+          <Space
+            direction={isMobile ? 'vertical' : 'horizontal'}
+            style={{ marginBottom: 16, width: '100%' }}
+            size={isMobile ? 8 : 12}
+          >
             <Button
               type="primary"
               icon={<PlusOutlined />}
               onClick={() => setApplyModalVisible(true)}
+              block={isMobile}
             >
               申请角色
             </Button>
             <Button
               icon={<FileTextOutlined />}
               onClick={() => setApplicationsModalVisible(true)}
+              block={isMobile}
             >
               我的申请记录
             </Button>

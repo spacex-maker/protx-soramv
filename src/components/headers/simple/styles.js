@@ -119,6 +119,16 @@ export const RightSection = styled.div`
   gap: 1rem;
 `;
 
+export const DesktopNav = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
 export const NavLink = styled(Link)`
   font-size: 0.875rem;
   font-weight: 500;

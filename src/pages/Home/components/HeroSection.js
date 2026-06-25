@@ -4,6 +4,7 @@ import styled, { ThemeContext, keyframes } from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { base } from '../../../api/base';
+import { listHeroImages } from '../../../api/community';
 import { useLocale } from '../../../contexts/LocaleContext';
 import { motion } from 'framer-motion';
 import { PlayCircleOutlined } from '@ant-design/icons';
@@ -263,6 +264,13 @@ const MasonryGrid = ({ columns, theme }) => (
 );
 
 // --- 4. 工具函数 ---
+const addHeroImageCompress = (url, width = 720) => {
+  if (!url || typeof url !== 'string') return url;
+  if (url.includes('imageMogr2') || url.startsWith('data:')) return url;
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}imageMogr2/format/webp/quality/75/thumbnail/${width}x`;
+};
+
 const shuffleArray = (array) => {
   const shuffled = [...array];
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -327,17 +335,28 @@ const HeroSection = () => {
     const fetchImages = async () => {
       try {
         setLoading(true);
-        const lang = locale === 'zh_CN' ? 'zh' : (locale && locale.split('_')[0]) || 'zh';
-        let response = await base.getSiteSettings('hero.images', lang);
-        let list = parseImagesFromResponse(response);
-        if (list.length === 0 && lang !== 'default') {
-          response = await base.getSiteSettings('hero.images', 'default');
-          list = parseImagesFromResponse(response);
+        let list = [];
+        try {
+          const communityUrls = await listHeroImages(60);
+          list = (communityUrls || []).filter(Boolean).map((url) => addHeroImageCompress(url));
+        } catch (communityErr) {
+          console.warn('社区 Hero 图片加载失败，尝试站点配置回退', communityErr);
         }
-        if (list.length === 0 && lang !== 'zh') {
-          response = await base.getSiteSettings('hero.images', 'zh');
+
+        if (list.length === 0) {
+          const lang = locale === 'zh_CN' ? 'zh' : (locale && locale.split('_')[0]) || 'zh';
+          let response = await base.getSiteSettings('hero.images', lang);
           list = parseImagesFromResponse(response);
+          if (list.length === 0 && lang !== 'default') {
+            response = await base.getSiteSettings('hero.images', 'default');
+            list = parseImagesFromResponse(response);
+          }
+          if (list.length === 0 && lang !== 'zh') {
+            response = await base.getSiteSettings('hero.images', 'zh');
+            list = parseImagesFromResponse(response);
+          }
         }
+
         if (list.length > 0) setImages(shuffleArray(list));
       } catch (error) {
         console.error(error);

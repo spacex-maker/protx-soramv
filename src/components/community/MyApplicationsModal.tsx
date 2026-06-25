@@ -4,6 +4,8 @@ import { CheckCircleOutlined, CloseCircleOutlined, ClockCircleOutlined, Rollback
 import { getMyApplications, withdrawApplication, RoleApplication } from 'api/community';
 import dayjs from 'dayjs';
 import styled, { keyframes } from 'styled-components';
+import { communityModalMobileCss } from './communityModalStyled';
+import { useCommunityModalProps } from './useCommunityModalProps';
 
 const fadeIn = keyframes`
   from { 
@@ -17,6 +19,8 @@ const fadeIn = keyframes`
 `;
 
 const StyledModal = styled(Modal)`
+  ${communityModalMobileCss}
+
   .ant-modal-body {
     padding: 24px;
     max-height: 70vh;
@@ -164,6 +168,12 @@ const TimelineInfo = styled.div`
     : 'rgba(0, 0, 0, 0.06)'};
   margin-top: 12px;
   
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
   .time-item {
     display: flex;
     align-items: center;
@@ -195,6 +205,8 @@ const StyledPagination = styled(Pagination)`
 `;
 
 const DetailModal = styled(Modal)`
+  ${communityModalMobileCss}
+
   .detail-section {
     margin-bottom: 20px;
     
@@ -231,6 +243,8 @@ const MyApplicationsModal: React.FC<MyApplicationsModalProps> = ({
   const [pageSize, setPageSize] = useState(10);
   const [detailVisible, setDetailVisible] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<RoleApplication | null>(null);
+  const { isMobile, ...listModalProps } = useCommunityModalProps(700);
+  const { isMobile: isDetailMobile, ...detailModalRest } = useCommunityModalProps(600);
 
   useEffect(() => {
     if (visible) {
@@ -296,8 +310,7 @@ const MyApplicationsModal: React.FC<MyApplicationsModalProps> = ({
         open={visible}
         onCancel={onCancel}
         footer={null}
-        width={700}
-        centered
+        {...listModalProps}
       >
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 0' }}>
@@ -418,11 +431,14 @@ const MyApplicationsModal: React.FC<MyApplicationsModalProps> = ({
         }}
         footer={
           selectedApplication?.canWithdraw ? (
-            <Space>
-              <Button onClick={() => {
-                setDetailVisible(false);
-                setSelectedApplication(null);
-              }}>
+            <Space direction={isDetailMobile ? 'vertical' : 'horizontal'} style={{ width: isDetailMobile ? '100%' : undefined }}>
+              <Button
+                onClick={() => {
+                  setDetailVisible(false);
+                  setSelectedApplication(null);
+                }}
+                block={isDetailMobile}
+              >
                 关闭
               </Button>
               <Popconfirm
@@ -437,21 +453,25 @@ const MyApplicationsModal: React.FC<MyApplicationsModalProps> = ({
                 cancelText="取消"
                 okButtonProps={{ danger: true }}
               >
-                <Button danger icon={<RollbackOutlined />}>
+                <Button danger icon={<RollbackOutlined />} block={isDetailMobile}>
                   撤回申请
                 </Button>
               </Popconfirm>
             </Space>
           ) : (
-            <Button type="primary" onClick={() => {
-              setDetailVisible(false);
-              setSelectedApplication(null);
-            }}>
+            <Button
+              type="primary"
+              block={isDetailMobile}
+              onClick={() => {
+                setDetailVisible(false);
+                setSelectedApplication(null);
+              }}
+            >
               关闭
             </Button>
           )
         }
-        width={600}
+        {...detailModalRest}
       >
         {selectedApplication && (
           <div>
@@ -510,9 +530,9 @@ const MyApplicationsModal: React.FC<MyApplicationsModalProps> = ({
 
             <Divider />
 
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: '1fr 1fr', 
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isDetailMobile ? '1fr' : '1fr 1fr',
               gap: 16,
               padding: '16px 0',
             }}>

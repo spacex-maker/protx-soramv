@@ -4,6 +4,7 @@ import { FormattedMessage, useIntl } from 'react-intl';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { buildLoginPath } from 'utils/loginRedirect';
+import { buildPostDetailPath } from 'utils/communityPostRoutes';
 import PostShelfToggle from 'components/community/PostShelfToggle';
 import { addTencentImageCompression } from 'pages/Community/ChallengeDetailPage/utils';
 import {
@@ -139,6 +140,7 @@ export interface PostMediaGalleryProps {
   urls: string[];
   delisted?: boolean;
   postId?: number;
+  shareCode?: string;
   postStatus?: number;
   canModerate?: boolean;
   onShelfStatusChange?: (postId: number, status: number) => void;
@@ -151,6 +153,7 @@ const PostMediaGallery: React.FC<PostMediaGalleryProps> = ({
   urls,
   delisted = false,
   postId,
+  shareCode,
   postStatus,
   canModerate = false,
   onShelfStatusChange,
@@ -177,15 +180,16 @@ const PostMediaGallery: React.FC<PostMediaGalleryProps> = ({
   const openOriginalPreview = useCallback(
     (index: number) => {
       if (!localStorage.getItem('token')) {
-        const returnTo = postId
-          ? `/community/post/${postId}?previewOpen=1&previewIndex=${index}&viewOriginal=1`
+        const basePath = postId != null
+          ? buildPostDetailPath({ id: postId, shareCode })
           : `${window.location.pathname}${window.location.search}`;
+        const returnTo = `${basePath}?previewOpen=1&previewIndex=${index}&viewOriginal=1`;
         promptLoginForOriginal(returnTo);
         return;
       }
       setPreviewState({ open: true, index });
     },
-    [promptLoginForOriginal, postId]
+    [promptLoginForOriginal, postId, shareCode]
   );
 
   useEffect(() => {

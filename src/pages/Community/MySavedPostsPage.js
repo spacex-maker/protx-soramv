@@ -26,6 +26,7 @@ import {
   unlikePost,
 } from 'api/community';
 import { addTencentImageCompression, getPostCardSpecs } from './ChallengeDetailPage/utils';
+import { buildPostDetailPath } from 'utils/communityPostRoutes';
 
 const HEADER_OFFSET = 72;
 const HEADER_OFFSET_MOBILE = 60;
@@ -342,7 +343,7 @@ const InteractionPostList = ({ interactionType }) => {
           {posts.map((post) => {
             const specs = getPostCardSpecs(post);
             return (
-              <PostCard key={post.id} onClick={() => navigate(`/community/post/${post.id}`)}>
+              <PostCard key={post.id} onClick={() => navigate(buildPostDetailPath(post))}>
                 <div className="cover">
                   <Image src={getCoverUrl(post)} alt={post.title} preview={false} />
                   <Tooltip
@@ -555,7 +556,7 @@ const ViewHistoryPostList = () => {
           {posts.map((post) => {
             const specs = getPostCardSpecs(post);
             return (
-              <PostCard key={post.id} onClick={() => navigate(`/community/post/${post.id}`)}>
+              <PostCard key={post.id} onClick={() => navigate(buildPostDetailPath(post))}>
                 <div className="cover">
                   <Image src={getCoverUrl(post)} alt={post.title} preview={false} />
                   <Tooltip

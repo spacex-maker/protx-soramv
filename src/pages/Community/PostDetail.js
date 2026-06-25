@@ -13,7 +13,7 @@ import {
 import { FormattedMessage, useIntl } from 'react-intl';
 import styled, { keyframes } from 'styled-components';
 import SimpleHeader from 'components/headers/simple';
-import { getPostDetail, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus, followUser, unfollowUser, getRelationStatus, checkReviewPermission, recordPostDownload } from 'api/community';
+import { getPostDetail, getPostDetailByShareCode, likePost, unlikePost, collectPost, uncollectPost, getPostInteractionStatus, followUser, unfollowUser, getRelationStatus, checkReviewPermission, recordPostDownload } from 'api/community';
 import PostShelfToggle from 'components/community/PostShelfToggle';
 import PostMediaGallery from 'components/community/PostMediaGallery';
 import PostCommentSection from 'components/community/PostCommentSection';
@@ -23,6 +23,7 @@ import { parsePostGenerationDetails, getPostMediaUrls } from './ChallengeDetailP
 import { buildT2iImportFromPost, persistT2iImportPayload } from 'utils/postT2iImport';
 import { isPostPromptMarketLocked } from 'utils/communityPostPrompt';
 import { buildLoginPath } from 'utils/loginRedirect';
+import { buildPostDetailPath } from 'utils/communityPostRoutes';
 import { downloadFile } from 'utils/file';
 
 const { Title, Text, Paragraph } = Typography;
@@ -771,7 +772,7 @@ const GlowModelName = styled.div`
 const PostDetailPage = () => {
   const intl = useIntl();
   const navigate = useNavigate();
-  const { postId } = useParams();
+  const { postId, shareCode } = useParams();
   const [loading, setLoading] = useState(false);
   const [post, setPost] = useState(null);
   const [interaction, setInteraction] = useState(null);
@@ -786,10 +787,14 @@ const PostDetailPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
-    if (postId) fetchPostDetailData();
+    if (shareCode) {
+      fetchPostDetailByShareCode(shareCode);
+    } else if (postId) {
+      fetchPostDetailData();
+    }
     previewRestoreRef.current = false;
     setGalleryPreviewRestore(null);
-  }, [postId]);
+  }, [postId, shareCode]);
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -810,7 +815,7 @@ const PostDetailPage = () => {
     checkReviewPermission()
       .then(setCanModeratePosts)
       .catch(() => setCanModeratePosts(false));
-  }, [postId]);
+  }, [postId, shareCode]);
 
   useEffect(() => {
     if (previewRestoreRef.current || !post) return;
@@ -829,12 +834,34 @@ const PostDetailPage = () => {
     }
   }, [post, searchParams, setSearchParams]);
 
+  useEffect(() => {
+    if (!post?.shareCode || shareCode || !postId) return;
+    const search = window.location.search;
+    navigate(`/community/s/${encodeURIComponent(post.shareCode)}${search}`, { replace: true });
+  }, [post?.shareCode, postId, shareCode, navigate]);
+
   const fetchPostDetailData = async () => {
     setLoading(true);
     try {
       const data = await getPostDetail(Number(postId));
       setPost(data);
-      loadInteractionStatus(Number(postId));
+      loadInteractionStatus(data.id);
+      if (data.userId) {
+        loadRelationStatus(data.userId);
+      }
+    } catch (error) {
+      message.error(intl.formatMessage({ id: 'common.loadFailed', defaultMessage: 'Load failed' }));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPostDetailByShareCode = async (code) => {
+    setLoading(true);
+    try {
+      const data = await getPostDetailByShareCode(code);
+      setPost(data);
+      loadInteractionStatus(data.id);
       if (data.userId) {
         loadRelationStatus(data.userId);
       }
@@ -909,8 +936,12 @@ const PostDetailPage = () => {
     message.success(intl.formatMessage({ id: 'common.copied', defaultMessage: '已复制' }));
   };
 
-  const getLoginReturnPath = () =>
-    postId ? `/community/post/${postId}` : `${window.location.pathname}${window.location.search}`;
+  const getLoginReturnPath = () => {
+    if (post) return buildPostDetailPath(post);
+    if (shareCode) return `/community/s/${shareCode}`;
+    if (postId) return `/community/post/${postId}`;
+    return `${window.location.pathname}${window.location.search}`;
+  };
 
   const requireLogin = (loginMessageId, loginDefaultMessage) => {
     if (localStorage.getItem('token')) return true;
@@ -1049,6 +1080,7 @@ const PostDetailPage = () => {
             urls={mediaUrls}
             delisted={isPostDelisted(post.status)}
             postId={post.id}
+            shareCode={post.shareCode}
             postStatus={post.status}
             canModerate={canModeratePosts}
             onShelfStatusChange={(_postId, newStatus) => {

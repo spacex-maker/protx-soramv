@@ -32,6 +32,7 @@ import {
   unfollowUser,
 } from 'api/community';
 import { addTencentImageCompression, getPostCardSpecs } from './ChallengeDetailPage/utils';
+import { buildPostDetailPath } from 'utils/communityPostRoutes';
 
 const HEADER_OFFSET = 72;
 
@@ -733,7 +734,7 @@ const CommunityUserProfilePage = () => {
                     <PostCard
                       key={post.id}
                       $token={token}
-                      onClick={() => navigate(`/community/post/${post.id}`)}
+                      onClick={() => navigate(buildPostDetailPath(post))}
                     >
                       <div className="cover">
                         <Image src={getCoverUrl(post)} alt={post.title} preview={false} />
