@@ -14,6 +14,7 @@ import {
   MailOutlined,
   LockOutlined,
 } from '@ant-design/icons';
+import GoogleGIcon from './GoogleGIcon';
 import CaptchaField from 'components/security/CaptchaField';
 import { 
   SiWechat, 
