@@ -10,6 +10,7 @@ import {
   Steps,
   Upload,
   message,
+  Spin,
   theme,
 } from 'antd';
 import {
@@ -21,7 +22,7 @@ import {
   SafetyCertificateOutlined,
   UploadOutlined,
 } from '@ant-design/icons';
-import instance from 'api/axios';
+import { uploadKycImageToCos, submitKycVerification } from 'api/kycUpload';
 import { base } from 'api/base';
 import { auth } from 'api/auth';
 import { VERIFICATION_ROUTES } from './verificationRoutes';
@@ -62,6 +63,10 @@ const VerificationApply = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [idCardFront, setIdCardFront] = useState(null);
   const [idCardBack, setIdCardBack] = useState(null);
+  const [idFrontPhotoUrl, setIdFrontPhotoUrl] = useState(null);
+  const [idBackPhotoUrl, setIdBackPhotoUrl] = useState(null);
+  const [frontUploading, setFrontUploading] = useState(false);
+  const [backUploading, setBackUploading] = useState(false);
   const [frontPreviewUrl, setFrontPreviewUrl] = useState(null);
   const [backPreviewUrl, setBackPreviewUrl] = useState(null);
   const [kycConfigs, setKycConfigs] = useState([]);
@@ -119,26 +124,80 @@ const VerificationApply = () => {
     return true;
   };
 
-  const handleFrontUpload = (file) => {
+  const handleFrontUpload = async (file) => {
     if (!validateIdImageFile(file)) return Upload.LIST_IGNORE;
-    setIdCardFront(file);
-    setCurrentStep(1);
+
+    const countryCode = form.getFieldValue('countryCode') || currentKycConfig?.countryCode;
+    if (!countryCode) {
+      message.error(
+        intl.formatMessage({
+          id: 'verification.form.country.required',
+          defaultMessage: '请先选择国家/地区',
+        })
+      );
+      return Upload.LIST_IGNORE;
+    }
+
+    setFrontUploading(true);
+    try {
+      const url = await uploadKycImageToCos(file, countryCode);
+      setIdCardFront(file);
+      setIdFrontPhotoUrl(url);
+      setCurrentStep(1);
+    } catch (error) {
+      console.error('证件正面上传失败:', error);
+      message.error(
+        error?.message ||
+          intl.formatMessage({ id: 'verification.upload.failed', defaultMessage: '图片上传失败，请稍后重试' })
+      );
+      return Upload.LIST_IGNORE;
+    } finally {
+      setFrontUploading(false);
+    }
     return false;
   };
 
-  const handleBackUpload = (file) => {
+  const handleBackUpload = async (file) => {
     if (!validateIdImageFile(file)) return Upload.LIST_IGNORE;
-    setIdCardBack(file);
-    if (idCardFront) setCurrentStep(1);
+
+    const countryCode = form.getFieldValue('countryCode') || currentKycConfig?.countryCode;
+    if (!countryCode) {
+      message.error(
+        intl.formatMessage({
+          id: 'verification.form.country.required',
+          defaultMessage: '请先选择国家/地区',
+        })
+      );
+      return Upload.LIST_IGNORE;
+    }
+
+    setBackUploading(true);
+    try {
+      const url = await uploadKycImageToCos(file, countryCode);
+      setIdCardBack(file);
+      setIdBackPhotoUrl(url);
+      if (idCardFront || idFrontPhotoUrl) setCurrentStep(1);
+    } catch (error) {
+      console.error('证件反面上传失败:', error);
+      message.error(
+        error?.message ||
+          intl.formatMessage({ id: 'verification.upload.failed', defaultMessage: '图片上传失败，请稍后重试' })
+      );
+      return Upload.LIST_IGNORE;
+    } finally {
+      setBackUploading(false);
+    }
     return false;
   };
 
   const clearFrontImage = () => {
     setIdCardFront(null);
+    setIdFrontPhotoUrl(null);
   };
 
   const clearBackImage = () => {
     setIdCardBack(null);
+    setIdBackPhotoUrl(null);
   };
 
   useEffect(() => {
@@ -181,35 +240,38 @@ const VerificationApply = () => {
   }, []);
 
   const handleSubmit = async (values) => {
-    if (requireFront && !idCardFront) {
+    if (frontUploading || backUploading) {
+      message.warning(
+        intl.formatMessage({ id: 'verification.upload.inProgress', defaultMessage: '图片正在上传，请稍候' })
+      );
+      return;
+    }
+    if (requireFront && !idFrontPhotoUrl) {
       message.error(intl.formatMessage({ id: 'verification.upload.required', defaultMessage: '请上传证件正面照片' }));
       return;
     }
-    if (requireBack && !idCardBack) {
+    if (requireBack && !idBackPhotoUrl) {
       message.error(intl.formatMessage({ id: 'verification.upload.required', defaultMessage: '请上传证件反面照片' }));
       return;
     }
 
     setLoading(true);
     try {
-      const formData = new FormData();
-      formData.append('countryCode', values.countryCode);
-      formData.append('realName', values.realName);
-      formData.append('idType', values.idType || currentKycConfig?.primaryIdType || 'PASSPORT');
-      formData.append('cardNum', values.cardNum);
-      if (idCardFront) formData.append('idCoverImage1', idCardFront, idCardFront.name || 'id-front.jpg');
-      if (idCardBack) formData.append('idCoverImage2', idCardBack, idCardBack.name || 'id-back.jpg');
-
-      const response = await instance.post('/productx/user/verification', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const response = await submitKycVerification({
+        countryCode: values.countryCode,
+        realName: values.realName,
+        idType: values.idType || currentKycConfig?.primaryIdType || 'PASSPORT',
+        cardNum: values.cardNum,
+        idFrontPhotoUrl: idFrontPhotoUrl || undefined,
+        idBackPhotoUrl: idBackPhotoUrl || undefined,
       });
 
-      if (response.data.success) {
+      if (response.success) {
         message.success(intl.formatMessage({ id: 'verification.submit.success', defaultMessage: '提交成功，等待审核' }));
         navigate(VERIFICATION_ROUTES.pending, { replace: true });
       } else {
         message.error(
-          response.data.message ||
+          response.message ||
             intl.formatMessage({ id: 'verification.submit.error', defaultMessage: '提交失败，请稍后重试' })
         );
       }
@@ -320,6 +382,8 @@ const VerificationApply = () => {
                   onChange={(code) => {
                     const cfg = kycConfigs.find((item) => item.countryCode === code);
                     if (cfg) applyKycConfig(cfg);
+                    clearFrontImage();
+                    clearBackImage();
                   }}
                 >
                   {kycConfigs.map((cfg) => (
@@ -453,6 +517,7 @@ const VerificationApply = () => {
                 required={requireFront}
               >
                 <UploadBox $token={token}>
+                  <Spin spinning={frontUploading} tip={intl.formatMessage({ id: 'verification.upload.uploading', defaultMessage: '上传中...' })}>
                   <Upload.Dragger
                     id="kyc-id-card-front"
                     name="idCoverImage1"
@@ -498,6 +563,7 @@ const VerificationApply = () => {
                       </>
                     )}
                   </Upload.Dragger>
+                  </Spin>
                 </UploadBox>
               </Form.Item>
 
@@ -510,6 +576,7 @@ const VerificationApply = () => {
                 required={requireBack}
               >
                 <UploadBox $token={token}>
+                  <Spin spinning={backUploading} tip={intl.formatMessage({ id: 'verification.upload.uploading', defaultMessage: '上传中...' })}>
                   <Upload.Dragger
                     id="kyc-id-card-back"
                     name="idCoverImage2"
@@ -555,6 +622,7 @@ const VerificationApply = () => {
                       </>
                     )}
                   </Upload.Dragger>
+                  </Spin>
                 </UploadBox>
               </Form.Item>
             </FormRow>
