@@ -482,6 +482,7 @@ const PostManageModal: React.FC<PostManageModalProps> = ({ visible, onCancel }) 
             loading={loading}
             pagination={false}
             size="small"
+            scroll={{ x: isMobile ? 640 : undefined }}
           />
           {reviewedTotal > 0 && (
             <div style={{ marginTop: 16, textAlign: 'right' }}>

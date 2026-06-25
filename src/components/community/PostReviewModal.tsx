@@ -4,6 +4,8 @@ import { CheckCircleOutlined, CloseCircleOutlined, UserOutlined, ClockCircleOutl
 import styled, { keyframes, useTheme } from 'styled-components';
 import dayjs from 'dayjs';
 import { reviewPost, ReviewPost, PostReviewRequest } from 'api/community';
+import { communityModalMobileCss } from './communityModalStyled';
+import { useCommunityModalProps } from './useCommunityModalProps';
 
 const { TextArea } = Input;
 
@@ -19,6 +21,8 @@ const fadeIn = keyframes`
 `;
 
 const StyledModal = styled(Modal)`
+  ${communityModalMobileCss}
+
   .ant-modal-content {
     border-radius: 16px;
     overflow: hidden;
@@ -91,6 +95,10 @@ const StyledModal = styled(Modal)`
 const ContentWrapper = styled.div`
   padding: 32px;
   animation: ${fadeIn} 0.3s ease-out;
+
+  @media (max-width: 768px) {
+    padding: 16px 14px;
+  }
 `;
 
 const PostHeader = styled.div`
@@ -139,6 +147,11 @@ const PostHeader = styled.div`
           : 'rgba(0, 0, 0, 0.65)'};
       }
     }
+  }
+
+  @media (max-width: 768px) {
+    padding: 14px;
+    gap: 12px;
   }
 `;
 
@@ -344,6 +357,9 @@ const PostReviewModal: React.FC<PostReviewModalProps> = ({
   const isDark = theme?.mode === 'dark';
   const [submitting, setSubmitting] = useState(false);
   const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null);
+  const { isMobile, ...reviewModalProps } = useCommunityModalProps(800, {
+    bodyMaxHeight: 'min(75vh, 680px)',
+  });
 
   const handleApprove = async () => {
     if (!post) return;
@@ -449,20 +465,34 @@ const PostReviewModal: React.FC<PostReviewModalProps> = ({
       onCancel={onCancel}
       footer={
         isReviewed ? (
-          <Button size="large" onClick={onCancel} style={{ borderRadius: 32 }}>关闭</Button>
+          <Button size="large" onClick={onCancel} block={isMobile} style={{ borderRadius: isMobile ? 8 : 32 }}>
+            关闭
+          </Button>
         ) : (
-          <Space size={12}>
-            <Button size="large" onClick={onCancel} style={{ borderRadius: 32 }}>取消</Button>
+          <Space
+            direction={isMobile ? 'vertical' : 'horizontal'}
+            size={isMobile ? 8 : 12}
+            style={{ width: isMobile ? '100%' : undefined }}
+          >
+            <Button
+              size="large"
+              onClick={onCancel}
+              block={isMobile}
+              style={{ borderRadius: isMobile ? 8 : 32 }}
+            >
+              取消
+            </Button>
             <Button
               size="large"
               danger
               icon={<CloseCircleOutlined />}
               loading={submitting && reviewAction === 'reject'}
               onClick={handleReject}
-              style={{ 
-                minWidth: 100,
-                borderRadius: 32,
-                fontWeight: 500
+              block={isMobile}
+              style={{
+                minWidth: isMobile ? undefined : 100,
+                borderRadius: isMobile ? 8 : 32,
+                fontWeight: 500,
               }}
             >
               拒绝
@@ -473,12 +503,13 @@ const PostReviewModal: React.FC<PostReviewModalProps> = ({
               icon={<CheckCircleOutlined />}
               loading={submitting && reviewAction === 'approve'}
               onClick={handleApprove}
-              style={{ 
-                minWidth: 100,
-                borderRadius: 32,
+              block={isMobile}
+              style={{
+                minWidth: isMobile ? undefined : 100,
+                borderRadius: isMobile ? 8 : 32,
                 fontWeight: 500,
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                border: 'none'
+                border: 'none',
               }}
             >
               通过
@@ -486,9 +517,8 @@ const PostReviewModal: React.FC<PostReviewModalProps> = ({
           </Space>
         )
       }
-      width={800}
-      centered
       destroyOnClose
+      {...reviewModalProps}
     >
       {post && (
         <ContentWrapper>
