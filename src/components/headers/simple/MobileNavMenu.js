@@ -7,10 +7,6 @@ import {
   AppstoreOutlined,
   CompassOutlined,
   UserOutlined,
-  SettingOutlined,
-  ContainerOutlined,
-  BellOutlined,
-  LogoutOutlined,
   SunOutlined,
   MoonOutlined,
 } from '@ant-design/icons';
@@ -188,15 +184,6 @@ const ThemeToggle = styled.button`
   }
 `;
 
-const LogoutItem = styled(MenuItem)`
-  color: var(--ant-color-error);
-
-  &:hover {
-    background: rgba(var(--ant-error-rgb), 0.08);
-    color: var(--ant-color-error);
-  }
-`;
-
 const getInitial = (username) => {
   if (!username) return '?';
   return username.charAt(0).toUpperCase();
@@ -206,7 +193,6 @@ const MobileNavMenu = ({
   userInfo,
   isDark,
   toggleDarkMode,
-  onLogout,
   locale,
   languages,
   onLanguageChange,
@@ -226,11 +212,6 @@ const MobileNavMenu = ({
   const closeAndNavigate = (path) => {
     setOpen(false);
     navigate(path);
-  };
-
-  const handleLogout = () => {
-    setOpen(false);
-    onLogout();
   };
 
   const handleThemeToggle = (e) => {
@@ -295,37 +276,14 @@ const MobileNavMenu = ({
             </MenuItem>
 
             {userInfo ? (
-              <>
-                <MenuItem
-                  type="button"
-                  $active={isWorkspace}
-                  onClick={() => closeAndNavigate('/workspace')}
-                >
-                  <AppstoreOutlined />
-                  <FormattedMessage id="header.workspace" defaultMessage="工作空间" />
-                </MenuItem>
-                <Divider style={{ margin: '8px 0' }} />
-                <MenuItem type="button" onClick={() => closeAndNavigate('/profile')}>
-                  <UserOutlined />
-                  <FormattedMessage id="userMenu.item.profile" defaultMessage="个人中心" />
-                </MenuItem>
-                <MenuItem type="button" onClick={() => closeAndNavigate('/works')}>
-                  <ContainerOutlined />
-                  <FormattedMessage id="userMenu.item.works" defaultMessage="我的作品" />
-                </MenuItem>
-                <MenuItem type="button" onClick={() => closeAndNavigate('/notifications')}>
-                  <BellOutlined />
-                  <FormattedMessage id="userMenu.item.notifications" defaultMessage="消息通知" />
-                </MenuItem>
-                <MenuItem type="button" onClick={() => closeAndNavigate('/settings')}>
-                  <SettingOutlined />
-                  <FormattedMessage id="userMenu.item.settings" defaultMessage="系统设置" />
-                </MenuItem>
-                <LogoutItem type="button" onClick={handleLogout}>
-                  <LogoutOutlined />
-                  <FormattedMessage id="userMenu.logout" defaultMessage="退出登录" />
-                </LogoutItem>
-              </>
+              <MenuItem
+                type="button"
+                $active={isWorkspace}
+                onClick={() => closeAndNavigate('/workspace')}
+              >
+                <AppstoreOutlined />
+                <FormattedMessage id="header.workspace" defaultMessage="工作空间" />
+              </MenuItem>
             ) : (
               <>
                 <Divider style={{ margin: '8px 0' }} />

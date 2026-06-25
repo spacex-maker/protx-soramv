@@ -18,6 +18,7 @@ import {
   LeftSection,
   RightSection,
   DesktopNav,
+  MobileUserMenuSlot,
   NavLink,
   PrimaryLink,
   IconNavLink
@@ -245,11 +246,16 @@ const SimpleHeader = () => {
             )}
           </DesktopNav>
 
+          {userInfo && (
+            <MobileUserMenuSlot>
+              <UserMenu userInfo={userInfo} isDark={isDark} onLogout={handleLogout} />
+            </MobileUserMenuSlot>
+          )}
+
           <MobileNavMenu
             userInfo={userInfo}
             isDark={isDark}
             toggleDarkMode={toggleDarkMode}
-            onLogout={handleLogout}
             locale={locale}
             languages={languages}
             onLanguageChange={changeLocale}

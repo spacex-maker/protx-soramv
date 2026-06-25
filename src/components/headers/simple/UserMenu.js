@@ -7,30 +7,16 @@ import { useIntl } from 'react-intl';
 import { getUnreadNotificationCount } from 'api/notifications';
 import AchievementModal from 'components/modals/AchievementModal';
 import MemberLevelModal from 'components/modals/MemberLevelModal';
-import { 
-  UserOutlined, 
-  SettingOutlined, 
-  SafetyCertificateOutlined, 
-  LockOutlined,
-  WalletOutlined,
-  ContainerOutlined,
-  BellOutlined,
-  QuestionCircleOutlined,
-  UserAddOutlined,
-  MessageOutlined,
-  InfoCircleOutlined,
+import {
+  UserOutlined,
   LogoutOutlined,
-  CreditCardOutlined,
-  FileTextOutlined,
   RightOutlined,
   ThunderboltOutlined,
   TeamOutlined,
   CrownOutlined,
   TrophyOutlined,
-  StarFilled,
-  HeartOutlined,
-  EditOutlined,
 } from "@ant-design/icons";
+import { getUserMenuGroups } from './userMenuItems';
 
 // ==========================================
 // 1. 恢复您原本的按钮样式 (及动画)
@@ -53,11 +39,28 @@ const gradientShift = keyframes`
   100% { background-position: 0% 50%; }
 `;
 
+const MobileBackdrop = styled.div`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    background: rgba(0, 0, 0, 0.35);
+  }
+`;
+
 const UserMenuContainer = styled.div`
   position: relative;
   display: inline-block;
   margin-left: 1.5rem;
   z-index: 100;
+
+  @media (max-width: 768px) {
+    margin-left: 0;
+    z-index: 1001;
+  }
 `;
 
 const UserButton = styled.button`
@@ -246,6 +249,20 @@ const DropdownPanel = styled(motion.div)`
   overflow: hidden;
   transform-origin: top right;
   cursor: default;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 88px);
+
+  @media (max-width: 768px) {
+    position: fixed;
+    top: 76px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+    max-height: calc(100dvh - 88px);
+    z-index: 1002;
+    transform-origin: top center;
+  }
 `;
 
 const AvatarWrapper = styled.div`
@@ -334,9 +351,11 @@ const MenuHeader = styled.div`
 `;
 
 const ScrollArea = styled.div`
-  max-height: calc(80vh - 100px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 8px;
+  -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
     width: 4px;
@@ -666,44 +685,7 @@ const UserMenu = ({ userInfo, onLogout }) => {
     return username.charAt(0).toUpperCase();
   };
 
-  const menuGroups = [
-    {
-      title: intl.formatMessage({ id: 'userMenu.group.account', defaultMessage: '账户设置' }),
-      items: [
-        { label: intl.formatMessage({ id: 'userMenu.item.profile', defaultMessage: '个人中心' }), icon: <UserOutlined />, path: '/profile' },
-        { label: intl.formatMessage({ id: 'userMenu.item.settings', defaultMessage: '系统设置' }), icon: <SettingOutlined />, path: '/settings' },
-        { label: intl.formatMessage({ id: 'userMenu.item.security', defaultMessage: '安全设置' }), icon: <SafetyCertificateOutlined />, path: '/security' },
-        { label: intl.formatMessage({ id: 'userMenu.item.privacy', defaultMessage: '隐私偏好' }), icon: <LockOutlined />, path: '/privacy-preferences' },
-      ]
-    },
-    {
-      title: intl.formatMessage({ id: 'userMenu.group.assets', defaultMessage: '资产与订单' }),
-      items: [
-        { label: intl.formatMessage({ id: 'userMenu.item.wallet', defaultMessage: '我的钱包' }), icon: <WalletOutlined />, path: '/billing' },
-        { label: intl.formatMessage({ id: 'userMenu.item.subscription', defaultMessage: '订阅管理' }), icon: <CreditCardOutlined />, path: '/subscription' },
-        { label: intl.formatMessage({ id: 'userMenu.item.orders', defaultMessage: '订单记录' }), icon: <FileTextOutlined />, path: '/orders' },
-      ]
-    },
-    {
-      title: intl.formatMessage({ id: 'userMenu.group.workspace', defaultMessage: '工作台' }),
-      items: [
-        { label: intl.formatMessage({ id: 'userMenu.item.works', defaultMessage: '我的作品' }), icon: <ContainerOutlined />, path: '/works' },
-        { label: intl.formatMessage({ id: 'userMenu.item.myPrompts', defaultMessage: '我的提示词' }), icon: <EditOutlined />, path: '/workspace/my-prompts' },
-        { label: intl.formatMessage({ id: 'userMenu.item.saved', defaultMessage: '收藏与喜欢' }), icon: <HeartOutlined />, path: '/community/saved' },
-        { label: intl.formatMessage({ id: 'userMenu.item.community', defaultMessage: '社区' }), icon: <TeamOutlined />, path: '/community' },
-        { label: intl.formatMessage({ id: 'userMenu.item.notifications', defaultMessage: '消息通知' }), icon: <BellOutlined />, path: '/notifications' },
-      ]
-    },
-    {
-      title: intl.formatMessage({ id: 'userMenu.group.support', defaultMessage: '支持' }),
-      items: [
-        { label: intl.formatMessage({ id: 'userMenu.item.help', defaultMessage: '帮助中心' }), icon: <QuestionCircleOutlined />, path: '/help' },
-        { label: intl.formatMessage({ id: 'userMenu.item.invite', defaultMessage: '邀请好友' }), icon: <UserAddOutlined />, path: '/invite' },
-        { label: intl.formatMessage({ id: 'userMenu.item.feedback', defaultMessage: '反馈建议' }), icon: <MessageOutlined />, path: '/feedback' },
-        { label: intl.formatMessage({ id: 'userMenu.item.about', defaultMessage: '关于我们' }), icon: <InfoCircleOutlined />, path: '/about' },
-      ]
-    }
-  ];
+  const menuGroups = getUserMenuGroups(intl);
 
   return (
     <UserMenuContainer ref={menuRef}>
@@ -734,6 +716,9 @@ const UserMenu = ({ userInfo, onLogout }) => {
 
       {/* 新的下拉菜单 */}
       <AnimatePresence>
+        {isOpen && (
+          <MobileBackdrop onClick={() => setIsOpen(false)} aria-hidden="true" />
+        )}
         {isOpen && (
           <DropdownPanel
             $token={token}

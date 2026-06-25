@@ -510,7 +510,7 @@ const PostManageModal: React.FC<PostManageModalProps> = ({ visible, onCancel }) 
             <span>帖子管理</span>
           </div>
         }
-        open={visible}
+        open={visible && !reviewModalVisible}
         onCancel={onCancel}
         footer={null}
         destroyOnClose

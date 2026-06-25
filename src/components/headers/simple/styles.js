@@ -129,6 +129,17 @@ export const DesktopNav = styled.div`
   }
 `;
 
+/** 移动端仍显示用户头像菜单（DesktopNav 隐藏时单独展示） */
+export const MobileUserMenuSlot = styled.div`
+  display: none;
+
+  @media (max-width: 768px) {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+`;
+
 export const NavLink = styled(Link)`
   font-size: 0.875rem;
   font-weight: 500;

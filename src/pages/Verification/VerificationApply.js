@@ -42,6 +42,14 @@ import { useVerificationStatus } from './useVerificationStatus';
 
 const { Option } = Select;
 
+const MAX_ID_IMAGE_BYTES = 5 * 1024 * 1024;
+
+const isLikelyImageFile = (file) => {
+  if (!file) return false;
+  if (file.type && file.type.startsWith('image/')) return true;
+  return /\.(jpe?g|png|gif|webp|heic|heif|bmp)$/i.test(file.name || '');
+};
+
 const VerificationApply = () => {
   const { token } = theme.useToken();
   const [form] = Form.useForm();
@@ -54,6 +62,8 @@ const VerificationApply = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [idCardFront, setIdCardFront] = useState(null);
   const [idCardBack, setIdCardBack] = useState(null);
+  const [frontPreviewUrl, setFrontPreviewUrl] = useState(null);
+  const [backPreviewUrl, setBackPreviewUrl] = useState(null);
   const [kycConfigs, setKycConfigs] = useState([]);
   const [currentKycConfig, setCurrentKycConfig] = useState(null);
   const [requireFront, setRequireFront] = useState(true);
@@ -68,6 +78,67 @@ const VerificationApply = () => {
       countryCode: config.countryCode,
       idType: config.primaryIdType || undefined,
     });
+  };
+
+  useEffect(() => {
+    if (!idCardFront) {
+      setFrontPreviewUrl(null);
+      return undefined;
+    }
+    const url = URL.createObjectURL(idCardFront);
+    setFrontPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [idCardFront]);
+
+  useEffect(() => {
+    if (!idCardBack) {
+      setBackPreviewUrl(null);
+      return undefined;
+    }
+    const url = URL.createObjectURL(idCardBack);
+    setBackPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [idCardBack]);
+
+  const validateIdImageFile = (file) => {
+    if (!isLikelyImageFile(file)) {
+      message.error(
+        intl.formatMessage({
+          id: 'verification.upload.typeInvalid',
+          defaultMessage: '请上传 JPG、PNG 等图片格式',
+        })
+      );
+      return false;
+    }
+    if (file.size > MAX_ID_IMAGE_BYTES) {
+      message.error(
+        intl.formatMessage({ id: 'verification.upload.sizeLimit', defaultMessage: '文件大小不能超过 5MB' })
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const handleFrontUpload = (file) => {
+    if (!validateIdImageFile(file)) return Upload.LIST_IGNORE;
+    setIdCardFront(file);
+    setCurrentStep(1);
+    return false;
+  };
+
+  const handleBackUpload = (file) => {
+    if (!validateIdImageFile(file)) return Upload.LIST_IGNORE;
+    setIdCardBack(file);
+    if (idCardFront) setCurrentStep(1);
+    return false;
+  };
+
+  const clearFrontImage = () => {
+    setIdCardFront(null);
+  };
+
+  const clearBackImage = () => {
+    setIdCardBack(null);
   };
 
   useEffect(() => {
@@ -374,29 +445,32 @@ const VerificationApply = () => {
               >
                 <UploadBox $token={token}>
                   <Upload.Dragger
-                    beforeUpload={(file) => {
-                      if (file.size > 5 * 1024 * 1024) {
-                        message.error(
-                          intl.formatMessage({ id: 'verification.upload.sizeLimit', defaultMessage: '文件大小不能超过 5MB' })
-                        );
-                        return Upload.LIST_IGNORE;
-                      }
-                      setIdCardFront(file);
-                      setCurrentStep(1);
-                      return false;
-                    }}
+                    id="kyc-id-card-front"
+                    name="idCoverImage1"
+                    beforeUpload={handleFrontUpload}
                     fileList={[]}
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                     maxCount={1}
                     showUploadList={false}
                   >
-                    {idCardFront ? (
+                    {frontPreviewUrl ? (
                       <div style={{ position: 'relative', width: '100%', height: '160px' }}>
                         <img
-                          src={URL.createObjectURL(idCardFront)}
+                          src={frontPreviewUrl}
                           alt="证件正面"
                           style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '8px' }}
                         />
+                        <Button
+                          type="link"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearFrontImage();
+                          }}
+                          style={{ position: 'absolute', right: 4, top: 4, color: token.colorPrimary }}
+                        >
+                          {intl.formatMessage({ id: 'verification.upload.reupload', defaultMessage: '重新上传' })}
+                        </Button>
                       </div>
                     ) : (
                       <>
@@ -405,6 +479,12 @@ const VerificationApply = () => {
                         </p>
                         <p className="ant-upload-text" style={{ fontSize: 14 }}>
                           {intl.formatMessage({ id: 'verification.upload.front.text', defaultMessage: '点击或拖拽上传身份证正面' })}
+                        </p>
+                        <p className="ant-upload-hint" style={{ fontSize: 12, color: token.colorTextSecondary }}>
+                          {intl.formatMessage({
+                            id: 'verification.upload.hint',
+                            defaultMessage: '支持 JPG/PNG，单张不超过 5MB',
+                          })}
                         </p>
                       </>
                     )}
@@ -422,29 +502,32 @@ const VerificationApply = () => {
               >
                 <UploadBox $token={token}>
                   <Upload.Dragger
-                    beforeUpload={(file) => {
-                      if (file.size > 5 * 1024 * 1024) {
-                        message.error(
-                          intl.formatMessage({ id: 'verification.upload.sizeLimit', defaultMessage: '文件大小不能超过 5MB' })
-                        );
-                        return Upload.LIST_IGNORE;
-                      }
-                      setIdCardBack(file);
-                      if (idCardFront) setCurrentStep(1);
-                      return false;
-                    }}
+                    id="kyc-id-card-back"
+                    name="idCoverImage2"
+                    beforeUpload={handleBackUpload}
                     fileList={[]}
-                    accept="image/*"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif"
                     maxCount={1}
                     showUploadList={false}
                   >
-                    {idCardBack ? (
+                    {backPreviewUrl ? (
                       <div style={{ position: 'relative', width: '100%', height: '160px' }}>
                         <img
-                          src={URL.createObjectURL(idCardBack)}
+                          src={backPreviewUrl}
                           alt="证件反面"
                           style={{ width: '100%', height: '100%', objectFit: 'contain', borderRadius: '8px' }}
                         />
+                        <Button
+                          type="link"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            clearBackImage();
+                          }}
+                          style={{ position: 'absolute', right: 4, top: 4, color: token.colorPrimary }}
+                        >
+                          {intl.formatMessage({ id: 'verification.upload.reupload', defaultMessage: '重新上传' })}
+                        </Button>
                       </div>
                     ) : (
                       <>
@@ -453,6 +536,12 @@ const VerificationApply = () => {
                         </p>
                         <p className="ant-upload-text" style={{ fontSize: 14 }}>
                           {intl.formatMessage({ id: 'verification.upload.back.text', defaultMessage: '点击或拖拽上传身份证反面' })}
+                        </p>
+                        <p className="ant-upload-hint" style={{ fontSize: 12, color: token.colorTextSecondary }}>
+                          {intl.formatMessage({
+                            id: 'verification.upload.hint',
+                            defaultMessage: '支持 JPG/PNG，单张不超过 5MB',
+                          })}
                         </p>
                       </>
                     )}

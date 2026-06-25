@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled, { keyframes, css } from 'styled-components';
-import { Avatar, Tooltip, Badge, Progress, Modal, Tag, Button, Space, Empty } from 'antd';
+import { Avatar, Tooltip, Modal } from 'antd';
 import { 
   ThunderboltFilled, 
   TrophyFilled, 
@@ -8,22 +8,16 @@ import {
   PlusCircleFilled,
   FireFilled,
   SettingOutlined,
-  CrownOutlined,
-  StarOutlined,
-  SafetyOutlined,
-  EyeOutlined,
-  PlusOutlined,
-  FileTextOutlined,
-  ClockCircleOutlined,
-  CheckCircleOutlined
 } from '@ant-design/icons';
 import { getMyRoles } from 'api/community';
 import RoleBadge from './RoleBadge';
 import RoleApplicationModal from './RoleApplicationModal';
 import MyApplicationsModal from './MyApplicationsModal';
 import PostManageModal from './PostManageModal';
+import UserRoleModalContent from './UserRoleModalContent';
+import { communityModalMobileCss } from './communityModalStyled';
+import { mergeUserRoleModalStyles } from './communityRoleModalStyles';
 import { useCommunityModalProps } from './useCommunityModalProps';
-import dayjs from 'dayjs';
 
 // --- 动画定义 ---
 const spin = keyframes`
@@ -228,200 +222,54 @@ const StreakFire = styled(FireFilled)`
   filter: drop-shadow(0 0 4px rgba(255, 82, 82, 0.4));
 `;
 
-// 角色图标映射
-const ROLE_ICONS = {
-  'super_admin': <CrownOutlined />,
-  'community_manager': <StarOutlined />,
-  'content_curator': <SafetyOutlined />,
-  'moderator': <EyeOutlined />,
-  'challenge_reviewer': <TrophyFilled />,
-};
+const RoleModal = styled(Modal)`
+  ${communityModalMobileCss}
 
-// 角色颜色映射
-const ROLE_COLORS = {
-  'super_admin': '#ff4d4f',
-  'community_manager': '#faad14',
-  'content_curator': '#1890ff',
-  'moderator': '#52c41a',
-  'challenge_reviewer': '#722ed1',
-};
+  .ant-modal-content {
+    padding: 0;
+    overflow: hidden;
+  }
 
-const ModalContent = styled.div`
-  .user-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 20px;
-    background: ${props => props.theme.mode === 'dark' 
-      ? 'rgba(255, 255, 255, 0.03)' 
-      : 'rgba(0, 0, 0, 0.02)'};
-    border-radius: 12px;
-    margin-bottom: 24px;
+  .ant-modal-header {
+    position: absolute !important;
+    top: 0;
+    right: 0;
+    left: 0;
+    z-index: 20;
+    background: transparent !important;
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    padding: 14px 16px !important;
+  }
 
-    .user-avatar {
-      border: 3px solid ${props => props.theme.mode === 'dark' 
-        ? 'rgba(255, 255, 255, 0.2)' 
-        : 'rgba(0, 0, 0, 0.1)'};
-    }
+  .ant-modal-close {
+    color: rgba(255, 255, 255, 0.92) !important;
 
-    .user-details {
-      flex: 1;
-      
-      .name {
-        font-size: 18px;
-        font-weight: 600;
-        color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1f1f1f'};
-        margin-bottom: 4px;
-      }
-
-      .username {
-        font-size: 14px;
-        color: ${props => props.theme.mode === 'dark' 
-          ? 'rgba(255, 255, 255, 0.45)' 
-          : 'rgba(0, 0, 0, 0.45)'};
-      }
+    &:hover {
+      color: #fff !important;
+      background: rgba(255, 255, 255, 0.15) !important;
     }
   }
 
-  .roles-section {
-    .section-title {
-      font-size: 16px;
-      font-weight: 600;
-      color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1f1f1f'};
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+  .ant-modal-body {
+    padding: 0 !important;
+    max-height: 80vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    &::-webkit-scrollbar {
+      width: 6px;
     }
-
-    .role-card {
-      padding: 16px;
-      background: ${props => props.theme.mode === 'dark' 
-        ? 'rgba(255, 255, 255, 0.03)' 
-        : 'rgba(0, 0, 0, 0.02)'};
-      border: 1px solid ${props => props.theme.mode === 'dark' 
-        ? 'rgba(255, 255, 255, 0.1)' 
-        : 'rgba(0, 0, 0, 0.06)'};
-      border-radius: 12px;
-      margin-bottom: 12px;
-      transition: all 0.3s ease;
-
-      &:hover {
-        background: ${props => props.theme.mode === 'dark' 
-          ? 'rgba(255, 255, 255, 0.05)' 
-          : 'rgba(0, 0, 0, 0.04)'};
-        border-color: ${props => props.theme.mode === 'dark' 
-          ? 'rgba(255, 255, 255, 0.2)' 
-          : 'rgba(0, 0, 0, 0.12)'};
-      }
-
-      .role-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 12px;
-
-        .role-info {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-          flex: 1;
-
-          .role-icon {
-            font-size: 24px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            background: rgba(24, 144, 255, 0.1);
-          }
-
-          .role-details {
-            flex: 1;
-            
-            .role-name {
-              font-size: 16px;
-              font-weight: 600;
-              color: ${props => props.theme.mode === 'dark' ? '#fff' : '#1f1f1f'};
-              margin-bottom: 2px;
-            }
-
-            .role-code {
-              font-size: 12px;
-              color: ${props => props.theme.mode === 'dark' 
-                ? 'rgba(255, 255, 255, 0.45)' 
-                : 'rgba(0, 0, 0, 0.45)'};
-              font-family: 'Monaco', 'Consolas', monospace;
-            }
-          }
-        }
-
-        .role-actions {
-          flex-shrink: 0;
-        }
-      }
-
-      .role-time {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 13px;
-        color: ${props => props.theme.mode === 'dark' 
-          ? 'rgba(255, 255, 255, 0.65)' 
-          : 'rgba(0, 0, 0, 0.65)'};
-        margin-top: 8px;
-
-        &.expired {
-          color: #ff4d4f;
-        }
-
-        &.permanent {
-          color: #52c41a;
-        }
-      }
-
-      .permissions {
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px dashed ${props => props.theme.mode === 'dark' 
-          ? 'rgba(255, 255, 255, 0.1)' 
-          : 'rgba(0, 0, 0, 0.06)'};
-
-        .permissions-label {
-          font-size: 12px;
-          color: ${props => props.theme.mode === 'dark' 
-            ? 'rgba(255, 255, 255, 0.45)' 
-            : 'rgba(0, 0, 0, 0.45)'};
-          margin-bottom: 8px;
-        }
-
-        .permission-tags {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 6px;
-        }
-      }
+    &::-webkit-scrollbar-thumb {
+      background: ${(p) =>
+        p.theme.mode === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)'};
+      border-radius: 3px;
     }
   }
 
   @media (max-width: 768px) {
-    .user-header {
-      padding: 14px;
-      gap: 12px;
-    }
-
-    .role-header {
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .role-actions {
-      width: 100%;
-      .ant-btn {
-        width: 100%;
-      }
+    .ant-modal-body {
+      padding: 0 !important;
     }
   }
 `;
@@ -457,7 +305,9 @@ const UserStatusDock = ({ showRoles = true }) => {
   const [applyModalVisible, setApplyModalVisible] = useState(false);
   const [applicationsModalVisible, setApplicationsModalVisible] = useState(false);
   const [manageModalVisible, setManageModalVisible] = useState(false);
-  const { isMobile, ...roleModalProps } = useCommunityModalProps(600);
+  const { styles: baseModalStyles, ...roleModalRest } = useCommunityModalProps(840, {
+    bodyMaxHeight: 'min(80vh, 720px)',
+  });
 
   useEffect(() => {
     loadUserInfo();
@@ -496,6 +346,22 @@ const UserStatusDock = ({ showRoles = true }) => {
   const handleApplySuccess = () => {
     setApplyModalVisible(false);
     loadRoles();
+    setModalVisible(true);
+  };
+
+  const openApplyModal = () => {
+    setModalVisible(false);
+    setApplyModalVisible(true);
+  };
+
+  const openApplicationsModal = () => {
+    setModalVisible(false);
+    setApplicationsModalVisible(true);
+  };
+
+  const openManageModal = () => {
+    setModalVisible(false);
+    setManageModalVisible(true);
   };
 
   if (loading || !userInfo) {
@@ -545,172 +411,50 @@ const UserStatusDock = ({ showRoles = true }) => {
         </IdentityCard>
       </DockWrapper>
 
-      {/* 角色详情 Modal */}
-      <Modal
-        title="我的社区角色"
+      <RoleModal
+        title={null}
         open={modalVisible}
         onCancel={() => setModalVisible(false)}
         footer={null}
         destroyOnClose
-        {...roleModalProps}
+        styles={mergeUserRoleModalStyles(baseModalStyles)}
+        {...roleModalRest}
       >
-        <ModalContent>
-          {/* 用户信息 */}
-          <div className="user-header">
-            <Avatar 
-              src={userInfo.avatar} 
-              size={64}
-              icon={<UserOutlined />}
-              className="user-avatar"
-            >
-              {!userInfo.avatar && userInfo.username?.[0]?.toUpperCase()}
-            </Avatar>
-            <div className="user-details">
-              <div className="name">{userInfo.nickname || userInfo.username}</div>
-              <div className="username">@{userInfo.username}</div>
-            </div>
-          </div>
-
-          {/* 操作按钮 */}
-          <Space
-            direction={isMobile ? 'vertical' : 'horizontal'}
-            style={{ marginBottom: 16, width: '100%' }}
-            size={isMobile ? 8 : 12}
-          >
-            <Button
-              type="primary"
-              icon={<PlusOutlined />}
-              onClick={() => setApplyModalVisible(true)}
-              block={isMobile}
-            >
-              申请角色
-            </Button>
-            <Button
-              icon={<FileTextOutlined />}
-              onClick={() => setApplicationsModalVisible(true)}
-              block={isMobile}
-            >
-              我的申请记录
-            </Button>
-          </Space>
-
-          {/* 角色列表 */}
-          <div className="roles-section">
-            <div className="section-title">
-              <CrownOutlined />
-              我的社区角色 ({roles.length})
-            </div>
-
-            {roles.length === 0 ? (
-              <Empty 
-                description="暂无社区角色，点击上方按钮申请角色"
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-              />
-            ) : (
-              roles.map((role) => {
-                const icon = ROLE_ICONS[role.roleCode] || <StarOutlined />;
-                const color = ROLE_COLORS[role.roleCode] || '#1890ff';
-                const isExpired = role.expiredTime && dayjs(role.expiredTime).isBefore(dayjs());
-                const isPermanent = !role.expiredTime;
-
-                // 处理权限
-                let permissions = [];
-                if (role.permissions) {
-                  if (Array.isArray(role.permissions)) {
-                    permissions = role.permissions;
-                  } else if (typeof role.permissions === 'string') {
-                    try {
-                      permissions = JSON.parse(role.permissions);
-                    } catch (e) {
-                      console.error('Failed to parse permissions:', e);
-                    }
-                  }
-                }
-
-                return (
-                  <div key={role.id} className="role-card">
-                    <div className="role-header">
-                      <div className="role-info">
-                        <div className="role-icon" style={{ color }}>
-                          {icon}
-                        </div>
-                        <div className="role-details">
-                          <div className="role-name">
-                            {role.roleName}
-                            {role.isOfficial && (
-                              <Tag color="gold" style={{ marginLeft: 8 }}>官方</Tag>
-                            )}
-                          </div>
-                          <div className="role-code">{role.roleCode}</div>
-                        </div>
-                      </div>
-                      {role.roleCode === 'community_manager' && !isExpired && (
-                        <div className="role-actions">
-                          <Button
-                            type="primary"
-                            size="small"
-                            icon={<SettingOutlined />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setModalVisible(false);
-                              setManageModalVisible(true);
-                            }}
-                          >
-                            管理
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-
-                    {isPermanent ? (
-                      <div className="role-time permanent">
-                        <CheckCircleOutlined />
-                        永久有效
-                      </div>
-                    ) : (
-                      <div className={`role-time ${isExpired ? 'expired' : ''}`}>
-                        <ClockCircleOutlined />
-                        {isExpired ? '已过期' : '有效期至'}: {dayjs(role.expiredTime).format('YYYY-MM-DD HH:mm')}
-                      </div>
-                    )}
-
-                    {permissions.length > 0 && (
-                      <div className="permissions">
-                        <div className="permissions-label">权限 ({permissions.length})</div>
-                        <div className="permission-tags">
-                          {permissions.map((perm, index) => (
-                            <Tag key={index} color="blue" style={{ margin: 0 }}>
-                              {perm}
-                            </Tag>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </ModalContent>
-      </Modal>
+        <UserRoleModalContent
+          userInfo={userInfo}
+          roles={roles}
+          onApply={openApplyModal}
+          onApplications={openApplicationsModal}
+          onManage={openManageModal}
+        />
+      </RoleModal>
 
       {/* 申请角色模态框 */}
       <RoleApplicationModal
         visible={applyModalVisible}
-        onCancel={() => setApplyModalVisible(false)}
+        onCancel={() => {
+          setApplyModalVisible(false);
+          setModalVisible(true);
+        }}
         onSuccess={handleApplySuccess}
       />
 
       {/* 申请记录模态框 */}
       <MyApplicationsModal
         visible={applicationsModalVisible}
-        onCancel={() => setApplicationsModalVisible(false)}
+        onCancel={() => {
+          setApplicationsModalVisible(false);
+          setModalVisible(true);
+        }}
       />
 
       {/* 帖子管理模态框 */}
       <PostManageModal
         visible={manageModalVisible}
-        onCancel={() => setManageModalVisible(false)}
+        onCancel={() => {
+          setManageModalVisible(false);
+          setModalVisible(true);
+        }}
       />
     </>
   );
