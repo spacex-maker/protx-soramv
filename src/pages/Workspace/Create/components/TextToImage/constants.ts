@@ -32,6 +32,12 @@ export const VOLC_SEEDREAM_ASPECT_RATIOS = [
 
 export const VOLC_SEEDREAM_SIZES = ['2K', '4K'];
 
+/** 火山 Seedream 图生图参考图限制（官方：≤10MB，常见图片格式） */
+export const VOLC_SEEDREAM_MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+export const VOLC_SEEDREAM_UPLOAD_ACCEPT =
+  'image/jpeg,image/png,image/webp,image/bmp,image/tiff,image/gif';
+export const VOLC_SEEDREAM_UPLOAD_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tiff', 'gif'];
+
 /** API 异步模型固定比例（与 /image/generate/text/async 一致） */
 export const API_ASPECT_RATIOS = [
   '1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9', 'auto',

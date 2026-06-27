@@ -20,6 +20,8 @@ import styled, { css } from 'styled-components';
 import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { addTencentImageCompression } from 'pages/Community/ChallengeDetailPage/utils';
+import { GenerationTask } from '../types';
+import { resolveOfficialTaskPromptLabel } from '../officialPlayTypes';
 
 // ==========================================
 // 1. 样式系统 (Styled System)
@@ -363,9 +365,9 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
       )}
 
       <TopActions className="top-actions">
-        {task.prompt && (
+        {task.prompt && !task.officialPlay && (
           <Tooltip title={intl.formatMessage({ id: 'create.history.copyPrompt', defaultMessage: '复制提示词' })}>
-            <ActionBtn onClick={(e) => onCopyPrompt(e, task.prompt)}>
+            <ActionBtn onClick={(e) => onCopyPrompt(e, task.prompt!)}>
               <CopyOutlined />
             </ActionBtn>
           </Tooltip>
@@ -398,7 +400,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
         {/* 使用 ExpandableContent 包裹详细信息，实现向上生长 */}
         <ExpandableContent className="expandable-content">
           <PromptPreview>
-            {task.prompt || intl.formatMessage({ id: 'create.history.noPrompt', defaultMessage: '暂无提示词' })}
+            {resolveOfficialTaskPromptLabel(task, intl)}
           </PromptPreview>
           
           <MetaTags>

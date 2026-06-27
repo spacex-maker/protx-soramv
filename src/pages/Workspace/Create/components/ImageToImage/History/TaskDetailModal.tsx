@@ -41,6 +41,7 @@ import {
   getInteractionStatus,
 } from 'api/modelInteraction';
 import { getModelDescription } from '../../modelUtils';
+import { resolveOfficialTaskPromptLabel } from '../officialPlayTypes';
 import BatchImageCompress from 'pages/Workspace/MediaTools/components/ImageCompress/BatchImageCompress';
 
 // ==========================================
@@ -734,14 +735,16 @@ const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ open, onClose, taskId
               </PropsGroup>
             </ParamSection>
 
-            {task.prompt && (
+            {(task.prompt || task.officialPlay) && (
               <>
                 <SectionTitle><ThunderboltFilled /> Prompt</SectionTitle>
                 <PromptBox>
-                  <Tooltip title="Copy Prompt">
-                    <Button type="text" size="small" className="copy-btn" icon={<CopyOutlined />} onClick={() => { navigator.clipboard.writeText(task.prompt); message.success('Copied'); }} />
-                  </Tooltip>
-                  <div className="text">{task.prompt}</div>
+                  {task.prompt && !task.officialPlay && (
+                    <Tooltip title="Copy Prompt">
+                      <Button type="text" size="small" className="copy-btn" icon={<CopyOutlined />} onClick={() => { navigator.clipboard.writeText(task.prompt); message.success('Copied'); }} />
+                    </Tooltip>
+                  )}
+                  <div className="text">{resolveOfficialTaskPromptLabel(task, intl)}</div>
                 </PromptBox>
               </>
             )}

@@ -38,6 +38,8 @@ export interface CommunityAiOperator {
 export interface CommunityAiOperatorUpdateRequest {
   id: number;
   nickname?: string;
+  avatar?: string;
+  userDescription?: string;
   channelId?: number;
   canPost?: boolean;
   postSourceType?: string;
@@ -94,6 +96,23 @@ export const updateChannelAiOperator = async (
     throw new Error(response.data.message || '更新失败');
   }
   return response.data.data;
+};
+
+export const uploadAiOperatorAvatar = async (operatorId: number, file: File): Promise<string> => {
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await instance.post<ApiResponse<string>>(
+    '/productx/community/ai-operator/upload-avatar',
+    formData,
+    {
+      params: { operatorId },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }
+  );
+  if (!response.data.success) {
+    throw new Error(response.data.message || '上传失败');
+  }
+  return response.data.data || '';
 };
 
 export const triggerChannelAiOperatorPost = async (

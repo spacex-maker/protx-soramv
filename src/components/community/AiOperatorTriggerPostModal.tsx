@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  Modal, Form, Input, InputNumber, Select, Switch, Row, Col, Typography, Tag, Space, message, theme,
+  App, Modal, Form, Input, InputNumber, Select, Switch, Row, Col, Typography, Tag, Space, theme,
 } from 'antd';
 import { ShopOutlined, RocketOutlined } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -50,6 +50,7 @@ const AiOperatorTriggerPostModal: React.FC<AiOperatorTriggerPostModalProps> = ({
   onSuccess,
 }) => {
   const intl = useIntl();
+  const { message } = App.useApp();
   const { locale } = useLocale();
   const { token } = theme.useToken();
   const [form] = Form.useForm();
@@ -166,7 +167,7 @@ const AiOperatorTriggerPostModal: React.FC<AiOperatorTriggerPostModalProps> = ({
       cancelText={intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' })}
       confirmLoading={submitting}
       width={640}
-      destroyOnClose
+      destroyOnHidden
       centered
     >
       {operatorName && (

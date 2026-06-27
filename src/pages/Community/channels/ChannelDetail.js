@@ -1856,7 +1856,9 @@ const ChannelDetailPage = () => {
       <PageLayout>
         <SimpleHeader />
         <Container style={{ display: 'flex', justifyContent: 'center', paddingTop: 100 }}>
-          <Spin size="large" tip="Loading Channel..." />
+          <Spin size="large" tip="Loading Channel...">
+            <div style={{ minHeight: 120, minWidth: 120 }} />
+          </Spin>
         </Container>
       </PageLayout>
     );

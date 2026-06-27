@@ -5,6 +5,7 @@ import HeroSection from './components/HeroSection';
 import FeaturesSection from './components/FeaturesSection';
 import DirectorStudioSection from './components/DirectorStudioSection';
 import SpeechGenerationSection from './components/SpeechGenerationSection';
+import OfficialI2iPlaySection from './components/OfficialI2iPlaySection';
 import PricingSection from './components/PricingSection';
 import MediaToolsSection from './components/MediaToolsSection';
 import CommunitySection from './components/CommunitySection';
@@ -22,6 +23,7 @@ const HomePage = () => {
       <FeaturesSection />
       <DirectorStudioSection />
       <SpeechGenerationSection />
+      <OfficialI2iPlaySection />
       <CommunitySection />
       <PromptMarketSection />
       <PricingSection />

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { 
   Typography, 
   Input, 
@@ -10,6 +11,8 @@ import {
   Space, 
   message, 
   Tooltip,
+  Switch,
+  Slider,
 } from 'antd';
 import { 
   ThunderboltOutlined,
@@ -23,6 +26,9 @@ import {
   SyncOutlined,
   InboxOutlined,
   DeleteOutlined,
+  NumberOutlined,
+  DesktopOutlined,
+  AppstoreOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import instance from 'api/axios';
@@ -37,6 +43,10 @@ import {
   UploadIcon,
   UploadText,
   UploadHint,
+  EnhancePromptButton,
+  OfficialPlayTriggerButton,
+  PromptGlowButtonShell,
+  I2iPromptLabelActions,
 } from './styles';
 import { 
   getAspectRatioOption, 
@@ -49,21 +59,35 @@ import { HistorySection, TaskDetailModal } from './History';
 import WaitingTaskQueue from './WaitingTaskQueue';
 import ModelDetailModal from './ModelDetailModal';
 import ImageResultDisplay from './ImageResultDisplay';
-import ModelSelect from './ModelSelect';
+import OfficialPlaySelectionModal from './OfficialPlaySelectionModal';
+import OfficialPlaySelectedBanner from './OfficialPlaySelectedBanner';
+import I2iModelSelectField from './I2iModelSelectField';
+import { I2iCreationMode, I2iOfficialPlay, findOfficialPlay } from './officialPlayTypes';
+import ModelSelectionModal from '../TextToImage/ModelSelectionModal';
 import EstimatedPriceHint from '../shared/EstimatedPriceHint';
 import { useTokenBalance } from '../shared/useTokenBalance';
-import { formatTokenAmount } from '../shared/estimatedPriceText';
+import { getImageEstimatedPrice } from '../shared/estimatedPriceText';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import { handleGenerationApiFailure } from '../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
+import {
+  VOLC_SEEDREAM_SIZE_ASPECT_MAP,
+  VOLC_SEEDREAM_ASPECT_RATIOS,
+  VOLC_SEEDREAM_SIZES,
+  VOLC_SEEDREAM_MAX_UPLOAD_BYTES,
+  VOLC_SEEDREAM_UPLOAD_ACCEPT,
+  VOLC_SEEDREAM_UPLOAD_EXTENSIONS,
+} from '../TextToImage/constants';
+import { parseResponseImages } from '../TextToImage/utils';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const intl = useIntl();
+  const location = useLocation();
   const { tokenBalance, balanceLoading } = useTokenBalance();
   const {
     insufficientBalanceOpen,
@@ -113,6 +137,19 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   // 模型详情模态框相关状态
   const [modelDetailModalVisible, setModelDetailModalVisible] = useState(false);
   const [selectedModelForDetail, setSelectedModelForDetail] = useState<Model | null>(null);
+  const [modelModalVisible, setModelModalVisible] = useState(false);
+  const [creationMode, setCreationMode] = useState<I2iCreationMode>('custom');
+  const [selectedPlay, setSelectedPlay] = useState<I2iOfficialPlay | null>(null);
+  const [officialPlayModalVisible, setOfficialPlayModalVisible] = useState(false);
+  const isVolcSeedream = useMemo(() => {
+    if (!selectedModel) return false;
+    const modelCode = selectedModel.modelCode?.toLowerCase() ?? '';
+    if (!modelCode.includes('seedream')) return false;
+    const companyCode = selectedModel.companyCode?.trim();
+    return !companyCode || companyCode === 'Volc';
+  }, [selectedModel]);
+  const resolution = Form.useWatch('resolution', form);
+  const batchSize = Form.useWatch('batchSize', form) ?? 1;
 
   // 初始化时确保标志为 false
   useEffect(() => {
@@ -130,6 +167,47 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     });
     return () => observer.disconnect();
   }, []);
+
+  const handleSelectOfficialPlay = (play: I2iOfficialPlay) => {
+    setSelectedPlay(play);
+    setCreationMode('official');
+  };
+
+  const handleClearOfficialPlay = () => {
+    setSelectedPlay(null);
+    setCreationMode('custom');
+  };
+
+  useEffect(() => {
+    const state = location.state as { officialPlayCode?: string } | null;
+    const playCode = state?.officialPlayCode;
+    if (!playCode) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await instance.get('/productx/sa-ai-models/image/i2i/official-plays', {
+          params: { sortBy: 'sort' },
+        });
+        if (cancelled || !response.data.success || !Array.isArray(response.data.data)) return;
+        const play = findOfficialPlay(response.data.data, playCode);
+        if (play) {
+          setSelectedPlay(play);
+          setCreationMode('official');
+        }
+      } catch (error) {
+        console.error('预加载官方玩法失败:', error);
+      } finally {
+        if (!cancelled) {
+          window.history.replaceState({}, document.title);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.state]);
 
   // 获取模型列表
   useEffect(() => {
@@ -281,55 +359,76 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   const updateFormByModel = (model: Model) => {
     if (!model) return;
 
-    const updates: any = {};
+    const updates: Record<string, unknown> = {};
+    const isVolc = model.companyCode === 'Volc' && model.modelCode?.toLowerCase().includes('seedream');
 
-    // 设置图片比例
-    const supportedRatios = getModelAspectRatios(model);
-    if (supportedRatios.length > 0) {
-      const currentRatio = form.getFieldValue('aspectRatio');
-      // 'auto' 始终有效，不需要重置
-      if (currentRatio !== 'auto' && !supportedRatios.includes(currentRatio)) {
-        updates.aspectRatio = 'auto';
+    if (isVolc) {
+      const volcSizes = getVolcSeedreamSizes(model);
+      updates.resolution = model.imageDefaultResolution?.split(',')[0]?.trim().toUpperCase() || volcSizes[0] || '2K';
+      updates.aspectRatio = getVolcSeedreamAspectRatios(model)[0] || VOLC_SEEDREAM_ASPECT_RATIOS[0];
+      updates.seedreamWatermark = false;
+      updates.batchSize = 1;
+      updates.outputFormat = undefined;
+    } else {
+      const supportedRatios = getModelAspectRatios(model);
+      if (supportedRatios.length > 0) {
+        const currentRatio = form.getFieldValue('aspectRatio');
+        if (currentRatio !== 'auto' && !supportedRatios.includes(currentRatio)) {
+          updates.aspectRatio = 'auto';
+        }
       }
-    }
 
-    // 设置图片分辨率
-    const resolutions = getModelResolutions(model);
-    if (resolutions.length > 0) {
-      const currentResolution = form.getFieldValue('resolution');
-      if (!resolutions.includes(currentResolution)) {
-        updates.resolution = resolutions[0];
+      const resolutions = getModelResolutions(model);
+      if (resolutions.length > 0) {
+        const currentResolution = form.getFieldValue('resolution');
+        if (!resolutions.includes(currentResolution)) {
+          updates.resolution = resolutions[0];
+        }
       }
-    }
 
-    // 设置图片格式
-    if (model.imageFormats) {
-      const formats = model.imageFormats.split(',').map(f => f.trim());
-      if (formats.length > 0) {
-        const currentFormat = form.getFieldValue('outputFormat');
-        if (!currentFormat || !formats.includes(currentFormat)) {
-          updates.outputFormat = formats[0];
+      if (model.imageFormats) {
+        const formats = model.imageFormats.split(',').map((f) => f.trim());
+        if (formats.length > 0) {
+          const currentFormat = form.getFieldValue('outputFormat');
+          if (!currentFormat || !formats.includes(currentFormat)) {
+            updates.outputFormat = formats[0];
+          }
         }
       }
     }
 
-    // 如果有更新，则更新表单
     if (Object.keys(updates).length > 0) {
       form.setFieldsValue(updates);
     }
   };
 
-  // 处理模型选择变化
-  const handleModelChange = (modelId: number) => {
-    const model = models.find(m => m.id === modelId);
-    if (model) {
-      setSelectedModel(model);
-      form.setFieldsValue({ modelId: modelId });
-      updateFormByModel(model);
+  const getVolcSeedreamSizes = (model: Model | null): string[] => {
+    if (!model?.imageMaxResolution) {
+      return [...VOLC_SEEDREAM_SIZES];
     }
+    const list = model.imageMaxResolution
+      .split(',')
+      .map((s) => s.trim().toUpperCase())
+      .filter(Boolean);
+    return list.length > 0 ? list : [...VOLC_SEEDREAM_SIZES];
   };
 
-  // 显示模型详情（传递给 ModelSelect 组件）
+  const getVolcSeedreamAspectRatios = (model: Model | null): string[] => {
+    const fromModel = getModelAspectRatios(model);
+    if (fromModel.length === 0) {
+      return [...VOLC_SEEDREAM_ASPECT_RATIOS];
+    }
+    return VOLC_SEEDREAM_ASPECT_RATIOS.filter((ratio) => fromModel.includes(ratio));
+  };
+
+  // 处理模型选择变化
+  const handleModelChange = (model: Model) => {
+    setSelectedModel(model);
+    form.setFieldsValue({ modelId: model.id });
+    updateFormByModel(model);
+  };
+
+  // 显示模型详情（模型选择弹窗）
   const handleShowModelDetailFromSelect = (model: Model) => {
     setSelectedModelForDetail(model);
     setModelDetailModalVisible(true);
@@ -344,13 +443,41 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       return;
     }
 
+    const useVolcLimits = isVolcSeedream;
+    const maxSize = useVolcLimits ? VOLC_SEEDREAM_MAX_UPLOAD_BYTES : 30 * 1024 * 1024;
+
     if (!file.type.startsWith('image/')) {
       message.error(intl.formatMessage({ id: 'create.i2i.fileType.error', defaultMessage: '请选择图片文件' }));
       return;
     }
 
-    if (file.size > 30 * 1024 * 1024) {
-      message.error(intl.formatMessage({ id: 'create.i2i.fileSize.error', defaultMessage: '图片文件大小不能超过30MB' }));
+    if (useVolcLimits) {
+      const ext = file.name.split('.').pop()?.toLowerCase() || '';
+      const mimeOk =
+        VOLC_SEEDREAM_UPLOAD_ACCEPT.split(',').includes(file.type) ||
+        VOLC_SEEDREAM_UPLOAD_EXTENSIONS.includes(ext);
+      if (!mimeOk) {
+        message.error(
+          intl.formatMessage({
+            id: 'create.i2i.volc.fileType.error',
+            defaultMessage: 'Seedream 图生图仅支持 JPG、PNG、WebP、BMP、TIFF、GIF 格式',
+          })
+        );
+        return;
+      }
+    }
+
+    if (file.size > maxSize) {
+      message.error(
+        intl.formatMessage(
+          {
+            id: useVolcLimits ? 'create.i2i.volc.fileSize.error' : 'create.i2i.fileSize.error',
+            defaultMessage: useVolcLimits
+              ? '参考图片大小不能超过 10MB（火山引擎限制）'
+              : '图片文件大小不能超过30MB',
+          }
+        )
+      );
       return;
     }
 
@@ -410,30 +537,60 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       return [];
     }
 
+    if (isVolcSeedream) {
+      const sizeKey = (resolution || selectedModel.imageDefaultResolution || '2K').toUpperCase().split(',')[0].trim();
+      const sizeMap = VOLC_SEEDREAM_SIZE_ASPECT_MAP[sizeKey];
+      return getVolcSeedreamAspectRatios(selectedModel).map((ratio) => {
+        const base = getAspectRatioOption(ratio, intl);
+        const px = sizeMap?.[ratio];
+        const pixelInfo = px ? ` (${px.replace('x', '×')})` : '';
+        return { ...base, label: base.label + pixelInfo };
+      });
+    }
+
     const supportedRatios = getModelAspectRatios(selectedModel);
-    
     if (supportedRatios.length === 0) {
       return [];
     }
-    
-    return supportedRatios.map(ratio => getAspectRatioOption(ratio, intl));
+    return supportedRatios.map((ratio) => getAspectRatioOption(ratio, intl));
   };
 
   // 获取支持的图片分辨率选项
-  const getAvailableResolutions = () => {
+  const getAvailableResolutions = (): Array<string | { label: string; value: string }> => {
     if (!selectedModel) {
       return [];
+    }
+    if (isVolcSeedream) {
+      return getVolcSeedreamSizes(selectedModel).map((value) => ({ label: value, value }));
     }
     return getModelResolutions(selectedModel);
   };
 
-  // 获取支持的图片格式选项
+  // 获取支持的图片格式选项（Volc Seedream 由 API 固定返回 URL，不提供格式选项）
   const getAvailableOutputFormats = () => {
-    if (!selectedModel) {
+    if (!selectedModel || isVolcSeedream) {
       return [];
     }
     return getModelOutputFormats(selectedModel);
   };
+
+  const availableAspectRatios = useMemo(
+    () => getAvailableAspectRatios(),
+    [isVolcSeedream, resolution, selectedModel, intl]
+  );
+  const availableResolutions = useMemo(
+    () => getAvailableResolutions(),
+    [isVolcSeedream, selectedModel]
+  );
+  const availableOutputFormats = useMemo(
+    () => getAvailableOutputFormats(),
+    [isVolcSeedream, selectedModel]
+  );
+
+  const i2iEstimatedPrice =
+    selectedModel?.tokenCost != null
+      ? getImageEstimatedPrice(selectedModel.tokenCost, batchSize, isVolcSeedream)
+      : null;
 
   // 停止所有轮询
   const stopAllPolling = () => {
@@ -834,12 +991,34 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       return;
     }
 
-    const requiredTokens = selectedModel.tokenCost ?? 0;
+    const requiredTokens = isVolcSeedream
+      ? (selectedModel.tokenCost ?? 0) * Math.max(1, batchSize)
+      : (selectedModel.tokenCost ?? 0);
     if (!(await ensureSufficientBalance(requiredTokens))) {
       return;
     }
 
     if (!(await ensureKycForModel(selectedModel))) {
+      return;
+    }
+
+    if (creationMode === 'official') {
+      if (!selectedPlay) {
+        message.warning(
+          intl.formatMessage({
+            id: 'create.i2i.official.selectRequired',
+            defaultMessage: '请先选择一种官方玩法',
+          })
+        );
+        return;
+      }
+    } else if (!values.prompt?.trim()) {
+      message.warning(
+        intl.formatMessage({
+          id: 'create.i2i.prompt.required',
+          defaultMessage: '请输入图片生成的描述',
+        })
+      );
       return;
     }
 
@@ -877,39 +1056,60 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         );
       
         // 构建请求参数
-        const requestData: any = appendTranslatePromptFlag({
-          prompt: values.prompt,
-          modelCode: selectedModel.modelCode,
-          imageUrls: [imageUrl],
-        }, values);
+        const requestData: any = appendTranslatePromptFlag(
+          {
+            modelCode: selectedModel.modelCode,
+            imageUrls: [imageUrl],
+            ...(creationMode === 'official' && selectedPlay
+              ? { officialPlayCode: selectedPlay.playCode }
+              : { prompt: values.prompt }),
+          },
+          values
+        );
 
-        // 添加图片比例
-        if (values.aspectRatio) {
-          requestData.aspectRatio = values.aspectRatio;
-        }
+        if (isVolcSeedream) {
+          requestData.size = values.resolution || '2K';
+          requestData.seedreamWatermark = values.seedreamWatermark === true;
+          if (values.aspectRatio && values.resolution) {
+            const sizeKey = (values.resolution || '2K').toUpperCase();
+            const map = VOLC_SEEDREAM_SIZE_ASPECT_MAP[sizeKey];
+            if (map?.[values.aspectRatio]) {
+              requestData.size = map[values.aspectRatio];
+            }
+          }
+          const batch = values.batchSize ?? 1;
+          if (batch > 1) {
+            requestData.batchSize = batch;
+          }
+        } else {
+          // 添加图片比例
+          if (values.aspectRatio) {
+            requestData.aspectRatio = values.aspectRatio;
+          }
 
-        // 添加图片分辨率
-        if (values.resolution) {
-          requestData.resolution = values.resolution;
-        }
+          // 添加图片分辨率
+          if (values.resolution) {
+            requestData.resolution = values.resolution;
+          }
 
-        // 添加图片格式
-        if (values.outputFormat) {
-          requestData.outputFormat = values.outputFormat;
+          // 添加图片格式
+          if (values.outputFormat) {
+            requestData.outputFormat = values.outputFormat;
+          }
         }
 
         // 添加种子值
-        if (values.seed !== undefined && values.seed !== null && values.seed !== '') {
+        if (!isVolcSeedream && values.seed !== undefined && values.seed !== null && values.seed !== '') {
           requestData.seed = Number(values.seed);
         }
 
         // 添加负面提示词
-        if (values.negativePrompt) {
+        if (!isVolcSeedream && values.negativePrompt) {
           requestData.negativePrompt = values.negativePrompt;
         }
 
-        // 添加批次大小
-        if (values.batchSize !== undefined && values.batchSize !== null) {
+        // 添加批次大小（非 Seedream Kie 路径）
+        if (!isVolcSeedream && values.batchSize !== undefined && values.batchSize !== null) {
           requestData.batchSize = Number(values.batchSize);
         }
 
@@ -917,7 +1117,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         
         // 调用后端 API
         const response = await instance.post('/productx/sa-ai-models/image/generate/image', requestData, {
-          timeout: 0,
+          timeout: isVolcSeedream ? 120000 : 0,
           signal: abortController.signal
         });
         
@@ -928,6 +1128,28 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         if (response.data && response.data.success) {
           const result = response.data.data;
           const status = result.status;
+          const rawList =
+            response.data.images ||
+            result?.images ||
+            result?.resultUrls ||
+            (result?.imageUrl ? [result.imageUrl] : []);
+          const syncImages = parseResponseImages(rawList);
+
+          if ((status === 'completed' || status === 'success') && syncImages.length > 0) {
+            const outputUrl = syncImages[0];
+            setGeneratedImage({
+              url: outputUrl,
+              aspectRatio: values.aspectRatio || '16:9',
+              resolution: values.resolution || undefined,
+              format: values.outputFormat || undefined,
+            });
+            setLoading(false);
+            message.success(intl.formatMessage({
+              id: 'create.image.generate.success',
+              defaultMessage: '图片生成成功',
+            }));
+            return;
+          }
           
           // 如果任务在队列中，开始轮询
           if (status === 'queued' && result.id) {
@@ -1092,14 +1314,19 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                 }}
               >
                 {/* 模型选择 */}
-                <ModelSelect
-                  models={models}
+                <I2iModelSelectField
                   selectedModel={selectedModel}
                   modelsLoading={modelsLoading}
-                  form={form}
-                  onModelChange={handleModelChange}
-                  onShowModelDetail={handleShowModelDetailFromSelect}
+                  onOpenModal={() => setModelModalVisible(true)}
                 />
+
+                {creationMode === 'official' && selectedPlay && (
+                <OfficialPlaySelectedBanner
+                  play={selectedPlay}
+                  onChangePlay={() => setOfficialPlayModalVisible(true)}
+                  onClear={handleClearOfficialPlay}
+                />
+                )}
 
                 {/* 上传图片区域 */}
                 <Form.Item
@@ -1139,7 +1366,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                       <input
                         id="i2i-upload-input"
                         type="file"
-                        accept="image/*"
+                        accept={isVolcSeedream ? VOLC_SEEDREAM_UPLOAD_ACCEPT : 'image/*'}
                         onChange={handleFileInputChange}
                         style={{ display: 'none' }}
                       />
@@ -1150,23 +1377,35 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                         <FormattedMessage id="create.i2i.upload.click" defaultMessage="点击或拖拽上传" />
                       </UploadText>
                       <UploadHint $isDark={isDark}>
-                        <FormattedMessage id="create.i2i.upload.supportedFormats" defaultMessage="支持 JPG, PNG, WebP (最大 30MB)" />
+                        {isVolcSeedream ? (
+                          <FormattedMessage
+                            id="create.i2i.upload.volcFormats"
+                            defaultMessage="支持 JPG、PNG、WebP、BMP、TIFF、GIF（最大 10MB，火山引擎限制）"
+                          />
+                        ) : (
+                          <FormattedMessage
+                            id="create.i2i.upload.supportedFormats"
+                            defaultMessage="支持 JPG, PNG, WebP (最大 30MB)"
+                          />
+                        )}
                       </UploadHint>
                     </CustomUploadArea>
                   )}
                 </Form.Item>
 
-                {/* 提示词输入 */}
+                {/* 提示词输入（官方玩法模式下隐藏） */}
+                {creationMode === 'custom' && (
                 <Form.Item
                   name="prompt"
+                  className="i2i-prompt-form-item"
                   label={
-                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between', overflow: 'visible' }}>
                       <Space wrap align="center">
                         <EditOutlined style={{ color: '#1890ff' }} />
                         <FormattedMessage id="create.prompt" defaultMessage="提示词 (Prompt)" />
                         <PromptTranslateEnSwitch />
                       </Space>
-                      <Space size="small">
+                      <I2iPromptLabelActions size="small" align="center">
                         {originalPrompt && (
                           <Tooltip title={intl.formatMessage({ id: 'create.prompt.restore', defaultMessage: '恢复原始提示词' })}>
                             <Button 
@@ -1180,19 +1419,33 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                             </Button>
                           </Tooltip>
                         )}
-                        <Tooltip title={intl.formatMessage({ id: 'create.prompt.enhance.tooltip', defaultMessage: 'AI丰富提示词，让描述更加详细生动' })}>
-                          <Button 
-                            type="primary" 
-                            size="small"
-                            icon={<ThunderboltOutlined />}
-                            onClick={handleEnhancePrompt}
-                            loading={enhancingPrompt}
-                            style={{ fontSize: 12 }}
-                          >
-                            <FormattedMessage id="create.prompt.enhance" defaultMessage="AI丰富" />
-                          </Button>
-                        </Tooltip>
-                      </Space>
+                        <PromptGlowButtonShell>
+                          <Tooltip title={intl.formatMessage({ id: 'create.prompt.enhance.tooltip', defaultMessage: 'AI丰富提示词，让描述更加详细生动' })}>
+                            <EnhancePromptButton
+                              type="primary"
+                              size="small"
+                              icon={<ThunderboltOutlined />}
+                              onClick={handleEnhancePrompt}
+                              loading={enhancingPrompt}
+                            >
+                              <FormattedMessage id="create.prompt.enhance" defaultMessage="AI丰富" />
+                            </EnhancePromptButton>
+                          </Tooltip>
+                        </PromptGlowButtonShell>
+                        <PromptGlowButtonShell>
+                          <Tooltip title={intl.formatMessage({ id: 'create.i2i.official.buttonTooltip', defaultMessage: '选择平台官方图生图玩法' })}>
+                            <OfficialPlayTriggerButton
+                              type="primary"
+                              size="small"
+                              $active={Boolean(selectedPlay)}
+                              icon={<AppstoreOutlined />}
+                              onClick={() => setOfficialPlayModalVisible(true)}
+                            >
+                              <FormattedMessage id="create.i2i.official.button" defaultMessage="官方玩法" />
+                            </OfficialPlayTriggerButton>
+                          </Tooltip>
+                        </PromptGlowButtonShell>
+                      </I2iPromptLabelActions>
                     </Space>
                   }
                   rules={[{ required: true, message: intl.formatMessage({ id: 'create.i2i.prompt.required', defaultMessage: '请输入图片生成的描述' }) }]}
@@ -1211,122 +1464,214 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                     }}
                   />
                 </Form.Item>
+                )}
 
-                {/* 图片参数设置 */}
-                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
-                  {() => {
-                    const availableRatios = getAvailableAspectRatios();
-                    const availableResolutions = getAvailableResolutions();
-                    const availableFormats = getAvailableOutputFormats();
-                    const hasRatios = availableRatios.length > 0;
-                    const hasResolutions = availableResolutions.length > 0;
-                    const hasFormats = availableFormats.length > 0;
-                    
-                    if (!hasRatios && !hasResolutions && !hasFormats) {
-                      return null;
+                {/* 图片参数设置（Volc Seedream 与文生图一致：比例 + 分辨率档位 + 水印；非 Seedream 保留 Kie 参数） */}
+                {(availableAspectRatios.length > 0 ||
+                  availableResolutions.length > 0 ||
+                  availableOutputFormats.length > 0 ||
+                  isVolcSeedream) && (
+                  <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+                    {availableAspectRatios.length > 0 && (
+                      <Col
+                        xs={24}
+                        sm={isVolcSeedream ? 8 : availableResolutions.length > 0 || availableOutputFormats.length > 0 ? 8 : 24}
+                      >
+                        <Form.Item
+                          name="aspectRatio"
+                          label={
+                            <Space>
+                              <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                              <FormattedMessage id="create.ratio" defaultMessage="画面比例" />
+                            </Space>
+                          }
+                          style={{ marginBottom: 0 }}
+                        >
+                          <Select
+                            optionLabelProp="label"
+                            disabled={!selectedModel}
+                            placeholder={
+                              !selectedModel
+                                ? intl.formatMessage({
+                                    id: 'create.model.select.placeholder',
+                                    defaultMessage: '请先选择模型',
+                                  })
+                                : undefined
+                            }
+                            dropdownMatchSelectWidth={false}
+                            dropdownStyle={{ minWidth: 'max-content' }}
+                          >
+                            {availableAspectRatios.map((ratio) => (
+                              <Select.Option
+                                key={ratio.value}
+                                value={ratio.value}
+                                label={
+                                  <AspectRatioOption>
+                                    {ratio.icon}
+                                    <span>{ratio.label}</span>
+                                  </AspectRatioOption>
+                                }
+                              >
+                                <AspectRatioOption>
+                                  {ratio.icon}
+                                  <span>{ratio.label}</span>
+                                </AspectRatioOption>
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                    )}
+                    {availableResolutions.length > 0 && (
+                      <Col
+                        xs={24}
+                        sm={
+                          isVolcSeedream
+                            ? 8
+                            : availableAspectRatios.length > 0 && availableOutputFormats.length > 0
+                              ? 8
+                              : availableAspectRatios.length > 0 || availableOutputFormats.length > 0
+                                ? 12
+                                : 24
+                        }
+                      >
+                        <Form.Item
+                          name="resolution"
+                          label={
+                            <Space>
+                              <DesktopOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                              <FormattedMessage id="create.resolution" defaultMessage="分辨率" />
+                              {isVolcSeedream && (
+                                <Tooltip
+                                  title={intl.formatMessage({
+                                    id: 'create.resolution.tooltip',
+                                    defaultMessage: '选择图片的分辨率，优先级高于画面比例',
+                                  })}
+                                >
+                                  <InfoCircleOutlined style={{ color: '#999' }} />
+                                </Tooltip>
+                              )}
+                            </Space>
+                          }
+                          style={{ marginBottom: 0 }}
+                        >
+                          <Select
+                            disabled={!selectedModel}
+                            placeholder={
+                              isVolcSeedream
+                                ? intl.formatMessage({
+                                    id: 'create.resolution.placeholder',
+                                    defaultMessage: '选择分辨率（2K/4K）',
+                                  })
+                                : intl.formatMessage({
+                                    id: 'create.image.resolution.placeholder',
+                                    defaultMessage: '请选择分辨率',
+                                  })
+                            }
+                            allowClear={!isVolcSeedream}
+                          >
+                            {availableResolutions.map((res) => {
+                              const value = typeof res === 'string' ? res : res.value;
+                              const label = typeof res === 'string' ? res : res.label;
+                              return (
+                                <Select.Option key={value} value={value}>
+                                  {label}
+                                </Select.Option>
+                              );
+                            })}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                    )}
+                    {availableOutputFormats.length > 0 && (
+                      <Col
+                        xs={24}
+                        sm={
+                          availableAspectRatios.length > 0 && availableResolutions.length > 0
+                            ? 8
+                            : availableAspectRatios.length > 0 || availableResolutions.length > 0
+                              ? 12
+                              : 24
+                        }
+                      >
+                        <Form.Item
+                          name="outputFormat"
+                          label={
+                            <Space>
+                              <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                              <FormattedMessage id="create.image.format" defaultMessage="输出格式" />
+                            </Space>
+                          }
+                          style={{ marginBottom: 0 }}
+                        >
+                          <Select
+                            disabled={!selectedModel}
+                            placeholder={intl.formatMessage({
+                              id: 'create.image.format.placeholder',
+                              defaultMessage: '请选择输出格式',
+                            })}
+                          >
+                            {availableOutputFormats.map((format) => (
+                              <Select.Option key={format} value={format}>
+                                {format.toUpperCase()}
+                              </Select.Option>
+                            ))}
+                          </Select>
+                        </Form.Item>
+                      </Col>
+                    )}
+                    {isVolcSeedream && (
+                      <Col xs={24} sm={8}>
+                        <Form.Item
+                          name="seedreamWatermark"
+                          label={
+                            <Space>
+                              <InfoCircleOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                              <FormattedMessage id="create.seedream.watermark" defaultMessage="添加水印" />
+                            </Space>
+                          }
+                          valuePropName="checked"
+                          style={{ marginBottom: 0 }}
+                        >
+                          <Switch
+                            checkedChildren={intl.formatMessage({
+                              id: 'create.seedream.watermark.yes',
+                              defaultMessage: '添加',
+                            })}
+                            unCheckedChildren={intl.formatMessage({
+                              id: 'create.seedream.watermark.no',
+                              defaultMessage: '不添加',
+                            })}
+                          />
+                        </Form.Item>
+                      </Col>
+                    )}
+                  </Row>
+                )}
+
+                {isVolcSeedream && (
+                  <Form.Item
+                    name="batchSize"
+                    label={
+                      <Space>
+                        <NumberOutlined style={{ color: '#1890ff' }} />
+                        <FormattedMessage id="create.batchSize" defaultMessage="生成数量" />
+                        <Tooltip
+                          title={intl.formatMessage({
+                            id: 'create.seedream.batchSize.tooltip',
+                            defaultMessage: '组图模式：单次最多 4 张，与火山 sequential_image_generation 一致',
+                          })}
+                        >
+                          <InfoCircleOutlined style={{ color: '#999' }} />
+                        </Tooltip>
+                      </Space>
                     }
-                    
-                    return (
-                      <Row gutter={16} style={{ marginBottom: 20 }}>
-                        {hasRatios && (
-                          <Col span={hasResolutions || hasFormats ? 8 : 24}>
-                            <Form.Item
-                              name="aspectRatio"
-                              label={
-                                <Space>
-                                  <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                                  <FormattedMessage id="create.image.ratio" defaultMessage="图片比例" />
-                                </Space>
-                              }
-                              style={{ marginBottom: 0 }}
-                            >
-                              <Select
-                                optionLabelProp="label"
-                                placeholder={intl.formatMessage({ 
-                                  id: 'create.image.ratio.placeholder', 
-                                  defaultMessage: '请选择图片比例' 
-                                })}
-                                allowClear={false}
-                              >
-                                {availableRatios.map(ratio => (
-                                  <Select.Option 
-                                    key={ratio.value} 
-                                    value={ratio.value}
-                                    label={
-                                      <AspectRatioOption>
-                                        {ratio.icon}
-                                        <span>{ratio.label}</span>
-                                      </AspectRatioOption>
-                                    }
-                                  >
-                                    <AspectRatioOption>
-                                      {ratio.icon}
-                                      <span>{ratio.label}</span>
-                                    </AspectRatioOption>
-                                  </Select.Option>
-                                ))}
-                              </Select>
-                            </Form.Item>
-                          </Col>
-                        )}
-                        {hasResolutions && (
-                          <Col span={hasRatios && hasFormats ? 8 : hasRatios || hasFormats ? 12 : 24}>
-                            <Form.Item
-                              name="resolution"
-                              label={
-                                <Space>
-                                  <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                                  <FormattedMessage id="create.image.resolution" defaultMessage="分辨率" />
-                                </Space>
-                              }
-                              style={{ marginBottom: 0 }}
-                            >
-                              <Select
-                                placeholder={intl.formatMessage({ 
-                                  id: 'create.image.resolution.placeholder', 
-                                  defaultMessage: '请选择分辨率' 
-                                })}
-                              >
-                                {availableResolutions.map(resolution => (
-                                  <Select.Option key={resolution} value={resolution}>
-                                    {resolution}
-                                  </Select.Option>
-                                ))}
-                              </Select>
-                            </Form.Item>
-                          </Col>
-                        )}
-                        {hasFormats && (
-                          <Col span={hasRatios && hasResolutions ? 8 : hasRatios || hasResolutions ? 12 : 24}>
-                            <Form.Item
-                              name="outputFormat"
-                              label={
-                                <Space>
-                                  <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
-                                  <FormattedMessage id="create.image.format" defaultMessage="输出格式" />
-                                </Space>
-                              }
-                              style={{ marginBottom: 0 }}
-                            >
-                              <Select
-                                placeholder={intl.formatMessage({ 
-                                  id: 'create.image.format.placeholder', 
-                                  defaultMessage: '请选择输出格式' 
-                                })}
-                              >
-                                {availableFormats.map(format => (
-                                  <Select.Option key={format} value={format}>
-                                    {format.toUpperCase()}
-                                  </Select.Option>
-                                ))}
-                              </Select>
-                            </Form.Item>
-                          </Col>
-                        )}
-                      </Row>
-                    );
-                  }}
-                </Form.Item>
+                    initialValue={1}
+                    style={{ marginBottom: 20 }}
+                  >
+                    <Slider min={1} max={4} marks={{ 1: '1', 2: '2', 3: '3', 4: '4' }} />
+                  </Form.Item>
+                )}
 
                 {/* 提交按钮 */}
                 <Form.Item style={{ marginTop: 16 }}>
@@ -1361,13 +1706,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                       </Button>
                     )}
                     <EstimatedPriceHint
-                      price={
-                        selectedModel &&
-                        selectedModel.tokenCost !== null &&
-                        selectedModel.tokenCost !== undefined
-                          ? formatTokenAmount(selectedModel.tokenCost)
-                          : null
-                      }
+                      price={i2iEstimatedPrice}
                       tokenBalance={tokenBalance}
                       balanceLoading={balanceLoading}
                     />
@@ -1414,6 +1753,29 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         onClose={() => setQueueDrawerOpen(false)}
         tasks={waitingTasks}
         onCancelTask={handleCancelTask}
+      />
+
+      {/* 模型选择模态框 */}
+      <ModelSelectionModal
+        open={modelModalVisible}
+        onClose={() => setModelModalVisible(false)}
+        type="family"
+        title={intl.formatMessage({
+          id: 'create.model.select',
+          defaultMessage: '选择模型',
+        })}
+        models={models}
+        selectedModel={selectedModel}
+        onSelect={(model) => handleModelChange(model as Model)}
+        onShowDetail={(model) => handleShowModelDetailFromSelect(model as Model)}
+        loading={modelsLoading}
+      />
+
+      <OfficialPlaySelectionModal
+        open={officialPlayModalVisible}
+        onClose={() => setOfficialPlayModalVisible(false)}
+        selectedPlayCode={selectedPlay?.playCode ?? null}
+        onSelectPlay={handleSelectOfficialPlay}
       />
 
       {/* 模型详情模态框 */}

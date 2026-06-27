@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  App,
   Avatar,
   Button,
   Empty,
@@ -17,7 +18,6 @@ import {
   Timeline,
   Tooltip,
   Typography,
-  message,
 } from 'antd';
 import {
   CheckCircleOutlined,
@@ -32,6 +32,8 @@ import {
   SettingOutlined,
   CopyOutlined,
   UserOutlined,
+  CameraOutlined,
+  LoadingOutlined,
   WalletOutlined,
   ClockCircleOutlined,
   CrownOutlined,
@@ -52,6 +54,7 @@ import {
   listTextToImageModels,
   TextToImageModel,
   updateChannelAiOperator,
+  uploadAiOperatorAvatar,
   getChannelAiOperatorBudget,
   AiOperatorBudgetStatus,
   getAiOperatorRuntimeStatus,
@@ -62,6 +65,7 @@ import AiOperatorTriggerPostModal from './AiOperatorTriggerPostModal';
 import ChannelAiOperatorBudgetPanel from './ChannelAiOperatorBudgetPanel';
 
 const { Text, Paragraph } = Typography;
+const { TextArea } = Input;
 
 const ModalBody = styled.div`
   display: flex;
@@ -447,6 +451,55 @@ const ProfileHeader = styled.div`
   border-bottom: 1px solid ${(p) => (p.theme.mode === 'dark' ? '#2a2a2a' : '#f0f0f0')};
 `;
 
+const AvatarEditWrap = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  .avatar-trigger {
+    position: relative;
+    border: none;
+    padding: 0;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 50%;
+    line-height: 0;
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+  }
+
+  .avatar-overlay {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    opacity: 0;
+    transition: opacity 0.2s;
+    font-size: 18px;
+  }
+
+  .avatar-trigger:hover .avatar-overlay,
+  .avatar-trigger:focus-visible .avatar-overlay {
+    opacity: 1;
+  }
+
+  .avatar-fields {
+    flex: 1;
+    min-width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+`;
+
 const ProfileBody = styled.div`
   display: flex;
   flex-direction: column;
@@ -807,7 +860,7 @@ const RichChannelSelect: React.FC<RichChannelSelectProps> = ({
       value={value}
       placeholder={placeholder}
       popupMatchSelectWidth={false}
-      dropdownStyle={{ minWidth: 340 }}
+      styles={{ popup: { root: { minWidth: 340 } } }}
       optionLabelProp="label"
       onChange={onChange}
       filterOption={(input, option) => {
@@ -1075,6 +1128,7 @@ const RecordTimelineContent: React.FC<{
 
 const OperatorPostRecords: React.FC<OperatorPostRecordsProps> = ({ operatorId }) => {
   const intl = useIntl();
+  const { message } = App.useApp();
   const navigate = useNavigate();
   const [filter, setFilter] = useState<RecordFilter>('ALL');
   const [loading, setLoading] = useState(false);
@@ -1285,6 +1339,7 @@ interface OperatorProfilePanelProps {
 
 const OperatorProfilePanel: React.FC<OperatorProfilePanelProps> = ({ operator }) => {
   const intl = useIntl();
+  const { message } = App.useApp();
   const displayName = operator.nickname || operator.internalName || operator.username || `#${operator.userId}`;
 
   const handleCopyPrompt = async (text?: string) => {
@@ -1331,12 +1386,18 @@ const OperatorProfilePanel: React.FC<OperatorProfilePanelProps> = ({ operator })
               <FormattedMessage id="community.aiOperator.expertiseEmpty" defaultMessage="未配置擅长领域" />
             </Text>
           )}
-          {operator.userDescription && (
+        </InfoBlock>
+
+        {operator.userDescription && (
+          <InfoBlock>
+            <span className="title">
+              <FormattedMessage id="community.aiOperator.userDescription" defaultMessage="个人介绍" />
+            </span>
             <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.6 }}>
               {operator.userDescription}
             </Text>
-          )}
-        </InfoBlock>
+          </InfoBlock>
+        )}
 
         {(operator.interestedTags?.length || operator.excludeTags?.length || languageLabel) ? (
           <InfoBlock>
@@ -1445,11 +1506,114 @@ const OperatorConfigPanel: React.FC<OperatorConfigPanelProps> = ({
   onTrigger,
 }) => {
   const intl = useIntl();
+  const { message } = App.useApp();
   const isAiGenerate = draft.postSourceType === 'AI_GENERATE';
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const handleAvatarFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !draft.id) return;
+
+    if (!file.type.startsWith('image/')) {
+      message.error(intl.formatMessage({ id: 'profile.message.coverTypeInvalid', defaultMessage: '只能上传图片文件' }));
+      return;
+    }
+    if (file.size / 1024 / 1024 > 5) {
+      message.error(intl.formatMessage({ id: 'profile.message.coverSizeLimit', defaultMessage: '背景图大小不能超过 5MB' }));
+      return;
+    }
+
+    setAvatarUploading(true);
+    try {
+      const avatarUrl = await uploadAiOperatorAvatar(draft.id, file);
+      onDraftChange({ avatar: avatarUrl });
+      message.success(intl.formatMessage({ id: 'profile.message.avatarUploadSuccess', defaultMessage: '头像上传成功' }));
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      message.error(err?.message || intl.formatMessage({ id: 'profile.message.uploadAvatarFailed', defaultMessage: '头像上传失败' }));
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
 
   return (
     <SectionCard>
       <FieldList>
+        <FieldRow>
+          <span className="label">
+            <FormattedMessage id="community.aiOperator.avatar" defaultMessage="头像" />
+          </span>
+          <AvatarEditWrap className="control">
+            <button
+              type="button"
+              className="avatar-trigger"
+              disabled={avatarUploading || !draft.id}
+              onClick={() => avatarInputRef.current?.click()}
+            >
+              <Avatar src={draft.avatar} size={56} icon={<UserOutlined />} />
+              <span className="avatar-overlay">
+                {avatarUploading ? <LoadingOutlined spin /> : <CameraOutlined />}
+              </span>
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handleAvatarFileChange}
+            />
+            <div className="avatar-fields">
+              <Input
+                value={draft.avatar || ''}
+                placeholder={intl.formatMessage({
+                  id: 'community.aiOperator.avatarUrlPlaceholder',
+                  defaultMessage: '头像链接，或点击左侧上传',
+                })}
+                onChange={(event) => onDraftChange({ avatar: event.target.value })}
+              />
+              <Text type="secondary" style={{ fontSize: 11 }}>
+                <FormattedMessage
+                  id="community.aiOperator.avatarHint"
+                  defaultMessage="保存后同步至社区个人主页，普通用户可见"
+                />
+              </Text>
+            </div>
+          </AvatarEditWrap>
+        </FieldRow>
+        <FieldRow>
+          <span className="label">
+            <FormattedMessage id="community.aiOperator.nickname" defaultMessage="用户昵称" />
+          </span>
+          <Input
+            className="control"
+            value={draft.nickname || ''}
+            maxLength={32}
+            placeholder={intl.formatMessage({
+              id: 'community.aiOperator.nicknamePlaceholder',
+              defaultMessage: '社区展示昵称',
+            })}
+            onChange={(event) => onDraftChange({ nickname: event.target.value })}
+          />
+        </FieldRow>
+        <FieldRow>
+          <span className="label">
+            <FormattedMessage id="community.aiOperator.userDescription" defaultMessage="个人介绍" />
+          </span>
+          <TextArea
+            className="control"
+            value={draft.userDescription || ''}
+            maxLength={200}
+            showCount
+            autoSize={{ minRows: 2, maxRows: 4 }}
+            placeholder={intl.formatMessage({
+              id: 'community.aiOperator.userDescriptionPlaceholder',
+              defaultMessage: '像普通用户一样写一句自我介绍，避免模型名、频道名等运营话术',
+            })}
+            onChange={(event) => onDraftChange({ userDescription: event.target.value })}
+          />
+        </FieldRow>
         <FieldRow>
           <span className="label">
             <FormattedMessage id="community.aiOperator.channel" defaultMessage="发帖频道" />
@@ -1596,6 +1760,7 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
   onPostTriggered,
 }) => {
   const intl = useIntl();
+  const { message } = App.useApp();
   const [loading, setLoading] = useState(false);
   const [operators, setOperators] = useState<CommunityAiOperator[]>([]);
   const [models, setModels] = useState<TextToImageModel[]>([]);
@@ -1715,6 +1880,8 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
       const updated = await updateChannelAiOperator({
         id: operatorId,
         nickname: currentDraft.nickname?.trim() || undefined,
+        avatar: currentDraft.avatar?.trim() || '',
+        userDescription: currentDraft.userDescription?.trim() ?? '',
         channelId: currentDraft.channelId,
         canPost: currentDraft.canPost,
         postSourceType: currentDraft.postSourceType,
@@ -1828,7 +1995,7 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
       open={open}
       onCancel={onClose}
       footer={null}
-      destroyOnClose
+      destroyOnHidden
       centered
       width="min(960px, calc(100vw - 32px))"
       styles={{

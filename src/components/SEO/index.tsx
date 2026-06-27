@@ -95,8 +95,8 @@ const SEO: React.FC<SEOProps> = ({
 export const SEOConfigs = {
   home: {
     title: undefined, // 使用默认标题
-    description: 'AI2OBJ 一站式 AI 创作平台，支持 Sora2、Seedance2，提供文生图、文生视频、图生图、图生视频、提示词商城与媒体工具等能力，让创意从想法到作品一步到位。',
-    keywords: 'AI2OBJ, Sora2, Seedance2, Seedance, AI创作, 文生图, 文生视频, 图生图, 图生视频, 提示词商城, 媒体工具, AI生成',
+    description: 'AI2OBJ 一站式 AI 创作平台，支持 Sora2、Seedance2，提供文生图、文生视频、图生图官方玩法、图生视频、提示词商城与媒体工具等能力，让创意从想法到作品一步到位。',
+    keywords: 'AI2OBJ, Sora2, Seedance2, Seedance, AI创作, 文生图, 文生视频, 图生图, 官方玩法, 图生视频, 提示词商城, 媒体工具, AI生成',
     url: '/',
   },
   
@@ -180,6 +180,15 @@ export const SEOConfigs = {
     keywords: '定价, 套餐, Token充值, 会员, 价格',
     url: '/recharge',
     noindex: true,
+  },
+
+  officialI2iPlay: {
+    title: '图生图官方玩法',
+    description:
+      'AI2OBJ 图生图官方玩法：上传图片，零提示词一键生成赛博朋克、吉卜力、皮克斯 3D、古典油画等风格大片。前后对照所见即所得，免登录浏览全部玩法。',
+    keywords:
+      '图生图, 官方玩法, AI风格转换, 零提示词, 吉卜力, 赛博朋克, 皮克斯, image to image, AI2OBJ',
+    url: '/official-i2i-play',
   },
 };
 

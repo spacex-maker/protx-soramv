@@ -717,10 +717,11 @@ const UserMenu = ({ userInfo, onLogout }) => {
       {/* 新的下拉菜单 */}
       <AnimatePresence>
         {isOpen && (
-          <MobileBackdrop onClick={() => setIsOpen(false)} aria-hidden="true" />
+          <MobileBackdrop key="user-menu-backdrop" onClick={() => setIsOpen(false)} aria-hidden="true" />
         )}
         {isOpen && (
           <DropdownPanel
+            key="user-menu-panel"
             $token={token}
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -858,11 +859,11 @@ const UserMenu = ({ userInfo, onLogout }) => {
             {/* 2. 菜单列表 */}
             <ScrollArea $token={token}>
               {menuGroups.map((group, index) => (
-                <div key={group.title}>
+                <div key={group.title || `menu-group-${index}`}>
                   <GroupTitle $token={token}>{group.title}</GroupTitle>
                   {group.items.map(item => (
                     <MenuItem 
-                      key={item.path} 
+                      key={item.path || item.label} 
                       $token={token}
                       onClick={() => handleNavigate(item.path)}
                     >

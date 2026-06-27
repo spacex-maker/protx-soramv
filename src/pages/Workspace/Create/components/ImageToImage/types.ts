@@ -9,6 +9,8 @@ export interface ImageResult {
 // 模型类型定义
 export interface Model {
   id: number;
+  companyCode?: string | null;
+  companyName?: string | null;
   modelName: string;
   modelCode: string;
   description: string;
@@ -26,6 +28,10 @@ export interface Model {
   likesCount?: number; // 点赞总数
   favoritesCount?: number; // 收藏总数
   coverImage?: string | null; // 封面图
+  /** 是否官方玩法生成 */
+  officialPlay?: boolean;
+  officialPlayCode?: string | null;
+  officialPlayName?: string | null;
 }
 
 // 生成任务记录类型
@@ -47,6 +53,10 @@ export interface GenerationTask {
   endTime: string | null;
   // 可选字段（列表接口可能不返回）
   prompt?: string | null;
+  /** 是否官方玩法生成 */
+  officialPlay?: boolean;
+  officialPlayCode?: string | null;
+  officialPlayName?: string | null;
   creditsCost?: number | null;
   durationMs?: number | null;
 }

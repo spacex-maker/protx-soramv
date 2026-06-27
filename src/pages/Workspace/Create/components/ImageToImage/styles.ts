@@ -1,5 +1,5 @@
-import styled, { createGlobalStyle } from 'styled-components';
-import { Card, Select, Button } from 'antd';
+import styled, { createGlobalStyle, keyframes, css } from 'styled-components';
+import { Card, Select, Button, Space } from 'antd';
 
 // Global select dropdown styles
 export const GlobalSelectStyles = createGlobalStyle`
@@ -81,6 +81,39 @@ export const GlobalSelectStyles = createGlobalStyle`
         margin-left: auto !important;
         flex-shrink: 0 !important;
       }
+    }
+  }
+
+  .i2i-prompt-form-item {
+    overflow: visible;
+
+    .ant-form-item-row {
+      overflow: visible;
+    }
+
+    .ant-form-item-label {
+      overflow: visible !important;
+      padding-top: 10px;
+      padding-bottom: 12px;
+      position: relative;
+      z-index: 3;
+
+      > label {
+        overflow: visible !important;
+        height: auto !important;
+        align-items: center;
+      }
+    }
+
+    .ant-form-item-control {
+      overflow: visible;
+      position: relative;
+      z-index: 1;
+    }
+
+    .ant-space,
+    .ant-space-item {
+      overflow: visible;
     }
   }
 `;
@@ -497,5 +530,179 @@ export const ResolutionTag = styled.div`
   border: 1px solid ${props => props.theme.mode === 'dark' ? '#2a4a6a' : '#91d5ff'};
   color: ${props => props.theme.mode === 'dark' ? '#91d5ff' : '#1890ff'};
   font-weight: 500;
+`;
+
+const i2iActionShine = keyframes`
+  0%, 70%, 100% {
+    transform: translateX(-130%);
+  }
+  85% {
+    transform: translateX(130%);
+  }
+`;
+
+const i2iRainbowGlow = keyframes`
+  0%, 100% {
+    box-shadow:
+      0 0 14px rgba(59, 130, 246, 0.55),
+      0 0 22px rgba(168, 85, 247, 0.38),
+      0 4px 14px rgba(236, 72, 153, 0.28);
+  }
+  33% {
+    box-shadow:
+      0 0 16px rgba(168, 85, 247, 0.62),
+      0 0 24px rgba(34, 211, 238, 0.42),
+      0 4px 14px rgba(59, 130, 246, 0.32);
+  }
+  66% {
+    box-shadow:
+      0 0 15px rgba(236, 72, 153, 0.58),
+      0 0 22px rgba(59, 130, 246, 0.48),
+      0 4px 14px rgba(168, 85, 247, 0.32);
+  }
+`;
+
+const i2iGradientFlow = keyframes`
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+`;
+
+const i2iActionPillBase = css`
+  && {
+    border: none;
+    border-radius: 999px;
+    height: 30px;
+    padding: 0 16px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #fff !important;
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+    background-color: transparent !important;
+    border-color: transparent !important;
+    background-size: 240% 240%;
+    animation: ${i2iGradientFlow} 4.2s ease infinite;
+    transition: transform 0.2s ease, filter 0.2s ease;
+  }
+
+  &&:hover,
+  &&:focus,
+  &&:active {
+    background-color: transparent !important;
+    border-color: transparent !important;
+  }
+
+  &&::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(
+      105deg,
+      transparent 28%,
+      rgba(255, 255, 255, 0.58) 50%,
+      transparent 72%
+    );
+    transform: translateX(-130%);
+    animation: ${i2iActionShine} 2.8s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  && .ant-btn-icon,
+  && .anticon,
+  && > span {
+    position: relative;
+    z-index: 2;
+    color: #fff !important;
+  }
+
+  &&:hover:not(:disabled),
+  &&:focus:not(:disabled) {
+    transform: translateY(-1px) scale(1.03);
+    color: #fff !important;
+    filter: brightness(1.06);
+  }
+
+  &&:disabled {
+    opacity: 0.68;
+    animation: none;
+  }
+`;
+
+export const PromptGlowButtonShell = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: visible;
+  padding: 14px 10px;
+  margin: -14px -6px;
+  vertical-align: middle;
+  isolation: isolate;
+
+  &::before {
+    content: '';
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 14px;
+    bottom: 14px;
+    border-radius: 999px;
+    pointer-events: none;
+    z-index: 0;
+    animation: ${i2iRainbowGlow} 3.2s ease-in-out infinite;
+  }
+
+  > span,
+  .ant-btn {
+    position: relative;
+    z-index: 1;
+  }
+`;
+
+export const I2iPromptLabelActions = styled(Space)`
+  && {
+    overflow: visible;
+  }
+
+  .ant-space-item {
+    overflow: visible;
+  }
+`;
+
+export const EnhancePromptButton = styled(Button)`
+  ${i2iActionPillBase}
+
+  && {
+    background-image: linear-gradient(
+      135deg,
+      #06b6d4 0%,
+      #3b82f6 28%,
+      #8b5cf6 58%,
+      #ec4899 100%
+    );
+  }
+`;
+
+export const OfficialPlayTriggerButton = styled(Button)<{ $active?: boolean }>`
+  ${i2iActionPillBase}
+
+  && {
+    background-image: ${(p) =>
+      p.$active
+        ? 'linear-gradient(135deg, #3b82f6 0%, #6366f1 32%, #a855f7 62%, #f59e0b 100%)'
+        : 'linear-gradient(135deg, #2563eb 0%, #6366f1 38%, #818cf8 72%, #22d3ee 100%)'};
+    animation-duration: ${(p) => (p.$active ? '3.2s' : '4.2s')};
+  }
 `;
 

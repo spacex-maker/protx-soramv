@@ -31,7 +31,7 @@ const LanguageSelector = ({ locale, languages, onLanguageChange }) => {
       open={open}
       onOpenChange={setOpen}
       placement="bottomRight"
-      dropdownRender={() => (
+      popupRender={() => (
         <LanguageDropdownPanel>
           {languages.map((language) => (
             <LanguageDropdownItem

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import 'antd/dist/reset.css'; // 只需要这一个样式文件即可
 import GlobalStyles from './styles/GlobalStyles';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ConfigProvider, theme, message } from 'antd';
+import { App as AntdApp, ConfigProvider, theme } from 'antd';
 import { ThemeProvider } from 'styled-components';
 import LoginPage from "./pages/Login";
 import IpBlockedPage from "./pages/IpBlocked";
@@ -65,6 +65,7 @@ import OpenRobotXAgiPathPage from './pages/OpenRobotX/agi/AgiPathPage';
 import ImageCompress from './pages/Workspace/MediaTools/components/ImageCompress';
 import MediaToolsPage from './pages/MediaToolsPage';
 import SeedanceVideoPage from './pages/SeedanceVideoPage';
+import OfficialI2iPlayPage from './pages/OfficialI2iPlayPage';
 import SettingsPage from './pages/Settings';
 import { getUserSettings } from './api/settings';
 import CookieConsentBanner from './components/CookieConsentBanner';
@@ -118,13 +119,6 @@ export default function App() {
   const [isThemeLoaded, setIsThemeLoaded] = React.useState(false);
 
   const [locale, setLocale] = useState('zh_CN');
-
-  // 设置 message 全局配置
-  message.config({
-    top: 60,
-    duration: 2,
-    maxCount: 3,
-  });
 
   const themeConfig = React.useMemo(() => ({
     algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
@@ -359,6 +353,7 @@ export default function App() {
           locale={localeMap[locale]}
           theme={themeConfig}
         >
+          <AntdApp message={{ top: 60, duration: 2, maxCount: 3 }}>
           <GlobalStyles />
           <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <CookieConsentBanner />
@@ -366,6 +361,7 @@ export default function App() {
               <Route path="/" element={<RootRoute />} />
               <Route path="/media-tools" element={<MediaToolsPage />} />
               <Route path="/tools" element={<MediaToolsPage />} />
+              <Route path="/official-i2i-play" element={<OfficialI2iPlayPage />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="/blocked" element={<IpBlockedPage />} />
               <Route path="/signup" element={<SignupPage />} />
@@ -592,6 +588,7 @@ export default function App() {
               <Route path="*" element={<UnderDevelopmentPage />} />
             </Routes>
           </Router>
+          </AntdApp>
         </ConfigProvider>
       </ThemeProvider>
     </LocaleProvider>
