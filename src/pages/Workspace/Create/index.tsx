@@ -256,6 +256,7 @@ const Create: React.FC = () => {
       const mode = getDefaultVideoGenerationMode({
         textToVideo: enabledTypes.has('textToVideo'),
         imageToVideo: enabledTypes.has('imageToVideo'),
+        videoEdit: enabledTypes.has('imageToVideo') || enabledTypes.has('textToVideo'),
       });
       return mode
         ? `/workspace/create/video-generation?mode=${mode}`
@@ -314,6 +315,7 @@ const Create: React.FC = () => {
                   const mode = getDefaultVideoGenerationMode({
                     textToVideo: enabled.has('textToVideo'),
                     imageToVideo: enabled.has('imageToVideo'),
+                    videoEdit: enabled.has('imageToVideo') || enabled.has('textToVideo'),
                   });
                   return mode
                     ? `/workspace/create/video-generation?mode=${mode}`
@@ -353,6 +355,7 @@ const Create: React.FC = () => {
     () => ({
       textToVideo: enabledTypes.has('textToVideo'),
       imageToVideo: enabledTypes.has('imageToVideo'),
+      videoEdit: enabledTypes.has('imageToVideo') || enabledTypes.has('textToVideo'),
     }),
     [enabledTypes]
   );

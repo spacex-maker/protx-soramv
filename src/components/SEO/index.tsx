@@ -95,8 +95,8 @@ const SEO: React.FC<SEOProps> = ({
 export const SEOConfigs = {
   home: {
     title: undefined, // 使用默认标题
-    description: 'AI2OBJ 一站式 AI 创作平台，支持 Sora2、Seedance2，提供文生图、文生视频、图生图官方玩法、图生视频、提示词商城与媒体工具等能力，让创意从想法到作品一步到位。',
-    keywords: 'AI2OBJ, Sora2, Seedance2, Seedance, AI创作, 文生图, 文生视频, 图生图, 官方玩法, 图生视频, 提示词商城, 媒体工具, AI生成',
+    description: 'AI2OBJ 一站式 AI 创作平台，支持 Sora2、Seedance2，提供文生图、文生视频、图生图官方玩法、图生视频、视频剪辑（多模态参考/编辑/延长）、提示词商城与媒体工具等能力，让创意从想法到作品一步到位。',
+    keywords: 'AI2OBJ, Sora2, Seedance2, Seedance, AI创作, 文生图, 文生视频, 图生图, 官方玩法, 图生视频, 视频剪辑, 多模态参考, 提示词商城, 媒体工具, AI生成',
     url: '/',
   },
   

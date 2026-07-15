@@ -1,6 +1,10 @@
-export type VideoGenerationMode = 'textToVideo' | 'imageToVideo';
+export type VideoGenerationMode = 'textToVideo' | 'imageToVideo' | 'videoEdit';
 
-export const VIDEO_GENERATION_MODES: VideoGenerationMode[] = ['textToVideo', 'imageToVideo'];
+export const VIDEO_GENERATION_MODES: VideoGenerationMode[] = [
+  'textToVideo',
+  'imageToVideo',
+  'videoEdit',
+];
 
 export const LEGACY_VIDEO_PATH_TO_MODE: Record<string, VideoGenerationMode> = {
   '/workspace/create/text-to-video': 'textToVideo',
@@ -11,7 +15,7 @@ export function resolveVideoGenerationMode(
   value: string | null | undefined,
   fallback: VideoGenerationMode = 'textToVideo'
 ): VideoGenerationMode {
-  if (value === 'textToVideo' || value === 'imageToVideo') {
+  if (value === 'textToVideo' || value === 'imageToVideo' || value === 'videoEdit') {
     return value;
   }
   return fallback;
@@ -20,6 +24,7 @@ export function resolveVideoGenerationMode(
 export interface VideoGenerationEnabledModes {
   textToVideo: boolean;
   imageToVideo: boolean;
+  videoEdit: boolean;
 }
 
 export function getDefaultVideoGenerationMode(
@@ -27,6 +32,7 @@ export function getDefaultVideoGenerationMode(
 ): VideoGenerationMode | null {
   if (enabled.textToVideo) return 'textToVideo';
   if (enabled.imageToVideo) return 'imageToVideo';
+  if (enabled.videoEdit) return 'videoEdit';
   return null;
 }
 
@@ -37,5 +43,6 @@ export function resolveVideoGenerationModeWithEnabled(
   const preferred = resolveVideoGenerationMode(value, 'textToVideo');
   if (preferred === 'textToVideo' && enabled.textToVideo) return 'textToVideo';
   if (preferred === 'imageToVideo' && enabled.imageToVideo) return 'imageToVideo';
+  if (preferred === 'videoEdit' && enabled.videoEdit) return 'videoEdit';
   return getDefaultVideoGenerationMode(enabled);
 }

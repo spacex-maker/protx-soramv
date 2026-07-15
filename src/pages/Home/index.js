@@ -3,6 +3,7 @@ import SimpleHeader from 'components/headers/simple';
 import { PageContainer } from './styles';
 import HeroSection from './components/HeroSection';
 import FeaturesSection from './components/FeaturesSection';
+import VideoEditSection from './components/VideoEditSection';
 import DirectorStudioSection from './components/DirectorStudioSection';
 import SpeechGenerationSection from './components/SpeechGenerationSection';
 import OfficialI2iPlaySection from './components/OfficialI2iPlaySection';
@@ -21,6 +22,7 @@ const HomePage = () => {
       <SimpleHeader />
       <HeroSection />
       <FeaturesSection />
+      <VideoEditSection />
       <DirectorStudioSection />
       <SpeechGenerationSection />
       <OfficialI2iPlaySection />

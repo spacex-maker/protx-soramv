@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import {
   FileImageOutlined,
+  ScissorOutlined,
   VideoCameraOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -8,6 +9,7 @@ import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import styled from 'styled-components';
 import TextToVideo from '../TextToVideo';
 import ImageToVideo from '../ImageToVideo';
+import VideoEdit from '../VideoEdit';
 import {
   getDefaultVideoGenerationMode,
   resolveVideoGenerationModeWithEnabled,
@@ -51,22 +53,41 @@ const MODE_CONFIGS: ModeConfig[] = [
     descId: 'create.imageToVideo.subtitle',
     descDefault: '赋予静态图片生命，通过提示词控制运动',
   },
+  {
+    value: 'videoEdit',
+    icon: <ScissorOutlined />,
+    accent: '#13c2c2',
+    accentSoft: 'rgba(19, 194, 194, 0.12)',
+    titleId: 'create.tab.videoEdit',
+    titleDefault: '视频剪辑',
+    descId: 'create.videoEdit.subtitle',
+    descDefault: '多模态参考、视频编辑与延长，Seedance 2 统一创作',
+  },
 ];
 
 const Container = styled.div`
   display: flex;
   flex-direction: column;
-  height: 100%;
   min-height: 0;
-  overflow: hidden;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
 `;
 
 const ModeSwitcher = styled.div`
   margin-bottom: 20px;
   padding: 6px;
   border-radius: 18px;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
   background: ${(props) => (props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.03)' : '#f4f6f9')};
   border: 1px solid ${(props) => (props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : '#e8ecf1')};
+
+  @media (max-width: 768px) {
+    margin-bottom: 12px;
+    padding: 4px;
+  }
 `;
 
 const ModeGrid = styled.div<{ $count: number }>`
@@ -161,13 +182,20 @@ const ModeDesc = styled.div`
   margin-top: 4px;
   font-size: 12px;
   line-height: 1.45;
+  word-break: break-word;
+  overflow-wrap: anywhere;
   color: ${(props) => (props.theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.45)')};
 `;
 
 const ToolContent = styled.div`
   flex: 1;
+  min-width: 0;
   min-height: 0;
-  overflow: auto;
+  width: 100%;
+  max-width: 100%;
+  /* 由外层 Tabs content-holder 统一纵向滚动，这里只裁切横向溢出，避免双竖滚动条 */
+  overflow-x: clip;
+  overflow-y: visible;
 `;
 
 const VIDEO_GENERATION_PATHS = new Set([
@@ -251,7 +279,9 @@ const VideoGeneration: React.FC<VideoGenerationProps> = ({ enabledModes }) => {
       )}
 
       <ToolContent role="tabpanel">
-        {mode === 'textToVideo' ? <TextToVideo embedded /> : <ImageToVideo embedded />}
+        {mode === 'textToVideo' && <TextToVideo embedded />}
+        {mode === 'imageToVideo' && <ImageToVideo embedded />}
+        {mode === 'videoEdit' && <VideoEdit embedded />}
       </ToolContent>
     </Container>
   );

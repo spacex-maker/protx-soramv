@@ -285,6 +285,64 @@ export default {
   'create.videoGeneration.modeSelect': 'Choose video generation mode',
   'create.tab.imageToImage': 'Image to Image',
   'create.tab.imageToVideo': 'Image to Video',
+  'create.tab.videoEdit': 'Video Edit',
+  'create.videoEdit.title': 'Video Edit',
+  'create.videoEdit.subtitle':
+    'Multimodal reference, editing and extension with Seedance 2',
+  'create.videoEdit.generate': 'Generate',
+  'create.videoEdit.uploading': 'Uploading assets to cloud storage...',
+  'create.videoEdit.video.required': 'Please upload at least one reference video',
+  'create.videoEdit.prompt.hint':
+    'Reference assets in order with @视频1, @图像1, @音频1',
+  'create.videoEdit.prompt.placeholder':
+    'Describe how to reference / edit / extend the uploaded video… Type @ to pick an asset',
+  'create.videoEdit.mention.empty': 'Upload a reference video / image / audio first',
+  'create.videoEdit.mention.notFound': 'No matching assets',
+  'create.videoEdit.result.empty':
+    'Results will appear here after you upload a reference video and generate',
+  'create.videoEdit.upload.videos': 'Reference videos',
+  'create.videoEdit.upload.images': 'Reference images',
+  'create.videoEdit.upload.audios': 'Reference audio',
+  'create.videoEdit.upload.required': 'Required',
+  'create.videoEdit.upload.videoHint': 'Required · up to 3 · mp4/mov',
+  'create.videoEdit.upload.imageHint': 'Optional · up to 9 · jpg/png/webp',
+  'create.videoEdit.upload.audioHint': 'Optional · up to 3 · mp3/wav',
+  'create.videoEdit.upload.addVideo': 'Upload video',
+  'create.videoEdit.upload.addImage': 'Upload image',
+  'create.videoEdit.upload.addAudio': 'Upload audio',
+  'create.videoEdit.upload.maxReached': 'You can upload up to {max} files',
+  'create.videoEdit.upload.videoType': 'Please upload a video file (mp4/mov)',
+  'create.videoEdit.upload.imageType': 'Please upload an image file',
+  'create.videoEdit.upload.audioType': 'Please upload an audio file (mp3/wav)',
+  'create.videoEdit.guide.intro':
+    'Upload a reference video (required), then optionally add images and audio. Use @视频1 / @图像1 / @音频1 in the prompt. All scenarios use the same Seedance 2 multimodal API.',
+  'create.videoEdit.guide.introShort':
+    'Supports multimodal reference, editing and extension. Tag assets with @视频1 / @图像1 / @音频1.',
+  'create.videoEdit.guide.open': 'View tutorial',
+  'create.videoEdit.guide.modalTitle': 'Seedance video edit tutorial',
+  'create.videoEdit.guide.apply': 'Use this example prompt',
+  'create.videoEdit.guide.applied': 'Example prompt applied',
+  'create.videoEdit.guide.multimodal.title': 'Multimodal reference',
+  'create.videoEdit.guide.multimodal.desc':
+    'Combine videos, images and audio with precise feature locking via @-tags.',
+  'create.videoEdit.guide.edit.title': 'Video editing',
+  'create.videoEdit.guide.edit.desc':
+    'Targeted edits: subject swap, add/remove objects, local repair — keep motion and camera.',
+  'create.videoEdit.guide.extend.title': 'Video extension',
+  'create.videoEdit.guide.extend.desc':
+    'Seamless narrative continuation from a prior clip with track completion.',
+  'create.videoEdit.guide.tag.featureKeep': 'Feature locking',
+  'create.videoEdit.guide.tag.combo': 'Combo reference',
+  'create.videoEdit.guide.tag.videoRef': 'Video reference',
+  'create.videoEdit.guide.tag.imageRef': 'Image reference',
+  'create.videoEdit.guide.tag.gen': 'Reference generation',
+  'create.videoEdit.guide.tag.precise': 'Precise edits',
+  'create.videoEdit.guide.tag.replace': 'Subject swap',
+  'create.videoEdit.guide.tag.addRemove': 'Add / remove objects',
+  'create.videoEdit.guide.tag.repaint': 'Local inpainting',
+  'create.videoEdit.guide.tag.seamless': 'Seamless narrative',
+  'create.videoEdit.guide.tag.prefix': 'Prior clip',
+  'create.videoEdit.guide.tag.track': 'Track completion',
   'create.tab.speechGeneration': 'Speech Generation',
   'create.tab.voiceClone': 'Voice Clone',
   'create.tab.director': 'Director Studio',
@@ -2562,6 +2620,40 @@ export default {
   'home.speech.feature.community.title': 'Publish to Community',
   'home.speech.feature.community.desc': 'Share your generated voiceovers directly to the AI Voice Community with creators worldwide.',
   'home.speech.cta': 'Try Speech Generation',
+
+  // Home — Video Edit (Seedance 2)
+  'home.videoEdit.tag': 'Seedance 2 · Video Edit',
+  'home.videoEdit.title': 'Video Edit — Reference, Edit & Extend in One Place',
+  'home.videoEdit.subtitle':
+    'Upload a reference video, optionally combine images and audio, cite assets with @tags, and create multimodal reference shots, precise edits, or seamless extensions — powered by Seedance 2.',
+  'home.videoEdit.engine': 'Seedance 2.0',
+  'home.videoEdit.mode.multimodal': 'Multimodal Ref',
+  'home.videoEdit.mode.edit': 'Video Edit',
+  'home.videoEdit.mode.extend': 'Extend',
+  'home.videoEdit.feature.multimodal.title': 'Multimodal Reference',
+  'home.videoEdit.feature.multimodal.desc':
+    'Combine video, image, and audio references. Keep subject features precise with @Video / @Image / @Audio in the prompt.',
+  'home.videoEdit.feature.edit.title': 'Precise Directed Edits',
+  'home.videoEdit.feature.edit.desc':
+    'Replace subjects, add or remove objects, and locally repaint — while keeping motion and camera movement intact.',
+  'home.videoEdit.feature.extend.title': 'Seamless Extension',
+  'home.videoEdit.feature.extend.desc':
+    'Use the prior clip as the track start, then continue the story with a prompt so shots and mood stay coherent.',
+  'home.videoEdit.demo.video': 'Reference video',
+  'home.videoEdit.demo.videoMeta': 'Required · up to 3',
+  'home.videoEdit.demo.image': 'Reference images',
+  'home.videoEdit.demo.imageMeta': 'Optional · up to 9',
+  'home.videoEdit.demo.audio': 'Reference audio',
+  'home.videoEdit.demo.audioMeta': 'Optional · up to 3',
+  'home.videoEdit.demo.prompt.multimodal':
+    'Follow the camera of @Video1, change the outfit to match @Image1, and sync tempo with @Audio1.',
+  'home.videoEdit.demo.prompt.edit':
+    'Keep the motion and camera move from @Video1, but replace the background with a rainy neon city street at night.',
+  'home.videoEdit.demo.prompt.extend':
+    'Continue from the end of @Video1: push slowly toward the rainy window as the character turns and walks away.',
+  'home.videoEdit.demo.status': 'Upload · @ mention · Generate',
+  'home.videoEdit.demo.cta': 'Try this capability',
+  'home.videoEdit.cta': 'Try Video Edit Now',
 
   // Home — Official I2I Play
   'home.officialI2i.tag': 'Image-to-Image · Official Play',
