@@ -18,7 +18,6 @@ import {
   InfoCircleOutlined,
   PlayCircleOutlined,
   ScissorOutlined,
-  ThunderboltOutlined,
   VideoCameraOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
@@ -59,7 +58,9 @@ import {
 import CapabilityGuide from './CapabilityGuide';
 import MediaUploadPanel from './MediaUploadPanel';
 import PromptAssetMentions from './PromptAssetMentions';
-import { uploadFileToCos } from './uploadToCos';
+import GenerateUploadButton from './GenerateUploadButton';
+import type { AssetUploadProgress } from './GenerateUploadButton';
+import { uploadAllMediaAssets } from './uploadAssets';
 
 const { Title, Text } = Typography;
 
@@ -119,20 +120,6 @@ const ASPECT_OPTIONS = ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'];
 const DURATION_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 const RESOLUTION_OPTIONS = ['480p', '720p', '1080p'];
 
-async function ensureRemoteUrls(assets: MediaAsset[]): Promise<string[]> {
-  const urls: string[] = [];
-  for (const asset of assets) {
-    if (asset.remoteUrl) {
-      urls.push(asset.remoteUrl);
-      continue;
-    }
-    const url = await uploadFileToCos(asset.file);
-    asset.remoteUrl = url;
-    urls.push(url);
-  }
-  return urls;
-}
-
 const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const intl = useIntl();
   const [form] = Form.useForm();
@@ -157,6 +144,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const [audios, setAudios] = useState<MediaAsset[]>([]);
 
   const [loading, setLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<AssetUploadProgress | null>(null);
   const [generatedVideo, setGeneratedVideo] = useState<VideoResult | null>(null);
   const [waitingTasks, setWaitingTasks] = useState<WaitingTask[]>([]);
   const [queueDrawerOpen, setQueueDrawerOpen] = useState(false);
@@ -546,26 +534,21 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
 
     setLoading(true);
     setGeneratedVideo(null);
-
-    const uploading = message.loading(
-      intl.formatMessage({
-        id: 'create.videoEdit.uploading',
-        defaultMessage: '正在上传素材到云端...',
-      }),
-      0
-    );
+    setUploadProgress(null);
 
     let videoUrls: string[];
     let imageUrls: string[];
     let audioUrls: string[];
     try {
-      [videoUrls, imageUrls, audioUrls] = await Promise.all([
-        ensureRemoteUrls(videos),
-        ensureRemoteUrls(images),
-        ensureRemoteUrls(audios),
-      ]);
+      ({ videoUrls, imageUrls, audioUrls } = await uploadAllMediaAssets(
+        videos,
+        images,
+        audios,
+        setUploadProgress
+      ));
     } catch (error: any) {
       setLoading(false);
+      setUploadProgress(null);
       message.error(
         error?.message ||
           intl.formatMessage({
@@ -575,7 +558,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
       );
       return;
     } finally {
-      uploading();
+      setUploadProgress(null);
     }
 
     try {
@@ -923,20 +906,15 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                 />
 
                 <Form.Item style={{ marginBottom: 0, marginTop: 16 }}>
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    size="large"
-                    block
+                  <GenerateUploadButton
                     loading={loading}
-                    icon={<ThunderboltOutlined />}
-                    style={{ height: 48, fontSize: 16, borderRadius: 24 }}
+                    uploadProgress={uploadProgress}
+                    disabled={!selectedModel}
                     onClick={() => {
                       isUserSubmitRef.current = true;
+                      form.submit();
                     }}
-                  >
-                    <FormattedMessage id="create.videoEdit.generate" defaultMessage="开始生成" />
-                  </Button>
+                  />
                 </Form.Item>
               </Form>
               </FormLayout>
@@ -960,7 +938,13 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                 <VideoPlaceholder>
                   <Spin size="large" />
                   <Text type="secondary" style={{ marginTop: 12 }}>
-                    {waitingTasks.length > 0 ? (
+                    {uploadProgress ? (
+                      <FormattedMessage
+                        id="create.videoEdit.upload.progress"
+                        defaultMessage="上传素材 {percent}%"
+                        values={{ percent: uploadProgress.overallPercent }}
+                      />
+                    ) : waitingTasks.length > 0 ? (
                       <FormattedMessage
                         id="create.video.polling"
                         defaultMessage="正在生成视频，请稍候..."

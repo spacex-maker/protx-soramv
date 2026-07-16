@@ -1,8 +1,13 @@
+export type CosUploadProgressCallback = (progress: number, speed: number) => void;
+
 /**
  * Upload a local file to the user's Tencent COS and return a public HTTPS URL
  * (same path as ImageToVideo — Seedance receives COS URLs, not Volc uploads).
  */
-export async function uploadFileToCos(file: File): Promise<string> {
+export async function uploadFileToCos(
+  file: File,
+  onProgress?: CosUploadProgressCallback
+): Promise<string> {
   const { cosService } = await import('services/cos');
   const { getUserStorageNodes } = await import('services/storageService');
 
@@ -21,19 +26,14 @@ export async function uploadFileToCos(file: File): Promise<string> {
   const defaultNode = nodesResponse.data.find((node) => node.isDefault);
   const nodeId = defaultNode ? defaultNode.id : nodesResponse.data[0].id;
 
-  const onProgress = (progress: number, speed: number) => {
-    if (progress % 25 === 0 || progress === 100) {
-      console.log(
-        `上传进度: ${progress}%`,
-        speed > 0 ? `速度: ${(speed / 1024 / 1024).toFixed(2)} MB/s` : ''
-      );
-    }
+  const handleProgress: CosUploadProgressCallback = (progress, speed) => {
+    onProgress?.(progress, speed);
   };
 
   const uploadResult = await (cosService as any).uploadFile(
     file,
     fullPath,
-    onProgress,
+    handleProgress,
     false,
     false,
     null,

@@ -291,6 +291,10 @@ export default {
     'Multimodal reference, editing and extension with Seedance 2',
   'create.videoEdit.generate': 'Generate',
   'create.videoEdit.uploading': 'Uploading assets to cloud storage...',
+  'create.videoEdit.upload.failed': 'Failed to upload assets. Please try again.',
+  'create.videoEdit.upload.progress': 'Uploading {percent}%',
+  'create.videoEdit.upload.progressDetail': '{fileName} · {speed} · {current}/{total}',
+  'create.videoEdit.submitting': 'Submitting generation task...',
   'create.videoEdit.video.required': 'Please upload at least one reference video',
   'create.videoEdit.prompt.hint':
     'Reference assets in order with @视频1, @图像1, @音频1',
