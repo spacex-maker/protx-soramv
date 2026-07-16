@@ -63,6 +63,10 @@ import {
 import HistorySection from './HistorySection';
 import TaskDetailModal from './TaskDetailModal';
 import WaitingTaskQueue, { WaitingTask } from './WaitingTaskQueue';
+import {
+  loadPersistedWaitingTasks,
+  persistWaitingTasks,
+} from '../shared/waitingTaskPersistence';
 import ModelDetailModal from './ModelDetailModal';
 import DoubaoSeedance20Params, {
   DOUBAO_SEEDANCE_2_0_FAST_260128,
@@ -85,6 +89,8 @@ import VideoTaskQueueButton from '../shared/VideoTaskQueueButton';
 import { filterPaidT2iModels } from '../TextToImage/utils';
 import type { ImageToVideoProps } from './embedTypes';
 import { resolvePreferredI2vModel } from './resolvePreferredI2vModel';
+
+const WAITING_QUEUE_SCOPE = 'imageToVideo';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -159,7 +165,9 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
   const abortControllerRef = useRef<AbortController | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pollingTasksRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
-  const [waitingTasks, setWaitingTasks] = useState<WaitingTask[]>([]);
+  const [waitingTasks, setWaitingTasks] = useState<WaitingTask[]>(() =>
+    loadPersistedWaitingTasks(WAITING_QUEUE_SCOPE)
+  );
   const [queueDrawerOpen, setQueueDrawerOpen] = useState(false);
   const isUserSubmitRef = useRef<boolean>(false);
   
@@ -327,6 +335,10 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 与历史一致：intl / seedance 页切换时重拉
   }, [intl, seedancePage, isEmbed, embedConfig?.excludeFreeModels]);
+
+  useEffect(() => {
+    persistWaitingTasks(WAITING_QUEUE_SCOPE, waitingTasks);
+  }, [waitingTasks]);
 
   useEffect(() => {
     if (!embedActive) {
@@ -1035,18 +1047,33 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
     setWaitingTasks([]);
   };
 
-  // 停止单个任务的轮询
-  const stopTaskPolling = (taskId: string) => {
+  // 已完成任务的ID集合，用于防止重复处理
+  const completedTasksRef = useRef<Set<string>>(new Set());
+  /** 用户主动从队列删除的任务，恢复 pending 时不再拉回 */
+  const dismissedTaskIdsRef = useRef<Set<string>>(new Set());
+
+  const clearTaskPollingTimer = (taskId: string) => {
     const timer = pollingTasksRef.current.get(taskId);
     if (timer) {
       clearInterval(timer);
       pollingTasksRef.current.delete(taskId);
     }
-    setWaitingTasks(prev => prev.filter(task => task.taskId !== taskId));
   };
 
-  // 已完成任务的ID集合，用于防止重复处理
-  const completedTasksRef = useRef<Set<string>>(new Set());
+  const removeTaskFromQueue = (taskId: string) => {
+    clearTaskPollingTimer(taskId);
+    dismissedTaskIdsRef.current.add(taskId);
+    setWaitingTasks((prev) => prev.filter((task) => task.taskId !== taskId));
+  };
+
+  /** 任务完成/失败时移出队列 */
+  const finishTaskInQueue = (taskId: string) => {
+    clearTaskPollingTimer(taskId);
+    setWaitingTasks((prev) => prev.filter((task) => task.taskId !== taskId));
+  };
+
+  // 兼容完成回调中的旧命名
+  const stopTaskPolling = finishTaskInQueue;
 
   // 轮询任务状态
   const pollTaskStatus = async (taskId: string, aspectRatio: string, duration: number) => {
@@ -1054,12 +1081,22 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
     if (completedTasksRef.current.has(taskId)) {
       return;
     }
+    if (dismissedTaskIdsRef.current.has(taskId)) {
+      return;
+    }
+    // 已停止轮询的任务不再请求状态
+    if (!pollingTasksRef.current.has(taskId)) {
+      return;
+    }
     
     try {
       const response = await instance.get(`/productx/sa-ai-models/video/task/${taskId}/status`);
       
-      // 再次检查，防止并发请求
+      // 再次检查，防止并发请求 / 用户已停止轮询
       if (completedTasksRef.current.has(taskId)) {
+        return;
+      }
+      if (!pollingTasksRef.current.has(taskId)) {
         return;
       }
       
@@ -1069,31 +1106,44 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
 
         // 如果任务完成
         if (status === 'completed' || status === 'success') {
-          // 标记任务已完成，防止重复处理
+          const videoUrl = taskData.videoUrl || taskData.video_url;
+          // 原子性：没有可播放视频 URL 时不出队，继续轮询等待结果落库
+          if (!videoUrl) {
+            setWaitingTasks((prev) =>
+              prev.map((task) =>
+                task.taskId === taskId
+                  ? { ...task, pollStatus: 'fetching_result' as const }
+                  : task
+              )
+            );
+            return;
+          }
+
+          setGeneratedVideo({
+            url: videoUrl,
+            aspectRatio,
+            duration,
+            thumbnail: taskData.thumbnail || taskData.thumbnailUrl || '',
+          });
           completedTasksRef.current.add(taskId);
           stopTaskPolling(taskId);
           setLoading(false);
-          
-          if (taskData.videoUrl) {
-            const videoResult: VideoResult = {
-              url: taskData.videoUrl,
-              aspectRatio: aspectRatio,
-              duration: duration,
-              thumbnail: taskData.thumbnail || taskData.thumbnailUrl || '',
-            };
-            setGeneratedVideo(videoResult);
-            message.success(intl.formatMessage({ 
-              id: 'create.video.generate.success', 
-              defaultMessage: '视频生成成功' 
-            }));
-            await notifyEmbedTask(taskId, taskData.videoUrl);
-          } else {
-            throw new Error(intl.formatMessage({ 
-              id: 'create.video.generate.noUrl', 
-              defaultMessage: '视频生成完成，但未获取到视频地址' 
-            }));
-          }
-        } 
+          message.success(
+            intl.formatMessage({
+              id: 'create.video.generate.success',
+              defaultMessage: '视频生成成功',
+            })
+          );
+          await notifyEmbedTask(taskId, videoUrl);
+        } else if (status === 'finalizing' || status === 'syncing') {
+          setWaitingTasks((prev) =>
+            prev.map((task) =>
+              task.taskId === taskId && task.pollStatus !== 'cancelled'
+                ? { ...task, pollStatus: 'fetching_result' as const }
+                : task
+            )
+          );
+        }
         // 如果任务失败
         else if (status === 'failed' || status === 'error') {
           // 标记任务已完成，防止重复处理
@@ -1125,38 +1175,101 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
 
   // 开始轮询任务状态
   const startPolling = (taskId: string, aspectRatio: string, duration: number, prompt?: string) => {
-    const existingTask = waitingTasks.find(task => task.taskId === taskId);
-    if (existingTask) {
-      return;
+    dismissedTaskIdsRef.current.delete(taskId);
+    completedTasksRef.current.delete(taskId);
+
+    const referenceImages: WaitingTask['referenceImages'] = [];
+    if (originalImageUrl) {
+      referenceImages.push({
+        url: originalImageRemoteUrl || originalImageUrl,
+        kind: 'image',
+        label: '@图像1',
+      });
     }
-    
-    const newTask: WaitingTask = {
-      taskId,
-      modelName: selectedModel?.modelName || '未知模型',
-      prompt: prompt || form.getFieldValue('prompt') || '',
-      submitTime: new Date().toLocaleString('zh-CN'),
-      aspectRatio,
-      duration,
-    };
-    
-    setWaitingTasks(prev => [...prev, newTask]);
-    
-    pollTaskStatus(taskId, aspectRatio, duration);
-    
-    const timer = setInterval(() => {
+    if (endFrameImageUrl) {
+      referenceImages.push({
+        url: endFrameImageRemoteUrl || endFrameImageUrl,
+        kind: 'image',
+        label: '@图像2',
+      });
+    }
+
+    setWaitingTasks((prev) => {
+      const existing = prev.find((task) => task.taskId === taskId);
+      if (existing) {
+        return prev.map((task) =>
+          task.taskId === taskId
+            ? {
+                ...task,
+                pollStatus: 'polling' as const,
+                aspectRatio: aspectRatio || task.aspectRatio,
+                duration: duration || task.duration,
+                prompt: prompt ?? task.prompt,
+                referenceImages:
+                  referenceImages.length > 0 ? referenceImages : task.referenceImages,
+              }
+            : task
+        );
+      }
+      return [
+        ...prev,
+        {
+          taskId,
+          modelName: selectedModel?.modelName || '未知模型',
+          prompt: prompt || form.getFieldValue('prompt') || '',
+          submitTime: new Date().toLocaleString('zh-CN'),
+          aspectRatio,
+          duration,
+          pollStatus: 'polling',
+          referenceImages: referenceImages.length ? referenceImages : undefined,
+        },
+      ];
+    });
+
+    if (!pollingTasksRef.current.has(taskId)) {
+      const timer = setInterval(() => {
+        pollTaskStatus(taskId, aspectRatio, duration);
+      }, 3000);
+      pollingTasksRef.current.set(taskId, timer);
       pollTaskStatus(taskId, aspectRatio, duration);
-    }, 3000);
-    
-    pollingTasksRef.current.set(taskId, timer);
+    }
   };
 
-  // 取消单个任务
-  const handleCancelTask = (taskId: string) => {
-    stopTaskPolling(taskId);
-    message.info(intl.formatMessage({ 
-      id: 'create.video.generate.cancelled.polling', 
-      defaultMessage: '已取消任务轮询' 
-    }));
+  const handleStopPolling = (taskId: string) => {
+    clearTaskPollingTimer(taskId);
+    setWaitingTasks((prev) =>
+      prev.map((task) =>
+        task.taskId === taskId ? { ...task, pollStatus: 'cancelled' as const } : task
+      )
+    );
+    message.info(
+      intl.formatMessage({
+        id: 'create.waitingTask.stopDone',
+        defaultMessage: '已停止该任务的状态轮询',
+      })
+    );
+  };
+
+  const handleRemoveTask = (taskId: string) => {
+    removeTaskFromQueue(taskId);
+    message.success(
+      intl.formatMessage({
+        id: 'create.waitingTask.removed',
+        defaultMessage: '已从任务队列中删除',
+      })
+    );
+  };
+
+  const handleResumePolling = (taskId: string) => {
+    const task = waitingTasks.find((t) => t.taskId === taskId);
+    if (!task) return;
+    startPolling(taskId, task.aspectRatio || '16:9', task.duration || 8, task.prompt);
+    message.success(
+      intl.formatMessage({
+        id: 'create.waitingTask.resumed',
+        defaultMessage: '已重新开始轮询该任务',
+      })
+    );
   };
 
   // 取消当前正在进行的生成
@@ -1177,6 +1290,21 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
 
   // 获取用户进行中的任务并恢复轮询
   const fetchPendingTasks = async () => {
+    // 页面刷新后：恢复本地队列中未取消任务的轮询，以便重新拉取已成功的视频结果
+    const persisted = loadPersistedWaitingTasks(WAITING_QUEUE_SCOPE);
+    persisted.forEach((task) => {
+      if (task.pollStatus === 'cancelled') return;
+      if (dismissedTaskIdsRef.current.has(task.taskId)) return;
+      if (pollingTasksRef.current.has(task.taskId)) return;
+      const aspectRatio = task.aspectRatio || '16:9';
+      const duration = task.duration || 8;
+      const timer = setInterval(() => {
+        pollTaskStatus(task.taskId, aspectRatio, duration);
+      }, 3000);
+      pollingTasksRef.current.set(task.taskId, timer);
+      pollTaskStatus(task.taskId, aspectRatio, duration);
+    });
+
     try {
       const response = await instance.get<{
         success: boolean;
@@ -1188,42 +1316,70 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
       if (response.data.success && response.data.data && response.data.data.length > 0) {
         const pendingTasks = response.data.data;
         console.log('恢复进行中的任务:', pendingTasks.length);
-        
-        // 为每个进行中的任务启动轮询
-        pendingTasks.forEach(task => {
-          if (task.id) {
-            // 添加到等待任务队列
-            const newTask: WaitingTask = {
-              taskId: String(task.id),
-              modelName: task.modelName || '未知模型',
-              prompt: task.prompt || '',
-              submitTime: task.createTime ? new Date(task.createTime).toLocaleString('zh-CN') : new Date().toLocaleString('zh-CN'),
-              aspectRatio: '16:9', // 默认值
-              duration: 8, // 默认值
-            };
-            
-            setWaitingTasks(prev => {
-              // 检查是否已存在
-              if (prev.find(t => t.taskId === newTask.taskId)) {
-                return prev;
-              }
-              return [...prev, newTask];
-            });
-            
-            // 开始轮询（如果尚未轮询）
-            if (!pollingTasksRef.current.has(String(task.id))) {
-              const timer = setInterval(() => {
-                pollTaskStatus(String(task.id), '16:9', 8);
-              }, 3000);
-              pollingTasksRef.current.set(String(task.id), timer);
-              
-              // 立即查询一次
-              pollTaskStatus(String(task.id), '16:9', 8);
-            }
-          }
+
+        const newQueueItems: WaitingTask[] = [];
+
+        pendingTasks.forEach((task) => {
+          if (!task.id) return;
+          const taskId = String(task.id);
+          if (dismissedTaskIdsRef.current.has(taskId)) return;
+
+          newQueueItems.push({
+            taskId,
+            modelName: task.modelName || '未知模型',
+            prompt: task.prompt || '',
+            submitTime: task.createTime
+              ? new Date(task.createTime).toLocaleString('zh-CN')
+              : new Date().toLocaleString('zh-CN'),
+            aspectRatio: '16:9',
+            duration: 8,
+            pollStatus: 'polling',
+            referenceImages: (task.inputUrls || [])
+              .filter(Boolean)
+              .map((url, index) => ({
+                url,
+                kind: 'image' as const,
+                label: `@图像${index + 1}`,
+              })),
+            referenceVideos: (task.seedanceVideoReferenceUrls || [])
+              .filter(Boolean)
+              .map((url, index) => ({
+                url,
+                kind: 'video' as const,
+                label: `@视频${index + 1}`,
+              })),
+            referenceAudios: (task.seedanceAudioReferenceUrls || [])
+              .filter(Boolean)
+              .map((url, index) => ({
+                url,
+                kind: 'audio' as const,
+                label: `@音频${index + 1}`,
+              })),
+          });
         });
-        
-        // 如果有进行中的任务，设置loading状态
+
+        let queueSnapshot: WaitingTask[] = [];
+        setWaitingTasks((prev) => {
+          queueSnapshot = prev;
+          const existingIds = new Set(prev.map((t) => t.taskId));
+          const toAdd = newQueueItems.filter((item) => !existingIds.has(item.taskId));
+          return toAdd.length ? [...prev, ...toAdd] : prev;
+        });
+
+        newQueueItems.forEach((item) => {
+          const taskId = item.taskId;
+          if (dismissedTaskIdsRef.current.has(taskId)) return;
+          if (pollingTasksRef.current.has(taskId)) return;
+          const existing = queueSnapshot.find((t) => t.taskId === taskId);
+          if (existing?.pollStatus === 'cancelled') return;
+
+          const timer = setInterval(() => {
+            pollTaskStatus(taskId, '16:9', 8);
+          }, 3000);
+          pollingTasksRef.current.set(taskId, timer);
+          pollTaskStatus(taskId, '16:9', 8);
+        });
+
         if (pendingTasks.length > 0) {
           setLoading(true);
         }
@@ -2116,7 +2272,12 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
             <ResultArea>
               {(!isEmbed || !embedConfig?.hideTaskQueue) && (
                 <VideoTaskQueueButton
-                  waitingCount={waitingTasks.length}
+                  waitingCount={
+                    waitingTasks.filter((t) => {
+                      const s = t.pollStatus || 'polling';
+                      return s === 'polling' || s === 'fetching_result';
+                    }).length
+                  }
                   onOpen={() => setQueueDrawerOpen(true)}
                   style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}
                 />
@@ -2327,7 +2488,9 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
         open={queueDrawerOpen}
         onClose={() => setQueueDrawerOpen(false)}
         tasks={waitingTasks}
-        onCancelTask={handleCancelTask}
+        onStopPolling={handleStopPolling}
+        onRemoveTask={handleRemoveTask}
+        onResumePolling={handleResumePolling}
       />
 
       {/* 模型详情模态框 */}

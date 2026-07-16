@@ -1,3 +1,5 @@
+import type { MediaAssetMeta } from './mediaAssetMeta';
+
 export const MAX_REF_VIDEOS = 3;
 export const MAX_REF_IMAGES = 9;
 export const MAX_REF_AUDIOS = 3;
@@ -25,4 +27,5 @@ export interface MediaAsset {
   previewUrl: string;
   remoteUrl?: string;
   uploading?: boolean;
+  meta?: MediaAssetMeta;
 }

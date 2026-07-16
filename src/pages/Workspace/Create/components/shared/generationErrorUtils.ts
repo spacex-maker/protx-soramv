@@ -9,10 +9,14 @@ type ApiPayload = {
 };
 
 export const extractGenerationErrorMessage = (
-  payload?: ApiPayload | null,
+  payload?: ApiPayload | string | null,
   fallback?: string,
 ): string | undefined => {
-  if (!payload) return fallback;
+  if (payload == null) return fallback;
+  if (typeof payload === 'string') {
+    const trimmed = payload.trim();
+    return trimmed || fallback;
+  }
   return payload.message || payload.error || fallback;
 };
 
@@ -30,7 +34,7 @@ export async function handleGenerationApiFailure(
     return true;
   }
 
-  const data = payload as ApiPayload | null | undefined;
+  const data = payload as ApiPayload | string | null | undefined;
   const message = extractGenerationErrorMessage(data, options?.fallbackMessage);
   return tryShowFromApiError(message, options?.error);
 }

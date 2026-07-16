@@ -38,13 +38,15 @@ import VideoModelSelectionModal from '../ImageToVideo/VideoModelSelectionModal';
 import HistorySection from '../ImageToVideo/HistorySection';
 import TaskDetailModal from '../ImageToVideo/TaskDetailModal';
 import WaitingTaskQueue, { WaitingTask } from '../ImageToVideo/WaitingTaskQueue';
+import type { WaitingTaskRefMedia } from '../ImageToVideo/WaitingTaskQueue';
 import VideoTaskQueueButton from '../shared/VideoTaskQueueButton';
 import AspectRatioIcon from '../shared/AspectRatioIcon';
 import EstimatedPriceHint from '../shared/EstimatedPriceHint';
 import { useTokenBalance } from '../shared/useTokenBalance';
 import { getVideoRequiredTokens } from '../shared/balanceUtils';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
-import { handleGenerationApiFailure } from '../shared/generationErrorUtils';
+import { handleGenerationApiFailure, extractGenerationErrorMessage } from '../shared/generationErrorUtils';
+import { formatSeedanceUserMessage } from './seedanceErrorMessage';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
@@ -61,6 +63,12 @@ import PromptAssetMentions from './PromptAssetMentions';
 import GenerateUploadButton from './GenerateUploadButton';
 import type { AssetUploadProgress } from './GenerateUploadButton';
 import { uploadAllMediaAssets } from './uploadAssets';
+import {
+  loadPersistedWaitingTasks,
+  persistWaitingTasks,
+} from '../shared/waitingTaskPersistence';
+
+const WAITING_QUEUE_SCOPE = 'videoEdit';
 
 const { Title, Text } = Typography;
 
@@ -120,6 +128,25 @@ const ASPECT_OPTIONS = ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'];
 const DURATION_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 const RESOLUTION_OPTIONS = ['480p', '720p', '1080p'];
 
+function toRefMedia(
+  assets: MediaAsset[],
+  kind: WaitingTaskRefMedia['kind'],
+  labelPrefix: string
+): WaitingTaskRefMedia[] {
+  return assets
+    .map((asset, index) => {
+      const url = asset.remoteUrl || asset.previewUrl;
+      if (!url) return null;
+      return {
+        url,
+        kind,
+        label: `@${labelPrefix}${index + 1}`,
+        fileName: asset.file?.name,
+      };
+    })
+    .filter(Boolean) as WaitingTaskRefMedia[];
+}
+
 const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const intl = useIntl();
   const [form] = Form.useForm();
@@ -143,10 +170,12 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const [images, setImages] = useState<MediaAsset[]>([]);
   const [audios, setAudios] = useState<MediaAsset[]>([]);
 
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<AssetUploadProgress | null>(null);
   const [generatedVideo, setGeneratedVideo] = useState<VideoResult | null>(null);
-  const [waitingTasks, setWaitingTasks] = useState<WaitingTask[]>([]);
+  const [waitingTasks, setWaitingTasks] = useState<WaitingTask[]>(() =>
+    loadPersistedWaitingTasks(WAITING_QUEUE_SCOPE)
+  );
   const [queueDrawerOpen, setQueueDrawerOpen] = useState(false);
 
   const [historyTasks, setHistoryTasks] = useState<GenerationTask[]>([]);
@@ -162,16 +191,29 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const pollingTasksRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
   const completedTasksRef = useRef<Set<string>>(new Set());
+  /** 用户主动从队列删除的任务，恢复 pending 时不再拉回 */
+  const dismissedTaskIdsRef = useRef<Set<string>>(new Set());
   const isUserSubmitRef = useRef(false);
   const historyPaginationRef = useRef(historyPagination);
   historyPaginationRef.current = historyPagination;
 
-  const stopTaskPolling = (taskId: string) => {
+  const clearTaskPollingTimer = (taskId: string) => {
     const timer = pollingTasksRef.current.get(taskId);
     if (timer) {
       clearInterval(timer);
       pollingTasksRef.current.delete(taskId);
     }
+  };
+
+  const removeTaskFromQueue = (taskId: string) => {
+    clearTaskPollingTimer(taskId);
+    dismissedTaskIdsRef.current.add(taskId);
+    setWaitingTasks((prev) => prev.filter((task) => task.taskId !== taskId));
+  };
+
+  /** 任务完成/失败时移出队列（非用户取消） */
+  const finishTaskInQueue = (taskId: string) => {
+    clearTaskPollingTimer(taskId);
     setWaitingTasks((prev) => prev.filter((task) => task.taskId !== taskId));
   };
 
@@ -236,6 +278,10 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     });
   }, [form]);
 
+  useEffect(() => {
+    persistWaitingTasks(WAITING_QUEUE_SCOPE, waitingTasks);
+  }, [waitingTasks]);
+
   const fetchHistoryTasks = useCallback(async (page: number = 1, pageSize: number = 10) => {
     setHistoryLoading(true);
     try {
@@ -270,14 +316,14 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   }, [fetchHistoryTasks]);
 
   useEffect(() => {
-    if (generatedVideo && !loading) {
+    if (generatedVideo && !isSubmitting) {
       const timer = setTimeout(() => {
         const { current, pageSize } = historyPaginationRef.current;
         fetchHistoryTasks(current, pageSize);
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [generatedVideo, loading, fetchHistoryTasks]);
+  }, [generatedVideo, isSubmitting, fetchHistoryTasks]);
 
   const getStatusText = (status: number) => {
     switch (status) {
@@ -324,11 +370,22 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
       if (completedTasksRef.current.has(taskId)) {
         return;
       }
+      if (dismissedTaskIdsRef.current.has(taskId)) {
+        return;
+      }
+      // 已停止轮询的任务不再请求状态
+      if (!pollingTasksRef.current.has(taskId)) {
+        return;
+      }
 
       try {
         const response = await instance.get(`/productx/sa-ai-models/video/task/${taskId}/status`);
 
         if (completedTasksRef.current.has(taskId)) {
+          return;
+        }
+        // 用户已停止轮询时，忽略在途请求的结果，保持「已取消」展示
+        if (!pollingTasksRef.current.has(taskId)) {
           return;
         }
 
@@ -340,30 +397,49 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
         const status = (result.status || '').toLowerCase();
 
         if (status === 'completed' || status === 'success') {
-          completedTasksRef.current.add(taskId);
-          stopTaskPolling(taskId);
-          setLoading(false);
-          if (result.videoUrl) {
-            setGeneratedVideo({
-              url: result.videoUrl,
-              aspectRatio,
-              duration,
-              thumbnail: result.thumbnail || result.thumbnailUrl || '',
-            });
-            message.success(
-              intl.formatMessage({
-                id: 'create.video.generate.success',
-                defaultMessage: '视频生成成功',
-              })
+          const videoUrl = result.videoUrl || result.video_url;
+          // 原子性：没有可播放视频 URL 时不出队，继续轮询等待结果落库
+          if (!videoUrl) {
+            setWaitingTasks((prev) =>
+              prev.map((task) =>
+                task.taskId === taskId
+                  ? { ...task, pollStatus: 'fetching_result' as const }
+                  : task
+              )
             );
+            return;
           }
+          setGeneratedVideo({
+            url: videoUrl,
+            aspectRatio,
+            duration,
+            thumbnail: result.thumbnail || result.thumbnailUrl || '',
+          });
+          completedTasksRef.current.add(taskId);
+          finishTaskInQueue(taskId);
+          message.success(
+            intl.formatMessage({
+              id: 'create.video.generate.success',
+              defaultMessage: '视频生成成功',
+            })
+          );
+          return;
+        }
+
+        if (status === 'finalizing' || status === 'syncing') {
+          setWaitingTasks((prev) =>
+            prev.map((task) =>
+              task.taskId === taskId && task.pollStatus !== 'cancelled'
+                ? { ...task, pollStatus: 'fetching_result' as const }
+                : task
+            )
+          );
           return;
         }
 
         if (status === 'failed' || status === 'error') {
           completedTasksRef.current.add(taskId);
-          stopTaskPolling(taskId);
-          setLoading(false);
+          finishTaskInQueue(taskId);
           message.error(
             result.error ||
               intl.formatMessage({
@@ -387,10 +463,37 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   );
 
   const startPolling = useCallback(
-    (taskId: string, aspectRatio: string, duration: number, prompt?: string) => {
+    (
+      taskId: string,
+      aspectRatio: string,
+      duration: number,
+      prompt?: string,
+      refs?: {
+        videos?: WaitingTask['referenceVideos'];
+        images?: WaitingTask['referenceImages'];
+        audios?: WaitingTask['referenceAudios'];
+      }
+    ) => {
+      dismissedTaskIdsRef.current.delete(taskId);
+      completedTasksRef.current.delete(taskId);
+
       setWaitingTasks((prev) => {
-        if (prev.find((task) => task.taskId === taskId)) {
-          return prev;
+        const existing = prev.find((task) => task.taskId === taskId);
+        if (existing) {
+          return prev.map((task) =>
+            task.taskId === taskId
+              ? {
+                  ...task,
+                  pollStatus: 'polling' as const,
+                  aspectRatio: aspectRatio || task.aspectRatio,
+                  duration: duration || task.duration,
+                  prompt: prompt ?? task.prompt,
+                  referenceVideos: refs?.videos ?? task.referenceVideos,
+                  referenceImages: refs?.images ?? task.referenceImages,
+                  referenceAudios: refs?.audios ?? task.referenceAudios,
+                }
+              : task
+          );
         }
         return [
           ...prev,
@@ -401,35 +504,88 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
             submitTime: new Date().toLocaleString('zh-CN'),
             aspectRatio,
             duration,
+            pollStatus: 'polling',
+            referenceVideos: refs?.videos,
+            referenceImages: refs?.images,
+            referenceAudios: refs?.audios,
           },
         ];
       });
 
       if (!pollingTasksRef.current.has(taskId)) {
-        pollTaskStatus(taskId, aspectRatio, duration);
         const timer = setInterval(() => {
           pollTaskStatus(taskId, aspectRatio, duration);
         }, 3000);
         pollingTasksRef.current.set(taskId, timer);
+        pollTaskStatus(taskId, aspectRatio, duration);
       }
     },
     [form, pollTaskStatus, selectedModel?.modelName]
   );
 
-  const handleCancelTask = (taskId: string) => {
-    stopTaskPolling(taskId);
-    if (pollingTasksRef.current.size === 0) {
-      setLoading(false);
-    }
+  const handleStopPolling = (taskId: string) => {
+    clearTaskPollingTimer(taskId);
+    setWaitingTasks((prev) =>
+      prev.map((task) =>
+        task.taskId === taskId ? { ...task, pollStatus: 'cancelled' as const } : task
+      )
+    );
     message.info(
       intl.formatMessage({
-        id: 'create.video.generate.cancelled.polling',
-        defaultMessage: '已取消任务轮询',
+        id: 'create.waitingTask.stopDone',
+        defaultMessage: '已停止该任务的状态轮询',
+      })
+    );
+  };
+
+  const handleRemoveTask = (taskId: string) => {
+    removeTaskFromQueue(taskId);
+    message.success(
+      intl.formatMessage({
+        id: 'create.waitingTask.removed',
+        defaultMessage: '已从任务队列中删除',
+      })
+    );
+  };
+
+  const handleResumePolling = (taskId: string) => {
+    const task = waitingTasks.find((t) => t.taskId === taskId);
+    if (!task) return;
+    startPolling(
+      taskId,
+      task.aspectRatio || '16:9',
+      task.duration || 8,
+      task.prompt,
+      {
+        videos: task.referenceVideos,
+        images: task.referenceImages,
+        audios: task.referenceAudios,
+      }
+    );
+    message.success(
+      intl.formatMessage({
+        id: 'create.waitingTask.resumed',
+        defaultMessage: '已重新开始轮询该任务',
       })
     );
   };
 
   const fetchPendingTasks = useCallback(async () => {
+    // 页面刷新后：恢复本地队列中未取消任务的轮询，以便重新拉取已成功的视频结果
+    const persisted = loadPersistedWaitingTasks(WAITING_QUEUE_SCOPE);
+    persisted.forEach((task) => {
+      if (task.pollStatus === 'cancelled') return;
+      if (dismissedTaskIdsRef.current.has(task.taskId)) return;
+      if (pollingTasksRef.current.has(task.taskId)) return;
+      const aspectRatio = task.aspectRatio || '16:9';
+      const duration = task.duration || 8;
+      const timer = setInterval(() => {
+        pollTaskStatus(task.taskId, aspectRatio, duration);
+      }, 3000);
+      pollingTasksRef.current.set(task.taskId, timer);
+      pollTaskStatus(task.taskId, aspectRatio, duration);
+    });
+
     try {
       const response = await instance.get<{
         success: boolean;
@@ -438,43 +594,82 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
         params: { taskType: 'i2v' },
       });
 
-      if (response.data.success && response.data.data && response.data.data.length > 0) {
-        const pendingTasks = response.data.data;
-
-        pendingTasks.forEach((task) => {
-          if (!task.id) return;
-
-          const taskId = String(task.id);
-          setWaitingTasks((prev) => {
-            if (prev.find((t) => t.taskId === taskId)) {
-              return prev;
-            }
-            return [
-              ...prev,
-              {
-                taskId,
-                modelName: task.modelName || '未知模型',
-                prompt: task.prompt || '',
-                submitTime: task.createTime
-                  ? new Date(task.createTime).toLocaleString('zh-CN')
-                  : new Date().toLocaleString('zh-CN'),
-                aspectRatio: '16:9',
-                duration: 8,
-              },
-            ];
-          });
-
-          if (!pollingTasksRef.current.has(taskId)) {
-            pollTaskStatus(taskId, '16:9', 8);
-            const timer = setInterval(() => {
-              pollTaskStatus(taskId, '16:9', 8);
-            }, 3000);
-            pollingTasksRef.current.set(taskId, timer);
-          }
-        });
-
-        setLoading(true);
+      if (!(response.data.success && response.data.data && response.data.data.length > 0)) {
+        return;
       }
+
+      const pendingTasks = response.data.data;
+      const newQueueItems: WaitingTask[] = [];
+
+      pendingTasks.forEach((task) => {
+        if (!task.id) return;
+        const taskId = String(task.id);
+        if (dismissedTaskIdsRef.current.has(taskId)) return;
+
+        const referenceImages = (task.inputUrls || [])
+          .filter(Boolean)
+          .map((url, index) => ({
+            url,
+            kind: 'image' as const,
+            label: `@图像${index + 1}`,
+          }));
+        const referenceVideos = (task.seedanceVideoReferenceUrls || [])
+          .filter(Boolean)
+          .map((url, index) => ({
+            url,
+            kind: 'video' as const,
+            label: `@视频${index + 1}`,
+          }));
+        const referenceAudios = (task.seedanceAudioReferenceUrls || [])
+          .filter(Boolean)
+          .map((url, index) => ({
+            url,
+            kind: 'audio' as const,
+            label: `@音频${index + 1}`,
+            fileName: `audio-${index + 1}`,
+          }));
+
+        newQueueItems.push({
+          taskId,
+          modelName: task.modelName || '未知模型',
+          prompt: task.prompt || '',
+          submitTime: task.createTime
+            ? new Date(task.createTime).toLocaleString('zh-CN')
+            : new Date().toLocaleString('zh-CN'),
+          aspectRatio: '16:9',
+          duration: 8,
+          pollStatus: 'polling',
+          referenceImages: referenceImages.length ? referenceImages : undefined,
+          referenceVideos: referenceVideos.length ? referenceVideos : undefined,
+          referenceAudios: referenceAudios.length ? referenceAudios : undefined,
+        });
+      });
+
+      if (newQueueItems.length === 0) {
+        return;
+      }
+
+      let queueSnapshot: WaitingTask[] = [];
+      setWaitingTasks((prev) => {
+        queueSnapshot = prev;
+        const existingIds = new Set(prev.map((t) => t.taskId));
+        const toAdd = newQueueItems.filter((item) => !existingIds.has(item.taskId));
+        return toAdd.length ? [...prev, ...toAdd] : prev;
+      });
+
+      newQueueItems.forEach((item) => {
+        const taskId = item.taskId;
+        if (dismissedTaskIdsRef.current.has(taskId)) return;
+        if (pollingTasksRef.current.has(taskId)) return;
+        const existing = queueSnapshot.find((t) => t.taskId === taskId);
+        if (existing?.pollStatus === 'cancelled') return;
+
+        const timer = setInterval(() => {
+          pollTaskStatus(taskId, '16:9', 8);
+        }, 3000);
+        pollingTasksRef.current.set(taskId, timer);
+        pollTaskStatus(taskId, '16:9', 8);
+      });
     } catch (error) {
       console.error('获取进行中任务失败:', error);
     }
@@ -494,7 +689,8 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     if (!isUserSubmitRef.current) return;
     isUserSubmitRef.current = false;
 
-    if (loading) return;
+    // 仅拦截「正在上传/提交」；队列中有未完成任务时仍可继续发起新任务
+    if (isSubmitting) return;
     if (!selectedModel) {
       message.warning(
         intl.formatMessage({
@@ -532,8 +728,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    setLoading(true);
-    setGeneratedVideo(null);
+    setIsSubmitting(true);
     setUploadProgress(null);
 
     let videoUrls: string[];
@@ -547,7 +742,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
         setUploadProgress
       ));
     } catch (error: any) {
-      setLoading(false);
+      setIsSubmitting(false);
       setUploadProgress(null);
       message.error(
         error?.message ||
@@ -586,7 +781,10 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
         { timeout: 0, signal: abortController.signal }
       );
 
-      if (abortController.signal.aborted) return;
+      if (abortController.signal.aborted) {
+        setIsSubmitting(false);
+        return;
+      }
 
       if (response.data?.success) {
         const result = response.data.data;
@@ -600,7 +798,12 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
               defaultMessage: '视频生成任务已提交，正在排队中...',
             })
           );
-          startPolling(String(result.id), aspectRatio, duration, values.prompt?.trim());
+          startPolling(String(result.id), aspectRatio, duration, values.prompt?.trim(), {
+            videos: toRefMedia(videos, 'video', '视频'),
+            images: toRefMedia(images, 'image', '图像'),
+            audios: toRefMedia(audios, 'audio', '音频'),
+          });
+          setIsSubmitting(false);
           return;
         }
         if ((status === 'completed' || status === 'success') && result.videoUrl) {
@@ -610,7 +813,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
             duration,
             thumbnail: result.thumbnail || '',
           });
-          setLoading(false);
+          setIsSubmitting(false);
           message.success(
             intl.formatMessage({
               id: 'create.video.generate.success',
@@ -620,48 +823,68 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           return;
         }
         if (status === 'failed' || status === 'error') {
-          setLoading(false);
+          setIsSubmitting(false);
           message.error(
-            result.error ||
+            formatSeedanceUserMessage(
+              result.error,
               intl.formatMessage({
                 id: 'create.video.generate.failed',
                 defaultMessage: '视频生成失败',
               })
+            )
           );
           return;
         }
         if (result.id) {
-          startPolling(String(result.id), aspectRatio, duration, values.prompt?.trim());
+          startPolling(String(result.id), aspectRatio, duration, values.prompt?.trim(), {
+            videos: toRefMedia(videos, 'video', '视频'),
+            images: toRefMedia(images, 'image', '图像'),
+            audios: toRefMedia(audios, 'audio', '音频'),
+          });
+          setIsSubmitting(false);
           return;
         }
-        setLoading(false);
+        setIsSubmitting(false);
       } else {
-        setLoading(false);
-        handleGenerationApiFailure(response.data, tryShowFromApiError, {
-          fallbackMessage: intl.formatMessage({
-            id: 'create.video.generate.failed',
-            defaultMessage: '视频生成失败',
-          }),
-        });
-      }
-    } catch (error: any) {
-      if (abortController.signal.aborted) return;
-      setLoading(false);
-      const handled = await handleGenerationApiFailure(error?.response?.data, tryShowFromApiError, {
-        error,
-        fallbackMessage: intl.formatMessage({
+        setIsSubmitting(false);
+        const fallback = intl.formatMessage({
           id: 'create.video.generate.failed',
           defaultMessage: '视频生成失败',
-        }),
+        });
+        const handled = await handleGenerationApiFailure(response.data, tryShowFromApiError, {
+          fallbackMessage: fallback,
+        });
+        if (!handled) {
+          message.error(
+            formatSeedanceUserMessage(
+              extractGenerationErrorMessage(response.data, fallback),
+              fallback
+            ),
+            6
+          );
+        }
+      }
+    } catch (error: any) {
+      if (abortController.signal.aborted) {
+        setIsSubmitting(false);
+        return;
+      }
+      setIsSubmitting(false);
+      const fallback = intl.formatMessage({
+        id: 'create.video.generate.failed',
+        defaultMessage: '视频生成失败',
+      });
+      const handled = await handleGenerationApiFailure(error?.response?.data, tryShowFromApiError, {
+        error,
+        fallbackMessage: fallback,
       });
       if (!handled) {
-        message.error(
-          error?.response?.data?.message ||
-            intl.formatMessage({
-              id: 'create.video.generate.failed',
-              defaultMessage: '视频生成失败',
-            })
-        );
+        const raw =
+          extractGenerationErrorMessage(error?.response?.data) ||
+          (typeof error?.response?.data === 'string' ? error.response.data : null) ||
+          error?.message ||
+          fallback;
+        message.error(formatSeedanceUserMessage(raw, fallback), 6);
       }
     }
   };
@@ -907,8 +1130,14 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
 
                 <Form.Item style={{ marginBottom: 0, marginTop: 16 }}>
                   <GenerateUploadButton
-                    loading={loading}
+                    loading={isSubmitting}
                     uploadProgress={uploadProgress}
+                    queuedCount={
+                      waitingTasks.filter((t) => {
+                        const s = t.pollStatus || 'polling';
+                        return s === 'polling' || s === 'fetching_result';
+                      }).length
+                    }
                     disabled={!selectedModel}
                     onClick={() => {
                       isUserSubmitRef.current = true;
@@ -930,11 +1159,16 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           >
             <ResultArea style={{ position: 'relative' }}>
               <VideoTaskQueueButton
-                waitingCount={waitingTasks.length}
+                waitingCount={
+                  waitingTasks.filter((t) => {
+                    const s = t.pollStatus || 'polling';
+                    return s === 'polling' || s === 'fetching_result';
+                  }).length
+                }
                 onOpen={() => setQueueDrawerOpen(true)}
                 style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}
               />
-              {loading && (
+              {isSubmitting && (
                 <VideoPlaceholder>
                   <Spin size="large" />
                   <Text type="secondary" style={{ marginTop: 12 }}>
@@ -944,21 +1178,16 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                         defaultMessage="上传素材 {percent}%"
                         values={{ percent: uploadProgress.overallPercent }}
                       />
-                    ) : waitingTasks.length > 0 ? (
-                      <FormattedMessage
-                        id="create.video.polling"
-                        defaultMessage="正在生成视频，请稍候..."
-                      />
                     ) : (
                       <FormattedMessage
-                        id="create.video.generating"
-                        defaultMessage="视频生成中，请稍候…"
+                        id="create.videoEdit.submitting"
+                        defaultMessage="正在提交生成任务..."
                       />
                     )}
                   </Text>
                 </VideoPlaceholder>
               )}
-              {!loading && generatedVideo?.url && (
+              {!isSubmitting && generatedVideo?.url && (
                 <div style={{ position: 'relative' }}>
                   <video
                     src={generatedVideo.url}
@@ -989,7 +1218,27 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                   </ActionOverlay>
                 </div>
               )}
-              {!loading && !generatedVideo && (
+              {!isSubmitting && !generatedVideo && waitingTasks.length > 0 && (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={
+                    <Space direction="vertical" size={8}>
+                      <FormattedMessage
+                        id="create.videoEdit.result.queued"
+                        defaultMessage="已有 {count} 个任务在队列中生成，可继续提交新任务"
+                        values={{ count: waitingTasks.length }}
+                      />
+                      <Button type="link" onClick={() => setQueueDrawerOpen(true)}>
+                        <FormattedMessage
+                          id="create.video.taskQueue"
+                          defaultMessage="任务队列"
+                        />
+                      </Button>
+                    </Space>
+                  }
+                />
+              )}
+              {!isSubmitting && !generatedVideo && waitingTasks.length === 0 && (
                 <Empty
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                   description={
@@ -1050,7 +1299,9 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
         open={queueDrawerOpen}
         onClose={() => setQueueDrawerOpen(false)}
         tasks={waitingTasks}
-        onCancelTask={handleCancelTask}
+        onStopPolling={handleStopPolling}
+        onRemoveTask={handleRemoveTask}
+        onResumePolling={handleResumePolling}
       />
 
       <InsufficientBalanceModal

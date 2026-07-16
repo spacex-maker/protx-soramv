@@ -12,9 +12,11 @@ export interface AssetUploadProgress {
   speed: number;
 }
 
-interface GenerateUploadButtonProps {
+export interface GenerateUploadButtonProps {
   disabled?: boolean;
   loading?: boolean;
+  /** Number of unfinished tasks in queue; button label becomes "continue" when > 0 */
+  queuedCount?: number;
   uploadProgress: AssetUploadProgress | null;
   onClick: () => void;
 }
@@ -146,6 +148,7 @@ function truncateFileName(name: string, max = 18): string {
 const GenerateUploadButton: React.FC<GenerateUploadButtonProps> = ({
   disabled,
   loading,
+  queuedCount = 0,
   uploadProgress,
   onClick,
 }) => {
@@ -154,10 +157,20 @@ const GenerateUploadButton: React.FC<GenerateUploadButtonProps> = ({
   const isDisabled = Boolean(disabled || loading);
 
   let icon: React.ReactNode = <ThunderboltOutlined />;
-  let main: React.ReactNode = (
-    <FormattedMessage id="create.videoEdit.generate" defaultMessage="开始生成" />
-  );
-  let sub: React.ReactNode = null;
+  let main: React.ReactNode =
+    queuedCount > 0 ? (
+      <FormattedMessage id="create.videoEdit.generate.continue" defaultMessage="继续生成" />
+    ) : (
+      <FormattedMessage id="create.videoEdit.generate" defaultMessage="开始生成" />
+    );
+  let sub: React.ReactNode =
+    queuedCount > 0 && !isUploading && !isGenerating ? (
+      <FormattedMessage
+        id="create.videoEdit.generate.queuedHint"
+        defaultMessage="队列中 {count} 个任务进行中"
+        values={{ count: queuedCount }}
+      />
+    ) : null;
 
   if (isUploading && uploadProgress) {
     icon = <CloudUploadOutlined />;

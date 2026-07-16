@@ -57,6 +57,10 @@ export interface GenerationTask {
   outputType: string;
   resultUrls: string[] | null;
   inputUrls: string[] | null; // 图生视频需要输入图片URL
+  /** Seedance 多模态参考视频（列表接口可选） */
+  seedanceVideoReferenceUrls?: string[] | null;
+  /** Seedance 多模态参考音频（列表接口可选） */
+  seedanceAudioReferenceUrls?: string[] | null;
   thumbnailUrl: string | null;
   errorMessage: string | null;
   createTime: string;
