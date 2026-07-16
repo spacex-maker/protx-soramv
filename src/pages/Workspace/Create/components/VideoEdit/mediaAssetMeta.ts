@@ -1,4 +1,4 @@
-import { formatFileSize } from 'utils/format';
+import { formatFileSize } from '../shared/fileSizeUtils';
 
 export interface MediaAssetMeta {
   width?: number;
@@ -136,7 +136,7 @@ export function readAudioDuration(file: File): Promise<number | undefined> {
 }
 
 export function formatMediaSize(fileSize: number): string {
-  return formatFileSize(fileSize, { precision: fileSize >= 1024 * 1024 ? 2 : 1 });
+  return formatFileSize(fileSize);
 }
 
 /** 缩略图底部两行：分辨率 + 比例·大小·时长 */

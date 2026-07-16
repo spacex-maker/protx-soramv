@@ -66,6 +66,9 @@ import WaitingTaskQueue, { WaitingTask } from './WaitingTaskQueue';
 import {
   loadPersistedWaitingTasks,
   persistWaitingTasks,
+  addDismissedTaskId,
+  clearDismissedTaskId,
+  loadDismissedTaskIds,
 } from '../shared/waitingTaskPersistence';
 import ModelDetailModal from './ModelDetailModal';
 import DoubaoSeedance20Params, {
@@ -165,9 +168,12 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
   const abortControllerRef = useRef<AbortController | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pollingTasksRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
-  const [waitingTasks, setWaitingTasks] = useState<WaitingTask[]>(() =>
-    loadPersistedWaitingTasks(WAITING_QUEUE_SCOPE)
-  );
+  const [waitingTasks, setWaitingTasks] = useState<WaitingTask[]>(() => {
+    const dismissed = loadDismissedTaskIds(WAITING_QUEUE_SCOPE);
+    return loadPersistedWaitingTasks(WAITING_QUEUE_SCOPE).filter(
+      (t) => !dismissed.has(t.taskId)
+    );
+  });
   const [queueDrawerOpen, setQueueDrawerOpen] = useState(false);
   const isUserSubmitRef = useRef<boolean>(false);
   
@@ -1049,8 +1055,8 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
 
   // 已完成任务的ID集合，用于防止重复处理
   const completedTasksRef = useRef<Set<string>>(new Set());
-  /** 用户主动从队列删除的任务，恢复 pending 时不再拉回 */
-  const dismissedTaskIdsRef = useRef<Set<string>>(new Set());
+  /** 用户主动从队列删除的任务，恢复 pending 时不再拉回（含 localStorage 持久化） */
+  const dismissedTaskIdsRef = useRef<Set<string>>(loadDismissedTaskIds(WAITING_QUEUE_SCOPE));
 
   const clearTaskPollingTimer = (taskId: string) => {
     const timer = pollingTasksRef.current.get(taskId);
@@ -1063,6 +1069,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
   const removeTaskFromQueue = (taskId: string) => {
     clearTaskPollingTimer(taskId);
     dismissedTaskIdsRef.current.add(taskId);
+    addDismissedTaskId(WAITING_QUEUE_SCOPE, taskId);
     setWaitingTasks((prev) => prev.filter((task) => task.taskId !== taskId));
   };
 
@@ -1176,6 +1183,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
   // 开始轮询任务状态
   const startPolling = (taskId: string, aspectRatio: string, duration: number, prompt?: string) => {
     dismissedTaskIdsRef.current.delete(taskId);
+    clearDismissedTaskId(WAITING_QUEUE_SCOPE, taskId);
     completedTasksRef.current.delete(taskId);
 
     const referenceImages: WaitingTask['referenceImages'] = [];
@@ -1250,14 +1258,25 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
     );
   };
 
-  const handleRemoveTask = (taskId: string) => {
+  const handleRemoveTask = async (taskId: string) => {
     removeTaskFromQueue(taskId);
-    message.success(
-      intl.formatMessage({
-        id: 'create.waitingTask.removed',
-        defaultMessage: '已从任务队列中删除',
-      })
-    );
+    try {
+      await instance.delete(`/productx/sa-ai-gen-task/${taskId}`);
+      message.success(
+        intl.formatMessage({
+          id: 'create.waitingTask.removed',
+          defaultMessage: '已从任务队列中删除',
+        })
+      );
+    } catch (error) {
+      console.error('删除任务失败:', error);
+      message.success(
+        intl.formatMessage({
+          id: 'create.waitingTask.removed',
+          defaultMessage: '已从任务队列中删除',
+        })
+      );
+    }
   };
 
   const handleResumePolling = (taskId: string) => {

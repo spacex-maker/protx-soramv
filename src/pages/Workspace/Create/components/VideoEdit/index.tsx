@@ -8,7 +8,6 @@ import {
   Select,
   Space,
   Spin,
-  Tooltip,
   Typography,
   message,
 } from 'antd';
@@ -16,7 +15,6 @@ import {
   ClockCircleOutlined,
   DownloadOutlined,
   InfoCircleOutlined,
-  PlayCircleOutlined,
   ScissorOutlined,
   VideoCameraOutlined,
 } from '@ant-design/icons';
@@ -28,11 +26,10 @@ import {
   ResultArea,
   StyledCard,
   VideoPlaceholder,
-  ActionOverlay,
   AspectRatioOption,
 } from '../ImageToVideo/styles';
 import type { Model, VideoResult, GenerationTask, GenerationTaskPageResponse } from '../ImageToVideo/types';
-import { getAspectRatioOption } from '../ImageToVideo/utils';
+import { getAspectRatioOption, normalizeUrl } from '../ImageToVideo/utils';
 import VideoModelSelectField from '../ImageToVideo/VideoModelSelectField';
 import VideoModelSelectionModal from '../ImageToVideo/VideoModelSelectionModal';
 import HistorySection from '../ImageToVideo/HistorySection';
@@ -66,6 +63,9 @@ import { uploadAllMediaAssets } from './uploadAssets';
 import {
   loadPersistedWaitingTasks,
   persistWaitingTasks,
+  addDismissedTaskId,
+  clearDismissedTaskId,
+  loadDismissedTaskIds,
 } from '../shared/waitingTaskPersistence';
 
 const WAITING_QUEUE_SCOPE = 'videoEdit';
@@ -173,9 +173,12 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<AssetUploadProgress | null>(null);
   const [generatedVideo, setGeneratedVideo] = useState<VideoResult | null>(null);
-  const [waitingTasks, setWaitingTasks] = useState<WaitingTask[]>(() =>
-    loadPersistedWaitingTasks(WAITING_QUEUE_SCOPE)
-  );
+  const [waitingTasks, setWaitingTasks] = useState<WaitingTask[]>(() => {
+    const dismissed = loadDismissedTaskIds(WAITING_QUEUE_SCOPE);
+    return loadPersistedWaitingTasks(WAITING_QUEUE_SCOPE).filter(
+      (t) => !dismissed.has(t.taskId)
+    );
+  });
   const [queueDrawerOpen, setQueueDrawerOpen] = useState(false);
 
   const [historyTasks, setHistoryTasks] = useState<GenerationTask[]>([]);
@@ -191,8 +194,8 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const abortControllerRef = useRef<AbortController | null>(null);
   const pollingTasksRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
   const completedTasksRef = useRef<Set<string>>(new Set());
-  /** 用户主动从队列删除的任务，恢复 pending 时不再拉回 */
-  const dismissedTaskIdsRef = useRef<Set<string>>(new Set());
+  /** 用户主动从队列删除的任务，恢复 pending 时不再拉回（含 localStorage 持久化） */
+  const dismissedTaskIdsRef = useRef<Set<string>>(loadDismissedTaskIds(WAITING_QUEUE_SCOPE));
   const isUserSubmitRef = useRef(false);
   const historyPaginationRef = useRef(historyPagination);
   historyPaginationRef.current = historyPagination;
@@ -208,6 +211,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const removeTaskFromQueue = (taskId: string) => {
     clearTaskPollingTimer(taskId);
     dismissedTaskIdsRef.current.add(taskId);
+    addDismissedTaskId(WAITING_QUEUE_SCOPE, taskId);
     setWaitingTasks((prev) => prev.filter((task) => task.taskId !== taskId));
   };
 
@@ -475,6 +479,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
       }
     ) => {
       dismissedTaskIdsRef.current.delete(taskId);
+      clearDismissedTaskId(WAITING_QUEUE_SCOPE, taskId);
       completedTasksRef.current.delete(taskId);
 
       setWaitingTasks((prev) => {
@@ -538,14 +543,26 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     );
   };
 
-  const handleRemoveTask = (taskId: string) => {
+  const handleRemoveTask = async (taskId: string) => {
     removeTaskFromQueue(taskId);
-    message.success(
-      intl.formatMessage({
-        id: 'create.waitingTask.removed',
-        defaultMessage: '已从任务队列中删除',
-      })
-    );
+    try {
+      await instance.delete(`/productx/sa-ai-gen-task/${taskId}`);
+      message.success(
+        intl.formatMessage({
+          id: 'create.waitingTask.removed',
+          defaultMessage: '已从任务队列中删除',
+        })
+      );
+    } catch (error) {
+      console.error('删除任务失败:', error);
+      // 本地已删除并写入 dismissed；后端失败时刷新仍靠 localStorage 拦截
+      message.success(
+        intl.formatMessage({
+          id: 'create.waitingTask.removed',
+          defaultMessage: '已从任务队列中删除',
+        })
+      );
+    }
   };
 
   const handleResumePolling = (taskId: string) => {
@@ -1188,34 +1205,63 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                 </VideoPlaceholder>
               )}
               {!isSubmitting && generatedVideo?.url && (
-                <div style={{ position: 'relative' }}>
-                  <video
-                    src={generatedVideo.url}
-                    controls
-                    style={{ width: '100%', borderRadius: 12, background: '#000' }}
-                  />
-                  <ActionOverlay>
-                    <Tooltip
-                      title={intl.formatMessage({
-                        id: 'common.download',
-                        defaultMessage: '下载',
-                      })}
+                <div style={{ width: '100%' }}>
+                  <div
+                    style={{
+                      width: '100%',
+                      aspectRatio: generatedVideo.aspectRatio?.replace(':', ' / ') || '16 / 9',
+                      borderRadius: 12,
+                      overflow: 'hidden',
+                      background: '#000',
+                    }}
+                  >
+                    <video
+                      key={generatedVideo.url}
+                      src={normalizeUrl(generatedVideo.url)}
+                      poster={
+                        generatedVideo.thumbnail
+                          ? normalizeUrl(generatedVideo.thumbnail)
+                          : undefined
+                      }
+                      controls
+                      playsInline
+                      preload="metadata"
+                      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                     >
-                      <Button
-                        type="primary"
-                        shape="circle"
-                        icon={<DownloadOutlined />}
-                        href={generatedVideo.url}
-                        target="_blank"
-                        rel="noreferrer"
+                      <source src={normalizeUrl(generatedVideo.url)} type="video/mp4" />
+                    </video>
+                  </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: 12,
+                      marginTop: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Text type="secondary" style={{ fontSize: 13 }}>
+                      <FormattedMessage
+                        id="create.video.info"
+                        defaultMessage="时长: {duration}s | 比例: {ratio}"
+                        values={{
+                          duration: generatedVideo.duration,
+                          ratio: generatedVideo.aspectRatio,
+                        }}
                       />
-                    </Tooltip>
+                    </Text>
                     <Button
-                      shape="circle"
-                      icon={<PlayCircleOutlined />}
-                      onClick={() => window.open(generatedVideo.url, '_blank')}
-                    />
-                  </ActionOverlay>
+                      type="primary"
+                      icon={<DownloadOutlined />}
+                      href={normalizeUrl(generatedVideo.url)}
+                      target="_blank"
+                      rel="noreferrer"
+                      download="seedance_video_edit.mp4"
+                    >
+                      <FormattedMessage id="common.download" defaultMessage="下载" />
+                    </Button>
+                  </div>
                 </div>
               )}
               {!isSubmitting && !generatedVideo && waitingTasks.length > 0 && (
