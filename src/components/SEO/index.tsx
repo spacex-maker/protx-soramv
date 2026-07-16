@@ -145,6 +145,15 @@ export const SEOConfigs = {
     keywords: '关于AI2OBJ, 团队介绍, AI创作平台, 公司介绍',
     url: '/about',
   },
+
+  projectIntro: {
+    title: '项目介绍',
+    description:
+      'AI2OBJ 一站式多模态 AI 创作与创作者经济平台项目介绍：图像视频语音生成、导演系统、Seedance 视频剪辑、提示词商城与合规底座，面向政府合作与投资沟通。',
+    keywords:
+      'AI2OBJ项目介绍, 多模态AI, 视频剪辑, 导演系统, Seedance2, 提示词商城, 数字内容产业, AI创作平台',
+    url: '/project-intro',
+  },
   
   help: {
     title: '帮助中心',

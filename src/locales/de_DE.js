@@ -1282,6 +1282,7 @@ export default {
   'footer.support.title': 'Support',
   'footer.support.help': 'Hilfezentrum',
   'footer.support.about': 'Über uns',
+  'footer.support.projectIntro': 'Project Intro',
   'footer.support.feedback': 'Feedback',
   'footer.support.contact': 'Kontaktieren Sie uns',
   'footer.legal.title': 'Rechtliches',

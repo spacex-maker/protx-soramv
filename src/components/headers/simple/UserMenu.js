@@ -7,6 +7,7 @@ import { useIntl } from 'react-intl';
 import { getUnreadNotificationCount } from 'api/notifications';
 import AchievementModal from 'components/modals/AchievementModal';
 import MemberLevelModal from 'components/modals/MemberLevelModal';
+import BetaUserBadge from 'components/shared/BetaUserBadge';
 import {
   UserOutlined,
   LogoutOutlined,
@@ -789,10 +790,11 @@ const UserMenu = ({ userInfo, onLogout }) => {
                   )}
                 </AvatarWrapper>
                 <div className="user-info">
-                  <h4>
+                  <h4 style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                     <RainbowText>
                       {userInfo?.nickname || userInfo?.username}
                     </RainbowText>
+                    <BetaUserBadge user={userInfo} compact />
                   </h4>
                   <p>{userInfo?.email || intl.formatMessage({ id: 'userMenu.email.notBound', defaultMessage: '未绑定邮箱' })}</p>
                   <div className="level-section">

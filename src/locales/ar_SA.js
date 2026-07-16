@@ -1227,6 +1227,7 @@ export default {
   'footer.support.title': 'الدعم',
   'footer.support.help': 'مركز المساعدة',
   'footer.support.about': 'من نحن',
+  'footer.support.projectIntro': 'Project Intro',
   'footer.support.feedback': 'التعليقات',
   'footer.support.contact': 'اتصل بنا',
   'footer.legal.title': 'قانوني',

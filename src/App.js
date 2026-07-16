@@ -28,6 +28,7 @@ import UserLevelPage from "pages/UserLevel";
 import FeedbackPage from "pages/Feedback";
 import HelpPage from "pages/Help";
 import AboutPage from "pages/About";
+import ProjectIntroPage from "pages/ProjectIntro";
 import PartnerSurvey from "pages/PartnerSurvey";
 import CloudDrivePage from "./pages/Workspace"; // 工作台页面组件
 import zhCN from 'antd/locale/zh_CN';
@@ -429,6 +430,7 @@ export default function App() {
               <Route path="/feedback" element={<FeedbackPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/about" element={<AboutPage />} />
+              <Route path="/project-intro" element={<ProjectIntroPage />} />
               <Route path="/join-us" element={<JoinUs />} />
               <Route path="/works/s/:shareCode" element={<WorkSharePage />} />
               <Route path="/works" element={

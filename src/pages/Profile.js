@@ -34,6 +34,7 @@ import {
   CameraOutlined,
   PictureOutlined
 } from "@ant-design/icons";
+import BetaUserBadge from "components/shared/BetaUserBadge";
 
 // ==========================================
 // 样式组件 (接收 $token 作为 props)
@@ -800,6 +801,7 @@ const ProfileContent = () => {
                     style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0 }}
                   >
                     <span>{userInfo.nickname || userInfo.username}</span>
+                    <BetaUserBadge user={userInfo} />
                     <VerificationIcon 
                       $token={token}
                       onClick={() => navigate('/verification')}
@@ -888,6 +890,14 @@ const ProfileContent = () => {
                           <span className="label">{intl.formatMessage({ id: 'profile.label.accountStatus', defaultMessage: '账户状态' })}</span>
                           <span className="value" style={{ color: userInfo.isActive ? token.colorSuccess : token.colorError }}>
                             {userInfo.isActive ? intl.formatMessage({ id: 'profile.status.normal', defaultMessage: '正常' }) : intl.formatMessage({ id: 'profile.status.disabled', defaultMessage: '已禁用' })}
+                          </span>
+                        </DetailItem>
+                        <DetailItem $token={token}>
+                          <span className="label">{intl.formatMessage({ id: 'profile.label.betaUser', defaultMessage: '内测身份' })}</span>
+                          <span className="value" style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            {(userInfo.isBetaUser === true || userInfo.isBetaUser === 1)
+                              ? <BetaUserBadge user={userInfo} />
+                              : intl.formatMessage({ id: 'profile.value.betaNo', defaultMessage: '否' })}
                           </span>
                         </DetailItem>
                       </InfoCard>

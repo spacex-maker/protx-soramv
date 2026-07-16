@@ -1296,6 +1296,7 @@ export default {
   'footer.support.title': 'Support',
   'footer.support.help': 'Centre d\'aide',
   'footer.support.about': 'À propos de nous',
+  'footer.support.projectIntro': 'Project Intro',
   'footer.support.feedback': 'Commentaires',
   'footer.support.contact': 'Nous contacter',
   'footer.legal.title': 'Légal',

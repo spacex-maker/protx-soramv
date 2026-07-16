@@ -1211,6 +1211,7 @@ export default {
   'footer.support.title': 'Поддержка',
   'footer.support.help': 'Центр помощи',
   'footer.support.about': 'О нас',
+  'footer.support.projectIntro': 'Project Intro',
   'footer.support.feedback': 'Обратная связь',
   'footer.support.contact': 'Связаться с нами',
   'footer.legal.title': 'Правовая информация',

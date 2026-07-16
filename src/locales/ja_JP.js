@@ -1356,6 +1356,7 @@ export default {
   'footer.support.title': 'サポート',
   'footer.support.help': 'ヘルプセンター',
   'footer.support.about': '私たちについて',
+  'footer.support.projectIntro': 'Project Intro',
   'footer.support.feedback': 'フィードバック',
   'footer.support.contact': 'お問い合わせ',
   'footer.legal.title': '法的',

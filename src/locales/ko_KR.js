@@ -1336,6 +1336,7 @@ export default {
   'footer.support.title': '지원',
   'footer.support.help': '도움말 센터',
   'footer.support.about': '회사 소개',
+  'footer.support.projectIntro': 'Project Intro',
   'footer.support.feedback': '피드백',
   'footer.support.contact': '문의하기',
   'footer.legal.title': '법적',

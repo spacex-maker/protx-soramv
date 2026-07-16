@@ -401,6 +401,11 @@ const FooterSectionComponent = () => {
                   </a>
                 </li>
                 <li>
+                  <a href="#" onClick={(e) => { e.preventDefault(); navigate('/project-intro'); }}>
+                    {intl.formatMessage({ id: 'footer.support.projectIntro', defaultMessage: '项目介绍' })}
+                  </a>
+                </li>
+                <li>
                   <a href="#" onClick={(e) => { e.preventDefault(); navigate('/feedback'); }}>
                     {intl.formatMessage({ id: 'footer.support.feedback', defaultMessage: '意见反馈' })}
                   </a>

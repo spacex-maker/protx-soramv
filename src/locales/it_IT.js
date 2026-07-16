@@ -1231,6 +1231,7 @@ export default {
   'footer.support.title': 'Supporto',
   'footer.support.help': 'Centro assistenza',
   'footer.support.about': 'Chi siamo',
+  'footer.support.projectIntro': 'Project Intro',
   'footer.support.feedback': 'Feedback',
   'footer.support.contact': 'Contattaci',
   'footer.legal.title': 'Legale',
