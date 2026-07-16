@@ -38,6 +38,8 @@ import VideoModelSelectField from '../ImageToVideo/VideoModelSelectField';
 import VideoModelSelectionModal from '../ImageToVideo/VideoModelSelectionModal';
 import HistorySection from '../ImageToVideo/HistorySection';
 import TaskDetailModal from '../ImageToVideo/TaskDetailModal';
+import WaitingTaskQueue, { WaitingTask } from '../ImageToVideo/WaitingTaskQueue';
+import VideoTaskQueueButton from '../shared/VideoTaskQueueButton';
 import AspectRatioIcon from '../shared/AspectRatioIcon';
 import EstimatedPriceHint from '../shared/EstimatedPriceHint';
 import { useTokenBalance } from '../shared/useTokenBalance';
@@ -156,6 +158,8 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
 
   const [loading, setLoading] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<VideoResult | null>(null);
+  const [waitingTasks, setWaitingTasks] = useState<WaitingTask[]>([]);
+  const [queueDrawerOpen, setQueueDrawerOpen] = useState(false);
 
   const [historyTasks, setHistoryTasks] = useState<GenerationTask[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -168,16 +172,19 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollingTasksRef = useRef<Map<string, ReturnType<typeof setInterval>>>(new Map());
+  const completedTasksRef = useRef<Set<string>>(new Set());
   const isUserSubmitRef = useRef(false);
   const historyPaginationRef = useRef(historyPagination);
   historyPaginationRef.current = historyPagination;
 
-  const clearPoll = () => {
-    if (pollTimerRef.current) {
-      clearTimeout(pollTimerRef.current);
-      pollTimerRef.current = null;
+  const stopTaskPolling = (taskId: string) => {
+    const timer = pollingTasksRef.current.get(taskId);
+    if (timer) {
+      clearInterval(timer);
+      pollingTasksRef.current.delete(taskId);
     }
+    setWaitingTasks((prev) => prev.filter((task) => task.taskId !== taskId));
   };
 
   useEffect(() => {
@@ -220,9 +227,13 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
       }
     };
     fetchModels();
+    fetchPendingTasks();
     return () => {
-      clearPoll();
       abortControllerRef.current?.abort();
+      pollingTasksRef.current.forEach((timer) => {
+        clearInterval(timer);
+      });
+      pollingTasksRef.current.clear();
     };
   }, [intl]);
 
@@ -322,16 +333,27 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
 
   const pollTaskStatus = useCallback(
     async (taskId: string, aspectRatio: string, duration: number) => {
+      if (completedTasksRef.current.has(taskId)) {
+        return;
+      }
+
       try {
         const response = await instance.get(`/productx/sa-ai-models/video/task/${taskId}/status`);
+
+        if (completedTasksRef.current.has(taskId)) {
+          return;
+        }
+
         if (!response.data?.success) {
           throw new Error(response.data?.message || 'status failed');
         }
+
         const result = response.data.data;
         const status = (result.status || '').toLowerCase();
 
         if (status === 'completed' || status === 'success') {
-          clearPoll();
+          completedTasksRef.current.add(taskId);
+          stopTaskPolling(taskId);
           setLoading(false);
           if (result.videoUrl) {
             setGeneratedVideo({
@@ -349,8 +371,10 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           }
           return;
         }
+
         if (status === 'failed' || status === 'error') {
-          clearPoll();
+          completedTasksRef.current.add(taskId);
+          stopTaskPolling(taskId);
           setLoading(false);
           message.error(
             result.error ||
@@ -359,23 +383,114 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                 defaultMessage: '视频生成失败',
               })
           );
+        }
+      } catch (error: any) {
+        if (
+          error?.name === 'AbortError' ||
+          error?.message === 'canceled' ||
+          error?.code === 'ERR_CANCELED'
+        ) {
           return;
         }
-        pollTimerRef.current = setTimeout(() => pollTaskStatus(taskId, aspectRatio, duration), 4000);
-      } catch (error: any) {
-        clearPoll();
-        setLoading(false);
-        message.error(
-          error?.response?.data?.message ||
-            intl.formatMessage({
-              id: 'create.video.generate.failed',
-              defaultMessage: '视频生成失败',
-            })
-        );
+        console.error('查询任务状态失败:', error);
       }
     },
     [intl]
   );
+
+  const startPolling = useCallback(
+    (taskId: string, aspectRatio: string, duration: number, prompt?: string) => {
+      setWaitingTasks((prev) => {
+        if (prev.find((task) => task.taskId === taskId)) {
+          return prev;
+        }
+        return [
+          ...prev,
+          {
+            taskId,
+            modelName: selectedModel?.modelName || '未知模型',
+            prompt: prompt || form.getFieldValue('prompt') || '',
+            submitTime: new Date().toLocaleString('zh-CN'),
+            aspectRatio,
+            duration,
+          },
+        ];
+      });
+
+      if (!pollingTasksRef.current.has(taskId)) {
+        pollTaskStatus(taskId, aspectRatio, duration);
+        const timer = setInterval(() => {
+          pollTaskStatus(taskId, aspectRatio, duration);
+        }, 3000);
+        pollingTasksRef.current.set(taskId, timer);
+      }
+    },
+    [form, pollTaskStatus, selectedModel?.modelName]
+  );
+
+  const handleCancelTask = (taskId: string) => {
+    stopTaskPolling(taskId);
+    if (pollingTasksRef.current.size === 0) {
+      setLoading(false);
+    }
+    message.info(
+      intl.formatMessage({
+        id: 'create.video.generate.cancelled.polling',
+        defaultMessage: '已取消任务轮询',
+      })
+    );
+  };
+
+  const fetchPendingTasks = useCallback(async () => {
+    try {
+      const response = await instance.get<{
+        success: boolean;
+        data: GenerationTask[];
+      }>('/productx/sa-ai-gen-task/my-tasks/pending', {
+        params: { taskType: 'i2v' },
+      });
+
+      if (response.data.success && response.data.data && response.data.data.length > 0) {
+        const pendingTasks = response.data.data;
+
+        pendingTasks.forEach((task) => {
+          if (!task.id) return;
+
+          const taskId = String(task.id);
+          setWaitingTasks((prev) => {
+            if (prev.find((t) => t.taskId === taskId)) {
+              return prev;
+            }
+            return [
+              ...prev,
+              {
+                taskId,
+                modelName: task.modelName || '未知模型',
+                prompt: task.prompt || '',
+                submitTime: task.createTime
+                  ? new Date(task.createTime).toLocaleString('zh-CN')
+                  : new Date().toLocaleString('zh-CN'),
+                aspectRatio: '16:9',
+                duration: 8,
+              },
+            ];
+          });
+
+          if (!pollingTasksRef.current.has(taskId)) {
+            pollTaskStatus(taskId, '16:9', 8);
+            const timer = setInterval(() => {
+              pollTaskStatus(taskId, '16:9', 8);
+            }, 3000);
+            pollingTasksRef.current.set(taskId, timer);
+          }
+        });
+
+        setLoading(true);
+      }
+    } catch (error) {
+      console.error('获取进行中任务失败:', error);
+    }
+  }, [pollTaskStatus]);
 
   const handleApplyExample = (prompt: string) => {
     form.setFieldsValue({ prompt });
@@ -431,7 +546,6 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
 
     setLoading(true);
     setGeneratedVideo(null);
-    clearPoll();
 
     const uploading = message.loading(
       intl.formatMessage({
@@ -441,14 +555,30 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
       0
     );
 
+    let videoUrls: string[];
+    let imageUrls: string[];
+    let audioUrls: string[];
     try {
-      const [videoUrls, imageUrls, audioUrls] = await Promise.all([
+      [videoUrls, imageUrls, audioUrls] = await Promise.all([
         ensureRemoteUrls(videos),
         ensureRemoteUrls(images),
         ensureRemoteUrls(audios),
       ]);
+    } catch (error: any) {
+      setLoading(false);
+      message.error(
+        error?.message ||
+          intl.formatMessage({
+            id: 'create.videoEdit.upload.failed',
+            defaultMessage: '素材上传失败，请重试',
+          })
+      );
+      return;
+    } finally {
       uploading();
+    }
 
+    try {
       const requestData: any = appendTranslatePromptFlag(
         {
           prompt: values.prompt.trim(),
@@ -487,7 +617,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
               defaultMessage: '视频生成任务已提交，正在排队中...',
             })
           );
-          pollTaskStatus(String(result.id), aspectRatio, duration);
+          startPolling(String(result.id), aspectRatio, duration, values.prompt?.trim());
           return;
         }
         if ((status === 'completed' || status === 'success') && result.videoUrl) {
@@ -518,7 +648,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           return;
         }
         if (result.id) {
-          pollTaskStatus(String(result.id), aspectRatio, duration);
+          startPolling(String(result.id), aspectRatio, duration, values.prompt?.trim());
           return;
         }
         setLoading(false);
@@ -532,7 +662,6 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
         });
       }
     } catch (error: any) {
-      uploading();
       if (abortController.signal.aborted) return;
       setLoading(false);
       const handled = await handleGenerationApiFailure(error?.response?.data, tryShowFromApiError, {
@@ -821,15 +950,27 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
               <FormattedMessage id="create.video.result" defaultMessage="生成结果" />
             }
           >
-            <ResultArea>
+            <ResultArea style={{ position: 'relative' }}>
+              <VideoTaskQueueButton
+                waitingCount={waitingTasks.length}
+                onOpen={() => setQueueDrawerOpen(true)}
+                style={{ position: 'absolute', top: 16, right: 16, zIndex: 2 }}
+              />
               {loading && (
                 <VideoPlaceholder>
                   <Spin size="large" />
                   <Text type="secondary" style={{ marginTop: 12 }}>
-                    <FormattedMessage
-                      id="create.video.generating"
-                      defaultMessage="视频生成中，请稍候…"
-                    />
+                    {waitingTasks.length > 0 ? (
+                      <FormattedMessage
+                        id="create.video.polling"
+                        defaultMessage="正在生成视频，请稍候..."
+                      />
+                    ) : (
+                      <FormattedMessage
+                        id="create.video.generating"
+                        defaultMessage="视频生成中，请稍候…"
+                      />
+                    )}
                   </Text>
                 </VideoPlaceholder>
               )}
@@ -919,6 +1060,13 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
         open={taskDetailModalVisible}
         onClose={handleCloseTaskDetail}
         taskId={selectedTaskId}
+      />
+
+      <WaitingTaskQueue
+        open={queueDrawerOpen}
+        onClose={() => setQueueDrawerOpen(false)}
+        tasks={waitingTasks}
+        onCancelTask={handleCancelTask}
       />
 
       <InsufficientBalanceModal

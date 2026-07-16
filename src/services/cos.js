@@ -181,7 +181,9 @@ class COSService {
                 taskInfo.uploadedBytes = currentBytes;
                 taskInfo.lastUpdateTime = now;
                 
-                onProgress(percent, speed, taskId);
+                if (typeof onProgress === 'function') {
+                  onProgress(percent, speed, taskId);
+                }
                 lastProgress = percent;
                 lastUpdateTime = now;
               }
@@ -248,7 +250,9 @@ class COSService {
               taskInfo.progress = 100;
               taskInfo.speed = 0;
             }
-            onProgress(100, 0, taskId);
+            if (typeof onProgress === 'function') {
+              onProgress(100, 0, taskId);
+            }
             this.uploadTasks.delete(taskId);
             resolve({
               url: `${this.host}${key}`,
