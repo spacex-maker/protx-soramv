@@ -363,6 +363,10 @@ export interface MediaUploadPanelProps {
   onVideosChange: (next: MediaAsset[]) => void;
   onImagesChange: (next: MediaAsset[]) => void;
   onAudiosChange: (next: MediaAsset[]) => void;
+  /** 覆盖默认上限（Seedance 2.5 为 30/10/10） */
+  maxImages?: number;
+  maxVideos?: number;
+  maxAudios?: number;
 }
 
 function createAsset(file: File, meta?: MediaAssetMeta): MediaAsset {
@@ -447,6 +451,9 @@ const MediaUploadPanel: React.FC<MediaUploadPanelProps> = ({
   onVideosChange,
   onImagesChange,
   onAudiosChange,
+  maxImages = MAX_REF_IMAGES,
+  maxVideos = MAX_REF_VIDEOS,
+  maxAudios = MAX_REF_AUDIOS,
 }) => {
   const intl = useIntl();
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -460,7 +467,7 @@ const MediaUploadPanel: React.FC<MediaUploadPanelProps> = ({
     {
       kind: 'video',
       accent: '#13c2c2',
-      max: MAX_REF_VIDEOS,
+      max: maxVideos,
       assets: videos,
       onChange: onVideosChange,
       icon: <VideoCameraOutlined style={{ fontSize: 15 }} />,
@@ -469,7 +476,7 @@ const MediaUploadPanel: React.FC<MediaUploadPanelProps> = ({
       addId: 'create.videoEdit.upload.addVideo',
       addDefault: '上传视频',
       hintId: 'create.videoEdit.upload.videoHint',
-      hintDefault: '必填 · 最多 3 段 · mp4/mov · 分辨率≥854×480',
+      hintDefault: `必填 · 最多 ${maxVideos} 段 · mp4/mov · 分辨率≥854×480`,
       accept: 'video/mp4,video/quicktime,video/*',
       tagPrefix: '视频',
       required: true,
@@ -477,7 +484,7 @@ const MediaUploadPanel: React.FC<MediaUploadPanelProps> = ({
     {
       kind: 'image',
       accent: '#722ed1',
-      max: MAX_REF_IMAGES,
+      max: maxImages,
       assets: images,
       onChange: onImagesChange,
       icon: <FileImageOutlined style={{ fontSize: 15 }} />,
@@ -486,14 +493,14 @@ const MediaUploadPanel: React.FC<MediaUploadPanelProps> = ({
       addId: 'create.videoEdit.upload.addImage',
       addDefault: '上传图片',
       hintId: 'create.videoEdit.upload.imageHint',
-      hintDefault: '可选 · 最多 9 张 · jpg/png/webp',
+      hintDefault: `可选 · 最多 ${maxImages} 张 · jpg/png/webp`,
       accept: 'image/*',
       tagPrefix: '图像',
     },
     {
       kind: 'audio',
       accent: '#1890ff',
-      max: MAX_REF_AUDIOS,
+      max: maxAudios,
       assets: audios,
       onChange: onAudiosChange,
       icon: <AudioOutlined style={{ fontSize: 15 }} />,
@@ -502,7 +509,7 @@ const MediaUploadPanel: React.FC<MediaUploadPanelProps> = ({
       addId: 'create.videoEdit.upload.addAudio',
       addDefault: '上传音频',
       hintId: 'create.videoEdit.upload.audioHint',
-      hintDefault: '可选 · 最多 3 段 · mp3/wav',
+      hintDefault: `可选 · 最多 ${maxAudios} 段 · mp3/wav`,
       accept: 'audio/mpeg,audio/wav,audio/mp3,audio/*',
       tagPrefix: '音频',
     },

@@ -67,6 +67,7 @@ import ImageCompress from './pages/Workspace/MediaTools/components/ImageCompress
 import MediaToolsPage from './pages/MediaToolsPage';
 import SeedanceVideoPage from './pages/SeedanceVideoPage';
 import OfficialI2iPlayPage from './pages/OfficialI2iPlayPage';
+import TeacherCertPracticePage from './pages/TeacherCertPractice';
 import SettingsPage from './pages/Settings';
 import { getUserSettings } from './api/settings';
 import CookieConsentBanner from './components/CookieConsentBanner';
@@ -379,7 +380,8 @@ export default function App() {
                   <VerificationPage />
                 </PrivateRoute>
               } />
-              <Route path="/billing" element={
+              <Route path="/billing" element={<Navigate to="/billing/records" replace />} />
+              <Route path="/billing/*" element={
                 <PrivateRoute>
                   <BillingPage />
                 </PrivateRoute>
@@ -430,6 +432,8 @@ export default function App() {
               <Route path="/feedback" element={<FeedbackPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/about" element={<AboutPage />} />
+              <Route path="/jiazi" element={<Navigate to="/jiazi/python" replace />} />
+              <Route path="/jiazi/python" element={<TeacherCertPracticePage />} />
               <Route path="/project-intro" element={<ProjectIntroPage />} />
               <Route path="/join-us" element={<JoinUs />} />
               <Route path="/works/s/:shareCode" element={<WorkSharePage />} />

@@ -57,8 +57,8 @@ const ModalOverlay = styled.div<{ open: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  /* 高于 antd Modal（约 1000+），避免从模型选择弹窗打开详情时被挡在背后 */
-  z-index: 2100;
+  /* 高于 antd 选择模型弹窗（默认 1000，嵌套场景可达 2100） */
+  z-index: 2200;
   backdrop-filter: blur(8px);
   opacity: ${props => props.open ? 1 : 0};
   visibility: ${props => props.open ? 'visible' : 'hidden'};

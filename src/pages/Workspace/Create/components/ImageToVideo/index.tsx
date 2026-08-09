@@ -110,12 +110,18 @@ function isSeedance15Model(model: Model | null | undefined): boolean {
 
 function getSeedance2ResolutionSelectOptions(model: Model | null | undefined): { value: string; label: string }[] {
   const max = (model?.videoMaxResolution || '').toLowerCase();
+  const code = (model?.modelCode || '').toLowerCase();
+  const is25 =
+    code.includes('seedance-2-5') ||
+    code.includes('seedance-2.5') ||
+    code.includes('seedance2.5') ||
+    code.includes('seedance25');
   const opts = [
     { value: '480p', label: '480p' },
     { value: '720p', label: '720p' },
     { value: '1080p', label: '1080p' },
   ];
-  if (max.includes('1080')) {
+  if (!is25 && max.includes('1080')) {
     return opts;
   }
   return opts.filter((o) => o.value !== '1080p');
@@ -1911,6 +1917,26 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
                     if (!selectedModel || !isSeedance2Model(selectedModel)) return null;
                     const resOptions = getSeedance2ResolutionSelectOptions(selectedModel);
                     const isFast = selectedModel.modelCode === DOUBAO_SEEDANCE_2_0_FAST_260128;
+                    const codeLower = (selectedModel.modelCode || '').toLowerCase();
+                    const is25 =
+                      codeLower.includes('seedance-2-5') ||
+                      codeLower.includes('seedance-2.5') ||
+                      codeLower.includes('seedance2.5') ||
+                      codeLower.includes('seedance25');
+                    const resolutionTooltip = isFast
+                      ? {
+                          id: 'create.seedance2.resolution.tooltip.fast',
+                          defaultMessage: 'Fast 版最高 720p（与方舟一致）；可选 480p / 720p',
+                        }
+                      : is25
+                        ? {
+                            id: 'create.seedance25.resolution.tooltip',
+                            defaultMessage: 'Seedance 2.5 公开 API 以 480p / 720p 为主',
+                          }
+                        : {
+                            id: 'create.seedance2.resolution.tooltip',
+                            defaultMessage: '对应方舟 API 的 resolution 字段（480p / 720p / 1080p）',
+                          };
                     return (
                       <DoubaoSeedance20Params
                         isDark={isDark}
@@ -1940,16 +1966,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
                                     id="create.seedance2.resolution"
                                     defaultMessage="输出分辨率"
                                   />
-                                  <Tooltip
-                                    title={intl.formatMessage({
-                                      id: isFast
-                                        ? 'create.seedance2.resolution.tooltip.fast'
-                                        : 'create.seedance2.resolution.tooltip',
-                                      defaultMessage: isFast
-                                        ? 'Fast 版最高 720p（与方舟一致）；可选 480p / 720p'
-                                        : '对应方舟 API 的 resolution 字段（480p / 720p / 1080p）',
-                                    })}
-                                  >
+                                  <Tooltip title={intl.formatMessage(resolutionTooltip)}>
                                     <InfoCircleOutlined style={{ color: '#999', fontSize: 12 }} />
                                   </Tooltip>
                                 </Space>

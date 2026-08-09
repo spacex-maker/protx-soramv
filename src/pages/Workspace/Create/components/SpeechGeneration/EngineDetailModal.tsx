@@ -23,7 +23,7 @@ const ModalOverlay = styled.div<{ $open: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2100;
+  z-index: 2200;
   backdrop-filter: blur(8px);
   opacity: ${props => props.$open ? 1 : 0};
   visibility: ${props => props.$open ? 'visible' : 'hidden'};

@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Tag, Typography, message, Tooltip, Button, Spin } from 'antd';
 import {
   CheckCircleOutlined,
@@ -56,7 +57,8 @@ const ModalOverlay = styled.div<{ open: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  /* 高于 antd 选择模型弹窗（默认 1000，嵌套场景可达 2100） */
+  z-index: 2200;
   backdrop-filter: blur(8px);
   opacity: ${props => props.open ? 1 : 0};
   visibility: ${props => props.open ? 'visible' : 'hidden'};
@@ -415,7 +417,7 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
   const free = isFree(model.tokenCost);
   const aspectRatios = getModelAspectRatios(model);
 
-  return (
+  return createPortal(
     <ModalOverlay open={open} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <Container>
         {/* 左侧：视觉冲击区 */}
@@ -631,7 +633,8 @@ const ModelDetailModal: React.FC<ModelDetailModalProps> = ({ open, onClose, mode
 
         </ContentPanel>
       </Container>
-    </ModalOverlay>
+    </ModalOverlay>,
+    document.body,
   );
 };
 

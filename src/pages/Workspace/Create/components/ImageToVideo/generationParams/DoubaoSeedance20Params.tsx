@@ -44,7 +44,7 @@ export interface DoubaoSeedance20ParamsProps {
 }
 
 /**
- * Seedance 2.0 / 2.0 Fast 共用图生视频参数（字段一致；分辨率等约束由父级 model 元数据 + 文案区分）
+ * Seedance 2.0 / 2.0 Fast / 2.5 共用图生视频参数（字段一致；时长与分辨率等约束由父级 model 元数据 + 文案区分）
  */
 const DoubaoSeedance20Params: React.FC<DoubaoSeedance20ParamsProps> = ({
   isDark,

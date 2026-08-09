@@ -63,9 +63,27 @@ import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 import { preloadVideoModelCovers } from '../shared/videoModelCoverPreload';
 import VideoTaskQueueButton from '../shared/VideoTaskQueueButton';
+import {
+  isSeedance2ModelCode,
+  isSeedance25ModelCode,
+} from '../VideoEdit/constants';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+
+function getSeedanceT2vResolutionOptions(model: Model | null | undefined): { value: string; label: string }[] {
+  const code = model?.modelCode || '';
+  const max = (model?.videoMaxResolution || '').toLowerCase();
+  const opts = [
+    { value: '480p', label: '480p' },
+    { value: '720p', label: '720p' },
+    { value: '1080p', label: '1080p' },
+  ];
+  if (isSeedance25ModelCode(code) || (max.includes('720') && !max.includes('1080'))) {
+    return opts.filter((o) => o.value !== '1080p');
+  }
+  return opts;
+}
 
 const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const intl = useIntl();
@@ -262,6 +280,22 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
     // 如果不支持镜头运动，设置为 none
     if (!model.supportCameraMotion) {
       updates.cameraMotion = 'none';
+    }
+
+    // Seedance 2.x 默认参数
+    if (isSeedance2ModelCode(model.modelCode)) {
+      const allowedRes = getSeedanceT2vResolutionOptions(model).map((o) => o.value);
+      const currentRes = form.getFieldValue('seedanceResolution');
+      if (!currentRes || !allowedRes.includes(currentRes)) {
+        const def = (model.videoDefaultResolution || '720p').toLowerCase();
+        updates.seedanceResolution = allowedRes.includes(def) ? def : '720p';
+      }
+      if (form.getFieldValue('seedanceGenerateAudio') === undefined) {
+        updates.seedanceGenerateAudio = false;
+      }
+      if (form.getFieldValue('seedanceWatermark') === undefined) {
+        updates.seedanceWatermark = false;
+      }
     }
 
     // 设置视频格式（如果有支持的格式）
@@ -857,6 +891,15 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
         requestData.videoQuality = values.videoQuality;
       }
 
+      // Seedance 2.x：分辨率 / 原生音轨 / 水印
+      if (isSeedance2ModelCode(selectedModel.modelCode)) {
+        if (values.seedanceResolution) {
+          requestData.seedanceResolution = values.seedanceResolution;
+        }
+        requestData.seedanceGenerateAudio = values.seedanceGenerateAudio === true;
+        requestData.seedanceWatermark = values.seedanceWatermark === true;
+      }
+
       console.log('Generating video with params:', requestData);
       
       // 调用后端 API，设置 timeout: 0 表示不超时，使用 signal 支持取消
@@ -1038,6 +1081,9 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
                   videoSupportStyle: undefined,
                   videoQuality: undefined,
                   modelId: null,
+                  seedanceResolution: '720p',
+                  seedanceGenerateAudio: false,
+                  seedanceWatermark: false,
                 }}
               >
                 <VideoModelSelectField
@@ -1403,6 +1449,85 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
                           ))}
                         </Select>
                       </Form.Item>
+                    );
+                  }}
+                </Form.Item>
+
+                {/* Seedance 2.x：分辨率 / 原生音轨 / 水印 */}
+                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
+                  {() => {
+                    if (!selectedModel || !isSeedance2ModelCode(selectedModel.modelCode)) {
+                      return null;
+                    }
+                    const resOptions = getSeedanceT2vResolutionOptions(selectedModel);
+                    const is25 = isSeedance25ModelCode(selectedModel.modelCode);
+                    return (
+                      <Row gutter={16} style={{ marginBottom: 20 }}>
+                        <Col span={8}>
+                          <Form.Item
+                            name="seedanceResolution"
+                            label={
+                              <Space>
+                                <VideoCameraOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                                <FormattedMessage id="create.seedance2.resolution" defaultMessage="输出分辨率" />
+                                <Tooltip
+                                  title={intl.formatMessage({
+                                    id: is25
+                                      ? 'create.seedance25.resolution.tooltip'
+                                      : 'create.seedance2.resolution.tooltip',
+                                    defaultMessage: is25
+                                      ? 'Seedance 2.5 公开 API 以 480p / 720p 为主'
+                                      : '对应方舟 API 的 resolution 字段（480p / 720p / 1080p）',
+                                  })}
+                                >
+                                  <InfoCircleOutlined style={{ color: '#999', fontSize: 12 }} />
+                                </Tooltip>
+                              </Space>
+                            }
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Select options={resOptions} />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item
+                            name="seedanceGenerateAudio"
+                            label={
+                              <FormattedMessage
+                                id="create.seedance2.generateAudio"
+                                defaultMessage="生成原生音轨"
+                              />
+                            }
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Select
+                              options={[
+                                { value: false, label: intl.formatMessage({ id: 'create.seedance2.option.no', defaultMessage: '否' }) },
+                                { value: true, label: intl.formatMessage({ id: 'create.seedance2.option.yes', defaultMessage: '是' }) },
+                              ]}
+                            />
+                          </Form.Item>
+                        </Col>
+                        <Col span={8}>
+                          <Form.Item
+                            name="seedanceWatermark"
+                            label={
+                              <FormattedMessage
+                                id="create.seedance2.watermark"
+                                defaultMessage="添加水印"
+                              />
+                            }
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Select
+                              options={[
+                                { value: false, label: intl.formatMessage({ id: 'create.seedance.watermark.false', defaultMessage: '否' }) },
+                                { value: true, label: intl.formatMessage({ id: 'create.seedance.watermark.true', defaultMessage: '是' }) },
+                              ]}
+                            />
+                          </Form.Item>
+                        </Col>
+                      </Row>
                     );
                   }}
                 </Form.Item>

@@ -1,15 +1,53 @@
 import type { MediaAssetMeta } from './mediaAssetMeta';
 
+/** Seedance 2.0 多模态参考上限 */
 export const MAX_REF_VIDEOS = 3;
 export const MAX_REF_IMAGES = 9;
 export const MAX_REF_AUDIOS = 3;
 
+/** Seedance 2.5 多模态参考上限（约 30 图 / 10 视频 / 10 音频） */
+export const MAX_REF_VIDEOS_25 = 10;
+export const MAX_REF_IMAGES_25 = 30;
+export const MAX_REF_AUDIOS_25 = 10;
+
 export const DOUBAO_SEEDANCE_2_0_260128 = 'doubao-seedance-2-0-260128';
 export const DOUBAO_SEEDANCE_2_0_FAST_260128 = 'doubao-seedance-2-0-fast-260128';
+export const DOUBAO_SEEDANCE_2_5_260628 = 'doubao-seedance-2-5-260628';
 
 export function isSeedance2ModelCode(modelCode?: string | null): boolean {
   const code = (modelCode || '').toLowerCase();
   return code.includes('seedance-2') || code.includes('seedance2');
+}
+
+export function isSeedance25ModelCode(modelCode?: string | null): boolean {
+  const code = (modelCode || '').toLowerCase();
+  return (
+    code.includes('seedance-2-5') ||
+    code.includes('seedance-2.5') ||
+    code.includes('seedance2.5') ||
+    code.includes('seedance25')
+  );
+}
+
+export function getSeedanceMaxRefLimits(modelCode?: string | null) {
+  if (isSeedance25ModelCode(modelCode)) {
+    return {
+      images: MAX_REF_IMAGES_25,
+      videos: MAX_REF_VIDEOS_25,
+      audios: MAX_REF_AUDIOS_25,
+    };
+  }
+  return {
+    images: MAX_REF_IMAGES,
+    videos: MAX_REF_VIDEOS,
+    audios: MAX_REF_AUDIOS,
+  };
+}
+
+/** 按时长上限生成 4..max 秒选项 */
+export function buildSeedanceDurationOptions(maxSeconds = 15): number[] {
+  const max = Math.max(4, Math.min(30, maxSeconds || 15));
+  return Array.from({ length: max - 3 }, (_, i) => i + 4);
 }
 
 /** Official-style example prompts for capability guide */

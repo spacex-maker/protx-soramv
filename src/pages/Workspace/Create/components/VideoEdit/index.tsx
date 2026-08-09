@@ -51,7 +51,10 @@ import { formatTokenAmount } from '../shared/estimatedPriceText';
 import {
   DOUBAO_SEEDANCE_2_0_260128,
   DOUBAO_SEEDANCE_2_0_FAST_260128,
+  buildSeedanceDurationOptions,
+  getSeedanceMaxRefLimits,
   isSeedance2ModelCode,
+  isSeedance25ModelCode,
   MediaAsset,
 } from './constants';
 import CapabilityGuide from './CapabilityGuide';
@@ -125,7 +128,6 @@ const FormLayout = styled.div`
 `;
 
 const ASPECT_OPTIONS = ['16:9', '9:16', '1:1', '4:3', '3:4', '21:9'];
-const DURATION_OPTIONS = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
 const RESOLUTION_OPTIONS = ['480p', '720p', '1080p'];
 
 function toRefMedia(
@@ -358,14 +360,24 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   };
 
   const isFastModel = selectedModel?.modelCode === DOUBAO_SEEDANCE_2_0_FAST_260128;
-  const resolutionOptions = useMemo(
-    () =>
-      RESOLUTION_OPTIONS.filter((r) => !(isFastModel && r === '1080p')).map((value) => ({
-        value,
-        label: value,
-      })),
-    [isFastModel]
+  const isSeedance25 = isSeedance25ModelCode(selectedModel?.modelCode);
+  const refLimits = useMemo(
+    () => getSeedanceMaxRefLimits(selectedModel?.modelCode),
+    [selectedModel?.modelCode]
   );
+  const durationOptions = useMemo(() => {
+    const maxFromModel = selectedModel?.videoDuration || (isSeedance25 ? 30 : 15);
+    return buildSeedanceDurationOptions(maxFromModel);
+  }, [selectedModel?.videoDuration, isSeedance25]);
+  const resolutionOptions = useMemo(() => {
+    const maxRes = (selectedModel?.videoMaxResolution || '').toLowerCase();
+    return RESOLUTION_OPTIONS.filter((r) => {
+      if (isFastModel && r === '1080p') return false;
+      if (isSeedance25 && r === '1080p') return false;
+      if (maxRes.includes('720') && !maxRes.includes('1080') && r === '1080p') return false;
+      return true;
+    }).map((value) => ({ value, label: value }));
+  }, [isFastModel, isSeedance25, selectedModel?.videoMaxResolution]);
 
   const estimatedDuration = Form.useWatch('duration', form) || 8;
 
@@ -957,6 +969,9 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                   onVideosChange={setVideos}
                   onImagesChange={setImages}
                   onAudiosChange={setAudios}
+                  maxImages={refLimits.images}
+                  maxVideos={refLimits.videos}
+                  maxAudios={refLimits.audios}
                 />
 
                 <Form.Item
@@ -1048,7 +1063,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
                       }
                     >
                       <Select
-                        options={DURATION_OPTIONS.map((v) => ({ value: v, label: `${v}s` }))}
+                        options={durationOptions.map((v) => ({ value: v, label: `${v}s` }))}
                       />
                     </Form.Item>
                   </Col>
@@ -1325,11 +1340,19 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           setSelectedModel(m);
           form.setFieldsValue({ modelId: m.id });
           setModelModalOpen(false);
-          if (m.modelCode === DOUBAO_SEEDANCE_2_0_FAST_260128) {
+          if (
+            m.modelCode === DOUBAO_SEEDANCE_2_0_FAST_260128 ||
+            isSeedance25ModelCode(m.modelCode)
+          ) {
             const res = form.getFieldValue('seedanceResolution');
             if (res === '1080p') {
               form.setFieldsValue({ seedanceResolution: '720p' });
             }
+          }
+          const maxDur = m.videoDuration || (isSeedance25ModelCode(m.modelCode) ? 30 : 15);
+          const curDur = form.getFieldValue('duration');
+          if (typeof curDur === 'number' && curDur > maxDur) {
+            form.setFieldsValue({ duration: maxDur });
           }
         }}
         loading={modelsLoading}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import styled, { css } from "styled-components";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import { useIntl } from "react-intl";
 import SimpleHeader from "components/headers/simple";
 import instance from "api/axios";
@@ -452,10 +452,23 @@ const COIN_TYPE_MAP = {
   TOKEN: 'TOKEN',
 };
 
+const BILLING_TAB_PATHS = {
+  records: '/billing/records',
+  token: '/billing/token',
+};
+
+const resolveBillingTab = (pathname) => {
+  if (pathname.startsWith('/billing/token')) return 'token';
+  if (pathname.startsWith('/billing/records')) return 'records';
+  return null;
+};
+
 const BillingContent = () => {
   const { token } = theme.useToken();
   const navigate = useNavigate();
+  const location = useLocation();
   const intl = useIntl();
+  const activeTab = resolveBillingTab(location.pathname);
   const [loading, setLoading] = useState(false);
   const [billingRecords, setBillingRecords] = useState([]);
   
@@ -480,7 +493,6 @@ const BillingContent = () => {
   });
 
   const [quickDatePreset, setQuickDatePreset] = useState('30'); // 快捷时间下拉当前项：'today'|'week'|'month'|'year'|'7'|'30'|'90'|null 为自定义
-  const [activeTab, setActiveTab] = useState('records');
   const [tempDateRange, setTempDateRange] = useState(dateRange);
   const [tempChangeTypeFilter, setTempChangeTypeFilter] = useState(changeTypeFilter);
   const [tempCoinTypeFilter, setTempCoinTypeFilter] = useState(coinTypeFilter);
@@ -494,12 +506,24 @@ const BillingContent = () => {
 
   useEffect(() => {
     fetchBalance();
-    fetchBillingRecords();
   }, []);
 
   useEffect(() => {
-    fetchBillingRecords();
-  }, [pagination.current, pagination.pageSize, changeTypeFilter, coinTypeFilter, remarkFilter, dateRange]);
+    if (activeTab === 'records') {
+      fetchBillingRecords();
+    }
+  }, [activeTab, pagination.current, pagination.pageSize, changeTypeFilter, coinTypeFilter, remarkFilter, dateRange]);
+
+  const handleTabChange = (key) => {
+    const path = BILLING_TAB_PATHS[key];
+    if (path && path !== location.pathname) {
+      navigate(path);
+    }
+  };
+
+  if (!activeTab) {
+    return <Navigate to="/billing/records" replace />;
+  }
 
   const fetchBalance = async () => {
     try {
@@ -713,7 +737,9 @@ const BillingContent = () => {
           <div className="action-group">
             <Button icon={<ReloadOutlined />} onClick={() => {
               fetchBalance();
-              fetchBillingRecords();
+              if (activeTab === 'records') {
+                fetchBillingRecords();
+              }
             }} loading={loading}>{intl.formatMessage({ id: 'billing.button.refresh' })}</Button>
             <Button type="primary" onClick={() => navigate('/recharge')}>{intl.formatMessage({ id: 'billing.button.recharge' })}</Button>
           </div>
@@ -722,7 +748,8 @@ const BillingContent = () => {
         <BillingTabs
           $token={token}
           activeKey={activeTab}
-          onChange={setActiveTab}
+          onChange={handleTabChange}
+          destroyInactiveTabPane
           items={[
             {
               key: 'records',
