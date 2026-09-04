@@ -73,6 +73,7 @@ import {
 import ModelDetailModal from './ModelDetailModal';
 import DoubaoSeedance20Params, {
   DOUBAO_SEEDANCE_2_0_FAST_260128,
+  DOUBAO_SEEDANCE_2_0_MINI_260615,
   DOUBAO_SEEDANCE_20_I2V_FIRST_INPUT_ID,
   DOUBAO_SEEDANCE_20_I2V_END_INPUT_ID,
 } from './generationParams/DoubaoSeedance20Params';
@@ -111,17 +112,20 @@ function isSeedance15Model(model: Model | null | undefined): boolean {
 function getSeedance2ResolutionSelectOptions(model: Model | null | undefined): { value: string; label: string }[] {
   const max = (model?.videoMaxResolution || '').toLowerCase();
   const code = (model?.modelCode || '').toLowerCase();
-  const is25 =
+  const limitedResolution =
     code.includes('seedance-2-5') ||
     code.includes('seedance-2.5') ||
     code.includes('seedance2.5') ||
-    code.includes('seedance25');
+    code.includes('seedance25') ||
+    code.includes('fast') ||
+    code.includes('mini') ||
+    (max.includes('720') && !max.includes('1080'));
   const opts = [
     { value: '480p', label: '480p' },
     { value: '720p', label: '720p' },
     { value: '1080p', label: '1080p' },
   ];
-  if (!is25 && max.includes('1080')) {
+  if (!limitedResolution) {
     return opts;
   }
   return opts.filter((o) => o.value !== '1080p');
@@ -1911,12 +1915,13 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
                   onOpenModal={() => setModelPickerVisible(true)}
                 />
 
-                {/* Seedance 2.0 / 2.0 Fast：共用参数组件（字段一致，分辨率等由模型元数据裁剪） */}
+                {/* Seedance 2.0 / 2.0 Fast / Mini：共用参数组件（字段一致，分辨率等由模型元数据裁剪） */}
                 <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
                   {() => {
                     if (!selectedModel || !isSeedance2Model(selectedModel)) return null;
                     const resOptions = getSeedance2ResolutionSelectOptions(selectedModel);
                     const isFast = selectedModel.modelCode === DOUBAO_SEEDANCE_2_0_FAST_260128;
+                    const isMini = selectedModel.modelCode === DOUBAO_SEEDANCE_2_0_MINI_260615;
                     const codeLower = (selectedModel.modelCode || '').toLowerCase();
                     const is25 =
                       codeLower.includes('seedance-2-5') ||
@@ -1928,6 +1933,11 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
                           id: 'create.seedance2.resolution.tooltip.fast',
                           defaultMessage: 'Fast 版最高 720p（与方舟一致）；可选 480p / 720p',
                         }
+                      : isMini
+                        ? {
+                            id: 'create.seedance2.resolution.tooltip.mini',
+                            defaultMessage: 'Mini 版最高 720p（轻量高性价比）；可选 480p / 720p',
+                          }
                       : is25
                         ? {
                             id: 'create.seedance25.resolution.tooltip',

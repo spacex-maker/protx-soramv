@@ -51,6 +51,17 @@ export interface DirectorProp {
   characterCount?: number;
 }
 
+export interface DirectorBuilding {
+  id: number;
+  projectId: number;
+  name: string;
+  description?: string | null;
+  referenceImageUrl?: string | null;
+  promptSuffix?: string | null;
+  category?: string | null;
+  sortOrder?: number;
+}
+
 export interface DirectorSceneReferenceImage {
   id?: number;
   sceneId?: number;
@@ -98,6 +109,8 @@ export interface DirectorProjectDetail extends DirectorProject {
   characterCount?: number;
   props?: DirectorProp[];
   propCount?: number;
+  buildings?: DirectorBuilding[];
+  buildingCount?: number;
 }
 
 export interface DirectorAgentChatResult {
@@ -205,6 +218,27 @@ const directorApi = {
 
   bindPropCharacters: (propId: number, body: { characterIds: number[] }) =>
     instance.put(`/productx/director/props/${propId}/characters`, body).then((r) => r.data),
+
+  listBuildings: (projectId: number) =>
+    instance.get(`/productx/director/projects/${projectId}/buildings`).then((r) => r.data),
+
+  createBuilding: (
+    projectId: number,
+    body: {
+      name: string;
+      description?: string;
+      referenceImageUrl?: string;
+      promptSuffix?: string;
+      category?: string;
+      sortOrder?: number;
+    }
+  ) => instance.post(`/productx/director/projects/${projectId}/buildings`, body).then((r) => r.data),
+
+  updateBuilding: (buildingId: number, body: Record<string, unknown>) =>
+    instance.put(`/productx/director/buildings/${buildingId}`, body).then((r) => r.data),
+
+  deleteBuilding: (buildingId: number) =>
+    instance.delete(`/productx/director/buildings/${buildingId}`).then((r) => r.data),
 
   listScenes: (episodeId: number) =>
     instance.get(`/productx/director/episodes/${episodeId}/scenes`).then((r) => r.data),

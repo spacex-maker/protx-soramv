@@ -22,6 +22,7 @@ const { Text } = Typography;
 /** 方舟官方 model_code */
 export const DOUBAO_SEEDANCE_2_0_260128 = 'doubao-seedance-2-0-260128';
 export const DOUBAO_SEEDANCE_2_0_FAST_260128 = 'doubao-seedance-2-0-fast-260128';
+export const DOUBAO_SEEDANCE_2_0_MINI_260615 = 'doubao-seedance-2-0-mini-260615';
 
 /** 与具体 model_code 无关，避免与通用 i2v-upload-input 冲突 */
 export const DOUBAO_SEEDANCE_20_I2V_FIRST_INPUT_ID = 'i2v-doubao-seedance-20-first';
@@ -44,7 +45,7 @@ export interface DoubaoSeedance20ParamsProps {
 }
 
 /**
- * Seedance 2.0 / 2.0 Fast / 2.5 共用图生视频参数（字段一致；时长与分辨率等约束由父级 model 元数据 + 文案区分）
+ * Seedance 2.0 / 2.0 Fast / 2.0 Mini / 2.5 共用图生视频参数（字段一致；时长与分辨率等约束由父级 model 元数据 + 文案区分）
  */
 const DoubaoSeedance20Params: React.FC<DoubaoSeedance20ParamsProps> = ({
   isDark,

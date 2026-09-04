@@ -147,6 +147,8 @@ export interface ImagePickerSelection {
 interface ImageGenPickerModalProps {
   open: boolean;
   target: ImagePickerTarget;
+  /** 自定义标题；未传时按 first/end 使用默认文案 */
+  title?: string;
   supportsEndFrame?: boolean;
   onClose: () => void;
   onSelectLocal: (file: File) => void | Promise<void>;
@@ -157,6 +159,7 @@ interface ImageGenPickerModalProps {
 const ImageGenPickerModal: React.FC<ImageGenPickerModalProps> = ({
   open,
   target,
+  title: titleProp,
   supportsEndFrame = false,
   onClose,
   onSelectLocal,
@@ -217,9 +220,10 @@ const ImageGenPickerModal: React.FC<ImageGenPickerModalProps> = ({
     loadTasks('i2i', 1, false);
   }, [open, loadTasks]);
 
-  const title = target === 'end'
-    ? intl.formatMessage({ id: 'create.i2v.imagePicker.title.end', defaultMessage: '选择尾帧图片' })
-    : intl.formatMessage({ id: 'create.i2v.imagePicker.title.first', defaultMessage: '选择起始帧图片' });
+  const title = titleProp
+    || (target === 'end'
+      ? intl.formatMessage({ id: 'create.i2v.imagePicker.title.end', defaultMessage: '选择尾帧图片' })
+      : intl.formatMessage({ id: 'create.i2v.imagePicker.title.first', defaultMessage: '选择起始帧图片' }));
 
   const uploadProps: UploadProps = {
     multiple: false,

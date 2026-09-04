@@ -12,11 +12,18 @@ export const MAX_REF_AUDIOS_25 = 10;
 
 export const DOUBAO_SEEDANCE_2_0_260128 = 'doubao-seedance-2-0-260128';
 export const DOUBAO_SEEDANCE_2_0_FAST_260128 = 'doubao-seedance-2-0-fast-260128';
+export const DOUBAO_SEEDANCE_2_0_MINI_260615 = 'doubao-seedance-2-0-mini-260615';
 export const DOUBAO_SEEDANCE_2_5_260628 = 'doubao-seedance-2-5-260628';
 
 export function isSeedance2ModelCode(modelCode?: string | null): boolean {
   const code = (modelCode || '').toLowerCase();
   return code.includes('seedance-2') || code.includes('seedance2');
+}
+
+/** Fast / Mini / 2.5 公开档最高 720p（无原生 1080p） */
+export function isSeedance20LimitedResolutionModelCode(modelCode?: string | null): boolean {
+  const code = (modelCode || '').toLowerCase();
+  return isSeedance25ModelCode(code) || code.includes('fast') || code.includes('mini');
 }
 
 export function isSeedance25ModelCode(modelCode?: string | null): boolean {

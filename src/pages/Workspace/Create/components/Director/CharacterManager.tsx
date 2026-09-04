@@ -14,23 +14,20 @@ import {
   Space,
   Spin,
   Typography,
-  Upload,
   message,
 } from 'antd';
-import type { UploadProps } from 'antd';
 import {
   DeleteOutlined,
   EditOutlined,
   FormOutlined,
-  InboxOutlined,
   PlusOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import directorApi, { DirectorCharacter, DirectorProp } from 'api/director';
-import { uploadImageToServer } from '../ImageToImage/utils';
 import { normalizeUrl } from '../ImageToVideo/utils';
 import CharacterProfileTemplateModal from './CharacterProfileTemplateModal';
+import DirectorReferenceImageField from './DirectorReferenceImageField';
 import {
   AssetBody,
   AssetCard,
@@ -82,9 +79,7 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState<DirectorCharacter | null>(null);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const [templateModalOpen, setTemplateModalOpen] = useState(false);
   const [templateInitial, setTemplateInitial] = useState({ description: '', promptSuffix: '' });
   const [selectedPropIds, setSelectedPropIds] = useState<number[]>([]);
@@ -99,7 +94,6 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
     setEditingCharacter(null);
     form.resetFields();
     form.setFieldsValue({ sortOrder: characters.length, referenceImageUrl: undefined });
-    setImagePreviewUrl('');
     setSelectedPropIds([]);
     setModalOpen(true);
   };
@@ -114,7 +108,6 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
       promptSuffix: character.promptSuffix || '',
       sortOrder: character.sortOrder ?? 0,
     });
-    setImagePreviewUrl(isDisplayableImageUrl(imageUrl) ? normalizeUrl(imageUrl) : '');
     setSelectedPropIds(characterPropMap[character.id] || []);
     setModalOpen(true);
     setBindLoading(true);
@@ -130,89 +123,12 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
     }
   };
 
-  const resolveUploadFile = (file: unknown): File | null => {
-    if (file instanceof File) return file;
-    if (file && typeof file === 'object' && 'originFileObj' in file) {
-      const origin = (file as { originFileObj?: File }).originFileObj;
-      return origin instanceof File ? origin : null;
-    }
-    return null;
-  };
-
-  const handleUpload: UploadProps['customRequest'] = async (options) => {
-    const { file, onSuccess, onError } = options;
-    const uploadFile = resolveUploadFile(file);
-    if (!uploadFile) {
-      onError?.(new Error('无效的文件'));
-      return;
-    }
-    if (!uploadFile.type.startsWith('image/')) {
-      message.error(
-        intl.formatMessage({
-          id: 'director.characters.uploadInvalidType',
-          defaultMessage: '请选择图片文件',
-        })
-      );
-      onError?.(new Error('invalid type'));
-      return;
-    }
-    if (uploadFile.size > 30 * 1024 * 1024) {
-      message.error(
-        intl.formatMessage({
-          id: 'director.characters.uploadTooLarge',
-          defaultMessage: '图片大小不能超过 30MB',
-        })
-      );
-      onError?.(new Error('too large'));
-      return;
-    }
-
-    setUploading(true);
-    const hideLoading = message.loading(
-      intl.formatMessage({
-        id: 'director.characters.uploading',
-        defaultMessage: '上传中…',
-      }),
-      0
-    );
-    try {
-      const url = await uploadImageToServer(uploadFile);
-      setImagePreviewUrl(normalizeUrl(url));
-      form.setFieldsValue({ referenceImageUrl: url });
-      onSuccess?.(url);
-      message.success(
-        intl.formatMessage({
-          id: 'director.characters.uploadSuccess',
-          defaultMessage: '参考图上传成功',
-        })
-      );
-    } catch (e: unknown) {
-      onError?.(e as Error);
-      message.error(
-        e instanceof Error
-          ? e.message
-          : intl.formatMessage({
-              id: 'director.characters.uploadFailed',
-              defaultMessage: '参考图上传失败',
-            })
-      );
-    } finally {
-      hideLoading();
-      setUploading(false);
-    }
-  };
-
   const openTemplateModal = () => {
     setTemplateInitial({
       description: form.getFieldValue('description') || '',
       promptSuffix: form.getFieldValue('promptSuffix') || '',
     });
     setTemplateModalOpen(true);
-  };
-
-  const handleRemoveImage = () => {
-    setImagePreviewUrl('');
-    form.setFieldsValue({ referenceImageUrl: undefined });
   };
 
   const saveCharacterProps = async (characterId: number) => {
@@ -511,46 +427,20 @@ const CharacterManager: React.FC<CharacterManagerProps> = ({
             })}
             extra={intl.formatMessage({
               id: 'director.characters.referenceImageHint',
-              defaultMessage: '用于保持角色视觉一致性，可上传定妆照或概念图',
+              defaultMessage: '用于保持角色视觉一致性；可本地上传，或从文生图 / 图生图记录中选用',
             })}
           >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              {imagePreviewUrl ? (
-                <div style={{ position: 'relative' }}>
-                  <img
-                    src={imagePreviewUrl}
-                    alt="reference"
-                    style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 8 }}
-                  />
-                  <Button
-                    size="small"
-                    danger
-                    style={{ marginTop: 8 }}
-                    onClick={handleRemoveImage}
-                  >
-                    <FormattedMessage id="director.characters.removeImage" defaultMessage="移除图片" />
-                  </Button>
-                </div>
-              ) : (
-                <Upload.Dragger
-                  accept="image/*"
-                  showUploadList={false}
-                  customRequest={handleUpload}
-                  disabled={uploading}
-                >
-                  <p className="ant-upload-drag-icon">
-                    <InboxOutlined />
-                  </p>
-                  <p className="ant-upload-text">
-                    <FormattedMessage
-                      id="director.characters.uploadHint"
-                      defaultMessage="点击或拖拽上传参考图"
-                    />
-                  </p>
-                  <p className="ant-upload-hint">JPG / PNG / WebP</p>
-                </Upload.Dragger>
+            <Form.Item
+              noStyle
+              shouldUpdate={(prev, cur) => prev.referenceImageUrl !== cur.referenceImageUrl}
+            >
+              {() => (
+                <DirectorReferenceImageField
+                  value={form.getFieldValue('referenceImageUrl')}
+                  onChange={(url) => form.setFieldsValue({ referenceImageUrl: url })}
+                />
               )}
-            </Space>
+            </Form.Item>
           </Form.Item>
 
           <Form.Item

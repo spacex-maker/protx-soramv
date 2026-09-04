@@ -79,7 +79,12 @@ function getSeedanceT2vResolutionOptions(model: Model | null | undefined): { val
     { value: '720p', label: '720p' },
     { value: '1080p', label: '1080p' },
   ];
-  if (isSeedance25ModelCode(code) || (max.includes('720') && !max.includes('1080'))) {
+  if (
+    isSeedance25ModelCode(code) ||
+    code.includes('fast') ||
+    code.includes('mini') ||
+    (max.includes('720') && !max.includes('1080'))
+  ) {
     return opts.filter((o) => o.value !== '1080p');
   }
   return opts;

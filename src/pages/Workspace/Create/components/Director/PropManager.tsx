@@ -15,21 +15,18 @@ import {
   Space,
   Spin,
   Typography,
-  Upload,
   message,
 } from 'antd';
-import type { UploadProps } from 'antd';
 import {
   DeleteOutlined,
   EditOutlined,
-  InboxOutlined,
   PlusOutlined,
   ToolOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import directorApi, { DirectorCharacter, DirectorProp } from 'api/director';
-import { uploadImageToServer } from '../ImageToImage/utils';
 import { normalizeUrl } from '../ImageToVideo/utils';
+import DirectorReferenceImageField from './DirectorReferenceImageField';
 import {
   AssetBody,
   AssetCard,
@@ -88,9 +85,7 @@ const PropManager: React.FC<PropManagerProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [editingProp, setEditingProp] = useState<DirectorProp | null>(null);
   const [saving, setSaving] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const [selectedCharacterIds, setSelectedCharacterIds] = useState<number[]>([]);
   const [bindLoading, setBindLoading] = useState(false);
 
@@ -115,7 +110,6 @@ const PropManager: React.FC<PropManagerProps> = ({
     setEditingProp(null);
     form.resetFields();
     form.setFieldsValue({ sortOrder: props.length, category: 'general', referenceImageUrl: undefined });
-    setImagePreviewUrl('');
     setSelectedCharacterIds([]);
     setModalOpen(true);
   };
@@ -131,7 +125,6 @@ const PropManager: React.FC<PropManagerProps> = ({
       category: (prop.category as DirectorPropCategory) || 'general',
       sortOrder: prop.sortOrder ?? 0,
     });
-    setImagePreviewUrl(isDisplayableImageUrl(imageUrl) ? normalizeUrl(imageUrl) : '');
     setSelectedCharacterIds(propCharacterMap[prop.id] || []);
     setModalOpen(true);
     setBindLoading(true);
@@ -145,56 +138,6 @@ const PropManager: React.FC<PropManagerProps> = ({
     } finally {
       setBindLoading(false);
     }
-  };
-
-  const resolveUploadFile = (file: unknown): File | null => {
-    if (file instanceof File) return file;
-    if (file && typeof file === 'object' && 'originFileObj' in file) {
-      const origin = (file as { originFileObj?: File }).originFileObj;
-      return origin instanceof File ? origin : null;
-    }
-    return null;
-  };
-
-  const handleUpload: UploadProps['customRequest'] = async (options) => {
-    const { file, onSuccess, onError } = options;
-    const uploadFile = resolveUploadFile(file);
-    if (!uploadFile) {
-      onError?.(new Error('invalid file'));
-      return;
-    }
-    if (!uploadFile.type.startsWith('image/')) {
-      message.error(intl.formatMessage({ id: 'director.props.uploadInvalidType', defaultMessage: '请选择图片文件' }));
-      onError?.(new Error('invalid type'));
-      return;
-    }
-    setUploading(true);
-    const hideLoading = message.loading(
-      intl.formatMessage({ id: 'director.props.uploading', defaultMessage: '上传中…' }),
-      0
-    );
-    try {
-      const url = await uploadImageToServer(uploadFile);
-      setImagePreviewUrl(normalizeUrl(url));
-      form.setFieldsValue({ referenceImageUrl: url });
-      onSuccess?.(url);
-      message.success(intl.formatMessage({ id: 'director.props.uploadSuccess', defaultMessage: '参考图上传成功' }));
-    } catch (e: unknown) {
-      onError?.(e as Error);
-      message.error(
-        e instanceof Error
-          ? e.message
-          : intl.formatMessage({ id: 'director.props.uploadFailed', defaultMessage: '参考图上传失败' })
-      );
-    } finally {
-      hideLoading();
-      setUploading(false);
-    }
-  };
-
-  const handleRemoveImage = () => {
-    setImagePreviewUrl('');
-    form.setFieldsValue({ referenceImageUrl: undefined });
   };
 
   const savePropBindings = async (propId: number) => {
@@ -449,37 +392,20 @@ const PropManager: React.FC<PropManagerProps> = ({
             label={intl.formatMessage({ id: 'director.props.referenceImage', defaultMessage: '参考图' })}
             extra={intl.formatMessage({
               id: 'director.props.referenceImageHint',
-              defaultMessage: '用于保持道具视觉一致性',
+              defaultMessage: '用于保持道具视觉一致性；可本地上传，或从文生图 / 图生图记录中选用',
             })}
           >
-            <Space direction="vertical" style={{ width: '100%' }}>
-              {imagePreviewUrl ? (
-                <div>
-                  <img
-                    src={imagePreviewUrl}
-                    alt="reference"
-                    style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 12 }}
-                  />
-                  <Button size="small" danger style={{ marginTop: 8 }} onClick={handleRemoveImage}>
-                    <FormattedMessage id="director.props.removeImage" defaultMessage="移除图片" />
-                  </Button>
-                </div>
-              ) : (
-                <Upload.Dragger
-                  accept="image/*"
-                  showUploadList={false}
-                  customRequest={handleUpload}
-                  disabled={uploading}
-                >
-                  <p className="ant-upload-drag-icon">
-                    <InboxOutlined />
-                  </p>
-                  <p className="ant-upload-text">
-                    <FormattedMessage id="director.props.uploadHint" defaultMessage="点击或拖拽上传参考图" />
-                  </p>
-                </Upload.Dragger>
+            <Form.Item
+              noStyle
+              shouldUpdate={(prev, cur) => prev.referenceImageUrl !== cur.referenceImageUrl}
+            >
+              {() => (
+                <DirectorReferenceImageField
+                  value={form.getFieldValue('referenceImageUrl')}
+                  onChange={(url) => form.setFieldsValue({ referenceImageUrl: url })}
+                />
               )}
-            </Space>
+            </Form.Item>
           </Form.Item>
 
           <Form.Item

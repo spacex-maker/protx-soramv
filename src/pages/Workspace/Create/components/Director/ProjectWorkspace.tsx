@@ -25,6 +25,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useLocale } from 'contexts/LocaleContext';
 import directorApi, {
+  DirectorBuilding,
   DirectorCharacter,
   DirectorEpisode,
   DirectorProjectDetail,
@@ -270,6 +271,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
   const [shots, setShots] = useState<DirectorShot[]>([]);
   const [characters, setCharacters] = useState<DirectorCharacter[]>([]);
   const [props, setProps] = useState<DirectorProp[]>([]);
+  const [buildings, setBuildings] = useState<DirectorBuilding[]>([]);
   const [characterPropMap, setCharacterPropMap] = useState<Record<number, number[]>>({});
 
   const [i2vModels, setI2vModels] = useState<VideoModel[]>([]);
@@ -310,6 +312,7 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
   const episodeCount = project?.episodes?.length ?? 0;
   const characterCount = characters.length;
   const propCount = props.length;
+  const buildingCount = buildings.length;
 
   const propCharacterMap = useMemo(() => {
     const map: Record<number, number[]> = {};
@@ -392,9 +395,10 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
         setLoading(true);
       }
       try {
-        const [res, propsRes] = await Promise.all([
+        const [res, propsRes, buildingsRes] = await Promise.all([
           directorApi.getProject(pid),
           directorApi.listProps(pid),
+          directorApi.listBuildings(pid),
         ]);
         if (res.success) {
           setProject(res.data);
@@ -415,6 +419,11 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
             setProps(propsRes.data || []);
           } else if (res.data.props) {
             setProps(res.data.props);
+          }
+          if (buildingsRes.success) {
+            setBuildings(buildingsRes.data || []);
+          } else if (res.data.buildings) {
+            setBuildings(res.data.buildings);
           }
           settingsForm.setFieldsValue({
             stylePrompt: res.data.stylePrompt,
@@ -486,7 +495,10 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
     if (project?.props) {
       setProps(project.props);
     }
-  }, [project?.characters, project?.props]);
+    if (project?.buildings) {
+      setBuildings(project.buildings);
+    }
+  }, [project?.characters, project?.props, project?.buildings]);
 
   useEffect(() => {
     loadCharacterPropBindings(characters);
@@ -750,6 +762,12 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
                     { count: propCount }
                   )}
                 </HeroStatTag>
+                <HeroStatTag>
+                  {intl.formatMessage(
+                    { id: 'director.project.buildingCountTag', defaultMessage: '{count} 建筑' },
+                    { count: buildingCount }
+                  )}
+                </HeroStatTag>
               </ProjectHeroMeta>
             </ProjectHeroMain>
           </ProjectHeroBottom>
@@ -874,10 +892,12 @@ const ProjectWorkspace: React.FC<ProjectWorkspaceProps> = ({ projectId }) => {
               projectId={pid}
               characters={characters}
               props={props}
+              buildings={buildings}
               characterPropMap={characterPropMap}
               propCharacterMap={propCharacterMap}
               onCharactersChange={() => loadProject({ silent: true })}
               onPropsChange={() => loadProject({ silent: true })}
+              onBuildingsChange={() => loadProject({ silent: true })}
               onBindingsChange={refreshAssetBindings}
             />
           </div>

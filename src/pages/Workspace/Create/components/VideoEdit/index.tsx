@@ -51,9 +51,11 @@ import { formatTokenAmount } from '../shared/estimatedPriceText';
 import {
   DOUBAO_SEEDANCE_2_0_260128,
   DOUBAO_SEEDANCE_2_0_FAST_260128,
+  DOUBAO_SEEDANCE_2_0_MINI_260615,
   buildSeedanceDurationOptions,
   getSeedanceMaxRefLimits,
   isSeedance2ModelCode,
+  isSeedance20LimitedResolutionModelCode,
   isSeedance25ModelCode,
   MediaAsset,
 } from './constants';
@@ -359,7 +361,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     setSelectedTaskId(null);
   };
 
-  const isFastModel = selectedModel?.modelCode === DOUBAO_SEEDANCE_2_0_FAST_260128;
+  const isLimitedResolutionModel = isSeedance20LimitedResolutionModelCode(selectedModel?.modelCode);
   const isSeedance25 = isSeedance25ModelCode(selectedModel?.modelCode);
   const refLimits = useMemo(
     () => getSeedanceMaxRefLimits(selectedModel?.modelCode),
@@ -372,12 +374,11 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const resolutionOptions = useMemo(() => {
     const maxRes = (selectedModel?.videoMaxResolution || '').toLowerCase();
     return RESOLUTION_OPTIONS.filter((r) => {
-      if (isFastModel && r === '1080p') return false;
-      if (isSeedance25 && r === '1080p') return false;
+      if (isLimitedResolutionModel && r === '1080p') return false;
       if (maxRes.includes('720') && !maxRes.includes('1080') && r === '1080p') return false;
       return true;
     }).map((value) => ({ value, label: value }));
-  }, [isFastModel, isSeedance25, selectedModel?.videoMaxResolution]);
+  }, [isLimitedResolutionModel, selectedModel?.videoMaxResolution]);
 
   const estimatedDuration = Form.useWatch('duration', form) || 8;
 
@@ -1341,8 +1342,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           form.setFieldsValue({ modelId: m.id });
           setModelModalOpen(false);
           if (
-            m.modelCode === DOUBAO_SEEDANCE_2_0_FAST_260128 ||
-            isSeedance25ModelCode(m.modelCode)
+            isSeedance20LimitedResolutionModelCode(m.modelCode)
           ) {
             const res = form.getFieldValue('seedanceResolution');
             if (res === '1080p') {

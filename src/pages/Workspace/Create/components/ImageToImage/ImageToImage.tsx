@@ -48,12 +48,13 @@ import {
   PromptGlowButtonShell,
   I2iPromptLabelActions,
 } from './styles';
-import { 
+import {
   getAspectRatioOption, 
   getModelAspectRatios, 
   getModelResolutions,
   getModelOutputFormats,
   getBase64,
+  normalizeUrl,
 } from './utils';
 import { HistorySection, TaskDetailModal } from './History';
 import WaitingTaskQueue from './WaitingTaskQueue';
@@ -72,6 +73,7 @@ import { handleGenerationApiFailure } from '../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
+import ImageGenPickerModal from '../shared/ImageGenPickerModal';
 import {
   VOLC_SEEDREAM_SIZE_ASPECT_MAP,
   VOLC_SEEDREAM_ASPECT_RATIOS,
@@ -113,6 +115,8 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   // 图片上传状态
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
+  const [originalImageRemoteUrl, setOriginalImageRemoteUrl] = useState<string | null>(null);
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
   
@@ -439,6 +443,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     if (!file) {
       setOriginalImageUrl(null);
       setOriginalImageFile(null);
+      setOriginalImageRemoteUrl(null);
       form.setFieldsValue({ inputFile: undefined });
       return;
     }
@@ -485,10 +490,34 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       const url = await getBase64(file);
       setOriginalImageUrl(url);
       setOriginalImageFile(file);
+      setOriginalImageRemoteUrl(null);
       form.setFieldsValue({ inputFile: file.name });
     } catch (error) {
       message.error(intl.formatMessage({ id: 'create.i2i.fileRead.error', defaultMessage: '图片读取失败' }));
     }
+  };
+
+  const openImagePicker = () => setImagePickerOpen(true);
+
+  const handlePickerSelectLocal = async (file: File) => {
+    await handleFileSelect(file);
+  };
+
+  const handlePickerSelectRemote = async (remoteUrl: string) => {
+    if (!remoteUrl?.trim()) {
+      message.error(
+        intl.formatMessage({
+          id: 'create.i2i.imagePicker.selectFailed',
+          defaultMessage: '选用图片失败，请重试',
+        })
+      );
+      throw new Error('empty url');
+    }
+    const url = normalizeUrl(remoteUrl.trim());
+    setOriginalImageUrl(url);
+    setOriginalImageFile(null);
+    setOriginalImageRemoteUrl(url);
+    form.setFieldsValue({ inputFile: 'library' });
   };
 
   // 处理文件输入变化
@@ -523,6 +552,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     e.stopPropagation();
     setOriginalImageUrl(null);
     setOriginalImageFile(null);
+    setOriginalImageRemoteUrl(null);
     form.setFieldsValue({ inputFile: undefined });
     const fileInput = document.getElementById('i2i-upload-input') as HTMLInputElement;
     if (fileInput) {
@@ -983,7 +1013,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       return;
     }
 
-    if (!originalImageUrl || !originalImageFile) {
+    if (!originalImageUrl || (!originalImageFile && !originalImageRemoteUrl)) {
       message.warning(intl.formatMessage({ 
         id: 'create.i2i.upload.warning', 
         defaultMessage: '请先上传一张图片作为生成参考。' 
@@ -1033,30 +1063,43 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     setGeneratedImage(null); 
 
     try {
-      // 显示上传提示
-      const uploadingMessage = message.loading(
-        intl.formatMessage({ 
-          id: 'create.i2i.uploading.image', 
-          defaultMessage: '正在上传图片到云端...' 
-        }),
-        0
-      );
-      
-      try {
-        // 上传图片到COS
-        const imageUrl = await uploadImageToServer(originalImageFile);
-        
-        uploadingMessage();
-        
-        message.success(
-          intl.formatMessage({ 
-            id: 'create.i2i.upload.success', 
-            defaultMessage: '图片上传成功' 
-          })
+      let imageUrl = originalImageRemoteUrl || undefined;
+      let uploadingMessage: ReturnType<typeof message.loading> | null = null;
+
+      if (!imageUrl) {
+        if (!originalImageFile) {
+          message.warning(intl.formatMessage({
+            id: 'create.i2i.upload.warning',
+            defaultMessage: '请先上传一张图片作为生成参考。',
+          }));
+          setLoading(false);
+          return;
+        }
+        uploadingMessage = message.loading(
+          intl.formatMessage({
+            id: 'create.i2i.uploading.image',
+            defaultMessage: '正在上传图片到云端...',
+          }),
+          0
         );
-      
-        // 构建请求参数
-        const requestData: any = appendTranslatePromptFlag(
+        try {
+          imageUrl = await uploadImageToServer(originalImageFile);
+          uploadingMessage();
+          message.success(
+            intl.formatMessage({
+              id: 'create.i2i.upload.success',
+              defaultMessage: '图片上传成功',
+            })
+          );
+        } catch (uploadError: any) {
+          uploadingMessage();
+          console.error('上传图片失败:', uploadError);
+          throw uploadError;
+        }
+      }
+
+      // 构建请求参数
+      const requestData: any = appendTranslatePromptFlag(
           {
             modelCode: selectedModel.modelCode,
             imageUrls: [imageUrl],
@@ -1221,18 +1264,6 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
             }));
           }
         }
-      } catch (uploadError: any) {
-        uploadingMessage();
-        
-        console.error('上传图片失败:', uploadError);
-        message.error(
-          uploadError.message || intl.formatMessage({ 
-            id: 'create.i2i.upload.failed', 
-            defaultMessage: '图片上传失败，请重试' 
-          })
-        );
-        throw uploadError;
-      }
     } catch (error: any) {
       if (error.name === 'AbortError' || 
           error.message === 'canceled' || 
@@ -1344,13 +1375,24 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                     <InputImageContainer>
                       <img src={originalImageUrl} alt="Original" />
                       <OverlayActions className="overlay-actions">
-                        <Button 
-                          type="primary" 
-                          danger 
+                        <Button
+                          type="primary"
+                          icon={<SwapOutlined />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openImagePicker();
+                          }}
+                          style={{ marginRight: 8 }}
+                        >
+                          <FormattedMessage id="create.i2i.replaceImage" defaultMessage="更换图片" />
+                        </Button>
+                        <Button
+                          type="primary"
+                          danger
                           icon={<DeleteOutlined />}
                           onClick={handleRemoveImage}
                         >
-                          <FormattedMessage id="create.i2i.replaceImage" defaultMessage="更换图片" />
+                          <FormattedMessage id="create.i2i.removeImage" defaultMessage="移除" />
                         </Button>
                       </OverlayActions>
                     </InputImageContainer>
@@ -1361,7 +1403,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      onClick={() => document.getElementById('i2i-upload-input')?.click()}
+                      onClick={openImagePicker}
                     >
                       <input
                         id="i2i-upload-input"
@@ -1374,20 +1416,13 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                         <InboxOutlined style={{ fontSize: 48 }} />
                       </UploadIcon>
                       <UploadText $isDark={isDark}>
-                        <FormattedMessage id="create.i2i.upload.click" defaultMessage="点击或拖拽上传" />
+                        <FormattedMessage id="create.i2i.upload.click" defaultMessage="点击选择图片" />
                       </UploadText>
                       <UploadHint $isDark={isDark}>
-                        {isVolcSeedream ? (
-                          <FormattedMessage
-                            id="create.i2i.upload.volcFormats"
-                            defaultMessage="支持 JPG、PNG、WebP、BMP、TIFF、GIF（最大 10MB，火山引擎限制）"
-                          />
-                        ) : (
-                          <FormattedMessage
-                            id="create.i2i.upload.supportedFormats"
-                            defaultMessage="支持 JPG, PNG, WebP (最大 30MB)"
-                          />
-                        )}
+                        <FormattedMessage
+                          id="create.i2i.imagePicker.uploadHint"
+                          defaultMessage="本地上传，或从文生图/图生图记录选用"
+                        />
                       </UploadHint>
                     </CustomUploadArea>
                   )}
@@ -1790,6 +1825,18 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         onCancel={closeInsufficientBalanceModal}
         requiredTokens={insufficientBalanceRequired}
         tokenBalance={insufficientBalanceModalBalance}
+      />
+
+      <ImageGenPickerModal
+        open={imagePickerOpen}
+        target="first"
+        title={intl.formatMessage({
+          id: 'create.i2i.imagePicker.title',
+          defaultMessage: '选择参考图',
+        })}
+        onClose={() => setImagePickerOpen(false)}
+        onSelectLocal={handlePickerSelectLocal}
+        onSelectRemote={({ remoteUrl }) => handlePickerSelectRemote(remoteUrl)}
       />
     </>
   );
