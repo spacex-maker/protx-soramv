@@ -641,8 +641,18 @@ const UserMenu = ({ userInfo, onLogout }) => {
   const menuRef = useRef(null);
 
   useEffect(() => {
+    if (!userInfo) {
+      setUnreadNotificationCount(0);
+      return undefined;
+    }
+
     let mounted = true;
+    let timer = null;
+
     const fetchUnreadCount = async () => {
+      if (typeof document !== 'undefined' && document.hidden) {
+        return;
+      }
       try {
         const res = await getUnreadNotificationCount();
         if (mounted && res?.data?.success) {
@@ -652,13 +662,35 @@ const UserMenu = ({ userInfo, onLogout }) => {
         // ignore unread badge errors
       }
     };
+
+    const startPolling = () => {
+      if (timer) clearInterval(timer);
+      // 3 分钟轮询；后台标签页暂停，回到前台立即刷新
+      timer = setInterval(fetchUnreadCount, 180000);
+    };
+
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        if (timer) {
+          clearInterval(timer);
+          timer = null;
+        }
+      } else {
+        fetchUnreadCount();
+        startPolling();
+      }
+    };
+
     fetchUnreadCount();
-    const timer = setInterval(fetchUnreadCount, 60000);
+    startPolling();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
     return () => {
       mounted = false;
-      clearInterval(timer);
+      if (timer) clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, []);
+  }, [userInfo]);
 
   // 点击外部关闭
   useEffect(() => {
