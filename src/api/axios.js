@@ -70,9 +70,13 @@ const getBaseURL = () => {
     return process.env.REACT_APP_API_URL || 'http://localhost:8080';
   }
   
-  // ai2obj.com：国内访问 api.ai2obj.com:443 会被 RST，改走同机可用的 aimatex 入口
-  if (hostname.includes('ai2obj.com')) {
-    return 'https://ai2obj-api.aimatex.com';
+  // 国内走已备案的 aimatex 子域（api.ai2obj.com 打腾讯云会被重置）
+  if (
+    hostname.includes('ai2obj.com') ||
+    hostname === 'ai2obj.aimatex.com' ||
+    hostname.endsWith('.ai2obj.aimatex.com')
+  ) {
+    return 'https://api.ai2obj.aimatex.com';
   }
   
   // 其他情况（中国用户，anakkix.cn域名），使用中国版后端

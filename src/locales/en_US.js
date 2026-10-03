@@ -2459,7 +2459,7 @@ export default {
   'projectIntro.lead':
     'AI2OBJ (AI To Object), built by ProTX Team, covers image, video, and speech generation/editing, plus a closed loop of creation, community, prompt trading, and compute monetization. This page summarizes core capabilities for government partners, investors, and collaborators.',
   'projectIntro.tag.brand': 'Brand: AI2OBJ',
-  'projectIntro.tag.site': 'Site: ai2obj.com',
+  'projectIntro.tag.site': 'Site: ai2obj.aimatex.com',
   'projectIntro.tag.focus': 'Multimodal creation OS',
   'projectIntro.summary.title': 'Executive Summary',
   'projectIntro.summary.p1':

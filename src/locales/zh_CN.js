@@ -2524,7 +2524,7 @@ export default {
   'projectIntro.lead':
     'AI2OBJ（AI To Object）由 ProTX 团队打造，覆盖图像、视频、语音生成与剪辑，并构建创作、社区、提示词交易与算力变现闭环。本页摘录项目核心能力与价值定位，便于政府主管部门、投资机构与合作伙伴快速了解。',
   'projectIntro.tag.brand': '品牌：AI2OBJ',
-  'projectIntro.tag.site': '官网：ai2obj.com',
+  'projectIntro.tag.site': '官网：ai2obj.aimatex.com',
   'projectIntro.tag.focus': '多模态创作操作系统',
   'projectIntro.summary.title': '执行摘要',
   'projectIntro.summary.p1':
