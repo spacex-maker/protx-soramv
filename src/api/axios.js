@@ -70,9 +70,9 @@ const getBaseURL = () => {
     return process.env.REACT_APP_API_URL || 'http://localhost:8080';
   }
   
-  // 如果前端域名是 ai2obj.com，使用国际版后端
+  // ai2obj.com：国内访问 api.ai2obj.com:443 会被 RST，改走同机可用的 aimatex 入口
   if (hostname.includes('ai2obj.com')) {
-    return 'https://api.ai2obj.com';
+    return 'https://ai2obj-api.aimatex.com';
   }
   
   // 其他情况（中国用户，anakkix.cn域名），使用中国版后端
