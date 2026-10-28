@@ -79,6 +79,7 @@ import type { TextToImageProps } from './embedTypes';
 import { resolvePreferredT2iModel } from './resolvePreferredT2iModel';
 import { useT2iPageImport } from './useT2iPageImport';
 import { consumeT2iImportPayload } from 'utils/postT2iImport';
+import { isFluxKleinModel } from '../shared/fluxKleinParams';
 
 const { Title, Text } = Typography;
 
@@ -305,6 +306,10 @@ const TextToImage: React.FC<TextToImageProps> = ({
   const effectiveModelCode = effectiveFamily?.modelCode ?? effectiveSelectedModel?.modelCode ?? '';
   const isVolcSeedream =
     companyCode === 'Volc' && effectiveModelCode?.toLowerCase().includes('seedream');
+  const isFluxKlein = isFluxKleinModel({
+    companyCode,
+    modelCode: effectiveModelCode,
+  });
 
   // API 模型（非 Volc Seedream）：走异步接口
   const isApiModelAsync = isApiModel && !isVolcSeedream;
@@ -1005,8 +1010,8 @@ const TextToImage: React.FC<TextToImageProps> = ({
                   )}
                 </Row>
 
-                {/* 艺术风格（可选）- 仅 LOCAL 模型支持 */}
-                {!isApiModel && !isVolcSeedream && (
+                {/* 艺术风格（可选）- 仅 LOCAL SD 模型；Klein/Seedream 不走 LoRA */}
+                {!isApiModel && !isVolcSeedream && !isFluxKlein && (
                   <StyleModelSelect
                     form={form}
                     selectedFamily={selectedFamily}
@@ -1016,8 +1021,8 @@ const TextToImage: React.FC<TextToImageProps> = ({
                   />
                 )}
 
-                {/* 生成数量 - LOCAL / Volc Seedream 支持 */}
-                {(!isApiModel || isVolcSeedream) && (
+                {/* 生成数量 - LOCAL / Volc Seedream / Klein 支持 */}
+                {(!isApiModel || isVolcSeedream || isFluxKlein) && (
                   <Form.Item
                     name="batchSize"
                     label={
