@@ -44,12 +44,30 @@ export function getVideoRequiredTokens(
 export function isInsufficientBalanceMessage(message: string | null | undefined): boolean {
   if (!message || !message.trim()) return false;
   const m = message.toLowerCase();
+
+  // 上游供应商（DeepSeek / OpenAI / Volc 等）欠费也会返回 "Insufficient Balance"，
+  // 不能当成「用户平台 Token 不足」去弹充值窗。
+  if (
+    m.includes('deepseek') ||
+    m.includes('openai') ||
+    m.includes('合规检查') ||
+    m.includes('accountoverdue') ||
+    m.includes('overdue balance') ||
+    m.includes('insufficient_balance_error') ||
+    m.includes('payment required')
+  ) {
+    return false;
+  }
+
+  // 仅匹配本平台明确的用户 Token / 余额文案
   return (
-    message.includes('余额不足') ||
+    message.includes('Token余额不足') ||
+    message.includes('Token 余额不足') ||
+    message.includes('token余额不足') ||
+    (message.includes('余额不足') && (message.includes('Token') || message.includes('token') || message.includes('请充值'))) ||
     message.includes('余额不够') ||
     message.includes('Token不足') ||
     message.includes('token不足') ||
-    m.includes('insufficient') && (m.includes('balance') || m.includes('token')) ||
-    m.includes('not enough') && m.includes('token')
+    (m.includes('insufficient token') || (m.includes('not enough') && m.includes('token')))
   );
 }
