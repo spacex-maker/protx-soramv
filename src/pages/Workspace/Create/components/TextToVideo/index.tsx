@@ -67,6 +67,12 @@ import {
   isSeedance2ModelCode,
   isSeedance25ModelCode,
 } from '../VideoEdit/constants';
+import {
+  getDefaultMiniMaxQuality,
+  getMiniMaxQualityOptions,
+  isMiniMaxModel,
+  resolveMiniMaxSize,
+} from '../shared/minimaxVideoParams';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -301,6 +307,16 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
       if (form.getFieldValue('seedanceWatermark') === undefined) {
         updates.seedanceWatermark = false;
       }
+    }
+
+    // MiniMax H3：清晰度默认；镜头运动走系统默认（none）
+    if (isMiniMaxModel(model)) {
+      const allowedQ = getMiniMaxQualityOptions(model).map((o) => o.value);
+      const curQ = form.getFieldValue('minimaxQuality');
+      if (!curQ || !allowedQ.includes(curQ)) {
+        updates.minimaxQuality = getDefaultMiniMaxQuality(model);
+      }
+      updates.cameraMotion = 'none';
     }
 
     // 设置视频格式（如果有支持的格式）
@@ -863,8 +879,15 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
       // 添加视频比例
       if (values.aspectRatio) {
         requestData.aspectRatio = values.aspectRatio;
-        
-        // 同时添加分辨率（根据选中的比例，如果有的话）
+      }
+
+      // MiniMax：清晰度 + 画幅 → size；其它模型仍按比例索引映射
+      if (isMiniMaxModel(selectedModel)) {
+        requestData.size = resolveMiniMaxSize(
+          values.minimaxQuality || getDefaultMiniMaxQuality(selectedModel),
+          values.aspectRatio
+        );
+      } else if (values.aspectRatio) {
         const resolution = getResolutionByAspectRatio(values.aspectRatio);
         if (resolution) {
           requestData.size = resolution;
@@ -1081,11 +1104,12 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
                 initialValues={{
                   aspectRatio: undefined,
                   cameraMotion: 'none',
-                  duration: 8,
+                  duration: 5,
                   videoFormat: undefined,
                   videoSupportStyle: undefined,
                   videoQuality: undefined,
                   modelId: null,
+                  minimaxQuality: '608x352',
                   seedanceResolution: '720p',
                   seedanceGenerateAudio: false,
                   seedanceWatermark: false,
@@ -1335,7 +1359,13 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
                       }
                       style={{ marginBottom: 0 }}
                     >
-                      <Select disabled={!selectedModel || !selectedModel.supportCameraMotion}>
+                      <Select
+                        disabled={
+                          !selectedModel ||
+                          !selectedModel.supportCameraMotion ||
+                          isMiniMaxModel(selectedModel)
+                        }
+                      >
                         {getCameraMotions(intl).map(motion => (
                           <Select.Option key={motion.value} value={motion.value}>
                             {motion.label}
@@ -1450,6 +1480,44 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
                           {availableQualities.map(quality => (
                             <Select.Option key={quality} value={quality}>
                               {quality.charAt(0).toUpperCase() + quality.slice(1)}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    );
+                  }}
+                </Form.Item>
+
+                {/* MiniMax H3：清晰度（易用）；帧数/工作流等走系统默认 */}
+                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
+                  {() => {
+                    if (!selectedModel || !isMiniMaxModel(selectedModel)) {
+                      return null;
+                    }
+                    const qOpts = getMiniMaxQualityOptions(selectedModel);
+                    return (
+                      <Form.Item
+                        name="minimaxQuality"
+                        label={
+                          <Space>
+                            <VideoCameraOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                            <FormattedMessage id="create.minimax.quality" defaultMessage="清晰度" />
+                            <Tooltip
+                              title={intl.formatMessage({
+                                id: 'create.minimax.quality.tooltip',
+                                defaultMessage: '预览更快；高清更慢更吃显存。音轨与采样步数由系统默认。',
+                              })}
+                            >
+                              <InfoCircleOutlined style={{ color: '#999', fontSize: 12 }} />
+                            </Tooltip>
+                          </Space>
+                        }
+                        style={{ marginBottom: 20 }}
+                      >
+                        <Select>
+                          {qOpts.map((o) => (
+                            <Select.Option key={o.value} value={o.value}>
+                              {intl.formatMessage({ id: o.labelId, defaultMessage: o.defaultMessage })}
                             </Select.Option>
                           ))}
                         </Select>

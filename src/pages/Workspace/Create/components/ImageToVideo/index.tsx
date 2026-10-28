@@ -93,6 +93,12 @@ import VideoTaskQueueButton from '../shared/VideoTaskQueueButton';
 import { filterPaidT2iModels } from '../TextToImage/utils';
 import type { ImageToVideoProps } from './embedTypes';
 import { resolvePreferredI2vModel } from './resolvePreferredI2vModel';
+import {
+  getDefaultMiniMaxQuality,
+  getMiniMaxQualityOptions,
+  isMiniMaxModel,
+  resolveMiniMaxSize,
+} from '../shared/minimaxVideoParams';
 
 const WAITING_QUEUE_SCOPE = 'imageToVideo';
 
@@ -578,6 +584,15 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
       updates.seedanceWatermark = true;
     }
 
+    if (isMiniMaxModel(model)) {
+      const allowedQ = getMiniMaxQualityOptions(model).map((o) => o.value);
+      const curQ = form.getFieldValue('minimaxQuality');
+      if (!curQ || !allowedQ.includes(curQ)) {
+        updates.minimaxQuality = getDefaultMiniMaxQuality(model);
+      }
+      updates.cameraMotion = 'none';
+    }
+
     // 设置视频格式
     if (model.videoFormats) {
       const formats = model.videoFormats.split(',').map(f => f.trim());
@@ -601,7 +616,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
     if (isEmbed) {
       embedUserPickedModelRef.current = true;
     }
-    if (!isSeedance2Model(model)) {
+    if (!isSeedance2Model(model) && !isMiniMaxModel(model)) {
       setEndFrameImageUrl(null);
       setEndFrameImageFile(null);
       setEndFrameImageRemoteUrl(null);
@@ -1613,7 +1628,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
         }
         const imageUrls: string[] = [imageUrl];
         let seedanceContentMode: 'first_last_frame' | 'multimodal_reference' | undefined;
-        if (isSeedance2Model(selectedModel)) {
+        if (isSeedance2Model(selectedModel) || isMiniMaxModel(selectedModel)) {
           let endUrl = endFrameImageRemoteUrl;
           if (!endUrl && endFrameImageFile) {
             endUrl = await uploadImageToServer(endFrameImageFile);
@@ -1621,6 +1636,8 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
           if (endUrl) {
             imageUrls.push(endUrl);
           }
+        }
+        if (isSeedance2Model(selectedModel)) {
           const hasExtraRefs =
             splitSeedanceRefLines(values.seedanceVideoRefsRaw).length > 0 ||
             splitSeedanceRefLines(values.seedanceAudioRefsRaw).length > 0;
@@ -1647,7 +1664,14 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
       // 添加视频比例
       if (values.aspectRatio) {
         requestData.aspectRatio = values.aspectRatio;
-        
+      }
+
+      if (isMiniMaxModel(selectedModel)) {
+        requestData.size = resolveMiniMaxSize(
+          values.minimaxQuality || getDefaultMiniMaxQuality(selectedModel),
+          values.aspectRatio
+        );
+      } else if (values.aspectRatio) {
         const resolution = getResolutionByAspectRatio(values.aspectRatio);
         if (resolution) {
           requestData.size = resolution;
@@ -1907,6 +1931,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
                   seedanceReturnLastFrame: false,
                   seedanceVideoRefsRaw: '',
                   seedanceAudioRefsRaw: '',
+                  minimaxQuality: '608x352',
                 }}
               >
                 <VideoModelSelectField
@@ -1914,6 +1939,62 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
                   modelsLoading={modelsLoading}
                   onOpenModal={() => setModelPickerVisible(true)}
                 />
+
+                {/* MiniMax H3：首帧/可选尾帧 + 清晰度；其它采样参数系统默认 */}
+                <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
+                  {() => {
+                    if (!selectedModel || !isMiniMaxModel(selectedModel)) return null;
+                    const qOpts = getMiniMaxQualityOptions(selectedModel).map((o) => ({
+                      value: o.value,
+                      label: intl.formatMessage({ id: o.labelId, defaultMessage: o.defaultMessage }),
+                    }));
+                    return (
+                      <DoubaoSeedance20Params
+                        isDark={isDark}
+                        originalImageUrl={originalImageUrl}
+                        endFrameImageUrl={endFrameImageUrl}
+                        onFirstFrameFileChange={handleFileInputChange}
+                        onRemoveFirstFrame={handleRemoveImage}
+                        onEndFrameFileChange={handleEndFrameFileInputChange}
+                        onRemoveEndFrame={handleRemoveEndFrame}
+                        onOpenFirstFramePicker={() => openImagePicker('first')}
+                        onOpenEndFramePicker={() => openImagePicker('end')}
+                        onFirstFrameDropFile={(file) => {
+                          void handleFileSelect(file);
+                        }}
+                        onEndFrameDropFile={(file) => {
+                          void handleEndFrameFileSelect(file);
+                        }}
+                        ratioAndFormatRow={renderAspectRatioAndFormatRow({
+                          marginBottom: 16,
+                          thirdColumn: (
+                            <Form.Item
+                              name="minimaxQuality"
+                              label={
+                                <Space>
+                                  <VideoCameraOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                                  <FormattedMessage id="create.minimax.quality" defaultMessage="清晰度" />
+                                  <Tooltip
+                                    title={intl.formatMessage({
+                                      id: 'create.minimax.quality.tooltip',
+                                      defaultMessage: '预览更快；高清更慢。音轨与采样由系统默认。',
+                                    })}
+                                  >
+                                    <InfoCircleOutlined style={{ color: '#999', fontSize: 12 }} />
+                                  </Tooltip>
+                                </Space>
+                              }
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Select options={qOpts} />
+                            </Form.Item>
+                          ),
+                        })}
+                        durationField={renderVideoDurationField({ marginBottom: 20 })}
+                      />
+                    );
+                  }}
+                </Form.Item>
 
                 {/* Seedance 2.0 / 2.0 Fast / Mini：共用参数组件（字段一致，分辨率等由模型元数据裁剪） */}
                 <Form.Item shouldUpdate={(prevValues, currentValues) => prevValues.modelId !== currentValues.modelId} noStyle>
@@ -1993,8 +2074,8 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
                   }}
                 </Form.Item>
 
-                {/* 上传图片区域（Seedance 2.x 见上方共用组件） */}
-                {!isSeedance2Model(selectedModel) && (
+                {/* 上传图片区域（Seedance 2.x / MiniMax 见上方共用组件） */}
+                {!isSeedance2Model(selectedModel) && !isMiniMaxModel(selectedModel) && (
                 <Form.Item
                   name="inputFile"
                   label={

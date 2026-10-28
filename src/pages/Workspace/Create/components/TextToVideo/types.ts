@@ -11,6 +11,7 @@ export interface Model {
   id: number;
   modelName: string;
   modelCode: string;
+  companyCode?: string | null;
   description: string;
   descriptionEn?: string | null;
   videoDefaultResolution: string | null;
