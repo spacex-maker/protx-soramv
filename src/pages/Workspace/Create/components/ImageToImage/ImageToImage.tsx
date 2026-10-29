@@ -1050,7 +1050,8 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   };
 
   // 调用后端 API 生成图片
-  const handleGenerate = async (values: any) => {
+  // primed=true：按钮已同步加锁并 setLoading
+  const handleGenerate = async (values: any, primed = false) => {
     if (!isUserSubmitRef.current) {
       console.log('阻止自动提交：不是用户主动提交');
       return;
@@ -1058,16 +1059,29 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     
     isUserSubmitRef.current = false;
 
-    if (submitLock.checkAndSet() || loading) {
-      return;
+    if (!primed) {
+      if (submitLock.checkAndSet() || loading) {
+        return;
+      }
+      setLoading(true);
+      setGeneratedImage(null);
+    } else {
+      setGeneratedImage(null);
     }
 
+    // 点击瞬间锁 UI，余额/KYC 网络请求前就能挡住连点
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    try {
     if (!selectedModel) {
       message.warning(intl.formatMessage({ 
         id: 'create.model.select.placeholder', 
         defaultMessage: '请选择要使用的图片生成模型' 
       }));
-      submitLock.clear();
       return;
     }
 
@@ -1076,7 +1090,6 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         id: 'create.i2i.upload.warning', 
         defaultMessage: '请先上传一张图片作为生成参考。' 
       }));
-      submitLock.clear();
       return;
     }
 
@@ -1084,12 +1097,10 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       ? (selectedModel.tokenCost ?? 0) * Math.max(1, batchSize)
       : (selectedModel.tokenCost ?? 0);
     if (!(await ensureSufficientBalance(requiredTokens))) {
-      submitLock.clear();
       return;
     }
 
     if (!(await ensureKycForModel(selectedModel))) {
-      submitLock.clear();
       return;
     }
 
@@ -1101,7 +1112,6 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
             defaultMessage: '请先选择一种官方玩法',
           })
         );
-        submitLock.clear();
         return;
       }
     } else if (!values.prompt?.trim()) {
@@ -1111,21 +1121,9 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
           defaultMessage: '请输入图片生成的描述',
         })
       );
-      submitLock.clear();
       return;
     }
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
-
-    setLoading(true);
-    setGeneratedImage(null); 
-
-    try {
       let imageUrl = originalImageRemoteUrl || undefined;
       let uploadingMessage: ReturnType<typeof message.loading> | null = null;
 
@@ -1949,8 +1947,17 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                         disabled={loading || !selectedModel}
                         style={{ height: 48, fontSize: 16, borderRadius: 24 }}
                         onClick={() => {
+                          if (loading || submitLock.checkAndSet()) return;
                           isUserSubmitRef.current = true;
-                          form.submit();
+                          setLoading(true);
+                          form
+                            .validateFields()
+                            .then((values) => handleGenerate(values, true))
+                            .catch(() => {
+                              submitLock.clear();
+                              setLoading(false);
+                              isUserSubmitRef.current = false;
+                            });
                         }}
                       >
                         <FormattedMessage id="create.generate.i2i" defaultMessage="开始生成图片" />

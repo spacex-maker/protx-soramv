@@ -707,45 +707,47 @@ const TextToImage: React.FC<TextToImageProps> = ({
   };
 
   // 调用后端 API 生成图片：按模型类型走三条路线之一
-  const handleGenerate = async (values: any) => {
-    if (checkAndSetSubmitting()) return;
-    if (!selectedFamily) {
-      message.warning(
-        intl.formatMessage({
-          id: 'create.model.family.select.placeholder',
-          defaultMessage: '请选择模型家族',
-        })
-      );
-      clearSubmitting();
-      return;
+  // primed=true：按钮已同步加锁并 setLoading，避免校验/余额请求期间还能连点
+  const handleGenerate = async (values: any, primed = false) => {
+    if (!primed) {
+      if (checkAndSetSubmitting()) return;
+      setLoading(true);
+      setGeneratedImages([]);
+    } else {
+      setGeneratedImages([]);
     }
-
-    const modelForPrice = getEffectiveModel();
-    const requiredTokens =
-      modelForPrice &&
-      !isFree(
-        modelForPrice.outputPrice,
-        modelForPrice.currency,
-        modelForPrice.tokenCost,
-      )
-        ? getImageRequiredTokens(modelForPrice.tokenCost, batchSize, !isApiModelAsync)
-        : 0;
-    if (!(await ensureSufficientBalance(requiredTokens))) {
-      clearSubmitting();
-      return;
-    }
-
-    const modelForKyc = getEffectiveModel() || selectedFamily;
-    if (!(await ensureKycForModel(modelForKyc, selectedFamily, selectedModel))) {
-      clearSubmitting();
-      return;
-    }
-
-    setLoading(true);
-    setGeneratedImages([]);
 
     let skipFinallyLoading = false;
     try {
+      if (!selectedFamily) {
+        message.warning(
+          intl.formatMessage({
+            id: 'create.model.family.select.placeholder',
+            defaultMessage: '请选择模型家族',
+          })
+        );
+        return;
+      }
+
+      const modelForPrice = getEffectiveModel();
+      const requiredTokens =
+        modelForPrice &&
+        !isFree(
+          modelForPrice.outputPrice,
+          modelForPrice.currency,
+          modelForPrice.tokenCost,
+        )
+          ? getImageRequiredTokens(modelForPrice.tokenCost, batchSize, !isApiModelAsync)
+          : 0;
+      if (!(await ensureSufficientBalance(requiredTokens))) {
+        return;
+      }
+
+      const modelForKyc = getEffectiveModel() || selectedFamily;
+      if (!(await ensureKycForModel(modelForKyc, selectedFamily, selectedModel))) {
+        return;
+      }
+
       if (isVolcSeedream) {
         const allValues = { ...form.getFieldsValue(), ...values };
         await runSeedreamSync(allValues);
@@ -1254,7 +1256,15 @@ const TextToImage: React.FC<TextToImageProps> = ({
                     loading={loading}
                     disabled={loading}
                     onClick={() => {
-                      form.validateFields().then((values) => handleGenerate(values)).catch(() => {});
+                      if (loading || checkAndSetSubmitting()) return;
+                      setLoading(true);
+                      form
+                        .validateFields()
+                        .then((values) => handleGenerate(values, true))
+                        .catch(() => {
+                          clearSubmitting();
+                          setLoading(false);
+                        });
                     }}
                     style={{
                       height: 48,

@@ -646,8 +646,25 @@ const TextToImageMobile: React.FC<{ embedded?: boolean }> = () => {
   };
 
   // 调用后端 API 生成图片
-  const handleGenerate = async (values: any) => {
-    if (checkAndSetSubmitting()) return;
+  // primed=true：按钮已同步加锁并 setLoading
+  const handleGenerate = async (values: any, primed = false) => {
+    if (!primed) {
+      if (checkAndSetSubmitting()) return;
+      setLoading(true);
+      setGeneratedImages([]);
+    } else {
+      setGeneratedImages([]);
+    }
+
+    const allValues = form.getFieldsValue();
+    const isApiModel =
+      (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
+        .toUpperCase() === 'API';
+    const isVolcSeedreamGen = companyCode === 'Volc' && effectiveModelCode?.toLowerCase().includes('seedream');
+    const useAsyncApiGen = isApiModel && !isVolcSeedreamGen;
+
+    let skipFinallyLoading = false;
+    try {
     if (!selectedFamily) {
       message.warning(
         intl.formatMessage({
@@ -655,13 +672,9 @@ const TextToImageMobile: React.FC<{ embedded?: boolean }> = () => {
           defaultMessage: '请选择模型家族',
         })
       );
-      clearSubmitting();
       return;
     }
 
-    // 获取表单所有字段值（包括高级设置中的参数）
-    const allValues = form.getFieldsValue();
-    
     // 检查提示词
     if (!values.prompt && !allValues.prompt) {
       message.warning(
@@ -670,7 +683,6 @@ const TextToImageMobile: React.FC<{ embedded?: boolean }> = () => {
           defaultMessage: '请输入提示词',
         })
       );
-      clearSubmitting();
       return;
     }
 
@@ -689,27 +701,14 @@ const TextToImageMobile: React.FC<{ embedded?: boolean }> = () => {
           )
         : 0;
     if (!(await ensureSufficientBalance(requiredTokens))) {
-      clearSubmitting();
       return;
     }
 
     const modelForKyc = modelForPrice || selectedFamily;
     if (!(await ensureKycForModel(modelForKyc, selectedFamily, selectedModel))) {
-      clearSubmitting();
       return;
     }
-    
-    setLoading(true);
-    setGeneratedImages([]);
 
-    const isApiModel =
-      (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
-        .toUpperCase() === 'API';
-    const isVolcSeedreamGen = companyCode === 'Volc' && effectiveModelCode?.toLowerCase().includes('seedream');
-    const useAsyncApiGen = isApiModel && !isVolcSeedreamGen;
-
-    let skipFinallyLoading = false;
-    try {
       if (isVolcSeedreamGen) {
         const modelCode = selectedModel?.modelCode || selectedFamily?.modelCode || '';
         const requestData: any = appendTranslatePromptFlag({
@@ -1391,19 +1390,19 @@ const TextToImageMobile: React.FC<{ embedded?: boolean }> = () => {
                 loading={loading}
                 disabled={loading}
                 onClick={async () => {
+                  if (loading || checkAndSetSubmitting()) return;
+                  setLoading(true);
                   try {
-                    // 手动触发表单验证
                     const values = await form.validateFields();
-                    console.log('Form validation passed:', values);
-                    // 调用生成函数
-                    await handleGenerate(values);
+                    await handleGenerate(values, true);
                   } catch (errorInfo: any) {
-                    console.log('Form validation failed:', errorInfo);
-                    // 验证失败时，仍然尝试提交（可能只是高级设置中的字段验证失败）
+                    // 校验失败时：有提示词仍尝试提交（高级设置字段可能误拦）
                     const allValues = form.getFieldsValue();
                     if (allValues.prompt) {
-                      await handleGenerate(allValues);
+                      await handleGenerate(allValues, true);
                     } else {
+                      clearSubmitting();
+                      setLoading(false);
                       message.error(
                         intl.formatMessage({
                           id: 'create.prompt.required',
@@ -1418,10 +1417,17 @@ const TextToImageMobile: React.FC<{ embedded?: boolean }> = () => {
                   height: '48px',
                 }}
               >
-                <FormattedMessage
-                  id="create.generate"
-                  defaultMessage="生成图片"
-                />
+                {loading ? (
+                  <FormattedMessage
+                    id="create.generating"
+                    defaultMessage="正在绘制..."
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="create.generate"
+                    defaultMessage="生成图片"
+                  />
+                )}
               </Button>
               <EstimatedPriceHint
                 price={textToImageEstimatedPrice}
