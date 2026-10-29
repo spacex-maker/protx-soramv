@@ -12,6 +12,7 @@ import styled, { keyframes } from 'styled-components';
 import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { WaitingTask } from './types';
+import { resolveOfficialTaskPromptLabel } from './officialPlayTypes';
 
 const { Text } = Typography;
 
@@ -276,10 +277,10 @@ const WaitingTaskQueue: React.FC<WaitingTaskQueueProps> = ({
                   </TimeInfo>
                 </TaskHeader>
 
-                {task.prompt && (
+                {(task.prompt || task.officialPlay || task.officialPlayCode) && (
                   <PromptPreview>
                     <FileTextOutlined style={{ marginRight: 6, opacity: 0.7 }} />
-                    {task.prompt}
+                    {resolveOfficialTaskPromptLabel(task, intl)}
                   </PromptPreview>
                 )}
 

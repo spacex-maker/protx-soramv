@@ -63,7 +63,12 @@ import ImageResultDisplay from './ImageResultDisplay';
 import OfficialPlaySelectionModal from './OfficialPlaySelectionModal';
 import OfficialPlaySelectedBanner from './OfficialPlaySelectedBanner';
 import I2iModelSelectField from './I2iModelSelectField';
-import { I2iCreationMode, I2iOfficialPlay, findOfficialPlay } from './officialPlayTypes';
+import {
+  I2iCreationMode,
+  I2iOfficialPlay,
+  findOfficialPlay,
+  resolvePlayDisplayName,
+} from './officialPlayTypes';
 import ModelSelectionModal from '../TextToImage/ModelSelectionModal';
 import EstimatedPriceHint from '../shared/EstimatedPriceHint';
 import { useTokenBalance } from '../shared/useTokenBalance';
@@ -835,15 +840,23 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     if (existingTask) {
       return;
     }
+
+    const isOfficial = creationMode === 'official' && !!selectedPlay;
     
     const newTask: WaitingTask = {
       id: Number(taskId),
       taskId,
       modelName: selectedModel?.modelName || '未知模型',
-      prompt: prompt || form.getFieldValue('prompt') || '',
+      // 官方玩法不把真实提示词塞进等待队列
+      prompt: isOfficial ? '' : (prompt || form.getFieldValue('prompt') || ''),
       status: 1,
       createTime: new Date().toISOString(),
       submitTime: new Date().toLocaleString('zh-CN'),
+      officialPlay: isOfficial || undefined,
+      officialPlayCode: isOfficial ? selectedPlay?.playCode : undefined,
+      officialPlayName: isOfficial && selectedPlay
+        ? resolvePlayDisplayName(selectedPlay, intl.locale)
+        : undefined,
     };
     
     setWaitingTasks(prev => [...prev, newTask]);
@@ -902,10 +915,13 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
               id: task.id,
               taskId: String(task.id),
               modelName: task.modelName || '未知模型',
-              prompt: task.prompt || '',
+              prompt: task.officialPlay || task.officialPlayCode ? '' : (task.prompt || ''),
               status: task.status === 0 ? 0 : 1,
               createTime: task.createTime || new Date().toISOString(),
               submitTime: task.createTime ? new Date(task.createTime).toLocaleString('zh-CN') : new Date().toLocaleString('zh-CN'),
+              officialPlay: task.officialPlay,
+              officialPlayCode: task.officialPlayCode,
+              officialPlayName: task.officialPlayName,
             };
             
             setWaitingTasks(prev => {

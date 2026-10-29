@@ -21,7 +21,7 @@ import dayjs from 'dayjs';
 import { motion, AnimatePresence } from 'framer-motion';
 import { addTencentImageCompression } from 'pages/Community/ChallengeDetailPage/utils';
 import { GenerationTask } from '../types';
-import { resolveOfficialTaskPromptLabel } from '../officialPlayTypes';
+import { isOfficialPlayTask, resolveOfficialTaskPromptLabel } from '../officialPlayTypes';
 
 // ==========================================
 // 1. 样式系统 (Styled System)
@@ -365,7 +365,7 @@ const HistoryCard: React.FC<HistoryCardProps> = ({
       )}
 
       <TopActions className="top-actions">
-        {task.prompt && !task.officialPlay && (
+        {task.prompt && !isOfficialPlayTask(task) && (
           <Tooltip title={intl.formatMessage({ id: 'create.history.copyPrompt', defaultMessage: '复制提示词' })}>
             <ActionBtn onClick={(e) => onCopyPrompt(e, task.prompt!)}>
               <CopyOutlined />

@@ -66,11 +66,23 @@ export function findOfficialPlay(
   return plays.find((p) => p.playCode === playCode);
 }
 
+export function isOfficialPlayTask(task: {
+  officialPlay?: boolean;
+  officialPlayCode?: string | null;
+}): boolean {
+  return Boolean(task.officialPlay) || Boolean(task.officialPlayCode);
+}
+
 export function resolveOfficialTaskPromptLabel(
-  task: { officialPlay?: boolean; officialPlayName?: string | null; prompt?: string | null },
+  task: {
+    officialPlay?: boolean;
+    officialPlayCode?: string | null;
+    officialPlayName?: string | null;
+    prompt?: string | null;
+  },
   intl: { formatMessage: (d: { id: string; defaultMessage: string }, v?: Record<string, string>) => string }
 ): string {
-  if (task.officialPlay) {
+  if (isOfficialPlayTask(task)) {
     if (task.officialPlayName) {
       return intl.formatMessage(
         {

@@ -146,5 +146,8 @@ export interface WaitingTask {
   createTime: string;
   submitTime: string; // 提交时间，用于显示
   aspectRatio?: string; // 图片比例（可选）
+  officialPlay?: boolean;
+  officialPlayCode?: string | null;
+  officialPlayName?: string | null;
 }
 
