@@ -27,7 +27,7 @@ import {
   resolvePlayDescription,
   resolvePlayDisplayName,
   resolveOfficialPlayImageUrl,
-  OFFICIAL_PLAY_THUMB_IMAGE_WIDTH,
+  OFFICIAL_PLAY_CARD_IMAGE_WIDTH,
   OFFICIAL_PLAY_PREVIEW_IMAGE_WIDTH,
 } from './officialPlayTypes';
 import OfficialPlayMobileView from './OfficialPlayMobileView';
@@ -48,9 +48,11 @@ function useIsMobile(breakpoint = MOBILE_BREAKPOINT) {
 
 const { Text } = Typography;
 
-const REF_IMG_WIDTH = 140;
 const PREVIEW_IMG_MAX_HEIGHT = 'min(88vh, 760px)';
 const PREVIEW_PANEL_MAX_WIDTH = 500;
+const DESKTOP_MODAL_WIDTH = 'min(98vw, 1680px)';
+const DESKTOP_MODAL_HEIGHT = 'min(97vh, 1100px)';
+const DESKTOP_CARD_MIN_HEIGHT = 'min(calc(97vh - 168px), 932px)';
 
 const fadeInUp = keyframes`
   from { opacity: 0; }
@@ -63,19 +65,25 @@ const pulseGlow = keyframes`
 `;
 
 const refThumbStyle = `
-  width: ${REF_IMG_WIDTH}px;
+  width: min(28vw, 360px);
+  height: min(68vh, 620px);
+  max-height: min(68vh, 620px);
   aspect-ratio: 3 / 4;
-  height: auto;
   object-fit: cover;
   flex-shrink: 0;
-  border-radius: 14px;
+  border-radius: 18px;
 `;
 
 const StyledModal = styled(Modal)`
+  top: 1.5vh !important;
+  padding-bottom: 0 !important;
+  max-width: 98vw !important;
+
   .ant-modal-content {
     background: transparent !important;
     box-shadow: none !important;
     padding: 0;
+    height: ${DESKTOP_MODAL_HEIGHT};
   }
 
   .ant-modal-header,
@@ -85,6 +93,7 @@ const StyledModal = styled(Modal)`
 
   .ant-modal-body {
     padding: 0;
+    height: 100%;
   }
 
   .ant-modal-close {
@@ -143,6 +152,9 @@ const ModalShell = styled.div<{ $isDark: boolean }>`
   border-radius: 28px;
   overflow: hidden;
   position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
   background: ${(p) =>
     p.$isDark
       ? 'linear-gradient(165deg, #0f1117 0%, #141824 45%, #0a0d14 100%)'
@@ -198,10 +210,14 @@ const AmbientOrb = styled.div<{ $isDark: boolean }>`
 const ModalInner = styled.div`
   position: relative;
   z-index: 1;
-  padding: 28px 28px 24px;
+  padding: 22px 28px 20px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 
-  @media (max-width: 900px) {
-    padding: 20px 16px 16px;
+  @media (max-width: 1100px) {
+    padding: 18px 18px 16px;
   }
 `;
 
@@ -210,7 +226,8 @@ const HeroHeader = styled.div`
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 22px;
+  margin-bottom: 14px;
+  flex-shrink: 0;
 `;
 
 const HeroText = styled.div`
@@ -237,8 +254,8 @@ const Eyebrow = styled.div<{ $isDark: boolean }>`
 `;
 
 const HeroTitle = styled.h2<{ $isDark: boolean }>`
-  margin: 0 0 8px;
-  font-size: 28px;
+  margin: 0 0 6px;
+  font-size: clamp(22px, 2.2vw, 28px);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.15;
@@ -254,9 +271,9 @@ const HeroTitle = styled.h2<{ $isDark: boolean }>`
 const HeroHint = styled.p<{ $isDark: boolean }>`
   margin: 0;
   font-size: 13px;
-  line-height: 1.6;
+  line-height: 1.55;
   color: ${(p) => (p.$isDark ? 'rgba(255,255,255,0.55)' : 'rgba(15,23,42,0.55)')};
-  max-width: 420px;
+  max-width: 560px;
 `;
 
 const ClosePill = styled.button<{ $isDark: boolean }>`
@@ -288,7 +305,8 @@ const Toolbar = styled.div`
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
+  flex-shrink: 0;
 `;
 
 const SortPills = styled.div`
@@ -364,35 +382,40 @@ const SortPill = styled.button<{ $active?: boolean; $isDark: boolean }>`
 `;
 
 const PlayList = styled.div`
-  max-height: min(58vh, 560px);
+  flex: 1;
+  min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-right: 6px;
-
-  @media (max-width: 900px) {
-    max-height: min(52vh, 480px);
-  }
+  padding-right: 4px;
+  scroll-snap-type: y mandatory;
+  scroll-padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 
   &::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
 
   &::-webkit-scrollbar-thumb {
-    background: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.15)' : 'rgba(59,130,246,0.2)')};
+    background: ${(p) => (p.theme.mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(59,130,246,0.28)')};
     border-radius: 999px;
   }
 `;
 
 const PlayCard = styled.div<{ $selected?: boolean; $index: number; $isDark: boolean }>`
-  display: block;
+  display: flex;
   width: 100%;
   box-sizing: border-box;
+  flex: 0 0 auto;
+  min-height: ${DESKTOP_CARD_MIN_HEIGHT};
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
   animation: ${fadeInUp} 0.35s ease forwards;
   animation-delay: ${(p) => `${Math.min(p.$index * 0.04, 0.28)}s`};
-  border-radius: 22px;
-  padding: 14px;
+  border-radius: 26px;
+  padding: clamp(16px, 1.6vw, 24px);
   position: relative;
-  margin-bottom: 14px;
   transition: box-shadow 0.25s ease, border-color 0.25s ease;
   border: 1px solid
     ${(p) =>
@@ -416,10 +439,6 @@ const PlayCard = styled.div<{ $selected?: boolean; $index: number; $isDark: bool
         ? '0 8px 24px rgba(0,0,0,0.25)'
         : '0 8px 24px rgba(15, 23, 42, 0.06)'};
 
-  &:last-child {
-    margin-bottom: 0;
-  }
-
   &:hover {
     border-color: rgba(59, 130, 246, 0.45);
     box-shadow: 0 20px 48px rgba(59, 130, 246, 0.16);
@@ -442,41 +461,47 @@ const PlayCard = styled.div<{ $selected?: boolean; $index: number; $isDark: bool
 `;
 
 const CardBody = styled.div`
-  display: flex;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr) auto;
+  gap: clamp(18px, 2vw, 32px);
   align-items: stretch;
   position: relative;
   z-index: 1;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
 
-  @media (max-width: 900px) {
-    flex-direction: column;
-    gap: 12px;
+  @media (max-width: 1180px) {
+    grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.9fr) auto;
+    gap: 16px;
   }
 `;
 
 const PlayContent = styled.div`
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  gap: 12px;
+  gap: 18px;
+  padding: 8px 4px 4px 0;
 `;
 
 const CardFooter = styled.div`
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
   margin-top: auto;
-  padding-top: 4px;
+  padding-top: 8px;
+  gap: 12px;
 `;
 
 const UseButton = styled(Button)`
   && {
     border: none;
     border-radius: 999px;
-    height: 36px;
-    padding: 0 24px;
+    height: 44px;
+    padding: 0 32px;
+    font-size: 15px;
     font-weight: 700;
     letter-spacing: 0.04em;
     background: linear-gradient(135deg, #3b82f6 0%, #6366f1 52%, #818cf8 100%);
@@ -519,9 +544,13 @@ const UseButton = styled(Button)`
 
 const RefFrame = styled.div<{ $previewable?: boolean; $isDark: boolean }>`
   position: relative;
-  flex-shrink: 0;
-  padding: 3px;
-  border-radius: 18px;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 24px;
   background: ${(p) =>
     p.$isDark
       ? 'linear-gradient(135deg, rgba(96,165,250,0.35), rgba(167,139,250,0.2))'
@@ -529,16 +558,10 @@ const RefFrame = styled.div<{ $previewable?: boolean; $isDark: boolean }>`
   cursor: ${(p) => (p.$previewable ? 'zoom-in' : 'default')};
   transition: transform 0.25s ease, box-shadow 0.25s ease;
 
-  @media (max-width: 900px) {
-    align-self: center;
-    width: 100%;
-    max-width: 360px;
-  }
-
   &:hover {
-    transform: scale(${(p) => (p.$previewable ? 1.02 : 1)});
+    transform: scale(${(p) => (p.$previewable ? 1.01 : 1)});
     box-shadow: ${(p) =>
-      p.$previewable ? '0 12px 32px rgba(59, 130, 246, 0.25)' : 'none'};
+      p.$previewable ? '0 16px 40px rgba(59, 130, 246, 0.28)' : 'none'};
   }
 
   &:hover .zoom-hint {
@@ -550,40 +573,32 @@ const RefImages = styled.div<{ $isDark: boolean }>`
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px;
-  border-radius: 15px;
+  justify-content: center;
+  gap: clamp(10px, 1.4vw, 22px);
+  width: 100%;
+  height: 100%;
+  min-height: min(68vh, 620px);
+  padding: clamp(10px, 1.2vw, 18px);
+  border-radius: 21px;
   background: ${(p) =>
     p.$isDark ? 'rgba(10, 12, 18, 0.85)' : 'rgba(255, 255, 255, 0.92)'};
-
-  @media (max-width: 900px) {
-    width: 100%;
-    justify-content: center;
-    gap: 10px;
-  }
 
   img,
   .ref-ph {
     ${refThumbStyle}
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+    flex: 1 1 0;
+    width: auto;
+    max-width: min(32vw, 420px);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
     transition: opacity 0.2s ease;
-  }
-
-  @media (max-width: 900px) {
-    img,
-    .ref-ph {
-      width: calc(50% - 18px);
-      max-width: 168px;
-      flex: 1;
-      min-width: 0;
-    }
   }
 
   .arrow {
     color: ${(p) =>
       p.$isDark ? 'rgba(147, 197, 253, 0.75)' : '#3b82f6'};
-    font-size: 16px;
+    font-size: clamp(20px, 2vw, 32px);
     pointer-events: none;
+    filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.35));
   }
 
   .zoom-hint {
@@ -595,7 +610,7 @@ const RefImages = styled.div<{ $isDark: boolean }>`
     opacity: 0;
     transition: opacity 0.2s ease;
     color: #fff;
-    font-size: 24px;
+    font-size: 32px;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
     z-index: 2;
   }
@@ -606,7 +621,7 @@ const RefPlaceholder = styled.div<{ $withEmoji?: boolean; $isDark: boolean }>`
   display: ${(p) => (p.$withEmoji ? 'flex' : 'block')};
   align-items: center;
   justify-content: center;
-  font-size: ${(p) => (p.$withEmoji ? '36px' : '0')};
+  font-size: ${(p) => (p.$withEmoji ? '64px' : '0')};
   background: ${(p) =>
     p.$isDark ? 'rgba(255,255,255,0.06)' : 'linear-gradient(180deg, #f8fafc, #eef2ff)'};
   pointer-events: none;
@@ -615,32 +630,33 @@ const RefPlaceholder = styled.div<{ $withEmoji?: boolean; $isDark: boolean }>`
 const PlayInfo = styled.div<{ $isDark: boolean }>`
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 
   .title-row {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
-    margin-bottom: 6px;
   }
 
   .title {
-    font-size: 17px;
+    font-size: clamp(22px, 2vw, 30px);
     font-weight: 800;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.03em;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 10px;
     color: ${(p) => (p.$isDark ? '#f8fafc' : '#0f172a')};
   }
 
   .desc {
-    font-size: 13px;
-    color: ${(p) => (p.$isDark ? 'rgba(255,255,255,0.58)' : '#64748b')};
-    line-height: 1.55;
-    margin-bottom: 10px;
+    font-size: 15px;
+    color: ${(p) => (p.$isDark ? 'rgba(255,255,255,0.62)' : '#64748b')};
+    line-height: 1.65;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 5;
     -webkit-box-orient: vertical;
     overflow: hidden;
   }
@@ -649,6 +665,7 @@ const PlayInfo = styled.div<{ $isDark: boolean }>`
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
+    margin-top: 4px;
   }
 `;
 
@@ -693,20 +710,14 @@ const ActionCol = styled.div<{ $isDark: boolean }>`
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 6px;
+  gap: 10px;
   flex-shrink: 0;
-  padding-top: 4px;
-
-  @media (max-width: 900px) {
-    flex-direction: row;
-    justify-content: flex-end;
-    padding-top: 0;
-  }
+  padding-top: 8px;
 
   .ant-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
     background: ${(p) => (p.$isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.8)')};
     border: 1px solid
       ${(p) => (p.$isDark ? 'rgba(255,255,255,0.08)' : 'rgba(148,163,184,0.2)')};
@@ -716,6 +727,18 @@ const ActionCol = styled.div<{ $isDark: boolean }>`
       transform: scale(1.06);
     }
   }
+`;
+
+const CompareHint = styled.div<{ $isDark: boolean }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: ${(p) => (p.$isDark ? 'rgba(147,197,253,0.8)' : '#3b82f6')};
+  opacity: 0.9;
 `;
 
 const PreviewCompare = styled.div<{ $isDark: boolean; $isMobile?: boolean }>`
@@ -1071,8 +1094,8 @@ const OfficialPlaySelectionModal: React.FC<OfficialPlaySelectionModalProps> = ({
       <StyledModal
         open={open}
         onCancel={onClose}
-        width={900}
-        centered
+        width={DESKTOP_MODAL_WIDTH}
+        centered={false}
         closeIcon={null}
         footer={null}
         destroyOnClose
@@ -1081,6 +1104,9 @@ const OfficialPlaySelectionModal: React.FC<OfficialPlaySelectionModalProps> = ({
             backdropFilter: 'blur(14px)',
             WebkitBackdropFilter: 'blur(14px)',
             background: isDark ? 'rgba(0,0,0,0.72)' : 'rgba(15, 23, 42, 0.45)',
+          },
+          wrapper: {
+            overflow: 'hidden',
           },
         }}
       >
@@ -1154,23 +1180,41 @@ const OfficialPlaySelectionModal: React.FC<OfficialPlaySelectionModalProps> = ({
             </Toolbar>
 
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '64px 0' }}>
+              <div
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 320,
+                }}
+              >
                 <Spin size="large" />
               </div>
             ) : displayPlays.length === 0 ? (
-              <Empty
-                image={Empty.PRESENTED_IMAGE_SIMPLE}
-                description={
-                  favoritesOnly ? (
-                    <FormattedMessage
-                      id="create.i2i.official.favoritesEmpty"
-                      defaultMessage="暂无收藏的玩法"
-                    />
-                  ) : (
-                    <FormattedMessage id="create.i2i.official.empty" defaultMessage="暂无官方玩法" />
-                  )
-                }
-              />
+              <div
+                style={{
+                  flex: 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: 320,
+                }}
+              >
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description={
+                    favoritesOnly ? (
+                      <FormattedMessage
+                        id="create.i2i.official.favoritesEmpty"
+                        defaultMessage="暂无收藏的玩法"
+                      />
+                    ) : (
+                      <FormattedMessage id="create.i2i.official.empty" defaultMessage="暂无官方玩法" />
+                    )
+                  }
+                />
+              </div>
             ) : (
               <PlayList>
                 {displayPlays.map((play, index) => (
@@ -1202,12 +1246,12 @@ const OfficialPlaySelectionModal: React.FC<OfficialPlaySelectionModalProps> = ({
                             <img
                               src={resolveOfficialPlayImageUrl(
                                 play.referenceBeforeImage,
-                                OFFICIAL_PLAY_THUMB_IMAGE_WIDTH
+                                OFFICIAL_PLAY_CARD_IMAGE_WIDTH
                               )}
                               alt="before"
                             />
                           ) : (
-                            <RefPlaceholder $withEmoji $isDark={isDark}>
+                            <RefPlaceholder $withEmoji $isDark={isDark} className="ref-ph">
                               {play.coverEmoji || '🎨'}
                             </RefPlaceholder>
                           )}
@@ -1216,18 +1260,27 @@ const OfficialPlaySelectionModal: React.FC<OfficialPlaySelectionModalProps> = ({
                             <img
                               src={resolveOfficialPlayImageUrl(
                                 play.referenceAfterImage,
-                                OFFICIAL_PLAY_THUMB_IMAGE_WIDTH
+                                OFFICIAL_PLAY_CARD_IMAGE_WIDTH
                               )}
                               alt="after"
                             />
                           ) : (
-                            <RefPlaceholder $isDark={isDark} />
+                            <RefPlaceholder $isDark={isDark} className="ref-ph" />
                           )}
                         </RefImages>
                       </RefFrame>
 
                       <PlayContent>
                         <PlayInfo $isDark={isDark}>
+                          {canPreviewPlay(play) && (
+                            <CompareHint $isDark={isDark}>
+                              <ZoomInOutlined />
+                              <FormattedMessage
+                                id="create.i2i.official.clickCompare"
+                                defaultMessage="点击大图对照"
+                              />
+                            </CompareHint>
+                          )}
                           <div className="title-row">
                             <div className="title">
                               <span>{play.coverEmoji}</span>
@@ -1266,7 +1319,7 @@ const OfficialPlaySelectionModal: React.FC<OfficialPlaySelectionModalProps> = ({
                         </PlayInfo>
 
                         <CardFooter>
-                          <UseButton type="primary" size="small" onClick={() => handleUsePlay(play)}>
+                          <UseButton type="primary" onClick={() => handleUsePlay(play)}>
                             <FormattedMessage id="create.i2i.official.use" defaultMessage="使用" />
                           </UseButton>
                         </CardFooter>

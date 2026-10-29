@@ -1468,6 +1468,7 @@ export default {
   'create.i2i.official.buttonTooltip': 'Choose an official image-to-image play mode',
   'create.i2i.official.modalTitle': 'Official Play Modes',
   'create.i2i.official.modalHint': 'Pick a mode and upload a reference image. Prompts are managed by the platform.',
+  'create.i2i.official.clickCompare': 'Click for full compare',
   'create.i2i.official.sort.default': 'Recommended',
   'create.i2i.official.sort.likes': 'Most liked',
   'create.i2i.official.sort.generations': 'Most used',

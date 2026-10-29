@@ -1512,6 +1512,7 @@ export default {
   'create.i2i.official.buttonTooltip': '选择平台官方图生图玩法',
   'create.i2i.official.modalTitle': '官方玩法',
   'create.i2i.official.modalHint': '选择玩法后上传参考图即可生成，提示词由平台托管',
+  'create.i2i.official.clickCompare': '点击大图对照',
   'create.i2i.official.sort.default': '推荐',
   'create.i2i.official.sort.likes': '点赞量',
   'create.i2i.official.sort.generations': '生成量',
