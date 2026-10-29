@@ -197,7 +197,7 @@ const VoiceClone: React.FC = () => {
     closeInsufficientBalanceModal,
     ensureSufficientBalance,
     tryShowFromApiError,
-  } = useInsufficientBalanceGuard();
+  } = useInsufficientBalanceGuard(tokenBalance);
 
   const [trainForm] = Form.useForm();
   const [synthForm] = Form.useForm();

@@ -108,7 +108,7 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
     ensureSufficientBalance,
     ensureKycForModel,
     tryShowFromApiError,
-  } = useInsufficientBalanceGuard();
+  } = useInsufficientBalanceGuard(tokenBalance);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<VideoResult | null>(null);

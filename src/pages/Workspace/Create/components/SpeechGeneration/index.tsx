@@ -122,7 +122,7 @@ const SpeechGeneration: React.FC = () => {
     ensureSufficientBalance,
     ensureKycForModel,
     tryShowFromApiError,
-  } = useInsufficientBalanceGuard();
+  } = useInsufficientBalanceGuard(tokenBalance);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [engines, setEngines] = useState<EngineModel[]>([]);

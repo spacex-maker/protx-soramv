@@ -105,7 +105,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
     ensureSufficientBalance,
     tryShowFromApiError,
     ensureKycForModel,
-  } = useInsufficientBalanceGuard();
+  } = useInsufficientBalanceGuard(tokenBalance);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);

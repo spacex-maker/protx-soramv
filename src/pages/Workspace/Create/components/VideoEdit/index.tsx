@@ -163,7 +163,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     ensureSufficientBalance,
     ensureKycForModel,
     tryShowFromApiError,
-  } = useInsufficientBalanceGuard();
+  } = useInsufficientBalanceGuard(tokenBalance);
 
   const [models, setModels] = useState<Model[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);

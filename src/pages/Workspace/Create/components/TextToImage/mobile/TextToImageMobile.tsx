@@ -153,7 +153,7 @@ const TextToImageMobile: React.FC<{ embedded?: boolean }> = () => {
     ensureSufficientBalance,
     ensureKycForModel,
     tryShowFromApiError,
-  } = useInsufficientBalanceGuard();
+  } = useInsufficientBalanceGuard(tokenBalance);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedImages, setGeneratedImages] = useState<string[]>([]);

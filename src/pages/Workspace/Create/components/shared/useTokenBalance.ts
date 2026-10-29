@@ -11,13 +11,15 @@ export function useTokenBalance() {
       .getUserBalance()
       .then((res: { success?: boolean; data?: { tokenBalance?: number } }) => {
         if (res?.success && res?.data?.tokenBalance != null) {
-          setTokenBalance(Number(res.data.tokenBalance));
+          const n = Number(res.data.tokenBalance);
+          setTokenBalance(Number.isFinite(n) ? n : null);
         } else {
-          setTokenBalance(0);
+          // 查询失败保留 null，避免页面上显示假的 0 并触发误报
+          setTokenBalance(null);
         }
       })
       .catch(() => {
-        setTokenBalance(0);
+        setTokenBalance(null);
       })
       .finally(() => {
         setBalanceLoading(false);

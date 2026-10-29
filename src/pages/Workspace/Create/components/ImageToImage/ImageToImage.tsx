@@ -99,7 +99,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     ensureSufficientBalance,
     ensureKycForModel,
     tryShowFromApiError,
-  } = useInsufficientBalanceGuard();
+  } = useInsufficientBalanceGuard(tokenBalance);
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<ImageResult | null>(null);
