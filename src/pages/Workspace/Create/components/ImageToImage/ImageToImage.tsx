@@ -13,6 +13,7 @@ import {
   Tooltip,
   Switch,
   Slider,
+  Radio,
 } from 'antd';
 import { 
   ThunderboltOutlined,
@@ -29,6 +30,7 @@ import {
   NumberOutlined,
   DesktopOutlined,
   AppstoreOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import instance from 'api/axios';
@@ -93,26 +95,42 @@ import {
   isFluxKleinModel,
   computeKleinSize,
   computeKleinSizeFromSource,
+  computeKleinSizeFollowSource,
   formatKleinSizeLabel,
   estimateKleinProgressCapMs,
   probeImageNaturalSize,
   isKleinOriginalAspect,
+  buildKleinComposePrompt,
+  buildKleinOutfitPrompt,
   KLEIN_LONG_EDGE_OPTIONS,
   KLEIN_ASPECT_RATIOS,
   KLEIN_ASPECT_ORIGINAL,
   KLEIN_DEFAULT_LONG_EDGE,
   KLEIN_DEFAULT_I2I_ASPECT,
+  KLEIN_DEFAULT_SIZE_MODE,
   KLEIN_DEFAULT_MODE,
   KLEIN_DEFAULT_DENOISE,
+  KLEIN_MAX_REF_IMAGES,
   KLEIN_PENDING_I2I_KEY,
   loadKleinPendingTask,
   clearKleinPendingTask,
   type KleinMode,
+  type KleinSizeMode,
 } from '../shared/fluxKleinParams';
 import { pollKleinImageTask } from '../shared/kleinTaskPoll';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
+
+type KleinExtraRef = {
+  id: string;
+  previewUrl: string;
+  file?: File | null;
+  remoteUrl?: string | null;
+  width?: number;
+  height?: number;
+  desc: string;
+};
 
 const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const intl = useIntl();
@@ -145,6 +163,9 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
   const [originalImageRemoteUrl, setOriginalImageRemoteUrl] = useState<string | null>(null);
   const [refImageSize, setRefImageSize] = useState<{ width: number; height: number } | null>(null);
+  /** Klein 精修第 2~4 张参考图（第 1 张仍用上方主图） */
+  const [kleinExtraRefs, setKleinExtraRefs] = useState<KleinExtraRef[]>([]);
+  const [primaryRefDesc, setPrimaryRefDesc] = useState('');
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -188,6 +209,11 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   const kleinLongEdgeWatch = Form.useWatch('kleinLongEdge', form) || KLEIN_DEFAULT_LONG_EDGE;
   const kleinAspectWatch = Form.useWatch('kleinAspectRatio', form) || KLEIN_DEFAULT_I2I_ASPECT;
   const kleinModeWatch = (Form.useWatch('kleinMode', form) || KLEIN_DEFAULT_MODE) as KleinMode;
+  const kleinSizeModeWatch = (Form.useWatch('kleinSizeMode', form) || KLEIN_DEFAULT_SIZE_MODE) as KleinSizeMode;
+  const kleinPromptKindWatch = Form.useWatch('kleinPromptKind', form) || 'compose';
+  const allowKleinMultiRef =
+    isFluxKlein && creationMode === 'custom' && kleinModeWatch === 'edit';
+  const kleinRefCount = 1 + (allowKleinMultiRef ? kleinExtraRefs.length : 0);
   const resolution = Form.useWatch('resolution', form);
   const batchSize = Form.useWatch('batchSize', form) ?? 1;
 
@@ -632,10 +658,58 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     setOriginalImageFile(null);
     setOriginalImageRemoteUrl(null);
     setRefImageSize(null);
+    setKleinExtraRefs([]);
+    setPrimaryRefDesc('');
     form.setFieldsValue({ inputFile: undefined });
     const fileInput = document.getElementById('i2i-upload-input') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
+    }
+  };
+
+  // 重绘/官方玩法不支持多图：切模式时清掉额外参考
+  useEffect(() => {
+    if (!allowKleinMultiRef && kleinExtraRefs.length > 0) {
+      setKleinExtraRefs([]);
+    }
+  }, [allowKleinMultiRef, kleinExtraRefs.length]);
+
+  const addKleinExtraRefFromFile = async (file: File) => {
+    if (!allowKleinMultiRef) return;
+    if (1 + kleinExtraRefs.length >= KLEIN_MAX_REF_IMAGES) {
+      message.warning(
+        intl.formatMessage({
+          id: 'create.klein.mref.max',
+          defaultMessage: '最多 4 张参考图',
+        }),
+      );
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      message.error(intl.formatMessage({ id: 'create.i2i.fileType.error', defaultMessage: '请选择图片文件' }));
+      return;
+    }
+    try {
+      const previewUrl = await getBase64(file);
+      let size: { width: number; height: number } | undefined;
+      try {
+        size = await probeImageNaturalSize(file);
+      } catch {
+        /* ignore */
+      }
+      setKleinExtraRefs((prev) => [
+        ...prev,
+        {
+          id: `${Date.now()}-${prev.length}`,
+          previewUrl,
+          file,
+          desc: '',
+          width: size?.width,
+          height: size?.height,
+        },
+      ]);
+    } catch {
+      message.error(intl.formatMessage({ id: 'create.i2i.fileRead.error', defaultMessage: '图片读取失败' }));
     }
   };
 
@@ -1148,47 +1222,86 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         return;
       }
     } else if (!values.prompt?.trim()) {
-      message.warning(
-        intl.formatMessage({
-          id: 'create.i2i.prompt.required',
-          defaultMessage: '请输入图片生成的描述',
-        })
-      );
-      return;
+      // 多图换装/合成可由图描述拼出提示词，允许主 prompt 为空
+      const multiWillBuildPrompt = allowKleinMultiRef && kleinExtraRefs.length > 0;
+      if (!multiWillBuildPrompt) {
+        message.warning(
+          intl.formatMessage({
+            id: 'create.i2i.prompt.required',
+            defaultMessage: '请输入图片生成的描述',
+          })
+        );
+        return;
+      }
     }
 
-      let imageUrl = originalImageRemoteUrl || undefined;
-      let uploadingMessage: ReturnType<typeof message.loading> | null = null;
+      const useMultiRefs = allowKleinMultiRef && kleinExtraRefs.length > 0;
+      const refsToUpload: Array<{ remote?: string; file?: File | null }> = [
+        { remote: originalImageRemoteUrl || undefined, file: originalImageFile },
+      ];
+      if (useMultiRefs) {
+        for (const extra of kleinExtraRefs) {
+          refsToUpload.push({ remote: extra.remoteUrl || undefined, file: extra.file });
+        }
+      }
 
-      if (!imageUrl) {
-        if (!originalImageFile) {
-          message.warning(intl.formatMessage({
-            id: 'create.i2i.upload.warning',
-            defaultMessage: '请先上传一张图片作为生成参考。',
-          }));
-          setLoading(false);
+      const uploadingMessage = message.loading(
+        intl.formatMessage({
+          id: 'create.i2i.uploading.image',
+          defaultMessage: '正在上传图片到云端...',
+        }),
+        0,
+      );
+      let imageUrls: string[] = [];
+      try {
+        for (const ref of refsToUpload) {
+          if (ref.remote) {
+            imageUrls.push(ref.remote);
+            continue;
+          }
+          if (!ref.file) {
+            throw new Error(
+              intl.formatMessage({
+                id: 'create.i2i.upload.warning',
+                defaultMessage: '请先上传一张图片作为生成参考。',
+              }),
+            );
+          }
+          imageUrls.push(await uploadImageToServer(ref.file));
+        }
+        uploadingMessage();
+        message.success(
+          intl.formatMessage({
+            id: 'create.i2i.upload.success',
+            defaultMessage: '图片上传成功',
+          }),
+        );
+      } catch (uploadError: any) {
+        uploadingMessage();
+        console.error('上传图片失败:', uploadError);
+        throw uploadError;
+      }
+
+      let finalPrompt = values.prompt;
+      if (isFluxKlein && useMultiRefs && creationMode === 'custom') {
+        const descs = [primaryRefDesc, ...kleinExtraRefs.map((r) => r.desc)];
+        if (descs.some((d) => !(d || '').trim())) {
+          message.warning(
+            intl.formatMessage({
+              id: 'create.klein.mref.desc.required',
+              defaultMessage: '多图参考请为每张图填写「这张图是什么」，便于模型按内容匹配',
+            }),
+          );
           return;
         }
-        uploadingMessage = message.loading(
-          intl.formatMessage({
-            id: 'create.i2i.uploading.image',
-            defaultMessage: '正在上传图片到云端...',
-          }),
-          0
-        );
-        try {
-          imageUrl = await uploadImageToServer(originalImageFile);
-          uploadingMessage();
-          message.success(
-            intl.formatMessage({
-              id: 'create.i2i.upload.success',
-              defaultMessage: '图片上传成功',
-            })
-          );
-        } catch (uploadError: any) {
-          uploadingMessage();
-          console.error('上传图片失败:', uploadError);
-          throw uploadError;
+        if (kleinPromptKindWatch === 'outfit' && imageUrls.length >= 2) {
+          finalPrompt = buildKleinOutfitPrompt({
+            personDesc: descs[0],
+            garmentDesc: descs[1],
+            removeGarmentHint: values.kleinRemoveGarment || '',
+          });
+        } else {
+          finalPrompt = buildKleinComposePrompt(descs, values.prompt || '');
         }
       }
 
@@ -1196,39 +1309,43 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       const requestData: any = appendTranslatePromptFlag(
           {
             modelCode: selectedModel.modelCode,
-            imageUrls: [imageUrl],
+            imageUrls,
             ...(creationMode === 'official' && selectedPlay
               ? { officialPlayCode: selectedPlay.playCode }
-              : { prompt: values.prompt }),
+              : { prompt: finalPrompt }),
           },
           values
         );
 
         if (isFluxKlein) {
           const longEdge = Number(values.kleinLongEdge) || KLEIN_DEFAULT_LONG_EDGE;
+          const sizeMode = (values.kleinSizeMode || KLEIN_DEFAULT_SIZE_MODE) as KleinSizeMode;
           const aspect = values.kleinAspectRatio || KLEIN_DEFAULT_I2I_ASPECT;
           let width: number;
           let height: number;
-          if (isKleinOriginalAspect(aspect)) {
-            let src = refImageSize;
-            if (!src?.width || !src?.height) {
-              try {
-                const probeSrc = originalImageFile || originalImageRemoteUrl || originalImageUrl;
-                if (probeSrc) src = await probeImageNaturalSize(probeSrc);
-              } catch {
-                /* ignore */
-              }
+          let src = refImageSize;
+          if ((!src?.width || !src?.height) && (sizeMode === 'follow' || isKleinOriginalAspect(aspect))) {
+            try {
+              const probeSrc = originalImageFile || originalImageRemoteUrl || originalImageUrl;
+              if (probeSrc) src = await probeImageNaturalSize(probeSrc);
+            } catch {
+              /* ignore */
             }
+          }
+          if (sizeMode === 'follow' || isKleinOriginalAspect(aspect)) {
             if (!src?.width || !src?.height) {
               message.warning(
                 intl.formatMessage({
                   id: 'create.klein.original.size.missing',
-                  defaultMessage: '无法读取参考图尺寸，请重新上传后再选原图比例',
+                  defaultMessage: '无法读取参考图尺寸，请重新上传后再选跟随原图',
                 }),
               );
               return;
             }
-            ({ width, height } = computeKleinSizeFromSource(longEdge, src.width, src.height));
+            ({ width, height } =
+              sizeMode === 'follow'
+                ? computeKleinSizeFollowSource(src.width, src.height)
+                : computeKleinSizeFromSource(longEdge, src.width, src.height));
             requestData.aspectRatio = KLEIN_ASPECT_ORIGINAL;
           } else {
             ({ width, height } = computeKleinSize(longEdge, aspect));
@@ -1528,7 +1645,9 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                   modelId: null,
                   kleinLongEdge: KLEIN_DEFAULT_LONG_EDGE,
                   kleinAspectRatio: KLEIN_DEFAULT_I2I_ASPECT,
+                  kleinSizeMode: KLEIN_DEFAULT_SIZE_MODE,
                   kleinMode: KLEIN_DEFAULT_MODE,
+                  kleinPromptKind: 'compose',
                   denoise: KLEIN_DEFAULT_DENOISE,
                 }}
               >
@@ -1689,7 +1808,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                 </Form.Item>
                 )}
 
-                {/* FLUX.3 Klein：模式 + 长边 + 比例 + denoise */}
+                {/* FLUX.3 Klein：模式 + 尺寸 + 多参考 + denoise */}
                 {isFluxKlein && (
                   <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
                     <Col xs={24} sm={12}>
@@ -1718,45 +1837,64 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                     </Col>
                     <Col xs={24} sm={12}>
                       <Form.Item
-                        name="kleinLongEdge"
+                        name="kleinSizeMode"
                         label={
-                          <FormattedMessage id="create.klein.longEdge" defaultMessage="长边档位" />
+                          <FormattedMessage id="create.klein.sizeMode" defaultMessage="输出尺寸" />
                         }
                         style={{ marginBottom: 0 }}
                       >
-                        <Select>
-                          {KLEIN_LONG_EDGE_OPTIONS.map((edge) => (
-                            <Select.Option key={edge} value={edge}>
-                              {edge}
-                            </Select.Option>
-                          ))}
-                        </Select>
-                      </Form.Item>
-                    </Col>
-                    <Col xs={24} sm={12}>
-                      <Form.Item
-                        name="kleinAspectRatio"
-                        label={<FormattedMessage id="create.ratio" defaultMessage="画面比例" />}
-                        style={{ marginBottom: 0 }}
-                      >
-                        <Select>
-                          <Select.Option value={KLEIN_ASPECT_ORIGINAL}>
+                        <Radio.Group>
+                          <Radio.Button value="follow">
                             <FormattedMessage
-                              id="create.klein.aspect.original"
-                              defaultMessage="原图比例"
+                              id="create.klein.sizeMode.follow"
+                              defaultMessage="跟随原图"
                             />
-                            {refImageSize
-                              ? `（${formatKleinSizeLabel(kleinLongEdgeWatch, KLEIN_ASPECT_ORIGINAL, refImageSize)}）`
-                              : ''}
-                          </Select.Option>
-                          {KLEIN_ASPECT_RATIOS.map((ratio) => (
-                            <Select.Option key={ratio} value={ratio}>
-                              {ratio}（{formatKleinSizeLabel(kleinLongEdgeWatch, ratio)}）
-                            </Select.Option>
-                          ))}
-                        </Select>
+                          </Radio.Button>
+                          <Radio.Button value="fixed">
+                            <FormattedMessage
+                              id="create.klein.sizeMode.fixed"
+                              defaultMessage="固定尺寸"
+                            />
+                          </Radio.Button>
+                        </Radio.Group>
                       </Form.Item>
                     </Col>
+                    {kleinSizeModeWatch === 'fixed' && (
+                      <>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="kleinLongEdge"
+                            label={
+                              <FormattedMessage id="create.klein.longEdge" defaultMessage="长边档位" />
+                            }
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Select>
+                              {KLEIN_LONG_EDGE_OPTIONS.map((edge) => (
+                                <Select.Option key={edge} value={edge}>
+                                  {edge}
+                                </Select.Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                        <Col xs={24} sm={12}>
+                          <Form.Item
+                            name="kleinAspectRatio"
+                            label={<FormattedMessage id="create.ratio" defaultMessage="画面比例" />}
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Select>
+                              {KLEIN_ASPECT_RATIOS.map((ratio) => (
+                                <Select.Option key={ratio} value={ratio}>
+                                  {ratio}（{formatKleinSizeLabel(kleinLongEdgeWatch, ratio)}）
+                                </Select.Option>
+                              ))}
+                            </Select>
+                          </Form.Item>
+                        </Col>
+                      </>
+                    )}
                     {kleinModeWatch === 'denoise' && (
                       <Col xs={24} sm={12}>
                         <Form.Item
@@ -1775,10 +1913,10 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                     )}
                     <Col span={24}>
                       <Text type="secondary" style={{ fontSize: 12 }}>
-                        {isKleinOriginalAspect(kleinAspectWatch) && !refImageSize ? (
+                        {!refImageSize && kleinSizeModeWatch === 'follow' ? (
                           <FormattedMessage
                             id="create.klein.size.hint.original.needUpload"
-                            defaultMessage="原图比例：上传参考图后按其实宽高比输出（长边档位仍生效，≤2048）"
+                            defaultMessage="跟随原图：上传参考图后按其实宽高输出（长边≤2048，不放大）"
                           />
                         ) : (
                           <FormattedMessage
@@ -1787,14 +1925,141 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                             values={{
                               size: formatKleinSizeLabel(
                                 kleinLongEdgeWatch,
-                                kleinAspectWatch,
+                                kleinSizeModeWatch === 'follow'
+                                  ? KLEIN_ASPECT_ORIGINAL
+                                  : kleinAspectWatch,
                                 refImageSize,
+                                kleinSizeModeWatch,
                               ),
                             }}
                           />
                         )}
                       </Text>
                     </Col>
+
+                    {allowKleinMultiRef && originalImageUrl && (
+                      <Col span={24}>
+                        <Space direction="vertical" style={{ width: '100%' }} size={12}>
+                          <Text strong>
+                            <FormattedMessage
+                              id="create.klein.mref.title"
+                              defaultMessage="多图参考（精修，最多 {n} 张）"
+                              values={{ n: KLEIN_MAX_REF_IMAGES }}
+                            />
+                          </Text>
+                          <Form.Item
+                            name="kleinPromptKind"
+                            label={
+                              <FormattedMessage
+                                id="create.klein.promptKind"
+                                defaultMessage="多图用途"
+                              />
+                            }
+                            style={{ marginBottom: 0 }}
+                          >
+                            <Radio.Group>
+                              <Radio.Button value="compose">
+                                <FormattedMessage
+                                  id="create.klein.promptKind.compose"
+                                  defaultMessage="合成 / 风格"
+                                />
+                              </Radio.Button>
+                              <Radio.Button value="outfit">
+                                <FormattedMessage
+                                  id="create.klein.promptKind.outfit"
+                                  defaultMessage="换装"
+                                />
+                              </Radio.Button>
+                            </Radio.Group>
+                          </Form.Item>
+                          <Input
+                            value={primaryRefDesc}
+                            onChange={(e) => setPrimaryRefDesc(e.target.value)}
+                            placeholder={intl.formatMessage({
+                              id: 'create.klein.mref.desc1',
+                              defaultMessage: '图1是什么（例：短发黑发穿白T恤的年轻女性）',
+                            })}
+                          />
+                          {kleinExtraRefs.map((ref, idx) => (
+                            <Space key={ref.id} align="start" style={{ width: '100%' }}>
+                              <img
+                                src={ref.previewUrl}
+                                alt={`ref-${idx + 2}`}
+                                style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8 }}
+                              />
+                              <Input
+                                style={{ flex: 1, minWidth: 180 }}
+                                value={ref.desc}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setKleinExtraRefs((prev) =>
+                                    prev.map((r) => (r.id === ref.id ? { ...r, desc: v } : r)),
+                                  );
+                                }}
+                                placeholder={intl.formatMessage({
+                                  id: 'create.klein.mref.descN',
+                                  defaultMessage: '图{n}是什么',
+                                }, { n: idx + 2 })}
+                              />
+                              <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() =>
+                                  setKleinExtraRefs((prev) => prev.filter((r) => r.id !== ref.id))
+                                }
+                              />
+                            </Space>
+                          ))}
+                          {kleinPromptKindWatch === 'outfit' && (
+                            <Form.Item
+                              name="kleinRemoveGarment"
+                              label={
+                                <FormattedMessage
+                                  id="create.klein.outfit.remove"
+                                  defaultMessage="需消除的原服装（可选）"
+                                />
+                              }
+                              style={{ marginBottom: 0 }}
+                            >
+                              <Input
+                                placeholder={intl.formatMessage({
+                                  id: 'create.klein.outfit.remove.ph',
+                                  defaultMessage: '例：white t-shirt',
+                                })}
+                              />
+                            </Form.Item>
+                          )}
+                          {kleinRefCount < KLEIN_MAX_REF_IMAGES && (
+                            <Button
+                              icon={<PlusOutlined />}
+                              onClick={() => {
+                                const input = document.createElement('input');
+                                input.type = 'file';
+                                input.accept = 'image/*';
+                                input.onchange = () => {
+                                  const f = input.files?.[0];
+                                  if (f) void addKleinExtraRefFromFile(f);
+                                };
+                                input.click();
+                              }}
+                            >
+                              <FormattedMessage
+                                id="create.klein.mref.add"
+                                defaultMessage="添加参考图（{cur}/{max}）"
+                                values={{ cur: kleinRefCount, max: KLEIN_MAX_REF_IMAGES }}
+                              />
+                            </Button>
+                          )}
+                          <Text type="secondary" style={{ fontSize: 12 }}>
+                            <FormattedMessage
+                              id="create.klein.mref.hint"
+                              defaultMessage="多图走原生多参考模板，不拼图；重绘模式仅支持 1 张"
+                            />
+                          </Text>
+                        </Space>
+                      </Col>
+                    )}
                   </Row>
                 )}
 

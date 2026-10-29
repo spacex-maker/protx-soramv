@@ -9,6 +9,8 @@ export type FluxKleinModelLike = {
 };
 
 export type KleinMode = 'edit' | 'denoise';
+/** follow=跟随原图（默认）；fixed=长边档位+固定比例 */
+export type KleinSizeMode = 'follow' | 'fixed';
 
 export const KLEIN_LONG_EDGE_OPTIONS = [512, 768, 1024, 1536, 2048] as const;
 export const KLEIN_ASPECT_RATIOS = ['1:1', '4:3', '3:4', '16:9', '9:16'] as const;
@@ -19,10 +21,13 @@ export const KLEIN_DEFAULT_LONG_EDGE = 1024;
 export const KLEIN_DEFAULT_ASPECT = '1:1';
 /** 图生图默认跟原图比例 */
 export const KLEIN_DEFAULT_I2I_ASPECT = KLEIN_ASPECT_ORIGINAL;
+export const KLEIN_DEFAULT_SIZE_MODE: KleinSizeMode = 'follow';
 export const KLEIN_DEFAULT_MODE: KleinMode = 'edit';
 export const KLEIN_DEFAULT_DENOISE = 0.65;
 export const KLEIN_MAX_LONG_EDGE = 2048;
 export const KLEIN_MAX_PIXELS = 4_200_000;
+/** Klein 精修原生多参考上限；重绘仅 1 张 */
+export const KLEIN_MAX_REF_IMAGES = 4;
 
 export function isKleinOriginalAspect(aspect: string | null | undefined): boolean {
   const a = String(aspect || '')
@@ -87,7 +92,7 @@ export function computeKleinSize(
   return { width, height };
 }
 
-/** 保持参考图比例，按长边档位缩放并 16 对齐 */
+/** 固定档：保持参考图比例，强制长边到档位并 16 对齐 */
 export function computeKleinSizeFromSource(
   longEdge: number,
   sourceWidth: number,
@@ -98,24 +103,85 @@ export function computeKleinSizeFromSource(
   return computeKleinSize(longEdge, `${sw}:${sh}`);
 }
 
+/**
+ * 跟随原图（规范 4.1）：s = min(1, 2048/max(w,h))，不放大；
+ * 参考图本身 ≤2048 时输出≈原尺寸（仅 16 对齐）。
+ */
+export function computeKleinSizeFollowSource(
+  sourceWidth: number,
+  sourceHeight: number,
+): { width: number; height: number } {
+  const sw = Math.max(1, Math.round(Number(sourceWidth) || 1));
+  const sh = Math.max(1, Math.round(Number(sourceHeight) || 1));
+  const scale = Math.min(1, KLEIN_MAX_LONG_EDGE / Math.max(sw, sh));
+  let width = floorToMultiple(sw * scale, 16);
+  let height = floorToMultiple(sh * scale, 16);
+  let pixels = width * height;
+  if (pixels > KLEIN_MAX_PIXELS) {
+    const shrink = Math.sqrt(KLEIN_MAX_PIXELS / pixels);
+    width = floorToMultiple(width * shrink, 16);
+    height = floorToMultiple(height * shrink, 16);
+    pixels = width * height;
+    while (pixels > KLEIN_MAX_PIXELS && (width > 16 || height > 16)) {
+      if (width >= height) width = Math.max(16, width - 16);
+      else height = Math.max(16, height - 16);
+      pixels = width * height;
+    }
+  }
+  return { width, height };
+}
+
 export function formatKleinSizeLabel(
   longEdge: number,
   aspectRatio: string,
   sourceSize?: { width: number; height: number } | null,
+  sizeMode: KleinSizeMode = 'fixed',
 ): string {
-  if (isKleinOriginalAspect(aspectRatio)) {
+  if (sizeMode === 'follow' || isKleinOriginalAspect(aspectRatio)) {
     if (sourceSize?.width && sourceSize?.height) {
-      const { width, height } = computeKleinSizeFromSource(
-        longEdge,
-        sourceSize.width,
-        sourceSize.height,
-      );
+      const { width, height } =
+        sizeMode === 'follow'
+          ? computeKleinSizeFollowSource(sourceSize.width, sourceSize.height)
+          : computeKleinSizeFromSource(longEdge, sourceSize.width, sourceSize.height);
       return `${width}×${height}`;
     }
-    return '原图比例';
+    return '跟随原图';
   }
   const { width, height } = computeKleinSize(longEdge, aspectRatio);
   return `${width}×${height}`;
+}
+
+/** 多图合成提示词（按内容描述匹配，不用「图1/图2」空编号） */
+export function buildKleinComposePrompt(
+  imageDescs: string[],
+  goal: string,
+): string {
+  const lines = imageDescs
+    .map((d, i) => `Image ${i + 1}: ${(d || '').trim() || `<describe image ${i + 1}>`}.`)
+    .join(' ');
+  const g = (goal || '').trim();
+  return `${lines} ${g || 'Generate a coherent image combining elements from the reference images, naming which element comes from which image.'}`.trim();
+}
+
+/** 换装专用句式（实测：wearing/replace 易叠穿或换人） */
+export function buildKleinOutfitPrompt(opts: {
+  personDesc: string;
+  garmentDesc: string;
+  removeGarmentHint?: string;
+}): string {
+  const person = (opts.personDesc || '').trim() || 'a person';
+  const garment = (opts.garmentDesc || '').trim() || 'the clothing from Image 2';
+  const remove = (opts.removeGarmentHint || '').trim();
+  const negative = remove
+    ? `The ${remove} must not appear in the result.`
+    : 'The original clothing of Image 1 must not appear in the result.';
+  return [
+    `Image 1: ${person}.`,
+    `Image 2: ${garment}.`,
+    `Change the clothing of the person in Image 1 to the outfit shown in Image 2.`,
+    negative,
+    'Keep their face, hair, body shape and pose unchanged.',
+  ].join(' ');
 }
 
 /** 读取本地/远程图片自然尺寸 */
