@@ -62,7 +62,12 @@ export const getAspectRatioOption = (ratio: string, intl: any) => {
     },
     'auto': {
       labelKey: 'create.aspectRatio.auto',
-      defaultLabel: 'Auto',
+      defaultLabel: '原图比例',
+      icon: <BorderOutlined />
+    },
+    'original': {
+      labelKey: 'create.aspectRatio.original',
+      defaultLabel: '原图比例',
       icon: <BorderOutlined />
     },
   };

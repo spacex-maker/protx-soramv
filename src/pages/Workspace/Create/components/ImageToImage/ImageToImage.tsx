@@ -181,7 +181,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     [selectedModel],
   );
   const kleinLongEdgeWatch = Form.useWatch('kleinLongEdge', form) || KLEIN_DEFAULT_LONG_EDGE;
-  const kleinAspectWatch = Form.useWatch('kleinAspectRatio', form) || KLEIN_DEFAULT_ASPECT;
+  const kleinAspectWatch = Form.useWatch('kleinAspectRatio', form) || KLEIN_DEFAULT_I2I_ASPECT;
   const kleinModeWatch = (Form.useWatch('kleinMode', form) || KLEIN_DEFAULT_MODE) as KleinMode;
   const resolution = Form.useWatch('resolution', form);
   const batchSize = Form.useWatch('batchSize', form) ?? 1;
