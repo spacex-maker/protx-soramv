@@ -84,6 +84,23 @@ import {
   VOLC_SEEDREAM_UPLOAD_EXTENSIONS,
 } from '../TextToImage/constants';
 import { parseResponseImages } from '../TextToImage/utils';
+import {
+  isFluxKleinModel,
+  computeKleinSize,
+  formatKleinSizeLabel,
+  estimateKleinProgressCapMs,
+  KLEIN_LONG_EDGE_OPTIONS,
+  KLEIN_ASPECT_RATIOS,
+  KLEIN_DEFAULT_LONG_EDGE,
+  KLEIN_DEFAULT_ASPECT,
+  KLEIN_DEFAULT_MODE,
+  KLEIN_DEFAULT_DENOISE,
+  KLEIN_PENDING_I2I_KEY,
+  loadKleinPendingTask,
+  clearKleinPendingTask,
+  type KleinMode,
+} from '../shared/fluxKleinParams';
+import { pollKleinImageTask } from '../shared/kleinTaskPoll';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -154,6 +171,13 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     const companyCode = selectedModel.companyCode?.trim();
     return !companyCode || companyCode === 'Volc';
   }, [selectedModel]);
+  const isFluxKlein = useMemo(
+    () => isFluxKleinModel(selectedModel),
+    [selectedModel],
+  );
+  const kleinLongEdgeWatch = Form.useWatch('kleinLongEdge', form) || KLEIN_DEFAULT_LONG_EDGE;
+  const kleinAspectWatch = Form.useWatch('kleinAspectRatio', form) || KLEIN_DEFAULT_ASPECT;
+  const kleinModeWatch = (Form.useWatch('kleinMode', form) || KLEIN_DEFAULT_MODE) as KleinMode;
   const resolution = Form.useWatch('resolution', form);
   const batchSize = Form.useWatch('batchSize', form) ?? 1;
 
@@ -214,6 +238,37 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       cancelled = true;
     };
   }, [location.state]);
+
+  // 刷新后续上 Klein 图生图未完成任务
+  useEffect(() => {
+    const pendingId = loadKleinPendingTask(KLEIN_PENDING_I2I_KEY);
+    if (!pendingId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const poll = await pollKleinImageTask(pendingId, { pendingKey: KLEIN_PENDING_I2I_KEY });
+        if (cancelled) return;
+        if (poll.status === 'completed' && poll.urls[0]) {
+          setGeneratedImage({ url: poll.urls[0], aspectRatio: '1:1' } as ImageResult);
+          message.success(
+            intl.formatMessage({
+              id: 'create.image.generate.success',
+              defaultMessage: '图片生成成功',
+            }),
+          );
+        } else if (poll.status === 'failed') {
+          clearKleinPendingTask(KLEIN_PENDING_I2I_KEY);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 获取模型列表
   useEffect(() => {
@@ -1118,7 +1173,20 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
           values
         );
 
-        if (isVolcSeedream) {
+        if (isFluxKlein) {
+          const longEdge = Number(values.kleinLongEdge) || KLEIN_DEFAULT_LONG_EDGE;
+          const aspect = values.kleinAspectRatio || KLEIN_DEFAULT_ASPECT;
+          const { width, height } = computeKleinSize(longEdge, aspect);
+          requestData.width = width;
+          requestData.height = height;
+          requestData.size = `${width}x${height}`;
+          requestData.kleinMode = values.kleinMode || KLEIN_DEFAULT_MODE;
+          if (requestData.kleinMode === 'denoise') {
+            requestData.denoise = Number(values.denoise ?? KLEIN_DEFAULT_DENOISE);
+          }
+          const batch = values.batchSize ?? 1;
+          if (batch > 1) requestData.batchSize = batch;
+        } else if (isVolcSeedream) {
           requestData.size = values.resolution || '2K';
           requestData.seedreamWatermark = values.seedreamWatermark === true;
           if (values.aspectRatio && values.resolution) {
@@ -1166,14 +1234,59 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
 
         console.log('Generating image-to-image with params:', requestData);
         
-        // 调用后端 API
+        // 调用后端 API（Klein 异步：提交 15s 超时后轮询）
         const response = await instance.post('/productx/sa-ai-models/image/generate/image', requestData, {
-          timeout: isVolcSeedream ? 120000 : 0,
+          timeout: isFluxKlein ? 15_000 : isVolcSeedream ? 120000 : 0,
           signal: abortController.signal
         });
         
         if (abortController.signal.aborted) {
           return;
+        }
+
+        if (isFluxKlein && response.data && response.data.success) {
+          const data = response.data.data;
+          const taskId = data?.id ?? data?.taskId;
+          const status = String(data?.status || '').toLowerCase();
+          if (taskId && status !== 'completed' && status !== 'success') {
+            message.info(
+              intl.formatMessage({
+                id: 'create.image.generate.queued',
+                defaultMessage: '任务已提交，正在生成中…',
+              }),
+            );
+            const longEdge = Number(values.kleinLongEdge) || KLEIN_DEFAULT_LONG_EDGE;
+            const aspect = values.kleinAspectRatio || KLEIN_DEFAULT_ASPECT;
+            const mode = (values.kleinMode || KLEIN_DEFAULT_MODE) as KleinMode;
+            estimateKleinProgressCapMs(mode, longEdge, aspect);
+            const poll = await pollKleinImageTask(taskId, {
+              pendingKey: KLEIN_PENDING_I2I_KEY,
+              signal: abortController.signal,
+            });
+            if (poll.status === 'completed' && poll.urls[0]) {
+              setGeneratedImage({
+                url: poll.urls[0],
+                aspectRatio: aspect,
+              } as ImageResult);
+              message.success(
+                intl.formatMessage({
+                  id: 'create.image.generate.success',
+                  defaultMessage: '图片生成成功',
+                }),
+              );
+            } else if (poll.status === 'timeout') {
+              message.warning(
+                poll.error ||
+                  intl.formatMessage({
+                    id: 'create.klein.timeout.soft',
+                    defaultMessage: '任务仍在处理，稍后可在历史记录查看',
+                  }),
+              );
+            } else if (poll.error && poll.error !== 'canceled') {
+              message.error(poll.error);
+            }
+            return;
+          }
         }
         
         if (response.data && response.data.success) {
@@ -1351,6 +1464,10 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                   negativePrompt: undefined,
                   batchSize: 1,
                   modelId: null,
+                  kleinLongEdge: KLEIN_DEFAULT_LONG_EDGE,
+                  kleinAspectRatio: KLEIN_DEFAULT_ASPECT,
+                  kleinMode: KLEIN_DEFAULT_MODE,
+                  denoise: KLEIN_DEFAULT_DENOISE,
                 }}
               >
                 {/* 模型选择 */}
@@ -1510,8 +1627,98 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                 </Form.Item>
                 )}
 
+                {/* FLUX.3 Klein：模式 + 长边 + 比例 + denoise */}
+                {isFluxKlein && (
+                  <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+                    <Col xs={24} sm={12}>
+                      <Form.Item
+                        name="kleinMode"
+                        label={
+                          <FormattedMessage id="create.klein.mode" defaultMessage="图生图模式" />
+                        }
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Select>
+                          <Select.Option value="edit">
+                            <FormattedMessage
+                              id="create.klein.mode.edit"
+                              defaultMessage="精修（换风格/场景/服饰）"
+                            />
+                          </Select.Option>
+                          <Select.Option value="denoise">
+                            <FormattedMessage
+                              id="create.klein.mode.denoise"
+                              defaultMessage="重绘（保构图、局部改动）"
+                            />
+                          </Select.Option>
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Form.Item
+                        name="kleinLongEdge"
+                        label={
+                          <FormattedMessage id="create.klein.longEdge" defaultMessage="长边档位" />
+                        }
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Select>
+                          {KLEIN_LONG_EDGE_OPTIONS.map((edge) => (
+                            <Select.Option key={edge} value={edge}>
+                              {edge}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Form.Item
+                        name="kleinAspectRatio"
+                        label={<FormattedMessage id="create.ratio" defaultMessage="画面比例" />}
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Select>
+                          {KLEIN_ASPECT_RATIOS.map((ratio) => (
+                            <Select.Option key={ratio} value={ratio}>
+                              {ratio}（{formatKleinSizeLabel(kleinLongEdgeWatch, ratio)}）
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    {kleinModeWatch === 'denoise' && (
+                      <Col xs={24} sm={12}>
+                        <Form.Item
+                          name="denoise"
+                          label={
+                            <FormattedMessage
+                              id="create.klein.denoise"
+                              defaultMessage="改动幅度"
+                            />
+                          }
+                          style={{ marginBottom: 0 }}
+                        >
+                          <Slider min={0.4} max={0.9} step={0.01} marks={{ 0.4: '轻', 0.65: '中', 0.9: '强' }} />
+                        </Form.Item>
+                      </Col>
+                    )}
+                    <Col span={24}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        <FormattedMessage
+                          id="create.klein.size.hint"
+                          defaultMessage="输出约 {size}（对齐 16，长边≤2048）"
+                          values={{
+                            size: formatKleinSizeLabel(kleinLongEdgeWatch, kleinAspectWatch),
+                          }}
+                        />
+                      </Text>
+                    </Col>
+                  </Row>
+                )}
+
                 {/* 图片参数设置（Volc Seedream 与文生图一致：比例 + 分辨率档位 + 水印；非 Seedream 保留 Kie 参数） */}
-                {(availableAspectRatios.length > 0 ||
+                {!isFluxKlein &&
+                  (availableAspectRatios.length > 0 ||
                   availableResolutions.length > 0 ||
                   availableOutputFormats.length > 0 ||
                   isVolcSeedream) && (

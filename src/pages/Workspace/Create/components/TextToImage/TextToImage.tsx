@@ -79,7 +79,20 @@ import type { TextToImageProps } from './embedTypes';
 import { resolvePreferredT2iModel } from './resolvePreferredT2iModel';
 import { useT2iPageImport } from './useT2iPageImport';
 import { consumeT2iImportPayload } from 'utils/postT2iImport';
-import { isFluxKleinModel } from '../shared/fluxKleinParams';
+import {
+  isFluxKleinModel,
+  computeKleinSize,
+  formatKleinSizeLabel,
+  estimateKleinProgressCapMs,
+  KLEIN_LONG_EDGE_OPTIONS,
+  KLEIN_ASPECT_RATIOS,
+  KLEIN_DEFAULT_LONG_EDGE,
+  KLEIN_DEFAULT_ASPECT,
+  KLEIN_PENDING_T2I_KEY,
+  loadKleinPendingTask,
+  clearKleinPendingTask,
+} from '../shared/fluxKleinParams';
+import { pollKleinImageTask } from '../shared/kleinTaskPoll';
 
 const { Title, Text } = Typography;
 
@@ -294,6 +307,8 @@ const TextToImage: React.FC<TextToImageProps> = ({
 
   const resolution = Form.useWatch('resolution', form) || '2K';
   const batchSize = Form.useWatch('batchSize', form) ?? 1;
+  const kleinLongEdgeWatch = Form.useWatch('kleinLongEdge', form) || KLEIN_DEFAULT_LONG_EDGE;
+  const kleinAspectWatch = Form.useWatch('kleinAspectRatio', form) || KLEIN_DEFAULT_ASPECT;
 
   const isApiModel =
     (selectedModel?.modelSource ?? selectedFamily?.modelSource ?? '')
@@ -555,7 +570,94 @@ const TextToImage: React.FC<TextToImageProps> = ({
     pollingIntervalRef.current = setInterval(pollStatus, 3000);
   };
 
-  /** 路线三：非 API 模型同步文生图（LOCAL） */
+  /** FLUX.3 Klein：提交异步任务 + 退避轮询（刷新可凭 taskId 续上） */
+  const runKleinAsync = async (values: any) => {
+    const longEdge = Number(values.kleinLongEdge) || KLEIN_DEFAULT_LONG_EDGE;
+    const aspect = values.kleinAspectRatio || values.aspectRatio || KLEIN_DEFAULT_ASPECT;
+    const { width, height } = computeKleinSize(longEdge, aspect);
+
+    const requestData: any = appendTranslatePromptFlag({ prompt: values.prompt }, values);
+    if (selectedModel?.modelCode) requestData.modelCode = selectedModel.modelCode;
+    if (selectedFamily?.modelCode) requestData.sdModelCheckpoint = selectedFamily.modelCode;
+    if (values.negativePrompt) requestData.negativePrompt = values.negativePrompt;
+    requestData.width = width;
+    requestData.height = height;
+    requestData.size = `${width}x${height}`;
+    if (values.batchSize) requestData.batchSize = values.batchSize;
+
+    const response = await instance.post(
+      '/productx/sa-ai-models/image/generate/text',
+      requestData,
+      { timeout: 15_000 },
+    );
+
+    if (!(response.data && response.data.success !== false)) {
+      await applyError(
+        response.data,
+        response.data?.error ||
+          response.data?.message ||
+          intl.formatMessage({ id: 'create.error', defaultMessage: '生成失败，请重试' }),
+      );
+      return;
+    }
+
+    const data = response.data.data;
+    const taskId = data?.id ?? data?.taskId;
+    const immediate =
+      response.data.images ||
+      data?.images ||
+      data?.resultUrls ||
+      (data?.imageUrl ? [data.imageUrl] : []);
+    const immediateUrls = parseResponseImages(immediate);
+    if (immediateUrls.length > 0 && String(data?.status || '').toLowerCase() === 'completed') {
+      applySuccess(immediateUrls);
+      return;
+    }
+    if (!taskId) {
+      if (immediateUrls.length > 0) {
+        applySuccess(immediateUrls);
+        return;
+      }
+      await applyError(response.data, response.data?.error || response.data?.message);
+      return;
+    }
+
+    message.info(
+      intl.formatMessage({
+        id: 'create.image.generate.queued',
+        defaultMessage: '任务已提交，正在生成中…',
+      }),
+    );
+
+    const capMs = estimateKleinProgressCapMs('t2i', longEdge, aspect);
+    const poll = await pollKleinImageTask(taskId, {
+      pendingKey: KLEIN_PENDING_T2I_KEY,
+      onTick: ({ elapsedMs, status }) => {
+        if (elapsedMs > 60_000 && status !== 'completed') {
+          /* 文案由 loading 按钮承担；此处仅延长等待预期 */
+        }
+        if (elapsedMs > capMs) {
+          /* 进度条上限仅为预估 1.5×，不因此失败 */
+        }
+      },
+    });
+
+    if (poll.status === 'completed') {
+      applySuccess(poll.urls);
+    } else if (poll.status === 'timeout') {
+      message.warning(
+        poll.error ||
+          intl.formatMessage({
+            id: 'create.klein.timeout.soft',
+            defaultMessage: '任务仍在处理，稍后可在历史记录查看',
+          }),
+      );
+    } else if (poll.error !== 'canceled') {
+      await applyError(undefined, poll.error);
+    }
+  };
+
+  /** 路线三：非 API 模型同步文生图（LOCAL，非 Klein） */
   const runLocalSync = async (values: any) => {
     const requestData: any = appendTranslatePromptFlag({ prompt: values.prompt }, values);
     if (selectedModel?.modelCode) requestData.modelCode = selectedModel.modelCode;
@@ -649,6 +751,11 @@ const TextToImage: React.FC<TextToImageProps> = ({
         await runSeedreamSync(allValues);
         return;
       }
+      if (isFluxKlein) {
+        const allValues = { ...form.getFieldsValue(), ...values };
+        await runKleinAsync(allValues);
+        return;
+      }
       if (isApiModelAsync) {
         await runApiAsync(values);
         skipFinallyLoading = true;
@@ -696,6 +803,31 @@ const TextToImage: React.FC<TextToImageProps> = ({
         pollingIntervalRef.current = null;
       }
     };
+  }, []);
+
+  // 刷新后续上 Klein 未完成任务
+  useEffect(() => {
+    const pendingId = loadKleinPendingTask(KLEIN_PENDING_T2I_KEY);
+    if (!pendingId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const poll = await pollKleinImageTask(pendingId, { pendingKey: KLEIN_PENDING_T2I_KEY });
+        if (cancelled) return;
+        if (poll.status === 'completed' && poll.urls.length > 0) {
+          applySuccess(poll.urls);
+        } else if (poll.status === 'failed') {
+          clearKleinPendingTask(KLEIN_PENDING_T2I_KEY);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 生成成功后刷新记录
@@ -898,6 +1030,8 @@ const TextToImage: React.FC<TextToImageProps> = ({
                   familyId: null,
                   imageFormat: undefined,
                   seedreamWatermark: false,
+                  kleinLongEdge: KLEIN_DEFAULT_LONG_EDGE,
+                  kleinAspectRatio: KLEIN_DEFAULT_ASPECT,
                 }}
               >
                 {/* 模型家族选择 */}
@@ -946,7 +1080,71 @@ const TextToImage: React.FC<TextToImageProps> = ({
                   </Form.Item>
                 )}
 
-                {/* 参数设置：embed 模式双列换行，页面模式单行自适应 */}
+                {/* Klein：长边档位 + 比例（禁止手输分辨率） */}
+                {isFluxKlein && (
+                  <Row gutter={[16, 16]} style={{ marginBottom: 20 }}>
+                    <Col xs={24} sm={12}>
+                      <Form.Item
+                        name="kleinLongEdge"
+                        label={
+                          <Space>
+                            <DesktopOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                            <FormattedMessage id="create.klein.longEdge" defaultMessage="长边档位" />
+                          </Space>
+                        }
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Select>
+                          {KLEIN_LONG_EDGE_OPTIONS.map((edge) => (
+                            <Select.Option key={edge} value={edge}>
+                              {edge}
+                              {edge === 512
+                                ? intl.formatMessage({
+                                    id: 'create.klein.longEdge.512.hint',
+                                    defaultMessage: '（更快但细节弱，不推荐默认）',
+                                  })
+                                : ''}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col xs={24} sm={12}>
+                      <Form.Item
+                        name="kleinAspectRatio"
+                        label={
+                          <Space>
+                            <FileImageOutlined style={{ color: '#1890ff', fontSize: 12 }} />
+                            <FormattedMessage id="create.ratio" defaultMessage="画面比例" />
+                          </Space>
+                        }
+                        style={{ marginBottom: 0 }}
+                      >
+                        <Select>
+                          {KLEIN_ASPECT_RATIOS.map((ratio) => (
+                            <Select.Option key={ratio} value={ratio}>
+                              {ratio}（{formatKleinSizeLabel(kleinLongEdgeWatch, ratio)}）
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col span={24}>
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        <FormattedMessage
+                          id="create.klein.size.hint"
+                          defaultMessage="输出约 {size}（对齐 16，长边≤2048）"
+                          values={{
+                            size: formatKleinSizeLabel(kleinLongEdgeWatch, kleinAspectWatch),
+                          }}
+                        />
+                      </Text>
+                    </Col>
+                  </Row>
+                )}
+
+                {/* 参数设置：embed 模式双列换行，页面模式单行自适应（非 Klein） */}
+                {!isFluxKlein && (
                 <Row gutter={isEmbed ? [16, 16] : [16, 16]} style={{ marginBottom: isEmbed ? 24 : 20 }}>
                   <Col {...aspectRatioColProps}>
                     <Form.Item
@@ -1009,6 +1207,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
                     </Col>
                   )}
                 </Row>
+                )}
 
                 {/* 艺术风格（可选）- 仅 LOCAL SD 模型；Klein/Seedream 不走 LoRA */}
                 {!isApiModel && !isVolcSeedream && !isFluxKlein && (
