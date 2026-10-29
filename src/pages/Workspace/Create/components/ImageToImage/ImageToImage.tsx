@@ -87,12 +87,16 @@ import { parseResponseImages } from '../TextToImage/utils';
 import {
   isFluxKleinModel,
   computeKleinSize,
+  computeKleinSizeFromSource,
   formatKleinSizeLabel,
   estimateKleinProgressCapMs,
+  probeImageNaturalSize,
+  isKleinOriginalAspect,
   KLEIN_LONG_EDGE_OPTIONS,
   KLEIN_ASPECT_RATIOS,
+  KLEIN_ASPECT_ORIGINAL,
   KLEIN_DEFAULT_LONG_EDGE,
-  KLEIN_DEFAULT_ASPECT,
+  KLEIN_DEFAULT_I2I_ASPECT,
   KLEIN_DEFAULT_MODE,
   KLEIN_DEFAULT_DENOISE,
   KLEIN_PENDING_I2I_KEY,
@@ -135,6 +139,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   const [originalImageUrl, setOriginalImageUrl] = useState<string | null>(null);
   const [originalImageFile, setOriginalImageFile] = useState<File | null>(null);
   const [originalImageRemoteUrl, setOriginalImageRemoteUrl] = useState<string | null>(null);
+  const [refImageSize, setRefImageSize] = useState<{ width: number; height: number } | null>(null);
   const [imagePickerOpen, setImagePickerOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'));
@@ -501,6 +506,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       setOriginalImageUrl(null);
       setOriginalImageFile(null);
       setOriginalImageRemoteUrl(null);
+      setRefImageSize(null);
       form.setFieldsValue({ inputFile: undefined });
       return;
     }
@@ -549,6 +555,11 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       setOriginalImageFile(file);
       setOriginalImageRemoteUrl(null);
       form.setFieldsValue({ inputFile: file.name });
+      try {
+        setRefImageSize(await probeImageNaturalSize(file));
+      } catch {
+        setRefImageSize(null);
+      }
     } catch (error) {
       message.error(intl.formatMessage({ id: 'create.i2i.fileRead.error', defaultMessage: '图片读取失败' }));
     }
@@ -575,6 +586,11 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     setOriginalImageFile(null);
     setOriginalImageRemoteUrl(url);
     form.setFieldsValue({ inputFile: 'library' });
+    try {
+      setRefImageSize(await probeImageNaturalSize(url));
+    } catch {
+      setRefImageSize(null);
+    }
   };
 
   // 处理文件输入变化
@@ -610,6 +626,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     setOriginalImageUrl(null);
     setOriginalImageFile(null);
     setOriginalImageRemoteUrl(null);
+    setRefImageSize(null);
     form.setFieldsValue({ inputFile: undefined });
     const fileInput = document.getElementById('i2i-upload-input') as HTMLInputElement;
     if (fileInput) {
@@ -1173,8 +1190,34 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
 
         if (isFluxKlein) {
           const longEdge = Number(values.kleinLongEdge) || KLEIN_DEFAULT_LONG_EDGE;
-          const aspect = values.kleinAspectRatio || KLEIN_DEFAULT_ASPECT;
-          const { width, height } = computeKleinSize(longEdge, aspect);
+          const aspect = values.kleinAspectRatio || KLEIN_DEFAULT_I2I_ASPECT;
+          let width: number;
+          let height: number;
+          if (isKleinOriginalAspect(aspect)) {
+            let src = refImageSize;
+            if (!src?.width || !src?.height) {
+              try {
+                const probeSrc = originalImageFile || originalImageRemoteUrl || originalImageUrl;
+                if (probeSrc) src = await probeImageNaturalSize(probeSrc);
+              } catch {
+                /* ignore */
+              }
+            }
+            if (!src?.width || !src?.height) {
+              message.warning(
+                intl.formatMessage({
+                  id: 'create.klein.original.size.missing',
+                  defaultMessage: '无法读取参考图尺寸，请重新上传后再选原图比例',
+                }),
+              );
+              return;
+            }
+            ({ width, height } = computeKleinSizeFromSource(longEdge, src.width, src.height));
+            requestData.aspectRatio = KLEIN_ASPECT_ORIGINAL;
+          } else {
+            ({ width, height } = computeKleinSize(longEdge, aspect));
+            requestData.aspectRatio = aspect;
+          }
           requestData.width = width;
           requestData.height = height;
           requestData.size = `${width}x${height}`;
@@ -1254,9 +1297,14 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
               }),
             );
             const longEdge = Number(values.kleinLongEdge) || KLEIN_DEFAULT_LONG_EDGE;
-            const aspect = values.kleinAspectRatio || KLEIN_DEFAULT_ASPECT;
+            const aspect = values.kleinAspectRatio || KLEIN_DEFAULT_I2I_ASPECT;
             const mode = (values.kleinMode || KLEIN_DEFAULT_MODE) as KleinMode;
-            estimateKleinProgressCapMs(mode, longEdge, aspect);
+            const ratioForEst = isKleinOriginalAspect(aspect)
+              ? refImageSize
+                ? `${refImageSize.width}:${refImageSize.height}`
+                : '1:1'
+              : aspect;
+            estimateKleinProgressCapMs(mode, longEdge, ratioForEst);
             const poll = await pollKleinImageTask(taskId, {
               pendingKey: KLEIN_PENDING_I2I_KEY,
               signal: abortController.signal,
@@ -1264,7 +1312,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
             if (poll.status === 'completed' && poll.urls[0]) {
               setGeneratedImage({
                 url: poll.urls[0],
-                aspectRatio: aspect,
+                aspectRatio: isKleinOriginalAspect(aspect) ? KLEIN_ASPECT_ORIGINAL : aspect,
               } as ImageResult);
               message.success(
                 intl.formatMessage({
@@ -1463,7 +1511,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                   batchSize: 1,
                   modelId: null,
                   kleinLongEdge: KLEIN_DEFAULT_LONG_EDGE,
-                  kleinAspectRatio: KLEIN_DEFAULT_ASPECT,
+                  kleinAspectRatio: KLEIN_DEFAULT_I2I_ASPECT,
                   kleinMode: KLEIN_DEFAULT_MODE,
                   denoise: KLEIN_DEFAULT_DENOISE,
                 }}
@@ -1676,6 +1724,15 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                         style={{ marginBottom: 0 }}
                       >
                         <Select>
+                          <Select.Option value={KLEIN_ASPECT_ORIGINAL}>
+                            <FormattedMessage
+                              id="create.klein.aspect.original"
+                              defaultMessage="原图比例"
+                            />
+                            {refImageSize
+                              ? `（${formatKleinSizeLabel(kleinLongEdgeWatch, KLEIN_ASPECT_ORIGINAL, refImageSize)}）`
+                              : ''}
+                          </Select.Option>
                           {KLEIN_ASPECT_RATIOS.map((ratio) => (
                             <Select.Option key={ratio} value={ratio}>
                               {ratio}（{formatKleinSizeLabel(kleinLongEdgeWatch, ratio)}）
@@ -1702,13 +1759,24 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
                     )}
                     <Col span={24}>
                       <Text type="secondary" style={{ fontSize: 12 }}>
-                        <FormattedMessage
-                          id="create.klein.size.hint"
-                          defaultMessage="输出约 {size}（对齐 16，长边≤2048）"
-                          values={{
-                            size: formatKleinSizeLabel(kleinLongEdgeWatch, kleinAspectWatch),
-                          }}
-                        />
+                        {isKleinOriginalAspect(kleinAspectWatch) && !refImageSize ? (
+                          <FormattedMessage
+                            id="create.klein.size.hint.original.needUpload"
+                            defaultMessage="原图比例：上传参考图后按其实宽高比输出（长边档位仍生效，≤2048）"
+                          />
+                        ) : (
+                          <FormattedMessage
+                            id="create.klein.size.hint"
+                            defaultMessage="输出约 {size}（对齐 16，长边≤2048）"
+                            values={{
+                              size: formatKleinSizeLabel(
+                                kleinLongEdgeWatch,
+                                kleinAspectWatch,
+                                refImageSize,
+                              ),
+                            }}
+                          />
+                        )}
                       </Text>
                     </Col>
                   </Row>

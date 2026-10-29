@@ -12,13 +12,24 @@ export type KleinMode = 'edit' | 'denoise';
 
 export const KLEIN_LONG_EDGE_OPTIONS = [512, 768, 1024, 1536, 2048] as const;
 export const KLEIN_ASPECT_RATIOS = ['1:1', '4:3', '3:4', '16:9', '9:16'] as const;
+/** 图生图：按参考图真实宽高比输出（仍走 resize + 长边钳制，不用 keep resolution） */
+export const KLEIN_ASPECT_ORIGINAL = 'original';
 /** 默认 1024；512 质量差距大、提速有限，不做默认 */
 export const KLEIN_DEFAULT_LONG_EDGE = 1024;
 export const KLEIN_DEFAULT_ASPECT = '1:1';
+/** 图生图默认跟原图比例 */
+export const KLEIN_DEFAULT_I2I_ASPECT = KLEIN_ASPECT_ORIGINAL;
 export const KLEIN_DEFAULT_MODE: KleinMode = 'edit';
 export const KLEIN_DEFAULT_DENOISE = 0.65;
 export const KLEIN_MAX_LONG_EDGE = 2048;
 export const KLEIN_MAX_PIXELS = 4_200_000;
+
+export function isKleinOriginalAspect(aspect: string | null | undefined): boolean {
+  const a = String(aspect || '')
+    .trim()
+    .toLowerCase();
+  return a === 'original' || a === 'auto' || a === 'keep' || a === 'source';
+}
 
 export function isFluxKleinModel(model: FluxKleinModelLike | null | undefined): boolean {
   if (!model) return false;
@@ -76,9 +87,66 @@ export function computeKleinSize(
   return { width, height };
 }
 
-export function formatKleinSizeLabel(longEdge: number, aspectRatio: string): string {
+/** 保持参考图比例，按长边档位缩放并 16 对齐 */
+export function computeKleinSizeFromSource(
+  longEdge: number,
+  sourceWidth: number,
+  sourceHeight: number,
+): { width: number; height: number } {
+  const sw = Math.max(1, Math.round(Number(sourceWidth) || 1));
+  const sh = Math.max(1, Math.round(Number(sourceHeight) || 1));
+  return computeKleinSize(longEdge, `${sw}:${sh}`);
+}
+
+export function formatKleinSizeLabel(
+  longEdge: number,
+  aspectRatio: string,
+  sourceSize?: { width: number; height: number } | null,
+): string {
+  if (isKleinOriginalAspect(aspectRatio)) {
+    if (sourceSize?.width && sourceSize?.height) {
+      const { width, height } = computeKleinSizeFromSource(
+        longEdge,
+        sourceSize.width,
+        sourceSize.height,
+      );
+      return `${width}×${height}`;
+    }
+    return '原图比例';
+  }
   const { width, height } = computeKleinSize(longEdge, aspectRatio);
   return `${width}×${height}`;
+}
+
+/** 读取本地/远程图片自然尺寸 */
+export function probeImageNaturalSize(
+  src: string | Blob,
+): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    let objectUrl: string | null = null;
+    const cleanup = () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+    img.onload = () => {
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
+      cleanup();
+      if (width > 0 && height > 0) resolve({ width, height });
+      else reject(new Error('invalid image size'));
+    };
+    img.onerror = () => {
+      cleanup();
+      reject(new Error('image load failed'));
+    };
+    if (typeof src === 'string') {
+      img.crossOrigin = 'anonymous';
+      img.src = src;
+    } else {
+      objectUrl = URL.createObjectURL(src);
+      img.src = objectUrl;
+    }
+  });
 }
 
 /** 纯生成秒数（方图像素档近似）；进度条用 1.5× 作上限，勿当精确倒计时 */
