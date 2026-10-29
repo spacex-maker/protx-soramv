@@ -1,21 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import {
-  ArrowLeftOutlined,
-  PictureOutlined,
-  EditOutlined,
-  ShoppingOutlined,
-  CheckCircleOutlined,
-} from '@ant-design/icons';
-import { FormattedMessage, useIntl } from 'react-intl';
+import { CheckCircleOutlined, PictureOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
-import TextToImage from '../TextToImage/TextToImage';
-import ImageToImage from '../ImageToImage/ImageToImage';
-import {
-  ECOMMERCE_CATEGORIES,
-  EcommerceCategory,
-  EcommerceScenario,
-  findEcommerceScenario,
-} from './scenarios';
+import { ECOMMERCE_CATEGORIES, findEcommerceScenario } from './scenarios';
+import ScenarioWorkbench from './ScenarioWorkbench';
 
 const Page = styled.div`
   display: flex;
@@ -38,15 +26,8 @@ const Hero = styled.header`
   padding: 28px 28px 32px;
   border-radius: 20px;
   overflow: hidden;
-  background:
-    radial-gradient(1200px 280px at 12% -20%, rgba(196, 92, 38, 0.28), transparent 55%),
-    radial-gradient(900px 240px at 88% 0%, rgba(15, 118, 110, 0.18), transparent 50%),
-    linear-gradient(
-      145deg,
-      ${(p) => (p.theme?.mode === 'dark' ? '#1a1612' : '#1c1917')} 0%,
-      ${(p) => (p.theme?.mode === 'dark' ? '#292524' : '#292524')} 55%,
-      ${(p) => (p.theme?.mode === 'dark' ? '#1c1917' : '#44403c')} 100%
-    );
+  background: radial-gradient(1200px 280px at 12% -20%, rgba(196, 92, 38, 0.28), transparent 55%),
+    radial-gradient(900px 240px at 88% 0%, rgba(15, 118, 110, 0.18), transparent 50%);
   color: #fafaf9;
 `;
 
@@ -87,36 +68,19 @@ const CategoryNav = styled.div`
   margin-bottom: 22px;
 `;
 
-const CategoryChip = styled.button<{ $active?: boolean; $accent: string }>`
-  border: 1px solid
-    ${(p) =>
-      p.$active
-        ? p.$accent
-        : p.theme?.mode === 'dark'
-          ? 'rgba(255,255,255,0.1)'
-          : 'rgba(0,0,0,0.08)'};
-  background: ${(p) =>
-    p.$active
-      ? `${p.$accent}18`
-      : p.theme?.mode === 'dark'
-        ? 'rgba(255,255,255,0.04)'
-        : '#fff'};
-  color: ${(p) =>
-    p.$active
-      ? p.$accent
-      : p.theme?.mode === 'dark'
-        ? 'rgba(255,255,255,0.75)'
-        : 'rgba(0,0,0,0.72)'};
+const CategoryChip = styled.button<{ $active?: boolean; $accent?: string }>`
+  border: 1px solid ${(p) => (p.$active ? p.$accent || '#c45c26' : 'rgba(255,255,255,0.12)')};
+  background: ${(p) => (p.$active ? `${p.$accent || '#c45c26'}22` : 'rgba(255,255,255,0.04)')};
+  color: ${(p) => (p.$active ? p.$accent || '#fdba74' : 'rgba(255,255,255,0.75)')};
   border-radius: 999px;
-  padding: 8px 14px;
+  padding: 8px 16px;
   font-size: 13px;
   font-weight: ${(p) => (p.$active ? 600 : 500)};
   cursor: pointer;
   transition: all 0.18s ease;
 
   &:hover {
-    border-color: ${(p) => p.$accent};
-    color: ${(p) => p.$accent};
+    border-color: ${(p) => p.$accent || '#c45c26'};
   }
 `;
 
@@ -128,11 +92,11 @@ const SectionHead = styled.div`
   margin-bottom: 14px;
 `;
 
-const SectionTitle = styled.h2<{ $accent: string }>`
+const SectionTitle = styled.h2<{ $accent?: string }>`
   margin: 0 0 4px;
   font-size: 18px;
   font-weight: 700;
-  color: ${(p) => (p.theme?.mode === 'dark' ? '#f5f5f4' : '#1c1917')};
+  color: ${(p) => p.$accent || '#f59e0b'};
   display: flex;
   align-items: center;
   gap: 10px;
@@ -142,7 +106,7 @@ const SectionTitle = styled.h2<{ $accent: string }>`
     width: 4px;
     height: 18px;
     border-radius: 2px;
-    background: ${(p) => p.$accent};
+    background: ${(p) => p.$accent || '#c45c26'};
   }
 `;
 
@@ -150,7 +114,7 @@ const SectionSub = styled.p`
   margin: 0;
   padding-left: 14px;
   font-size: 13px;
-  color: ${(p) => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')};
+  color: rgba(255, 255, 255, 0.45);
 `;
 
 const Grid = styled.div`
@@ -159,11 +123,10 @@ const Grid = styled.div`
   gap: 12px;
 `;
 
-const ScenarioCard = styled.button<{ $accent: string }>`
+const ScenarioCard = styled.button<{ $accent?: string }>`
   text-align: left;
-  border: 1px solid
-    ${(p) => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(28,25,23,0.08)')};
-  background: ${(p) => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#fff')};
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
   border-radius: 16px;
   padding: 16px 16px 14px;
   cursor: pointer;
@@ -175,15 +138,15 @@ const ScenarioCard = styled.button<{ $accent: string }>`
 
   &:hover {
     transform: translateY(-2px);
-    border-color: ${(p) => p.$accent}99;
-    box-shadow: 0 12px 28px -18px ${(p) => p.$accent}88;
+    border-color: ${(p) => `${p.$accent || '#c45c26'}99`};
+    box-shadow: 0 12px 28px -18px ${(p) => `${p.$accent || '#c45c26'}88`};
   }
 `;
 
 const CardTitle = styled.div`
   font-size: 15px;
   font-weight: 650;
-  color: ${(p) => (p.theme?.mode === 'dark' ? '#fafaf9' : '#1c1917')};
+  color: #fafaf9;
   line-height: 1.35;
 `;
 
@@ -191,7 +154,7 @@ const CardDesc = styled.div`
   flex: 1;
   font-size: 12.5px;
   line-height: 1.55;
-  color: ${(p) => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)')};
+  color: rgba(255, 255, 255, 0.5);
 `;
 
 const CardMeta = styled.div`
@@ -206,28 +169,13 @@ const MetaPill = styled.span<{ $tone?: 'mode' | 'tag' }>`
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  font-weight: 500;
   padding: 3px 8px;
-  border-radius: 6px;
-  background: ${(p) =>
-    p.$tone === 'mode'
-      ? p.theme?.mode === 'dark'
-        ? 'rgba(253,186,116,0.15)'
-        : 'rgba(196,92,38,0.1)'
-      : p.theme?.mode === 'dark'
-        ? 'rgba(255,255,255,0.06)'
-        : 'rgba(0,0,0,0.04)'};
-  color: ${(p) =>
-    p.$tone === 'mode'
-      ? p.theme?.mode === 'dark'
-        ? '#fdba74'
-        : '#c45c26'
-      : p.theme?.mode === 'dark'
-        ? 'rgba(255,255,255,0.55)'
-        : 'rgba(0,0,0,0.5)'};
+  border-radius: 999px;
+  background: ${(p) => (p.$tone === 'mode' ? 'rgba(253,186,116,0.15)' : 'rgba(255,255,255,0.06)')};
+  color: rgba(255, 255, 255, 0.75);
 `;
 
-const Workbench = styled.div`
+const WorkbenchWrap = styled.div`
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -235,77 +183,8 @@ const Workbench = styled.div`
   gap: 14px;
 `;
 
-const WorkbenchBar = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 12px 16px;
-  padding: 14px 16px;
-  border-radius: 14px;
-  background: ${(p) =>
-    p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(28,25,23,0.03)'};
-  border: 1px solid
-    ${(p) => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(28,25,23,0.06)')};
-`;
-
-const BackBtn = styled.button`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: none;
-  background: transparent;
-  color: ${(p) => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.65)')};
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 4px 0;
-  flex-shrink: 0;
-
-  &:hover {
-    color: #c45c26;
-  }
-`;
-
-const WorkbenchInfo = styled.div`
-  flex: 1;
-  min-width: 200px;
-`;
-
-const WorkbenchTitle = styled.div`
-  font-size: 16px;
-  font-weight: 700;
-  color: ${(p) => (p.theme?.mode === 'dark' ? '#fafaf9' : '#1c1917')};
-`;
-
-const WorkbenchSub = styled.div`
-  margin-top: 4px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: ${(p) => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)')};
-`;
-
-const Tips = styled.ul`
-  margin: 8px 0 0;
-  padding-left: 18px;
-  font-size: 12px;
-  line-height: 1.55;
-  color: ${(p) => (p.theme?.mode === 'dark' ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)')};
-`;
-
-const ToolPane = styled.div`
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-`;
-
-const modeLabel = (mode: EcommerceScenario['genMode'], intl: ReturnType<typeof useIntl>) =>
-  mode === 'imageToImage'
-    ? intl.formatMessage({ id: 'create.tab.imageToImage', defaultMessage: '图生图' })
-    : intl.formatMessage({ id: 'create.tab.textToImage', defaultMessage: '文生图' });
-
 const EcommerceImage: React.FC = () => {
-  const intl = useIntl();
-  const [activeCategoryId, setActiveCategoryId] = useState<string | 'all'>('all');
+  const [activeCategoryId, setActiveCategoryId] = useState<string>('all');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const selected = useMemo(
@@ -322,63 +201,9 @@ const EcommerceImage: React.FC = () => {
     const { category, scenario } = selected;
     return (
       <Page>
-        <Workbench>
-          <WorkbenchBar>
-            <BackBtn type="button" onClick={() => setSelectedId(null)}>
-              <ArrowLeftOutlined />
-              <FormattedMessage id="create.ecommerce.back" defaultMessage="返回场景" />
-            </BackBtn>
-            <WorkbenchInfo>
-              <WorkbenchTitle>
-                {category.title} · {scenario.title}
-              </WorkbenchTitle>
-              <WorkbenchSub>{scenario.description}</WorkbenchSub>
-              {scenario.tips.length > 0 && (
-                <Tips>
-                  {scenario.tips.map((tip) => (
-                    <li key={tip}>{tip}</li>
-                  ))}
-                </Tips>
-              )}
-            </WorkbenchInfo>
-            <CardMeta>
-              <MetaPill $tone="mode">
-                {scenario.genMode === 'imageToImage' ? <PictureOutlined /> : <EditOutlined />}
-                {modeLabel(scenario.genMode, intl)}
-              </MetaPill>
-              {scenario.tags?.slice(0, 3).map((tag) => (
-                <MetaPill key={tag} $tone="tag">
-                  {tag}
-                </MetaPill>
-              ))}
-            </CardMeta>
-          </WorkbenchBar>
-          <ToolPane>
-            {scenario.genMode === 'imageToImage' ? (
-              <ImageToImage
-                key={scenario.id}
-                embedded
-                embedConfig={{
-                  initialPrompt: scenario.promptTemplate,
-                  hideHeader: true,
-                  preferredKleinMode: scenario.preferredKleinMode,
-                  initialAspectRatio: scenario.aspectHint,
-                }}
-              />
-            ) : (
-              <TextToImage
-                key={scenario.id}
-                embedded
-                variant="embed"
-                embedConfig={{
-                  initialPrompt: scenario.promptTemplate,
-                  hideHeader: true,
-                  initialAspectRatio: scenario.aspectHint,
-                }}
-              />
-            )}
-          </ToolPane>
-        </Workbench>
+        <WorkbenchWrap>
+          <ScenarioWorkbench category={category} scenario={scenario} onBack={() => setSelectedId(null)} />
+        </WorkbenchWrap>
       </Page>
     );
   }
@@ -392,12 +217,12 @@ const EcommerceImage: React.FC = () => {
             AIMATEX COMMERCE
           </HeroBrand>
           <HeroTitle>
-            <FormattedMessage id="create.ecommerce.title" defaultMessage="电商生图" />
+            <FormattedMessage id="create.ecommerce.title" defaultMessage="电商视觉工作台" />
           </HeroTitle>
           <HeroDesc>
             <FormattedMessage
               id="create.ecommerce.subtitle"
-              defaultMessage="从商品上架、内容种草、直播带货到跨境出海——选择场景，一键进入对应生图工作台。"
+              defaultMessage="按运营场景选模板，上传商品图并填写属性即可出图——提示词在后台自动拼装，无需手写。"
             />
           </HeroDesc>
         </Hero>
@@ -424,7 +249,7 @@ const EcommerceImage: React.FC = () => {
           ))}
         </CategoryNav>
 
-        {visibleCategories.map((category: EcommerceCategory) => (
+        {visibleCategories.map((category) => (
           <Section key={category.id} id={`ecom-${category.id}`}>
             <SectionHead>
               <SectionTitle $accent={category.accent}>{category.title}</SectionTitle>
@@ -442,12 +267,7 @@ const EcommerceImage: React.FC = () => {
                   <CardDesc>{scenario.description}</CardDesc>
                   <CardMeta>
                     <MetaPill $tone="mode">
-                      {scenario.genMode === 'imageToImage' ? (
-                        <PictureOutlined />
-                      ) : (
-                        <EditOutlined />
-                      )}
-                      {modeLabel(scenario.genMode, intl)}
+                      <PictureOutlined /> Klein 图生图
                     </MetaPill>
                     {scenario.tags?.slice(0, 2).map((tag) => (
                       <MetaPill key={tag} $tone="tag">
@@ -456,7 +276,7 @@ const EcommerceImage: React.FC = () => {
                     ))}
                     <MetaPill $tone="tag">
                       <CheckCircleOutlined />
-                      <FormattedMessage id="create.ecommerce.select" defaultMessage="选择" />
+                      <FormattedMessage id="create.ecommerce.select" defaultMessage="进入工作台" />
                     </MetaPill>
                   </CardMeta>
                 </ScenarioCard>
