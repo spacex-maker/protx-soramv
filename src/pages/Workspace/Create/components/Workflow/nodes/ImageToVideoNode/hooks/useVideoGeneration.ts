@@ -5,6 +5,7 @@ import { Model, VideoResult } from '../../../../ImageToVideo/types';
 import { getModelAspectRatios } from '../../../../ImageToVideo/utils';
 import { uploadImageToServer, urlToFile } from '../utils';
 import { ImageToVideoNodeData, TaskItem } from '../types';
+import { useSubmitLock } from '../../../../shared/submitLock';
 
 export const useVideoGeneration = (
   prompt: string,
@@ -23,6 +24,7 @@ export const useVideoGeneration = (
   const [waitingTasks, setWaitingTasks] = useState<TaskItem[]>([]);
   const pollingTasksRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
   const completedTasksRef = useRef<Set<string>>(new Set());
+  const submitLock = useSubmitLock();
 
   // 停止单个任务的轮询
   const stopTaskPolling = useCallback((taskId: string) => {
@@ -133,18 +135,24 @@ export const useVideoGeneration = (
 
   // 生成视频
   const handleGenerate = useCallback(async () => {
+    if (generating) return;
+    if (submitLock.checkAndSet()) return;
+
     if (!prompt.trim()) {
       message.warning('请输入提示词');
+      submitLock.clear();
       return;
     }
 
     if (!selectedModel) {
       message.warning('请选择模型');
+      submitLock.clear();
       return;
     }
 
     if (!originalImageUrl) {
       message.warning('请先上传一张图片作为生成参考或连接一个图片节点');
+      submitLock.clear();
       return;
     }
 
@@ -317,8 +325,10 @@ export const useVideoGeneration = (
       console.error('视频生成失败:', error);
       message.error(error.response?.data?.message || error.message || '视频生成失败，请重试');
       setGenerating(false);
+    } finally {
+      submitLock.clear();
     }
-  }, [prompt, selectedModel, originalImageUrl, originalImageFile, aspectRatio, duration, videoFormat, videoSupportStyle, videoQuality, nodeData, setGeneratedVideo, startPolling]);
+  }, [prompt, selectedModel, originalImageUrl, originalImageFile, aspectRatio, duration, videoFormat, videoSupportStyle, videoQuality, nodeData, setGeneratedVideo, startPolling, generating, submitLock]);
 
   return {
     generating,

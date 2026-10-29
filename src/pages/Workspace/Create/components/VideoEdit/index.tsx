@@ -43,6 +43,7 @@ import { useTokenBalance } from '../shared/useTokenBalance';
 import { getVideoRequiredTokens } from '../shared/balanceUtils';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import { handleGenerationApiFailure, extractGenerationErrorMessage } from '../shared/generationErrorUtils';
+import { useSubmitLock } from '../shared/submitLock';
 import { formatSeedanceUserMessage } from './seedanceErrorMessage';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
@@ -164,6 +165,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     ensureKycForModel,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard(tokenBalance);
+  const submitLock = useSubmitLock();
 
   const [models, setModels] = useState<Model[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
@@ -720,7 +722,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     isUserSubmitRef.current = false;
 
     // 仅拦截「正在上传/提交」；队列中有未完成任务时仍可继续发起新任务
-    if (isSubmitting) return;
+    if (submitLock.checkAndSet() || isSubmitting) return;
     if (!selectedModel) {
       message.warning(
         intl.formatMessage({
@@ -728,6 +730,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           defaultMessage: '请选择要使用的视频生成模型',
         })
       );
+      submitLock.clear();
       return;
     }
     if (videos.length < 1) {
@@ -737,6 +740,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           defaultMessage: '请至少上传一段参考视频',
         })
       );
+      submitLock.clear();
       return;
     }
     if (!values.prompt?.trim()) {
@@ -746,13 +750,20 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           defaultMessage: '请输入提示词',
         })
       );
+      submitLock.clear();
       return;
     }
 
     const duration = Number(values.duration) || 8;
     const requiredTokens = getVideoRequiredTokens(selectedModel.tokenCost, duration);
-    if (!(await ensureSufficientBalance(requiredTokens))) return;
-    if (!(await ensureKycForModel(selectedModel))) return;
+    if (!(await ensureSufficientBalance(requiredTokens))) {
+      submitLock.clear();
+      return;
+    }
+    if (!(await ensureKycForModel(selectedModel))) {
+      submitLock.clear();
+      return;
+    }
 
     abortControllerRef.current?.abort();
     const abortController = new AbortController();
@@ -774,6 +785,7 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
     } catch (error: any) {
       setIsSubmitting(false);
       setUploadProgress(null);
+      submitLock.clear();
       message.error(
         error?.message ||
           intl.formatMessage({
@@ -916,6 +928,8 @@ const VideoEdit: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
           fallback;
         message.error(formatSeedanceUserMessage(raw, fallback), 6);
       }
+    } finally {
+      submitLock.clear();
     }
   };
 

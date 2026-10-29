@@ -30,6 +30,7 @@ import { useTokenBalance } from '../shared/useTokenBalance';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import { handleGenerationApiFailure } from '../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
+import { useSubmitLock } from '../shared/submitLock';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 import AudioResultPanel from './AudioResultPanel';
@@ -123,6 +124,7 @@ const SpeechGeneration: React.FC = () => {
     ensureKycForModel,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard(tokenBalance);
+  const submitLock = useSubmitLock();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [engines, setEngines] = useState<EngineModel[]>([]);
@@ -308,9 +310,10 @@ const SpeechGeneration: React.FC = () => {
   }, []);
 
   const handleGenerate = async () => {
+    if (submitLock.checkAndSet() || loading) return;
     try {
       const values = await form.validateFields();
-      if (!ensureSufficientBalance(requiredTokens)) {
+      if (!(await ensureSufficientBalance(requiredTokens))) {
         return;
       }
       if (!(await ensureKycForModel(selectedEngine))) {
@@ -369,6 +372,7 @@ const SpeechGeneration: React.FC = () => {
         message.error(errMsg || intl.formatMessage({ id: 'create.speech.generateFailed', defaultMessage: '语音生成失败' }));
       }
     } finally {
+      submitLock.clear();
       setLoading(false);
     }
   };
@@ -581,6 +585,7 @@ const SpeechGeneration: React.FC = () => {
                     block
                     icon={<ThunderboltOutlined />}
                     loading={loading}
+                    disabled={loading}
                     onClick={handleGenerate}
                   >
                     <FormattedMessage id="create.speech.generate" defaultMessage="生成语音" />

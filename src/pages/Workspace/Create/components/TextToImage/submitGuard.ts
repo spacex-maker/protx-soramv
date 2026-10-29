@@ -1,12 +1,10 @@
-// 模块级防重复提交状态，供 Desktop 和 Mobile 共用（解决 useBreakpoint 切换导致不同实例各自 useRef 的问题）
-let isSubmitting = false;
+import { createSubmitLock } from '../shared/submitLock';
 
-export const checkAndSetSubmitting = (): boolean => {
-  if (isSubmitting) return true;
-  isSubmitting = true;
-  return false;
-};
+// 模块级防重复提交，供 Desktop 和 Mobile 共用
+const lock = createSubmitLock();
+
+export const checkAndSetSubmitting = (): boolean => lock.checkAndSet();
 
 export const clearSubmitting = () => {
-  isSubmitting = false;
+  lock.clear();
 };

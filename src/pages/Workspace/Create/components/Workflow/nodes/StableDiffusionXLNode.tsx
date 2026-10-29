@@ -5,6 +5,7 @@ import { Handle, Position, NodeProps, useReactFlow, useUpdateNodeInternals } fro
 import styled from 'styled-components';
 import { useLocale } from 'contexts/LocaleContext';
 import instance from '../../../../../../api/axios';
+import { useSubmitLock } from '../../shared/submitLock';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -433,6 +434,7 @@ const StableDiffusionXLNode: React.FC<NodeProps> = ({ data, selected, id }) => {
   const [loadingModels, setLoadingModels] = useState(false);
   const [generatingPrompt, setGeneratingPrompt] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const submitLock = useSubmitLock();
   const [generatedImages, setGeneratedImages] = useState<string[]>(() => {
     // 从节点数据初始化生成的图片
     if (nodeData?.generatedImages && Array.isArray(nodeData.generatedImages)) {
@@ -745,14 +747,19 @@ const StableDiffusionXLNode: React.FC<NodeProps> = ({ data, selected, id }) => {
 
   // 生成图片
   const handleGenerate = useCallback(async () => {
+    if (generating) return;
+    if (submitLock.checkAndSet()) return;
+
     if (!prompt.trim()) {
       message.warning('请输入提示词');
+      submitLock.clear();
       return;
     }
 
     const selectedFamily = modelFamilies.find(f => f.id === selectedFamilyId);
     if (!selectedFamily) {
       message.warning('请选择模型家族');
+      submitLock.clear();
       return;
     }
 
@@ -858,6 +865,7 @@ const StableDiffusionXLNode: React.FC<NodeProps> = ({ data, selected, id }) => {
       );
     } finally {
       setGenerating(false);
+      submitLock.clear();
     }
   }, [
     prompt,
@@ -865,6 +873,8 @@ const StableDiffusionXLNode: React.FC<NodeProps> = ({ data, selected, id }) => {
     selectedFamilyId,
     selectedModelCode,
     modelFamilies,
+    generating,
+    submitLock,
     width,
     height,
     steps,
@@ -1153,6 +1163,7 @@ const StableDiffusionXLNode: React.FC<NodeProps> = ({ data, selected, id }) => {
         type="primary"
         icon={<ThunderboltOutlined />}
         loading={generating}
+        disabled={generating}
         onClick={handleGenerate}
         className="nodrag"
       >

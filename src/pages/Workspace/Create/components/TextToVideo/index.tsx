@@ -59,6 +59,7 @@ import { getVideoRequiredTokens } from '../shared/balanceUtils';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import { handleGenerationApiFailure } from '../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
+import { useSubmitLock } from '../shared/submitLock';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 import { preloadVideoModelCovers } from '../shared/videoModelCoverPreload';
@@ -109,6 +110,7 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
     ensureKycForModel,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard(tokenBalance);
+  const submitLock = useSubmitLock();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<VideoResult | null>(null);
@@ -833,9 +835,8 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
     
     // 重置标志
     isUserSubmitRef.current = false;
-    
-    // 防止重复提交：如果正在加载中，直接返回
-    if (loading) {
+
+    if (submitLock.checkAndSet() || loading) {
       return;
     }
 
@@ -844,16 +845,19 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
         id: 'create.model.select.placeholder', 
         defaultMessage: '请选择要使用的视频生成模型' 
       }));
+      submitLock.clear();
       return;
     }
 
     const duration = Number(values.duration) || 8;
     const requiredTokens = getVideoRequiredTokens(selectedModel.tokenCost, duration);
     if (!(await ensureSufficientBalance(requiredTokens))) {
+      submitLock.clear();
       return;
     }
 
     if (!(await ensureKycForModel(selectedModel))) {
+      submitLock.clear();
       return;
     }
 
@@ -1039,6 +1043,7 @@ const TextToVideo: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => 
         message.error(errorMessage);
       }
     } finally {
+      submitLock.clear();
       // 只有在不是取消的情况下才清除 loading
       if (!abortController.signal.aborted) {
         setLoading(false);

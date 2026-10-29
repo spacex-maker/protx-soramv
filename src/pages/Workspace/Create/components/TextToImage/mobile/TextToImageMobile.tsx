@@ -1389,6 +1389,7 @@ const TextToImageMobile: React.FC<{ embedded?: boolean }> = () => {
                 block
                 icon={<ThunderboltOutlined />}
                 loading={loading}
+                disabled={loading}
                 onClick={async () => {
                   try {
                     // 手动触发表单验证

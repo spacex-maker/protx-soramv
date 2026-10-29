@@ -39,6 +39,7 @@ import { Model } from '../ImageToVideo/types';
 import { getVideoRequiredTokens } from '../shared/balanceUtils';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
+import { useSubmitLock } from '../shared/submitLock';
 import PromptMentionTextArea from './PromptMentionTextArea';
 import {
   ShotVideoContentMode,
@@ -193,6 +194,7 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
     ensureKycForModel,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard();
+  const submitLock = useSubmitLock();
 
   const seedanceModels = useMemo(
     () => models.filter((m) => (m.modelCode || '').toLowerCase().includes('seedance')),
@@ -472,16 +474,19 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
   };
 
   const handleGenerate = async () => {
+    if (submitLock.checkAndSet() || loading) return;
     if (!shot || !selectedModel) {
       message.warning(
         intl.formatMessage({ id: 'director.shot.videoModelRequired', defaultMessage: '请选择视频模型' })
       );
+      submitLock.clear();
       return;
     }
     if (!prompt.trim()) {
       message.warning(
         intl.formatMessage({ id: 'director.shot.videoPromptRequired', defaultMessage: '请填写生成描述' })
       );
+      submitLock.clear();
       return;
     }
     if (contentMode === 'multimodal_reference' && !isSeedance2) {
@@ -491,13 +496,20 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
           defaultMessage: '多资产参考需使用 Seedance 2.0 模型',
         })
       );
+      submitLock.clear();
       return;
     }
 
     const duration = Number(form.getFieldValue('duration')) || shot.durationSec || 5;
     const requiredTokens = getVideoRequiredTokens(selectedModel.tokenCost, duration);
-    if (!(await ensureSufficientBalance(requiredTokens))) return;
-    if (!(await ensureKycForModel(selectedModel))) return;
+    if (!(await ensureSufficientBalance(requiredTokens))) {
+      submitLock.clear();
+      return;
+    }
+    if (!(await ensureKycForModel(selectedModel))) {
+      submitLock.clear();
+      return;
+    }
 
     setLoading(true);
     setGenerateError(null);
@@ -627,6 +639,7 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
         setGenerateError(messageText);
       }
     } finally {
+      submitLock.clear();
       setLoading(false);
     }
   };
@@ -979,6 +992,7 @@ const ShotVideoGenerateModal: React.FC<ShotVideoGenerateModalProps> = ({
             size="large"
             icon={<ThunderboltOutlined />}
             loading={loading}
+            disabled={loading}
             onClick={handleGenerate}
           >
             <FormattedMessage id="director.shot.videoGenerateSubmit" defaultMessage="开始生成视频" />

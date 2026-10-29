@@ -84,6 +84,7 @@ import { getVideoRequiredTokens } from '../shared/balanceUtils';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import { handleGenerationApiFailure } from '../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
+import { useSubmitLock } from '../shared/submitLock';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 import ImageGenPickerModal, { type ImagePickerTarget } from '../shared/ImageGenPickerModal';
@@ -172,6 +173,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
     ensureKycForModel,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard(tokenBalance);
+  const submitLock = useSubmitLock();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedVideo, setGeneratedVideo] = useState<VideoResult | null>(null);
@@ -1567,8 +1569,8 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
     }
     
     isUserSubmitRef.current = false;
-    
-    if (loading) {
+
+    if (submitLock.checkAndSet() || loading) {
       return;
     }
 
@@ -1577,6 +1579,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
         id: 'create.model.select.placeholder', 
         defaultMessage: '请选择要使用的视频生成模型' 
       }));
+      submitLock.clear();
       return;
     }
 
@@ -1585,16 +1588,19 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
         id: 'create.i2v.upload.warning', 
         defaultMessage: '请先上传一张图片作为生成参考。' 
       }));
+      submitLock.clear();
       return;
     }
 
     const duration = Number(values.duration) || 8;
     const requiredTokens = getVideoRequiredTokens(selectedModel.tokenCost, duration);
     if (!(await ensureSufficientBalance(requiredTokens))) {
+      submitLock.clear();
       return;
     }
 
     if (!(await ensureKycForModel(selectedModel))) {
+      submitLock.clear();
       return;
     }
 
@@ -1842,6 +1848,7 @@ const ImageToVideo: React.FC<ImageToVideoProps> = ({
         message.error(errorMessage);
       }
     } finally {
+      submitLock.clear();
       if (!abortController.signal.aborted) {
         setLoading(false);
         abortControllerRef.current = null;

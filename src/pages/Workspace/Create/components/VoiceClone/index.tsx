@@ -44,6 +44,7 @@ import { fetchCnyBalance } from '../shared/balanceUtils';
 import { useTokenBalance } from '../shared/useTokenBalance';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
+import { useSubmitLock } from '../shared/submitLock';
 import AudioResultPanel from '../SpeechGeneration/AudioResultPanel';
 import SpeechHistorySection, { SpeechHistoryTask } from '../SpeechGeneration/SpeechHistorySection';
 import { EngineModel } from '../SpeechGeneration/engineTypes';
@@ -198,6 +199,8 @@ const VoiceClone: React.FC = () => {
     ensureSufficientBalance,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard(tokenBalance);
+  const trainLock = useSubmitLock();
+  const synthLock = useSubmitLock();
 
   const [trainForm] = Form.useForm();
   const [synthForm] = Form.useForm();
@@ -487,6 +490,7 @@ const VoiceClone: React.FC = () => {
   }, [intl, selectedEngine?.modelCode, trainForm, clearUploadedFile, clearRecordedAudio]);
 
   const handleTrain = async () => {
+    if (trainLock.checkAndSet() || trainLoading) return;
     try {
       const values = await trainForm.validateFields();
 
@@ -512,7 +516,7 @@ const VoiceClone: React.FC = () => {
         message.warning(intl.formatMessage({ id: 'create.voiceClone.engineRequired', defaultMessage: '请选择声音复刻引擎' }));
         return;
       }
-      if (!ensureSufficientBalance(trainRequiredTokens)) {
+      if (!(await ensureSufficientBalance(trainRequiredTokens))) {
         return;
       }
 
@@ -557,6 +561,7 @@ const VoiceClone: React.FC = () => {
       const errMsg = error?.response?.data?.message || error?.message;
       message.error(errMsg || intl.formatMessage({ id: 'create.voiceClone.trainFailed', defaultMessage: '训练提交失败' }));
     } finally {
+      trainLock.clear();
       setTrainLoading(false);
     }
   };
@@ -575,13 +580,15 @@ const VoiceClone: React.FC = () => {
   };
 
   const handleSynthesize = async () => {
+    if (synthLock.checkAndSet() || synthLoading) return;
+    let keepLockForAsyncRun = false;
     try {
       const values = await synthForm.validateFields();
       if (!selectedClone?.ready) {
         message.warning(intl.formatMessage({ id: 'create.voiceClone.selectReadyVoice', defaultMessage: '请选择已完成训练的音色' }));
         return;
       }
-      if (!ensureSufficientBalance(synthRequiredTokens)) return;
+      if (!(await ensureSufficientBalance(synthRequiredTokens))) return;
 
       const runSynthesize = async (confirmSlotFee = false) => {
         setSynthLoading(true);
@@ -643,13 +650,15 @@ const VoiceClone: React.FC = () => {
           }
         } finally {
           setSynthLoading(false);
+          synthLock.clear();
         }
       };
 
       if (selectedClone.slotFeeRequired) {
         const slotFee = Number(selectedClone.slotFeeCny || 138);
         const cnyBalance = await fetchCnyBalance();
-        if (cnyBalance < slotFee) {
+        const cny = cnyBalance ?? 0;
+        if (cnyBalance == null || cny < slotFee) {
           message.error(
             intl.formatMessage(
               {
@@ -658,13 +667,14 @@ const VoiceClone: React.FC = () => {
               },
               {
                 fee: slotFee.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
-                balance: cnyBalance.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
+                balance: cny.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 2 }),
               },
             ),
           );
           return;
         }
 
+        keepLockForAsyncRun = true;
         Modal.confirm({
           title: intl.formatMessage({ id: 'create.voiceClone.slotFeeConfirmTitle', defaultMessage: '确认音色槽位费' }),
           content: (
@@ -728,13 +738,19 @@ const VoiceClone: React.FC = () => {
           cancelText: intl.formatMessage({ id: 'common.cancel', defaultMessage: '取消' }),
           centered: true,
           onOk: () => runSynthesize(true),
+          onCancel: () => synthLock.clear(),
         });
         return;
       }
 
+      keepLockForAsyncRun = true;
       await runSynthesize(false);
     } catch {
       /* form validation */
+    } finally {
+      if (!keepLockForAsyncRun) {
+        synthLock.clear();
+      }
     }
   };
 
@@ -1076,12 +1092,13 @@ const VoiceClone: React.FC = () => {
                           />
 
                           <GenerateButton>
-                            <Button
+                              <Button
                               type="primary"
                               size="large"
                               block
                               icon={<ThunderboltOutlined />}
                               loading={synthLoading}
+                              disabled={synthLoading}
                               onClick={handleSynthesize}
                             >
                               <FormattedMessage id="create.voiceClone.synthesize" defaultMessage="合成语音" />
@@ -1377,7 +1394,7 @@ const VoiceClone: React.FC = () => {
             />
 
             <GenerateButton style={{ marginTop: 20 }}>
-              <Button type="primary" size="large" block icon={<AudioOutlined />} loading={trainLoading} onClick={handleTrain}>
+              <Button type="primary" size="large" block icon={<AudioOutlined />} loading={trainLoading} disabled={trainLoading} onClick={handleTrain}>
                 {retrainCloneId
                   ? intl.formatMessage({ id: 'create.voiceClone.startRetrain', defaultMessage: '提交重新训练' })
                   : intl.formatMessage({ id: 'create.voiceClone.startTrain', defaultMessage: '开始训练' })}

@@ -71,6 +71,7 @@ import { getImageEstimatedPrice } from '../shared/estimatedPriceText';
 import { useInsufficientBalanceGuard } from '../shared/useInsufficientBalanceGuard';
 import { handleGenerationApiFailure } from '../shared/generationErrorUtils';
 import InsufficientBalanceModal from '../shared/InsufficientBalanceModal';
+import { useSubmitLock } from '../shared/submitLock';
 import PromptTranslateEnSwitch from '../shared/PromptTranslateEnSwitch';
 import { appendTranslatePromptFlag } from '../shared/promptTranslateUtils';
 import ImageGenPickerModal from '../shared/ImageGenPickerModal';
@@ -100,6 +101,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     ensureKycForModel,
     tryShowFromApiError,
   } = useInsufficientBalanceGuard(tokenBalance);
+  const submitLock = useSubmitLock();
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<ImageResult | null>(null);
@@ -1000,8 +1002,8 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
     }
     
     isUserSubmitRef.current = false;
-    
-    if (loading) {
+
+    if (submitLock.checkAndSet() || loading) {
       return;
     }
 
@@ -1010,6 +1012,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         id: 'create.model.select.placeholder', 
         defaultMessage: '请选择要使用的图片生成模型' 
       }));
+      submitLock.clear();
       return;
     }
 
@@ -1018,6 +1021,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         id: 'create.i2i.upload.warning', 
         defaultMessage: '请先上传一张图片作为生成参考。' 
       }));
+      submitLock.clear();
       return;
     }
 
@@ -1025,10 +1029,12 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       ? (selectedModel.tokenCost ?? 0) * Math.max(1, batchSize)
       : (selectedModel.tokenCost ?? 0);
     if (!(await ensureSufficientBalance(requiredTokens))) {
+      submitLock.clear();
       return;
     }
 
     if (!(await ensureKycForModel(selectedModel))) {
+      submitLock.clear();
       return;
     }
 
@@ -1040,6 +1046,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
             defaultMessage: '请先选择一种官方玩法',
           })
         );
+        submitLock.clear();
         return;
       }
     } else if (!values.prompt?.trim()) {
@@ -1049,6 +1056,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
           defaultMessage: '请输入图片生成的描述',
         })
       );
+      submitLock.clear();
       return;
     }
 
@@ -1283,6 +1291,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         message.error(errorMessage);
       }
     } finally {
+      submitLock.clear();
       if (!abortController.signal.aborted) {
         setLoading(false);
         abortControllerRef.current = null;

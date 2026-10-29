@@ -345,6 +345,7 @@ const ImageToVideoNode: React.FC<NodeProps> = ({ data, selected, id }) => {
         type="primary"
         icon={<ThunderboltOutlined />}
         loading={generating}
+        disabled={generating}
         onClick={handleGenerate}
         className="nodrag"
       >

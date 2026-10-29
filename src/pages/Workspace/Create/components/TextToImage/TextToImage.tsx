@@ -1053,6 +1053,7 @@ const TextToImage: React.FC<TextToImageProps> = ({
                     size="large"
                     block
                     loading={loading}
+                    disabled={loading}
                     onClick={() => {
                       form.validateFields().then((values) => handleGenerate(values)).catch(() => {});
                     }}
