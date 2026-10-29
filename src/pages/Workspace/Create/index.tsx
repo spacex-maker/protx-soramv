@@ -10,12 +10,14 @@ import {
   CustomerServiceOutlined,
   SoundOutlined,
   FundProjectionScreenOutlined,
+  ShoppingOutlined,
 } from '@ant-design/icons';
 import { FormattedMessage, useIntl } from 'react-intl';
 import { useNavigate, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { base } from '../../../api/base';
 import ImageGeneration from './components/ImageGeneration';
+import EcommerceImage from './components/EcommerceImage';
 import VideoGeneration from './components/VideoGeneration';
 import Workflow from './components/Workflow';
 import SpeechGeneration from './components/SpeechGeneration';
@@ -29,6 +31,7 @@ const pathToTabKey: Record<string, string> = {
   '/workspace/create/image-generation': 'imageGeneration',
   '/workspace/create/text-to-image': 'imageGeneration',
   '/workspace/create/image-to-image': 'imageGeneration',
+  '/workspace/create/ecommerce': 'ecommerceImage',
   '/workspace/create/video-generation': 'videoGeneration',
   '/workspace/create/text-to-video': 'videoGeneration',
   '/workspace/create/image-to-video': 'videoGeneration',
@@ -48,6 +51,7 @@ const resolveActiveTab = (pathname: string): string => {
 // Tab key 到路由路径的映射
 const tabKeyToPath: Record<string, string> = {
   'imageGeneration': '/workspace/create/image-generation',
+  'ecommerceImage': '/workspace/create/ecommerce',
   'videoGeneration': '/workspace/create/video-generation',
   'speechGeneration': '/workspace/create/speech-generation',
   'voiceClone': '/workspace/create/voice-clone',
@@ -64,6 +68,10 @@ const isVideoGenerationEnabled = (enabled: Set<string>) =>
 const isTabEnabled = (key: string, enabled: Set<string>) => {
   if (key === 'imageGeneration') {
     return isImageGenerationEnabled(enabled);
+  }
+  if (key === 'ecommerceImage') {
+    // 电商板块：显式开启，或未配置时跟随图片生成能力
+    return enabled.has('ecommerceImage') || isImageGenerationEnabled(enabled);
   }
   if (key === 'videoGeneration') {
     return isVideoGenerationEnabled(enabled);
@@ -210,7 +218,7 @@ const Create: React.FC = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(['textToImage', 'textToVideo', 'imageToImage', 'imageToVideo', 'speechGeneration', 'voiceClone', 'workflow', 'director']));
+  const [enabledTypes, setEnabledTypes] = useState<Set<string>>(new Set(['textToImage', 'textToVideo', 'imageToImage', 'imageToVideo', 'speechGeneration', 'voiceClone', 'workflow', 'director', 'ecommerceImage']));
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
   
   // 根据当前路由获取 activeTab
@@ -291,6 +299,7 @@ const Create: React.FC = () => {
         const currentTab = resolveActiveTab(location.pathname);
         const enabledTabOrder = [
           'imageGeneration',
+          'ecommerceImage',
           'videoGeneration',
           'speechGeneration',
           'voiceClone',
@@ -363,6 +372,7 @@ const Create: React.FC = () => {
   // Tab 内容用 useMemo 固定引用，避免切换时被当作新组件而重新挂载
   const tabContentMap = React.useMemo(() => ({
     imageGeneration: <ImageGeneration enabledModes={imageEnabledModes} />,
+    ecommerceImage: <EcommerceImage />,
     videoGeneration: <VideoGeneration enabledModes={videoEnabledModes} />,
     speechGeneration: <SpeechGeneration />,
     voiceClone: <VoiceClone />,
@@ -387,6 +397,16 @@ const Create: React.FC = () => {
         </Space>
       ),
       children: loading ? loadingPlaceholder : tabContentMap.imageGeneration,
+    },
+    {
+      key: 'ecommerceImage',
+      label: (
+        <Space>
+          <ShoppingOutlined />
+          <FormattedMessage id="create.tab.ecommerceImage" defaultMessage="电商板块" />
+        </Space>
+      ),
+      children: loading ? loadingPlaceholder : tabContentMap.ecommerceImage,
     },
     {
       key: 'videoGeneration',

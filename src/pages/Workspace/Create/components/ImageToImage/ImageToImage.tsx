@@ -132,7 +132,18 @@ type KleinExtraRef = {
   desc: string;
 };
 
-const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
+export interface ImageToImageEmbedConfig {
+  initialPrompt?: string;
+  hideHeader?: boolean;
+  hideHistory?: boolean;
+  preferredKleinMode?: KleinMode;
+  initialAspectRatio?: string;
+}
+
+const ImageToImage: React.FC<{
+  embedded?: boolean;
+  embedConfig?: ImageToImageEmbedConfig;
+}> = ({ embedded = false, embedConfig }) => {
   const intl = useIntl();
   const location = useLocation();
   const { tokenBalance, balanceLoading } = useTokenBalance();
@@ -147,6 +158,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
   } = useInsufficientBalanceGuard(tokenBalance);
   const submitLock = useSubmitLock();
   const [form] = Form.useForm();
+  const embedInitialAppliedRef = useRef(false);
   const [loading, setLoading] = useState(false);
   const [generatedImage, setGeneratedImage] = useState<ImageResult | null>(null);
   const [models, setModels] = useState<Model[]>([]);
@@ -274,6 +286,27 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
       cancelled = true;
     };
   }, [location.state]);
+
+  // embed：预填场景提示词 / Klein 模式 / 比例
+  useEffect(() => {
+    if (!embedConfig || embedInitialAppliedRef.current) return;
+    const updates: Record<string, unknown> = {};
+    if (embedConfig.initialPrompt) {
+      updates.prompt = embedConfig.initialPrompt;
+      setPromptValue(embedConfig.initialPrompt);
+    }
+    if (embedConfig.preferredKleinMode) {
+      updates.kleinMode = embedConfig.preferredKleinMode;
+    }
+    if (embedConfig.initialAspectRatio) {
+      updates.kleinAspectRatio = embedConfig.initialAspectRatio;
+      updates.aspectRatio = embedConfig.initialAspectRatio;
+    }
+    if (Object.keys(updates).length > 0) {
+      form.setFieldsValue(updates);
+    }
+    embedInitialAppliedRef.current = true;
+  }, [embedConfig, form]);
 
   // 刷新后续上 Klein 图生图未完成任务
   useEffect(() => {
@@ -1599,7 +1632,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
           {/* --- 左侧：控制面板 --- */}
           <Col xs={24} lg={9}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
-              {!embedded && (
+              {!embedded && !embedConfig?.hideHeader && (
               <div style={{ marginBottom: 8 }}>
                 <Title level={3} style={{ margin: 0, marginBottom: 4, display: 'flex', alignItems: 'center', gap: 8 }}>
                   <SwapOutlined style={{ color: '#1890ff', fontSize: 24 }} />
@@ -2336,6 +2369,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
         </Row>
         
         {/* 生成记录 */}
+        {!embedConfig?.hideHistory && (
         <HistorySection
           historyTasks={historyTasks}
           historyLoading={historyLoading}
@@ -2345,6 +2379,7 @@ const ImageToImage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) =>
           onTaskClick={handleShowTaskDetail}
           getStatusText={getStatusText}
         />
+        )}
       </StyledCard>
 
       {/* 任务详情模态框 */}
