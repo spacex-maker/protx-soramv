@@ -52,7 +52,6 @@ const PREVIEW_IMG_MAX_HEIGHT = 'min(88vh, 760px)';
 const PREVIEW_PANEL_MAX_WIDTH = 500;
 const DESKTOP_MODAL_WIDTH = 'min(98vw, 1680px)';
 const DESKTOP_MODAL_HEIGHT = 'min(97vh, 1100px)';
-const DESKTOP_CARD_MIN_HEIGHT = 'min(calc(97vh - 168px), 932px)';
 
 const fadeInUp = keyframes`
   from { opacity: 0; }
@@ -65,13 +64,13 @@ const pulseGlow = keyframes`
 `;
 
 const refThumbStyle = `
-  width: min(28vw, 360px);
-  height: min(68vh, 620px);
-  max-height: min(68vh, 620px);
+  flex: 1 1 0;
+  width: 0;
+  min-width: 0;
   aspect-ratio: 3 / 4;
+  height: auto;
   object-fit: cover;
-  flex-shrink: 0;
-  border-radius: 18px;
+  border-radius: 14px;
 `;
 
 const StyledModal = styled(Modal)`
@@ -386,12 +385,16 @@ const PlayList = styled.div`
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-right: 4px;
-  scroll-snap-type: y mandatory;
-  scroll-padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 2px 6px 8px 2px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  gap: 18px;
+  align-content: start;
+
+  @media (min-width: 1400px) {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr));
+    gap: 20px;
+  }
 
   &::-webkit-scrollbar {
     width: 8px;
@@ -405,18 +408,16 @@ const PlayList = styled.div`
 
 const PlayCard = styled.div<{ $selected?: boolean; $index: number; $isDark: boolean }>`
   display: flex;
+  flex-direction: column;
   width: 100%;
   box-sizing: border-box;
-  flex: 0 0 auto;
-  min-height: ${DESKTOP_CARD_MIN_HEIGHT};
-  scroll-snap-align: start;
-  scroll-snap-stop: always;
+  min-width: 0;
   animation: ${fadeInUp} 0.35s ease forwards;
   animation-delay: ${(p) => `${Math.min(p.$index * 0.04, 0.28)}s`};
-  border-radius: 26px;
-  padding: clamp(16px, 1.6vw, 24px);
+  border-radius: 22px;
+  padding: 14px;
   position: relative;
-  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.2s ease;
   border: 1px solid
     ${(p) =>
       p.$selected
@@ -427,11 +428,11 @@ const PlayCard = styled.div<{ $selected?: boolean; $index: number; $isDark: bool
   background: ${(p) =>
     p.$selected
       ? p.$isDark
-        ? 'linear-gradient(135deg, rgba(59,130,246,0.18) 0%, rgba(99,102,241,0.1) 100%)'
-        : 'linear-gradient(135deg, rgba(239,246,255,0.95) 0%, rgba(238,242,255,0.9) 100%)'
+        ? 'linear-gradient(165deg, rgba(59,130,246,0.18) 0%, rgba(99,102,241,0.1) 100%)'
+        : 'linear-gradient(165deg, rgba(239,246,255,0.95) 0%, rgba(238,242,255,0.9) 100%)'
       : p.$isDark
-        ? 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)'
-        : 'linear-gradient(135deg, rgba(255,255,255,0.92) 0%, rgba(248,250,252,0.88) 100%)'};
+        ? 'linear-gradient(165deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)'
+        : 'linear-gradient(165deg, rgba(255,255,255,0.96) 0%, rgba(248,250,252,0.9) 100%)'};
   box-shadow: ${(p) =>
     p.$selected
       ? '0 16px 40px rgba(59, 130, 246, 0.22), inset 0 1px 0 rgba(255,255,255,0.08)'
@@ -441,7 +442,8 @@ const PlayCard = styled.div<{ $selected?: boolean; $index: number; $isDark: bool
 
   &:hover {
     border-color: rgba(59, 130, 246, 0.45);
-    box-shadow: 0 20px 48px rgba(59, 130, 246, 0.16);
+    box-shadow: 0 18px 40px rgba(59, 130, 246, 0.16);
+    transform: translateY(-2px);
   }
 
   ${(p) =>
@@ -452,7 +454,7 @@ const PlayCard = styled.div<{ $selected?: boolean; $index: number; $isDark: bool
       position: absolute;
       inset: 0;
       border-radius: inherit;
-      background: linear-gradient(135deg, rgba(59,130,246,0.35), rgba(167,139,250,0.15), transparent 60%);
+      background: linear-gradient(135deg, rgba(59,130,246,0.28), rgba(167,139,250,0.12), transparent 60%);
       pointer-events: none;
       opacity: 0.8;
       z-index: 0;
@@ -461,47 +463,40 @@ const PlayCard = styled.div<{ $selected?: boolean; $index: number; $isDark: bool
 `;
 
 const CardBody = styled.div`
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.85fr) auto;
-  gap: clamp(18px, 2vw, 32px);
-  align-items: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   position: relative;
   z-index: 1;
   width: 100%;
   min-height: 0;
   flex: 1;
-
-  @media (max-width: 1180px) {
-    grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.9fr) auto;
-    gap: 16px;
-  }
 `;
 
 const PlayContent = styled.div`
   min-width: 0;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 18px;
-  padding: 8px 4px 4px 0;
+  gap: 10px;
+  flex: 1;
 `;
 
 const CardFooter = styled.div`
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   margin-top: auto;
-  padding-top: 8px;
-  gap: 12px;
+  padding-top: 2px;
+  gap: 10px;
 `;
 
 const UseButton = styled(Button)`
   && {
     border: none;
     border-radius: 999px;
-    height: 44px;
-    padding: 0 32px;
-    font-size: 15px;
+    height: 38px;
+    padding: 0 22px;
+    font-size: 14px;
     font-weight: 700;
     letter-spacing: 0.04em;
     background: linear-gradient(135deg, #3b82f6 0%, #6366f1 52%, #818cf8 100%);
@@ -545,12 +540,9 @@ const UseButton = styled(Button)`
 const RefFrame = styled.div<{ $previewable?: boolean; $isDark: boolean }>`
   position: relative;
   min-width: 0;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  border-radius: 24px;
+  width: 100%;
+  padding: 3px;
+  border-radius: 18px;
   background: ${(p) =>
     p.$isDark
       ? 'linear-gradient(135deg, rgba(96,165,250,0.35), rgba(167,139,250,0.2))'
@@ -561,7 +553,7 @@ const RefFrame = styled.div<{ $previewable?: boolean; $isDark: boolean }>`
   &:hover {
     transform: scale(${(p) => (p.$previewable ? 1.01 : 1)});
     box-shadow: ${(p) =>
-      p.$previewable ? '0 16px 40px rgba(59, 130, 246, 0.28)' : 'none'};
+      p.$previewable ? '0 12px 28px rgba(59, 130, 246, 0.22)' : 'none'};
   }
 
   &:hover .zoom-hint {
@@ -572,33 +564,29 @@ const RefFrame = styled.div<{ $previewable?: boolean; $isDark: boolean }>`
 const RefImages = styled.div<{ $isDark: boolean }>`
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
-  gap: clamp(10px, 1.4vw, 22px);
+  gap: 10px;
   width: 100%;
-  height: 100%;
-  min-height: min(68vh, 620px);
-  padding: clamp(10px, 1.2vw, 18px);
-  border-radius: 21px;
+  padding: 10px;
+  border-radius: 15px;
   background: ${(p) =>
     p.$isDark ? 'rgba(10, 12, 18, 0.85)' : 'rgba(255, 255, 255, 0.92)'};
 
   img,
   .ref-ph {
     ${refThumbStyle}
-    flex: 1 1 0;
-    width: auto;
-    max-width: min(32vw, 420px);
-    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.22);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
     transition: opacity 0.2s ease;
   }
 
   .arrow {
+    align-self: center;
+    flex-shrink: 0;
     color: ${(p) =>
       p.$isDark ? 'rgba(147, 197, 253, 0.75)' : '#3b82f6'};
-    font-size: clamp(20px, 2vw, 32px);
+    font-size: 18px;
     pointer-events: none;
-    filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.35));
   }
 
   .zoom-hint {
@@ -610,7 +598,7 @@ const RefImages = styled.div<{ $isDark: boolean }>`
     opacity: 0;
     transition: opacity 0.2s ease;
     color: #fff;
-    font-size: 32px;
+    font-size: 26px;
     text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
     z-index: 2;
   }
@@ -621,51 +609,50 @@ const RefPlaceholder = styled.div<{ $withEmoji?: boolean; $isDark: boolean }>`
   display: ${(p) => (p.$withEmoji ? 'flex' : 'block')};
   align-items: center;
   justify-content: center;
-  font-size: ${(p) => (p.$withEmoji ? '64px' : '0')};
+  font-size: ${(p) => (p.$withEmoji ? '42px' : '0')};
   background: ${(p) =>
     p.$isDark ? 'rgba(255,255,255,0.06)' : 'linear-gradient(180deg, #f8fafc, #eef2ff)'};
   pointer-events: none;
 `;
 
 const PlayInfo = styled.div<{ $isDark: boolean }>`
-  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
 
   .title-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
   }
 
   .title {
-    font-size: clamp(22px, 2vw, 30px);
+    font-size: 17px;
     font-weight: 800;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.02em;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 6px;
     color: ${(p) => (p.$isDark ? '#f8fafc' : '#0f172a')};
   }
 
   .desc {
-    font-size: 15px;
-    color: ${(p) => (p.$isDark ? 'rgba(255,255,255,0.62)' : '#64748b')};
-    line-height: 1.65;
+    font-size: 13px;
+    color: ${(p) => (p.$isDark ? 'rgba(255,255,255,0.58)' : '#64748b')};
+    line-height: 1.55;
     display: -webkit-box;
-    -webkit-line-clamp: 5;
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    min-height: 2.5em;
   }
 
   .stats {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-top: 4px;
   }
 `;
 
@@ -708,16 +695,15 @@ const CategoryBadge = styled.span<{ $isDark: boolean }>`
 
 const ActionCol = styled.div<{ $isDark: boolean }>`
   display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 10px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
-  padding-top: 8px;
 
   .ant-btn {
-    width: 44px;
-    height: 44px;
-    border-radius: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
     background: ${(p) => (p.$isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.8)')};
     border: 1px solid
       ${(p) => (p.$isDark ? 'rgba(255,255,255,0.08)' : 'rgba(148,163,184,0.2)')};
@@ -727,18 +713,6 @@ const ActionCol = styled.div<{ $isDark: boolean }>`
       transform: scale(1.06);
     }
   }
-`;
-
-const CompareHint = styled.div<{ $isDark: boolean }>`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: ${(p) => (p.$isDark ? 'rgba(147,197,253,0.8)' : '#3b82f6')};
-  opacity: 0.9;
 `;
 
 const PreviewCompare = styled.div<{ $isDark: boolean; $isMobile?: boolean }>`
@@ -1272,15 +1246,6 @@ const OfficialPlaySelectionModal: React.FC<OfficialPlaySelectionModalProps> = ({
 
                       <PlayContent>
                         <PlayInfo $isDark={isDark}>
-                          {canPreviewPlay(play) && (
-                            <CompareHint $isDark={isDark}>
-                              <ZoomInOutlined />
-                              <FormattedMessage
-                                id="create.i2i.official.clickCompare"
-                                defaultMessage="点击大图对照"
-                              />
-                            </CompareHint>
-                          )}
                           <div className="title-row">
                             <div className="title">
                               <span>{play.coverEmoji}</span>
@@ -1319,48 +1284,47 @@ const OfficialPlaySelectionModal: React.FC<OfficialPlaySelectionModalProps> = ({
                         </PlayInfo>
 
                         <CardFooter>
+                          <ActionCol $isDark={isDark}>
+                            <Button
+                              type="text"
+                              size="small"
+                              loading={actionLoadingCode === play.playCode}
+                              icon={
+                                play.isLiked ? (
+                                  <HeartFilled style={{ color: '#ff4d4f' }} />
+                                ) : (
+                                  <HeartOutlined />
+                                )
+                              }
+                              onClick={(e) =>
+                                handleInteraction(e, play.playCode, play.isLiked ? 'unlike' : 'like')
+                              }
+                            />
+                            <Button
+                              type="text"
+                              size="small"
+                              loading={actionLoadingCode === play.playCode}
+                              icon={
+                                play.isFavorited ? (
+                                  <StarFilled style={{ color: '#faad14' }} />
+                                ) : (
+                                  <StarOutlined />
+                                )
+                              }
+                              onClick={(e) =>
+                                handleInteraction(
+                                  e,
+                                  play.playCode,
+                                  play.isFavorited ? 'unfavorite' : 'favorite'
+                                )
+                              }
+                            />
+                          </ActionCol>
                           <UseButton type="primary" onClick={() => handleUsePlay(play)}>
                             <FormattedMessage id="create.i2i.official.use" defaultMessage="使用" />
                           </UseButton>
                         </CardFooter>
                       </PlayContent>
-
-                      <ActionCol $isDark={isDark}>
-                        <Button
-                          type="text"
-                          size="small"
-                          loading={actionLoadingCode === play.playCode}
-                          icon={
-                            play.isLiked ? (
-                              <HeartFilled style={{ color: '#ff4d4f' }} />
-                            ) : (
-                              <HeartOutlined />
-                            )
-                          }
-                          onClick={(e) =>
-                            handleInteraction(e, play.playCode, play.isLiked ? 'unlike' : 'like')
-                          }
-                        />
-                        <Button
-                          type="text"
-                          size="small"
-                          loading={actionLoadingCode === play.playCode}
-                          icon={
-                            play.isFavorited ? (
-                              <StarFilled style={{ color: '#faad14' }} />
-                            ) : (
-                              <StarOutlined />
-                            )
-                          }
-                          onClick={(e) =>
-                            handleInteraction(
-                              e,
-                              play.playCode,
-                              play.isFavorited ? 'unfavorite' : 'favorite'
-                            )
-                          }
-                        />
-                      </ActionCol>
                     </CardBody>
                   </PlayCard>
                 ))}
