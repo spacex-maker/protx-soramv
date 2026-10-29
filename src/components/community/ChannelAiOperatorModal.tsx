@@ -1045,6 +1045,7 @@ const renderGenerationParamItems = (
 
 interface OperatorPostRecordsProps {
   operatorId: number;
+  refreshKey?: number;
 }
 
 const RecordTimelineContent: React.FC<{
@@ -1067,12 +1068,26 @@ const RecordTimelineContent: React.FC<{
         <Tag style={{ margin: 0 }}>{ACTION_TYPE_LABEL[record.actionType] || record.actionType}</Tag>
         <Tag
           style={{ margin: 0 }}
-          icon={isSuccess ? <CheckCircleOutlined /> : <CloseCircleOutlined />}
-          color={isSuccess ? 'success' : 'error'}
+          icon={
+            record.actionResult === 'PENDING'
+              ? <ClockCircleOutlined />
+              : isSuccess
+                ? <CheckCircleOutlined />
+                : <CloseCircleOutlined />
+          }
+          color={
+            record.actionResult === 'PENDING'
+              ? 'processing'
+              : isSuccess
+                ? 'success'
+                : 'error'
+          }
         >
-          {isSuccess
-            ? intl.formatMessage({ id: 'community.aiOperator.record.success', defaultMessage: '成功' })
-            : intl.formatMessage({ id: 'community.aiOperator.record.failed', defaultMessage: '失败' })}
+          {record.actionResult === 'PENDING'
+            ? intl.formatMessage({ id: 'community.aiOperator.record.pending', defaultMessage: '进行中' })
+            : isSuccess
+              ? intl.formatMessage({ id: 'community.aiOperator.record.success', defaultMessage: '成功' })
+              : intl.formatMessage({ id: 'community.aiOperator.record.failed', defaultMessage: '失败' })}
         </Tag>
         {postStatus && <Tag style={{ margin: 0 }} color={postStatus.color}>{postStatus.label}</Tag>}
         {record.postId != null && <Tag style={{ margin: 0 }} color="blue">#{record.postId}</Tag>}
@@ -1126,7 +1141,7 @@ const RecordTimelineContent: React.FC<{
   </RecordItem>
 );
 
-const OperatorPostRecords: React.FC<OperatorPostRecordsProps> = ({ operatorId }) => {
+const OperatorPostRecords: React.FC<OperatorPostRecordsProps> = ({ operatorId, refreshKey = 0 }) => {
   const intl = useIntl();
   const { message } = App.useApp();
   const navigate = useNavigate();
@@ -1184,11 +1199,11 @@ const OperatorPostRecords: React.FC<OperatorPostRecordsProps> = ({ operatorId })
 
   useEffect(() => {
     loadStats();
-  }, [loadStats]);
+  }, [loadStats, refreshKey]);
 
   useEffect(() => {
     loadRecords(1, false);
-  }, [loadRecords]);
+  }, [loadRecords, refreshKey]);
 
   const hasMore = records.length < total;
 
@@ -1285,10 +1300,11 @@ const OperatorPostRecords: React.FC<OperatorPostRecordsProps> = ({ operatorId })
               items={records.map((record) => {
                 const postStatus = getPostStatus(record.postStatus);
                 const isSuccess = record.actionResult === 'SUCCESS';
+                const isPending = record.actionResult === 'PENDING';
                 const isPost = record.actionType === 'POST_PUBLISH';
                 return {
                   key: record.id,
-                  color: isSuccess ? 'green' : 'red',
+                  color: isPending ? 'blue' : isSuccess ? 'green' : 'red',
                   dot: isPost ? <SendOutlined /> : <FileImageOutlined />,
                   label: (
                     <Text type="secondary" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
@@ -1773,6 +1789,7 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
   const [activeChannelId, setActiveChannelId] = useState<number | undefined>(channelId);
   const [budgetStatus, setBudgetStatus] = useState<AiOperatorBudgetStatus | null>(null);
   const [budgetRefreshKey, setBudgetRefreshKey] = useState(0);
+  const [recordsRefreshKey, setRecordsRefreshKey] = useState(0);
   const [runtimeEnabled, setRuntimeEnabled] = useState(true);
   const [runtimeSwitching, setRuntimeSwitching] = useState(false);
 
@@ -1940,6 +1957,8 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
 
   const handleTriggerSuccess = async () => {
     onPostTriggered?.();
+    setContentTab('records');
+    setRecordsRefreshKey((k) => k + 1);
     await loadData(activeChannelId);
     setBudgetRefreshKey((k) => k + 1);
   };
@@ -1972,10 +1991,20 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
     [operators, triggerOperatorId]
   );
 
-  const modelOptions = models.map((m) => ({
-    value: m.modelCode,
-    label: m.modelName || m.modelNameEn || m.modelCode,
-  }));
+  const modelOptions = [...models]
+    .sort((a, b) => {
+      const score = (m: TextToImageModel) => {
+        const code = String(m.modelCode || '').toLowerCase();
+        if (code === 'flux.3-klein' || (code.includes('flux') && code.includes('klein'))) return 0;
+        if (code.includes('flux')) return 1;
+        return 2;
+      };
+      return score(a) - score(b);
+    })
+    .map((m) => ({
+      value: m.modelCode,
+      label: m.modelName || m.modelNameEn || m.modelCode,
+    }));
 
   const getDisplayName = (op: CommunityAiOperator) => {
     const d = drafts[op.id] || op;
@@ -2156,7 +2185,12 @@ const ChannelAiOperatorModal: React.FC<ChannelAiOperatorModalProps> = ({
                             <FormattedMessage id="community.aiOperator.tab.records" defaultMessage="发帖记录" />
                           </Space>
                         ),
-                        children: <OperatorPostRecords operatorId={selectedId} />,
+                        children: (
+                          <OperatorPostRecords
+                            operatorId={selectedId}
+                            refreshKey={recordsRefreshKey}
+                          />
+                        ),
                       },
                       {
                         key: 'budget',
