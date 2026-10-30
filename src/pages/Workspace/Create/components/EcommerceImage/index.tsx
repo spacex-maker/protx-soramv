@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { CheckCircleOutlined, PictureOutlined, ShoppingOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, ShoppingOutlined } from '@ant-design/icons';
 import { FormattedMessage } from 'react-intl';
 import styled from 'styled-components';
 import { ECOMMERCE_CATEGORIES, findEcommerceScenario } from './scenarios';
@@ -85,7 +85,7 @@ const CategoryChip = styled.button<{ $active?: boolean; $accent?: string }>`
 `;
 
 const Section = styled.section`
-  margin-bottom: 28px;
+  margin-bottom: 32px;
 `;
 
 const SectionHead = styled.div`
@@ -119,42 +119,87 @@ const SectionSub = styled.p`
 
 const Grid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
 `;
 
-const ScenarioCard = styled.button<{ $accent?: string }>`
+const ScenarioCard = styled.button<{ $accent?: string; $cover?: string }>`
+  position: relative;
   text-align: left;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 16px;
-  padding: 16px 16px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 0;
   cursor: pointer;
-  transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+  overflow: hidden;
+  min-height: 300px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  min-height: 168px;
+  justify-content: flex-end;
+  background-color: #1c1917;
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url(${(p) => p.$cover || ''});
+    background-size: cover;
+    background-position: center;
+    transform: scale(1);
+    transition: transform 0.45s ease;
+    z-index: 0;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      180deg,
+      rgba(12, 10, 9, 0.05) 0%,
+      rgba(12, 10, 9, 0.35) 42%,
+      rgba(12, 10, 9, 0.92) 100%
+    );
+    z-index: 1;
+  }
 
   &:hover {
-    transform: translateY(-2px);
-    border-color: ${(p) => `${p.$accent || '#c45c26'}99`};
-    box-shadow: 0 12px 28px -18px ${(p) => `${p.$accent || '#c45c26'}88`};
+    transform: translateY(-3px);
+    border-color: ${(p) => `${p.$accent || '#c45c26'}aa`};
+    box-shadow: 0 16px 36px -20px ${(p) => `${p.$accent || '#c45c26'}99`};
+  }
+
+  &:hover::before {
+    transform: scale(1.06);
   }
 `;
 
+const CardBody = styled.div`
+  position: relative;
+  z-index: 2;
+  padding: 18px 18px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
 const CardTitle = styled.div`
-  font-size: 15px;
-  font-weight: 650;
-  color: #fafaf9;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
   line-height: 1.35;
+  letter-spacing: -0.01em;
 `;
 
 const CardDesc = styled.div`
-  flex: 1;
   font-size: 12.5px;
   line-height: 1.55;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.72);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  min-height: 2.9em;
 `;
 
 const CardMeta = styled.div`
@@ -162,17 +207,29 @@ const CardMeta = styled.div`
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+  margin-top: 4px;
 `;
 
-const MetaPill = styled.span<{ $tone?: 'mode' | 'tag' }>`
+const GlassPill = styled.span`
   display: inline-flex;
   align-items: center;
-  gap: 4px;
   font-size: 11px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   border-radius: 999px;
-  background: ${(p) => (p.$tone === 'mode' ? 'rgba(253,186,116,0.15)' : 'rgba(255,255,255,0.06)')};
-  color: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px);
+`;
+
+const CardCta = styled.span<{ $accent?: string }>`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 650;
+  color: ${(p) => p.$accent || '#fdba74'};
 `;
 
 const WorkbenchWrap = styled.div`
@@ -222,7 +279,7 @@ const EcommerceImage: React.FC = () => {
           <HeroDesc>
             <FormattedMessage
               id="create.ecommerce.subtitle"
-              defaultMessage="按运营场景选模板，上传商品图并填写属性即可出图——提示词在后台自动拼装，无需手写。"
+              defaultMessage="按运营场景选模板，上传商品图并填写策略即可出图；提示词在后台自动拼装，无需手写。"
             />
           </HeroDesc>
         </Hero>
@@ -261,24 +318,22 @@ const EcommerceImage: React.FC = () => {
                   key={scenario.id}
                   type="button"
                   $accent={category.accent}
+                  $cover={scenario.coverImage}
                   onClick={() => setSelectedId(scenario.id)}
                 >
-                  <CardTitle>{scenario.title}</CardTitle>
-                  <CardDesc>{scenario.description}</CardDesc>
-                  <CardMeta>
-                    <MetaPill $tone="mode">
-                      <PictureOutlined /> Klein 图生图
-                    </MetaPill>
-                    {scenario.tags?.slice(0, 2).map((tag) => (
-                      <MetaPill key={tag} $tone="tag">
-                        {tag}
-                      </MetaPill>
-                    ))}
-                    <MetaPill $tone="tag">
-                      <CheckCircleOutlined />
-                      <FormattedMessage id="create.ecommerce.select" defaultMessage="进入工作台" />
-                    </MetaPill>
-                  </CardMeta>
+                  <CardBody>
+                    <CardTitle>{scenario.title}</CardTitle>
+                    <CardDesc>{scenario.description}</CardDesc>
+                    <CardMeta>
+                      {scenario.tags?.slice(0, 3).map((tag) => (
+                        <GlassPill key={tag}>{tag}</GlassPill>
+                      ))}
+                    </CardMeta>
+                    <CardCta $accent={category.accent}>
+                      开始创作
+                      <ArrowRightOutlined />
+                    </CardCta>
+                  </CardBody>
                 </ScenarioCard>
               ))}
             </Grid>

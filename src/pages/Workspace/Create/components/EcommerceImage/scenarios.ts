@@ -25,10 +25,21 @@ export interface ScenarioUploadSlot {
 
 export type ScenarioFieldValues = Record<string, string | string[]>;
 
+export interface EcommerceWorkbenchNotes {
+  outputQuality?: string;
+  brandTone?: string;
+  cropSafeZone?: string;
+  batchVariant?: string;
+}
+
 export interface EcommerceScenario {
   id: string;
   title: string;
   description: string;
+  coverImage: string;
+  steps: string[];
+  workloadHint?: string;
+  workbenchNotes?: EcommerceWorkbenchNotes;
   tips: string[];
   tags?: string[];
   uploads: ScenarioUploadSlot[];
@@ -36,6 +47,10 @@ export interface EcommerceScenario {
   aspectRatio: string;
   kleinMode: EcommerceKleinMode;
   buildPrompt: (values: ScenarioFieldValues) => string;
+}
+
+export function scenarioCoverPath(id: string): string {
+  return `/ecommerce-cases/${id}.jpg`;
 }
 
 export interface EcommerceCategory {
@@ -134,6 +149,27 @@ const brandRefUpload: ScenarioUploadSlot = {
   hint: '用于配色与风格参考',
 };
 
+
+const styleRefUpload: ScenarioUploadSlot = {
+  id: 'styleRef',
+  label: '场景 / 风格参考',
+  hint: '可选：色调、道具与构图参考',
+  optional: true,
+};
+
+const modelRefUpload: ScenarioUploadSlot = {
+  id: 'modelRef',
+  label: '模特参考图',
+  hint: '可选：脸型、发型或姿态参考',
+  optional: true,
+};
+
+const posterUpload: ScenarioUploadSlot = {
+  id: 'poster',
+  label: '含文案海报 / 信息图',
+  hint: '需保留版式与文字层的原图',
+};
+
 export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
   {
     id: 'product-display',
@@ -143,6 +179,10 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
     scenarios: [
       {
         id: 'white-bg-hero',
+        coverImage: scenarioCoverPath('white-bg-hero'),
+        steps: ['上传商品图', '选择平台与主体占比', '生成白底主图'],
+        workloadHint: '单 SKU 约 1–2 分钟',
+        workbenchNotes: { outputQuality: '建议 2048px 方图', cropSafeZone: '主体居中，四边留 5% 安全区' },
         title: '白底 / 棚拍主图',
         description:
           '自动抠图、纯白背景、控制前景占比，适配 Amazon / 淘宝 / 京东主图规范。',
@@ -175,19 +215,32 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
             ],
             defaultValue: 'none',
           },
+          {
+            id: 'outputQuality',
+            label: '输出精细度',
+            kind: 'choice',
+            options: [
+              { value: 'standard', label: '标准' },
+              { value: 'high', label: '高细节' },
+            ],
+            defaultValue: 'high',
+          },
         ],
         aspectRatio: '1:1',
         kleinMode: 'edit',
         buildPrompt: (v) =>
-          `E-commerce product hero on pure white background RGB(255,255,255), ${S(v, 'marketplace')} listing style, product centered occupying at least ${S(v, 'subjectRatio')}% of frame, ${S(v, 'shadow') === 'none' ? 'no shadows on background' : 'subtle contact shadow only'}, sharp catalog photography, high detail`,
+          `E-commerce product hero on pure white background RGB(255,255,255), ${S(v, 'marketplace')} listing style, product centered occupying at least ${S(v, 'subjectRatio')}% of frame, ${S(v, 'shadow') === 'none' ? 'no shadows on background' : 'subtle contact shadow only'}, sharp catalog photography, high detail, ${S(v, 'outputQuality') === 'high' ? 'ultra sharp edges' : 'clean catalog finish'}`,
       },
       {
         id: 'lifestyle',
+        coverImage: scenarioCoverPath('lifestyle'),
+        steps: ['上传商品图', '可选风格参考', '选场景与光线', '生成场景图'],
+        workbenchNotes: { brandTone: '场景勿抢商品主体', cropSafeZone: '商品占画面 40–60%' },
         title: '生活场景图 Lifestyle',
         description: '将商品置入厨房、客厅、办公室、户外等真实使用环境，增强代入感。',
         tips: ['保持商品主体清晰可辨，场景勿抢戏'],
         tags: ['场景', '种草'],
-        uploads: [productUpload],
+        uploads: [productUpload, styleRefUpload],
         fields: [
           { id: 'scene', label: '场景类型', kind: 'choice', options: SCENE, defaultValue: 'living' },
           {
@@ -202,14 +255,28 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
             defaultValue: 'warm',
           },
           { id: 'light', label: '光线', kind: 'choice', options: LIGHT, defaultValue: 'natural' },
+          {
+            id: 'brandTone',
+            label: '品牌调性',
+            kind: 'choice',
+            options: [
+              { value: 'mass', label: '大众快消' },
+              { value: 'premium', label: '轻奢质感' },
+              { value: 'tech', label: '科技简洁' },
+            ],
+            defaultValue: 'mass',
+          },
         ],
         aspectRatio: '4:3',
         kleinMode: 'edit',
         buildPrompt: (v) =>
-          `Place this product naturally into a realistic ${S(v, 'scene')} lifestyle scene, ${S(v, 'mood')} atmosphere, ${S(v, 'light')} lighting, product remains the clear hero, commercial photography, shallow depth of field`,
+          `Place this product naturally into a realistic ${S(v, 'scene')} lifestyle scene, ${S(v, 'mood')} atmosphere, ${S(v, 'light')} lighting, ${S(v, 'brandTone')} brand tone, product remains the clear hero, commercial photography, shallow depth of field`,
       },
       {
         id: 'flat-lay-detail',
+        coverImage: scenarioCoverPath('flat-lay-detail'),
+        steps: ['上传商品', '选版式与背景', '生成平铺 / 微距 / 网格'],
+        workbenchNotes: { outputQuality: '微距模式建议上传高清细节图' },
         title: '平铺图 / 细节微距 / 多角度网格',
         description: '俯拍全貌、材质微距与多角度网格，帮助消费者建立完整产品认知。',
         tips: ['平铺适合服饰配件；微距强调材质纹理'],
@@ -246,6 +313,9 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
       },
       {
         id: 'infographic',
+        coverImage: scenarioCoverPath('infographic'),
+        steps: ['上传商品图', '选信息图类型与留白', '生成可排版底图'],
+        workbenchNotes: { cropSafeZone: '四周预留 12% 文案安全区', brandTone: '与 A+ 模块风格一致' },
         title: '卖点信息图 / 对比图 / 尺寸规格图',
         description: '在图上标注核心功能、竞品差异或尺寸参照，提升详情页说服力。',
         tips: ['留出中英文案排版空间'],
@@ -280,12 +350,22 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
             kind: 'text',
             placeholder: '如：防水、轻量、24h 续航',
           },
+          {
+            id: 'cropSafeZone',
+            label: '文案安全区',
+            kind: 'choice',
+            options: [
+              { value: '12', label: '四边 12%' },
+              { value: '18', label: '四边 18%' },
+            ],
+            defaultValue: '12',
+          },
         ],
         aspectRatio: '3:4',
         kleinMode: 'edit',
         buildPrompt: (v) => {
           const extra = S(v, 'sellingPoints').trim();
-          return `Product infographic (${S(v, 'chartType')}), keep product accurate, ${S(v, 'langSpace')} typography space, clean modern layout${extra ? `, emphasize: ${extra}` : ''}, professional Amazon A+ style`;
+          return `Product infographic (${S(v, 'chartType')}), keep product accurate, ${S(v, 'langSpace')} typography space, ${S(v, 'cropSafeZone')}% margin for copy, clean modern layout${extra ? `, emphasize: ${extra}` : ''}, professional Amazon A+ style`;
         },
       },
     ],
@@ -298,11 +378,14 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
     scenarios: [
       {
         id: 'ai-model-wear',
+        coverImage: scenarioCoverPath('ai-model-wear'),
+        steps: ['上传服装图', '可选模特参考', '选体型 / 肤色 / 姿势', '生成上身图'],
+        workbenchNotes: { outputQuality: '3:4 竖图适合详情页' },
         title: 'AI 模特上身图',
         description: '上传服装平铺或商品图，AI 自然「穿」到虚拟模特上，可换姿势 / 肤色 / 体型。',
         tips: ['上传平铺或挂拍服装图效果更好'],
         tags: ['上身', '服饰'],
-        uploads: [garmentUpload],
+        uploads: [garmentUpload, modelRefUpload],
         fields: [
           {
             id: 'gender',
@@ -335,11 +418,14 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
       },
       {
         id: 'virtual-tryon',
+        coverImage: scenarioCoverPath('virtual-tryon'),
+        steps: ['上传服装', '可选模特参考', '设置合身与面料', '生成试穿图'],
+        workbenchNotes: { brandTone: '同店建议固定模特风格' },
         title: '虚拟试穿',
         description: '强调合身感、褶皱与垂坠，同一模特风格贯穿店铺目录。',
         tips: ['多件商品复用同一模特描述可保持店铺风格一致'],
         tags: ['试穿', '合身'],
-        uploads: [garmentUpload],
+        uploads: [garmentUpload, modelRefUpload],
         fields: [
           {
             id: 'fit',
@@ -371,6 +457,8 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
       },
       {
         id: 'invisible-model',
+        coverImage: scenarioCoverPath('invisible-model'),
+        steps: ['上传挂拍 / 平铺图', '选背景与立体度', '生成隐形模特图'],
         title: '隐形模特 / 挂拍',
         description: '商品保持立体形态但不露出人体，兼顾展示效果与合规（内衣、泳装等）。',
         tips: ['适合不便真人上身的品类'],
@@ -405,6 +493,9 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
       },
       {
         id: 'sku-recolor',
+        coverImage: scenarioCoverPath('sku-recolor'),
+        steps: ['上传基准商品图（必填）', '填写目标色', '批量感换色输出'],
+        workbenchNotes: { batchVariant: '同一光影下可连续换色出 SKU 系列' },
         title: '多 SKU 换色 / 换款',
         description: '同一版型不同颜色，无需逐一重拍，批量生成配色变体。',
         tips: ['保持版型与光影一致'],
@@ -428,11 +519,17 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
             ],
             defaultValue: 'all',
           },
+          {
+            id: 'batchVariant',
+            label: '变体说明',
+            kind: 'text',
+            placeholder: '如：同款 4 色 — 藏青、米白、砖红',
+          },
         ],
         aspectRatio: '1:1',
         kleinMode: 'edit',
         buildPrompt: (v) =>
-          `Same product variant recolored to ${S(v, 'targetColor')}, keep exact shape and ${S(v, 'keepDetail')}, realistic e-commerce SKU listing photo`,
+          `Same product variant recolored to ${S(v, 'targetColor')}, keep exact shape and ${S(v, 'keepDetail')}, realistic e-commerce SKU listing photo${S(v, 'batchVariant').trim() ? `, variant note: ${S(v, 'batchVariant').trim()}` : ''}`,
       },
     ],
   },
@@ -444,6 +541,9 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
     scenarios: [
       {
         id: 'ad-banner',
+        coverImage: scenarioCoverPath('ad-banner'),
+        steps: ['上传商品 hero', '选平台与留白', '生成投放底图'],
+        workbenchNotes: { cropSafeZone: '按所选留白保留标题区', outputQuality: '9:16 适合信息流' },
         title: '海报 / Banner / 信息流素材',
         description: '按平台调性规划背景与构图，预留促销文案空间，用于广告与封面。',
         tips: ['竖版适合抖音/小红书；横版适合 Banner'],
@@ -472,14 +572,26 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
             ],
             defaultValue: 'flash',
           },
+          {
+            id: 'brandTone',
+            label: '品牌语气',
+            kind: 'choice',
+            options: [
+              { value: 'bold', label: '强促销' },
+              { value: 'elegant', label: '克制高级' },
+            ],
+            defaultValue: 'bold',
+          },
         ],
         aspectRatio: '9:16',
         kleinMode: 'edit',
         buildPrompt: (v) =>
-          `High-converting ad creative for ${S(v, 'platform')}, product hero, ${S(v, 'promo')} look, clear ${S(v, 'headlineSpace')} negative space for promo headline, vibrant commercial poster`,
+          `High-converting ad creative for ${S(v, 'platform')}, product hero, ${S(v, 'promo')} look, ${S(v, 'brandTone')} visual tone, clear ${S(v, 'headlineSpace')} negative space for promo headline, vibrant commercial poster`,
       },
       {
         id: 'ugc-share',
+        coverImage: scenarioCoverPath('ugc-share'),
+        steps: ['上传商品', '选分享场景与拍摄感', '生成种草图'],
         title: '社媒种草图 / UGC 买家秀',
         description: '具有真实用户分享感的氛围图，用于小红书、Instagram 等内容铺垫。',
         tips: ['可弱化棚拍感，增加生活感'],
@@ -515,11 +627,14 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
       },
       {
         id: 'seasonal-gift',
+        coverImage: scenarioCoverPath('seasonal-gift'),
+        steps: ['上传品牌 / 商品参考', '选节日与风格', '生成季节视觉'],
+        workbenchNotes: { brandTone: '礼盒与编辑风需统一色盘' },
         title: '季节营销 / 节日礼盒 / 杂志编辑风',
         description: '围绕大促、礼赠与品牌调性，快速产出季节化、风格化视觉。',
         tips: ['写明节日或季节元素'],
         tags: ['节日', '大促'],
-        uploads: [brandRefUpload],
+        uploads: [brandRefUpload, productUpload],
         fields: [
           {
             id: 'season',
@@ -559,6 +674,9 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
     scenarios: [
       {
         id: 'live-backdrop',
+        coverImage: scenarioCoverPath('live-backdrop'),
+        steps: ['上传品牌参考', '选构图与色调', '生成直播背景'],
+        workbenchNotes: { cropSafeZone: '主播与商品区保持低纹理' },
         title: '直播间背景 / 背景板',
         description: '低干扰底图，为商品与主播留出清晰区域，统一直播间视觉。',
         tips: ['避免复杂图案抢主播注意力'],
@@ -585,6 +703,9 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
       },
       {
         id: 'live-overlay',
+        coverImage: scenarioCoverPath('live-overlay'),
+        steps: ['上传品牌素材', '勾选贴片模块', '生成带安全区模板'],
+        workbenchNotes: { cropSafeZone: '边缘 8% 防 OBS 裁切' },
         title: '直播分层贴片',
         description: '利益点板、倒计时占位、讲解卡、应急静态画面，预留安全区。',
         tips: ['边缘留安全区防裁切'],
@@ -612,14 +733,26 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
             ],
             defaultValue: '9:16',
           },
+          {
+            id: 'cropSafeZone',
+            label: '边缘安全区',
+            kind: 'choice',
+            options: [
+              { value: '8', label: '8%' },
+              { value: '12', label: '12%' },
+            ],
+            defaultValue: '8',
+          },
         ],
         aspectRatio: '9:16',
         kleinMode: 'edit',
         buildPrompt: (v) =>
-          `Livestream overlay template (${S(v, 'orientation')}), modules: ${M(v, 'layers')}, safe margins, clean modern UI layers, empty text regions`,
+          `Livestream overlay template (${S(v, 'orientation')}), modules: ${M(v, 'layers')}, ${S(v, 'cropSafeZone')}% safe margins, clean modern UI layers, empty text regions`,
       },
       {
         id: 'live-pedestal',
+        coverImage: scenarioCoverPath('live-pedestal'),
+        steps: ['上传商品白底图', '选展台材质与灯光', '生成直播展台'],
         title: '直播间产品展台 / 展示道具',
         description: '用白底图作参考，生成高级感展台与氛围，替代实体搭建。',
         tips: ['描述展台材质与灯光'],
@@ -654,6 +787,9 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
     scenarios: [
       {
         id: 'product-set',
+        coverImage: scenarioCoverPath('product-set'),
+        steps: ['上传商品', '选本张套图类型', '生成并补齐系列'],
+        workbenchNotes: { batchVariant: '固定 grade 可批量出套图' },
         title: '商品套图',
         description: '围绕同一商品成套输出主图、场景、细节、卖点等，保持视觉一致。',
         tips: ['一次生成后可再切场景补齐套图'],
@@ -691,6 +827,9 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
       },
       {
         id: 'aplus-module',
+        coverImage: scenarioCoverPath('aplus-module'),
+        steps: ['上传商品', '选 A+ 模块类型', '生成宽屏模块图'],
+        workbenchNotes: { outputQuality: '接近 970×600 视觉比例' },
         title: 'A+ 页面模块',
         description: '按平台模块尺寸生成品牌故事、功能标注、规格与对比展示。',
         tips: ['常见模块约 970×600'],
@@ -716,6 +855,8 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
       },
       {
         id: 'explode-unbox',
+        coverImage: scenarioCoverPath('explode-unbox'),
+        steps: ['上传商品', '选爆炸图或开箱步骤', '生成说明图'],
         title: '爆炸图 / 开箱流程图',
         description: '组件拆解或开箱步骤，建立专业感与购买信任。',
         tips: ['适合数码、家电、配件'],
@@ -761,11 +902,14 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
     scenarios: [
       {
         id: 'multilang-layout',
+        coverImage: scenarioCoverPath('multilang-layout'),
+        steps: ['上传含文案海报（必填）', '选目标语言', '生成本地化版式'],
+        workbenchNotes: { cropSafeZone: '严格模式保留文字框位置' },
         title: '多语言图片翻译与版式保留',
         description: '替换图中卖点文字为目标语言，尽量保留原排版与视觉结构。',
         tips: ['上传含文案的原信息图效果更好'],
         tags: ['多语言', '版式'],
-        uploads: [productUpload],
+        uploads: [posterUpload],
         fields: [
           { id: 'targetLang', label: '目标语言', kind: 'choice', options: LANG, defaultValue: 'en' },
           {
@@ -778,14 +922,26 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
             ],
             defaultValue: 'strict',
           },
+          {
+            id: 'outputQuality',
+            label: '文字清晰度',
+            kind: 'choice',
+            options: [
+              { value: 'sharp', label: '锐利可读' },
+              { value: 'soft', label: '柔和印刷感' },
+            ],
+            defaultValue: 'sharp',
+          },
         ],
         aspectRatio: '3:4',
         kleinMode: 'edit',
         buildPrompt: (v) =>
-          `Localize marketing image to ${S(v, 'targetLang')}, ${S(v, 'preserve')} layout and typography hierarchy, clean readable text`,
+          `Localize marketing image to ${S(v, 'targetLang')}, ${S(v, 'preserve')} layout and typography hierarchy, ${S(v, 'outputQuality')} text rendering, clean readable text`,
       },
       {
         id: 'market-aesthetic',
+        coverImage: scenarioCoverPath('market-aesthetic'),
+        steps: ['上传商品', '选市场与平台', '生成本地化场景'],
         title: '本地化审美与平台规范',
         description: '按目标市场审美与 Amazon / SHEIN / Temu / TikTok Shop 等调性生成场景。',
         tips: ['写明目标国家与平台'],
@@ -805,11 +961,22 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
             ],
             defaultValue: 'amazon',
           },
+          {
+            id: 'brandTone',
+            label: '本地审美',
+            kind: 'choice',
+            options: [
+              { value: 'lifestyle', label: '生活化' },
+              { value: 'deal', label: '折扣直给' },
+              { value: 'minimal', label: '极简' },
+            ],
+            defaultValue: 'lifestyle',
+          },
         ],
         aspectRatio: '1:1',
         kleinMode: 'edit',
         buildPrompt: (v) =>
-          `Adapt product visual for ${S(v, 'region')} market and ${S(v, 'channel')} aesthetic, local lifestyle context, listing-ready commercial photo`,
+          `Adapt product visual for ${S(v, 'region')} market and ${S(v, 'channel')} aesthetic, ${S(v, 'brandTone')} local aesthetic, local lifestyle context, listing-ready commercial photo`,
       },
     ],
   },
@@ -821,6 +988,9 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
     scenarios: [
       {
         id: 'multi-platform-size',
+        coverImage: scenarioCoverPath('multi-platform-size'),
+        steps: ['上传主视觉', '选目标比例与安全边距', '生成适配图'],
+        workbenchNotes: { cropSafeZone: 'safe 模式保留平台裁切区' },
         title: '多平台尺寸一键适配',
         description: '同一商品视觉快速适配主图、详情、信息流等不同比例。',
         tips: ['先选好目标比例再生成'],
@@ -846,6 +1016,9 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
       },
       {
         id: 'batch-style-unify',
+        coverImage: scenarioCoverPath('batch-style-unify'),
+        steps: ['上传待统一商品图', '设背景与品牌色', '批量统一风格'],
+        workbenchNotes: { batchVariant: '适合一次上传多张后逐张生成', brandTone: '固定 brandHint 可系列化' },
         title: '店铺风格统一 / 批量出图',
         description: '统一光影、背景与调色，让目录图看起来出自同一套视觉体系。',
         tips: ['固定品牌色与背景描述'],
@@ -879,6 +1052,9 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
       },
       {
         id: 'compliance-fix',
+        coverImage: scenarioCoverPath('compliance-fix'),
+        steps: ['上传待检主图', '选平台与修正项', '生成合规图'],
+        workbenchNotes: { outputQuality: '主图优先 1:1 高清' },
         title: '主图合规预检修正',
         description: '修正杂乱背景、占比不足、边角裁切等问题，贴近平台硬性规范。',
         tips: ['白底主图优先；避免多余文字与水印'],
