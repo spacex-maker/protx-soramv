@@ -56,6 +56,7 @@ export interface EcommerceScenario {
   fields: ScenarioField[];
   aspectRatio: string;
   kleinMode: EcommerceKleinMode;
+  supportsOfficialModel?: boolean;
   buildPrompt: (values: ScenarioFieldValues) => string;
 }
 
@@ -402,7 +403,7 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
         description: '上传服装平铺或商品图，AI 自然「穿」到虚拟模特上，可换姿势 / 肤色 / 体型。',
         tips: ['上传平铺或挂拍服装图效果更好'],
         tags: ['上身', '服饰'],
-        uploads: [garmentUpload, modelRefUpload],
+        uploads: [garmentUpload],
         fields: [
           {
             id: 'gender',
@@ -430,6 +431,7 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
         ],
         aspectRatio: '3:4',
         kleinMode: 'edit',
+        supportsOfficialModel: true,
         buildPrompt: (v) =>
           `Fashion e-commerce ${S(v, 'gender')} model wearing this garment, ${S(v, 'pose')} pose, ${S(v, 'body')} body type, ${S(v, 'tone')} skin tone, accurate fabric drape, studio soft light, catalog look`,
       },
@@ -442,7 +444,7 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
         description: '强调合身感、褶皱与垂坠，同一模特风格贯穿店铺目录。',
         tips: ['多件商品复用同一模特描述可保持店铺风格一致'],
         tags: ['试穿', '合身'],
-        uploads: [garmentUpload, modelRefUpload],
+        uploads: [garmentUpload],
         fields: [
           {
             id: 'fit',
@@ -469,6 +471,7 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
         ],
         aspectRatio: '3:4',
         kleinMode: 'edit',
+        supportsOfficialModel: true,
         buildPrompt: (v) =>
           `Virtual try-on: clothing fitted on consistent fashion model, ${S(v, 'fit')} fit, emphasize ${M(v, 'fabric')}, boutique e-commerce quality, soft studio lighting`,
       },

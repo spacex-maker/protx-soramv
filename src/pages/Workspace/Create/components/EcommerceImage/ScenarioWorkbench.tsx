@@ -17,6 +17,10 @@ import {
   generateKleinImage,
   uploadImageFiles,
 } from './generateApi';
+import OfficialModelPicker, {
+  type OfficialEcommerceModel,
+} from './OfficialModelPicker';
+import { buildKleinOutfitPrompt } from '../shared/fluxKleinParams';
 
 type SlotFile = {
   file: File;
@@ -347,6 +351,8 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
   const [model, setModel] = useState<Model | null>(null);
   const [loading, setLoading] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
+  const [selectedOfficialModel, setSelectedOfficialModel] =
+    useState<OfficialEcommerceModel | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -360,6 +366,7 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
     setFieldValues(buildInitialFieldValues(scenario.fields));
     setSlotFiles({});
     setResultUrl(null);
+    setSelectedOfficialModel(null);
   }, [scenario.id, scenario.fields]);
 
   useEffect(() => {
@@ -436,8 +443,29 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
     try {
       const orderedSlots = scenario.uploads.filter((s) => slotFiles[s.id]);
       const files = orderedSlots.map((s) => slotFiles[s.id]!.file);
-      const imageUrls = await uploadImageFiles(files);
-      const prompt = scenario.buildPrompt(fieldValues);
+      const uploadedUrls = await uploadImageFiles(files);
+      let imageUrls = uploadedUrls;
+      let prompt = scenario.buildPrompt(fieldValues);
+
+      if (scenario.supportsOfficialModel) {
+        if (!selectedOfficialModel?.composedImageUrl) {
+          message.warning('请选择一位官方模特'));
+          hide();
+          setLoading(false);
+          return;
+        }
+        if (!uploadedUrls.length) {
+          message.warning('请上传衣物 / 商品图'));
+          hide();
+          setLoading(false);
+          return;
+        }
+        imageUrls = [selectedOfficialModel.composedImageUrl, uploadedUrls[0]];
+        prompt = buildKleinOutfitPrompt({
+          personDesc: `${selectedOfficialModel.modelName} fashion model`,
+          garmentDesc: 'the garment / product clothing from Image 2',
+        });
+      }
 
       const gen = await generateKleinImage({
         model,
@@ -557,6 +585,17 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
                 <CheckCircleOutlined style={{ opacity: uploadsReady ? 1 : 0.35 }} />
                 步骤 1 · 上传素材
               </StepHeading>
+                            {scenario.supportsOfficialModel && (
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8, opacity: 0.75 }}>选择官方模特（只需再上传衣物）</div>
+                  <OfficialModelPicker
+                    value={selectedOfficialModel?.modelCode}
+                    onChange={setSelectedOfficialModel}
+                    accent={category.accent}
+                    isDark={isDark}
+                  />
+                </div>
+              )}
               <UploadGrid>
             {scenario.uploads.map((slot) => {
               const sf = slotFiles[slot.id];
