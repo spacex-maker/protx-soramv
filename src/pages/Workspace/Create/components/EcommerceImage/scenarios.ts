@@ -32,11 +32,21 @@ export interface EcommerceWorkbenchNotes {
   batchVariant?: string;
 }
 
+export interface EcommerceCaseCompare {
+  beforeImage: string;
+  afterImage: string;
+  beforeLabel?: string;
+  afterLabel?: string;
+  caption?: string;
+}
+
 export interface EcommerceScenario {
   id: string;
   title: string;
   description: string;
   coverImage: string;
+  /** 工作台右侧案例：生成前后对比 */
+  caseCompare?: EcommerceCaseCompare;
   steps: string[];
   workloadHint?: string;
   workbenchNotes?: EcommerceWorkbenchNotes;
@@ -180,6 +190,13 @@ export const ECOMMERCE_CATEGORIES: EcommerceCategory[] = [
       {
         id: 'white-bg-hero',
         coverImage: scenarioCoverPath('white-bg-hero'),
+        caseCompare: {
+          beforeImage: '/ecommerce-cases/white-bg-hero-before.jpg',
+          afterImage: '/ecommerce-cases/white-bg-hero-after.jpg',
+          beforeLabel: '原图（供应商实拍）',
+          afterLabel: '生成后（白底主图）',
+          caption: '同款商品：杂乱实拍 → 纯白棚拍主图（主体≥85%）',
+        },
         steps: ['上传商品图', '选择平台与主体占比', '生成白底主图'],
         workloadHint: '单 SKU 约 1–2 分钟',
         workbenchNotes: { outputQuality: '建议 2048px 方图', cropSafeZone: '主体居中，四边留 5% 安全区' },
