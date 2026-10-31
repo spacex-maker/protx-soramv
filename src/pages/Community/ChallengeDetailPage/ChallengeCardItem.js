@@ -67,6 +67,7 @@ const HubCardLayout = ({
   intl,
   statusInfo,
   totalPrize,
+  featured = false,
 }) => {
   const handleManageClick = (event) => {
     event.stopPropagation();
@@ -81,7 +82,7 @@ const HubCardLayout = ({
 
   return (
     <HubChallengeCard
-      className={statusInfo.phase === 'live' ? 'live' : undefined}
+      className={[statusInfo.phase === 'live' ? 'live' : '', featured ? 'featured' : ''].filter(Boolean).join(' ') || undefined}
       onClick={onClick}
       style={{ animationDelay: `${index * 0.06}s` }}
     >
@@ -124,9 +125,14 @@ const HubCardLayout = ({
       <HubCardBody>
         <div className="date-row">
           <ClockCircleOutlined style={{ fontSize: 13, opacity: 0.7 }} />
-          <span>{endDate}</span>
+          <span>
+            {intl.formatMessage({ id: 'challenge.hub.endsOn', defaultMessage: '截止' })} {endDate}
+          </span>
         </div>
-        <span className="phase-tag">{statusInfo.label}</span>
+        <span className="meta-cta">
+          {intl.formatMessage({ id: 'challenge.hub.viewDetail', defaultMessage: '查看详情' })}
+          <ArrowRightOutlined style={{ marginLeft: 4, fontSize: 11 }} />
+        </span>
       </HubCardBody>
 
       {isActive && (
@@ -255,6 +261,7 @@ const ChallengeCardItem = ({
   canManage = false,
   onManageClick,
   variant = 'drawer',
+  featured = false,
 }) => {
   const intl = useIntl();
   const statusInfo = getStatusInfo(challenge, intl);
@@ -270,6 +277,7 @@ const ChallengeCardItem = ({
     intl,
     statusInfo,
     totalPrize,
+    featured,
   };
 
   if (variant === 'hub') {

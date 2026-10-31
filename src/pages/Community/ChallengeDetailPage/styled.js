@@ -1661,217 +1661,109 @@ export const ActionTip = styled.div`
   }
 `;
 
-export const HubHero = styled.div`
-  position: relative;
-  margin: 8px 0 32px;
-  padding: 40px 36px;
-  border-radius: 24px;
-  overflow: hidden;
-  isolation: isolate;
-  background: ${props => props.theme.mode === 'dark'
-    ? 'linear-gradient(135deg, #141414 0%, #1a1208 45%, #0f172a 100%)'
-    : 'linear-gradient(135deg, #fff7e6 0%, #ffffff 40%, #f0f5ff 100%)'};
-  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
-  box-shadow: ${props => props.theme.mode === 'dark'
-    ? '0 24px 48px rgba(0,0,0,0.35)'
-    : '0 20px 40px rgba(250, 173, 20, 0.08), 0 8px 24px rgba(0,0,0,0.04)'};
-
-  .hero-glow {
-    position: absolute;
-    top: -40%;
-    right: -10%;
-    width: 420px;
-    height: 420px;
-    background: radial-gradient(circle, rgba(250, 173, 20, 0.22) 0%, transparent 68%);
-    pointer-events: none;
-  }
-
-  .hero-glow-2 {
-    position: absolute;
-    bottom: -50%;
-    left: -5%;
-    width: 360px;
-    height: 360px;
-    background: radial-gradient(circle, rgba(59, 130, 246, 0.14) 0%, transparent 70%);
-    pointer-events: none;
-  }
-
-  .hero-content {
-    position: relative;
-    z-index: 1;
-    display: flex;
-    align-items: flex-start;
-    gap: 20px;
-  }
-
-  .hero-icon-wrap {
-    width: 64px;
-    height: 64px;
-    border-radius: 18px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    background: linear-gradient(135deg, #ffd666 0%, #faad14 55%, #d48806 100%);
-    box-shadow: 0 12px 28px rgba(250, 173, 20, 0.35);
-    color: #fff;
-    font-size: 30px;
-  }
-
-  .hero-text {
-    min-width: 0;
-  }
-
-  .hero-eyebrow {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 12px;
-    margin-bottom: 12px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
-    color: #d48806;
-    background: rgba(250, 173, 20, 0.12);
-    border: 1px solid rgba(250, 173, 20, 0.22);
-  }
-
-  h1 {
-    margin: 0 0 10px;
-    font-size: clamp(28px, 4vw, 40px);
-    font-weight: 800;
-    line-height: 1.15;
-    letter-spacing: -0.02em;
-    color: ${props => props.theme.mode === 'dark' ? '#fff' : '#141414'};
-  }
-
-  p {
-    margin: 0;
-    max-width: 560px;
-    font-size: 16px;
-    line-height: 1.65;
-    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.62)' : 'rgba(0,0,0,0.58)'};
-  }
-
-  @media (max-width: 768px) {
-    padding: 28px 20px;
-    border-radius: 18px;
-
-    .hero-content {
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .hero-icon-wrap {
-      width: 52px;
-      height: 52px;
-      font-size: 24px;
-      border-radius: 14px;
-    }
-  }
-`;
-
-export const HubHeader = styled.div`
-  /* legacy alias */
-`;
-
-export const HubStatsGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 28px;
-
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-`;
-
-export const HubStatCard = styled.div`
-  position: relative;
-  padding: 22px 24px;
-  border-radius: 18px;
-  overflow: hidden;
-  background: ${props => props.theme.mode === 'dark' ? '#141414' : '#fff'};
-  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
-  box-shadow: ${props => props.theme.mode === 'dark'
-    ? '0 8px 24px rgba(0,0,0,0.25)'
-    : '0 8px 24px rgba(0,0,0,0.04)'};
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: ${props => props.$accent || 'linear-gradient(90deg, #faad14, #ffd666)'};
-    opacity: 0.9;
-  }
-
-  &:hover {
-    transform: translateY(-3px);
-    box-shadow: ${props => props.theme.mode === 'dark'
-      ? '0 16px 32px rgba(0,0,0,0.35)'
-      : '0 16px 32px rgba(0,0,0,0.08)'};
-  }
-
-  .stat-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 14px;
-    font-size: 18px;
-    background: ${props => props.$iconBg || 'rgba(250, 173, 20, 0.12)'};
-    color: ${props => props.$iconColor || '#faad14'};
-  }
-
-  .stat-value {
-    font-size: 32px;
-    font-weight: 800;
-    line-height: 1;
-    letter-spacing: -0.02em;
-    margin-bottom: 6px;
-    color: ${props => props.theme.mode === 'dark' ? '#fff' : '#141414'};
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-  }
-
-  .stat-label {
-    font-size: 13px;
-    font-weight: 600;
-    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.48)'};
-    letter-spacing: 0.3px;
-  }
-`;
-
+export const HubHero = styled.div``; /* legacy */
+export const HubHeader = styled.div``; /* legacy */
+export const HubStatsGrid = styled.div``; /* legacy */
+export const HubStatCard = styled.div``; /* legacy */
 export const HubStats = styled(DrawerStats)`
   margin-bottom: 20px;
 `;
 
+export const HubTopBar = styled.div`
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 0.9fr);
+  gap: 28px;
+  align-items: end;
+  margin: 4px 0 20px;
+  padding: 8px 0 4px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    align-items: stretch;
+  }
+`;
+
+export const HubTitleBlock = styled.div`
+  min-width: 0;
+
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0 0 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #c2811a;
+    background: rgba(250, 173, 20, 0.12);
+    border: 1px solid rgba(250, 173, 20, 0.2);
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: clamp(30px, 4vw, 42px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    color: ${props => props.theme.mode === 'dark' ? '#fff' : '#141414'};
+  }
+
+  .subtitle {
+    margin: 0 0 16px;
+    max-width: 520px;
+    font-size: 15px;
+    line-height: 1.6;
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.58)' : 'rgba(0,0,0,0.55)'};
+  }
+`;
+
+export const HubMetricRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+`;
+
+export const HubMetric = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'};
+  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+  font-size: 13px;
+  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)'};
+
+  strong {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: ${props => props.theme.mode === 'dark' ? '#fff' : '#141414'};
+  }
+
+  .anticon {
+    font-size: 13px;
+    color: ${props => {
+      if (props.$tone === 'blue') return '#3b82f6';
+      if (props.$tone === 'green') return '#52c41a';
+      return '#d48806';
+    }};
+  }
+`;
+
 export const HubToolbar = styled.div`
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 8px;
-  padding: 16px 18px;
-  border-radius: 16px;
-  background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.85)'};
-  border: 1px solid ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'};
-  backdrop-filter: blur(8px);
+  width: 100%;
 
   .ant-input-affix-wrapper {
     flex: 1;
-    min-width: 220px;
-    max-width: 480px;
+    min-width: 0;
     border-radius: 12px !important;
     height: 44px;
   }
@@ -1880,6 +1772,64 @@ export const HubToolbar = styled.div`
     height: 44px;
     border-radius: 12px;
     font-weight: 600;
+    flex-shrink: 0;
+  }
+`;
+
+export const HubFilterRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+`;
+
+export const HubFilterChip = styled.button`
+  appearance: none;
+  border: 1px solid ${props => props.$active
+    ? (props.theme.mode === 'dark' ? 'rgba(250,173,20,0.45)' : 'rgba(212,136,6,0.35)')
+    : (props.theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)')};
+  background: ${props => props.$active
+    ? 'rgba(250,173,20,0.16)'
+    : (props.theme.mode === 'dark' ? 'rgba(255,255,255,0.03)' : '#fff')};
+  color: ${props => props.$active
+    ? (props.theme.mode === 'dark' ? '#ffd666' : '#ad6800')
+    : (props.theme.mode === 'dark' ? 'rgba(255,255,255,0.72)' : 'rgba(0,0,0,0.65)')};
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+
+  &:hover {
+    border-color: rgba(250,173,20,0.4);
+  }
+`;
+
+export const HubSectionLabel = styled.h2`
+  margin: 8px 0 14px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.72)' : 'rgba(0,0,0,0.62)'};
+`;
+
+export const HubFeaturedGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  margin-bottom: 28px;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+
+  & > * {
+    min-height: 0;
+  }
+
+  .hub-card-cover {
+    height: clamp(240px, 28vw, 320px);
   }
 `;
 
@@ -1954,7 +1904,7 @@ export const HubChallengeCard = styled.div`
 export const HubCardCover = styled.div`
   position: relative;
   width: 100%;
-  height: clamp(180px, 22vw, 240px);
+  height: clamp(200px, 24vw, 260px);
   overflow: hidden;
   background: ${props => props.theme.mode === 'dark' ? '#0a0a0a' : '#f0f0f0'};
 
@@ -2078,7 +2028,7 @@ export const HubCardCover = styled.div`
 `;
 
 export const HubCardBody = styled.div`
-  padding: 16px 18px 18px;
+  padding: 12px 16px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2093,29 +2043,24 @@ export const HubCardBody = styled.div`
     color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)'};
   }
 
-  .phase-tag {
-    display: inline-flex;
-    align-items: center;
-    padding: 4px 10px;
-    border-radius: 8px;
-    font-size: 11px;
+  .meta-cta {
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-    background: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'};
-    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.55)'};
+    color: ${props => props.theme.mode === 'dark' ? 'rgba(255,214,102,0.9)' : '#ad6800'};
+    white-space: nowrap;
   }
 `;
 
 export const HubGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 24px;
-  margin-top: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+  margin-top: 4px;
+  margin-bottom: 24px;
 
   @media (max-width: 768px) {
     grid-template-columns: 1fr;
-    gap: 18px;
+    gap: 14px;
   }
 `;
 

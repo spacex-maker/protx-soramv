@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Empty, Input, Skeleton, Spin, message } from 'antd';
+import { Button, Empty, Input, Skeleton, message } from 'antd';
 import {
   LeftOutlined,
   FireFilled,
@@ -19,17 +19,29 @@ import {
   isChallengeLive,
   sortChallengesByPhase,
   calculateTotalPrize,
+  getChallengePhase,
 } from '../ChallengeDetailPage/utils';
 import {
   PageWrapper,
   Container,
-  HubHero,
-  HubStatsGrid,
-  HubStatCard,
+  HubTopBar,
+  HubTitleBlock,
+  HubMetricRow,
+  HubMetric,
   HubToolbar,
+  HubFilterRow,
+  HubFilterChip,
+  HubSectionLabel,
+  HubFeaturedGrid,
   HubGrid,
   EmptyState,
 } from '../ChallengeDetailPage/styled';
+
+const FILTERS = [
+  { key: 'live', id: 'challenge.hub.filter.live', defaultMessage: '进行中' },
+  { key: 'all', id: 'challenge.hub.filter.all', defaultMessage: '全部' },
+  { key: 'ended', id: 'challenge.hub.filter.ended', defaultMessage: '已结束' },
+];
 
 const ChallengeHubPage = ({ embedInWorkspace = false }) => {
   const intl = useIntl();
@@ -38,6 +50,7 @@ const ChallengeHubPage = ({ embedInWorkspace = false }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [challenges, setChallenges] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filter, setFilter] = useState('live');
   const [canManage, setCanManage] = useState(false);
   const [manageModalOpen, setManageModalOpen] = useState(false);
   const [editingChallenge, setEditingChallenge] = useState(null);
@@ -75,19 +88,37 @@ const ChallengeHubPage = ({ embedInWorkspace = false }) => {
     }
   }, []);
 
-  const filteredChallenges = useMemo(() => {
-    const filtered = challenges.filter((c) =>
-      c.title?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    return sortChallengesByPhase(filtered);
-  }, [challenges, searchTerm]);
-
   const stats = useMemo(() => {
     const total = challenges.length;
     const active = challenges.filter((c) => isChallengeLive(c)).length;
     const totalPrize = challenges.reduce((sum, c) => sum + calculateTotalPrize(c.rewardsConfig), 0);
     return { total, active, totalPrize };
   }, [challenges]);
+
+  const filteredChallenges = useMemo(() => {
+    let list = challenges.filter((c) =>
+      c.title?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    if (filter === 'live') {
+      list = list.filter((c) => {
+        const phase = getChallengePhase(c);
+        return phase === 'live' || phase === 'upcoming' || phase === 'voting';
+      });
+    } else if (filter === 'ended') {
+      list = list.filter((c) => getChallengePhase(c) === 'ended');
+    }
+    return sortChallengesByPhase(list);
+  }, [challenges, searchTerm, filter]);
+
+  const featured = useMemo(
+    () => filteredChallenges.filter((c) => isChallengeLive(c)).slice(0, 2),
+    [filteredChallenges]
+  );
+  const featuredIds = useMemo(() => new Set(featured.map((c) => c.id)), [featured]);
+  const gridItems = useMemo(
+    () => filteredChallenges.filter((c) => !featuredIds.has(c.id)),
+    [filteredChallenges, featuredIds]
+  );
 
   const handleCardClick = (challengeId) => {
     navigate(`${detailBasePath}/${challengeId}`);
@@ -116,7 +147,7 @@ const ChallengeHubPage = ({ embedInWorkspace = false }) => {
           type="text"
           icon={<LeftOutlined />}
           onClick={() => navigate(backPath)}
-          style={{ marginLeft: -16, marginBottom: 8 }}
+          style={{ marginLeft: -16, marginBottom: 4 }}
         >
           {embedInWorkspace ? (
             <FormattedMessage id="common.backToWorkspace" defaultMessage="Back to Workspace" />
@@ -125,110 +156,126 @@ const ChallengeHubPage = ({ embedInWorkspace = false }) => {
           )}
         </Button>
 
-        <HubHero>
-          <div className="hero-glow" aria-hidden />
-          <div className="hero-glow-2" aria-hidden />
-          <div className="hero-content">
-            <div className="hero-icon-wrap">
-              <TrophyFilled />
-            </div>
-            <div className="hero-text">
-              <div className="hero-eyebrow">
-                <FireFilled style={{ fontSize: 11 }} />
-                <FormattedMessage id="challenge.hub.eyebrow" defaultMessage="Creative Arena" />
-              </div>
-              <h1>
-                <FormattedMessage id="challenge.hub.title" defaultMessage="Daily Challenges" />
-              </h1>
-              <p>
-                <FormattedMessage
-                  id="challenge.hub.subtitle"
-                  defaultMessage="Browse recent challenges and tap a card to view details"
-                />
-              </p>
-            </div>
-          </div>
-        </HubHero>
-
-        <HubStatsGrid>
-          <HubStatCard
-            $accent="linear-gradient(90deg, #3b82f6, #60a5fa)"
-            $iconBg="rgba(59, 130, 246, 0.12)"
-            $iconColor="#3b82f6"
-          >
-            <div className="stat-icon">
-              <TrophyFilled />
-            </div>
-            <div className="stat-value">{stats.total}</div>
-            <div className="stat-label">
-              <FormattedMessage id="challenge.stats.total" defaultMessage="Total" />
-            </div>
-          </HubStatCard>
-          <HubStatCard
-            $accent="linear-gradient(90deg, #52c41a, #95de64)"
-            $iconBg="rgba(82, 196, 26, 0.12)"
-            $iconColor="#52c41a"
-          >
-            <div className="stat-icon">
+        <HubTopBar>
+          <HubTitleBlock>
+            <p className="eyebrow">
               <FireFilled />
-            </div>
-            <div className="stat-value">{stats.active}</div>
-            <div className="stat-label">
-              <FormattedMessage id="challenge.stats.active" defaultMessage="Active" />
-            </div>
-          </HubStatCard>
-          <HubStatCard
-            $accent="linear-gradient(90deg, #faad14, #ffd666)"
-            $iconBg="rgba(250, 173, 20, 0.12)"
-            $iconColor="#faad14"
-          >
-            <div className="stat-icon">
-              <TrophyFilled />
-            </div>
-            <div className="stat-value">{stats.totalPrize.toLocaleString()}</div>
-            <div className="stat-label">
-              <FormattedMessage id="challenge.stats.totalPrize" defaultMessage="Total Prize" />
-            </div>
-          </HubStatCard>
-        </HubStatsGrid>
+              <FormattedMessage id="challenge.hub.eyebrow" defaultMessage="Creative Arena" />
+            </p>
+            <h1>
+              <FormattedMessage id="challenge.hub.title" defaultMessage="Daily Challenges" />
+            </h1>
+            <p className="subtitle">
+              <FormattedMessage
+                id="challenge.hub.subtitle"
+                defaultMessage="Browse recent challenges and tap a card to view details"
+              />
+            </p>
+            <HubMetricRow>
+              <HubMetric $tone="blue">
+                <TrophyFilled />
+                <strong>{stats.total}</strong>
+                <span><FormattedMessage id="challenge.stats.total" defaultMessage="Total" /></span>
+              </HubMetric>
+              <HubMetric $tone="green">
+                <FireFilled />
+                <strong>{stats.active}</strong>
+                <span><FormattedMessage id="challenge.stats.active" defaultMessage="Active" /></span>
+              </HubMetric>
+              <HubMetric $tone="gold">
+                <TrophyFilled />
+                <strong>{stats.totalPrize.toLocaleString()}</strong>
+                <span><FormattedMessage id="challenge.stats.totalPrize" defaultMessage="Total Prize" /></span>
+              </HubMetric>
+            </HubMetricRow>
+          </HubTitleBlock>
 
-        <HubToolbar>
-          <Input
-            prefix={<SearchOutlined style={{ color: '#999' }} />}
-            placeholder={intl.formatMessage({ id: 'common.search', defaultMessage: 'Search' })}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            allowClear
-            size="large"
-          />
-          <Button icon={<ReloadOutlined />} loading={refreshing} onClick={() => loadChallenges(true)}>
-            <FormattedMessage id="common.refresh" defaultMessage="Refresh" />
-          </Button>
-        </HubToolbar>
+          <HubToolbar>
+            <Input
+              prefix={<SearchOutlined style={{ color: '#999' }} />}
+              placeholder={intl.formatMessage({ id: 'common.search', defaultMessage: 'Search' })}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              allowClear
+              size="large"
+            />
+            <Button icon={<ReloadOutlined />} loading={refreshing} onClick={() => loadChallenges(true)}>
+              <FormattedMessage id="common.refresh" defaultMessage="Refresh" />
+            </Button>
+          </HubToolbar>
+        </HubTopBar>
+
+        <HubFilterRow>
+          {FILTERS.map((item) => (
+            <HubFilterChip
+              key={item.key}
+              type="button"
+              $active={filter === item.key}
+              onClick={() => setFilter(item.key)}
+            >
+              <FormattedMessage id={item.id} defaultMessage={item.defaultMessage} />
+            </HubFilterChip>
+          ))}
+        </HubFilterRow>
 
         {loading ? (
-          <Skeleton active paragraph={{ rows: 8 }} style={{ marginTop: 24 }} />
+          <Skeleton active paragraph={{ rows: 8 }} style={{ marginTop: 16 }} />
         ) : filteredChallenges.length > 0 ? (
-          <HubGrid>
-            {filteredChallenges.map((item, index) => (
-              <ChallengeCardItem
-                key={item.id}
-                challenge={item}
-                isActive={false}
-                index={index}
-                variant="hub"
-                canManage={canManage && !embedInWorkspace}
-                onManageClick={handleManageClick}
-                onClick={() => handleCardClick(item.id)}
-              />
-            ))}
-          </HubGrid>
+          <>
+            {featured.length > 0 && (
+              <>
+                <HubSectionLabel>
+                  <FormattedMessage id="challenge.hub.featured" defaultMessage="进行中的挑战" />
+                </HubSectionLabel>
+                <HubFeaturedGrid>
+                  {featured.map((item, index) => (
+                    <ChallengeCardItem
+                      key={item.id}
+                      challenge={item}
+                      isActive={false}
+                      index={index}
+                      variant="hub"
+                      featured
+                      canManage={canManage && !embedInWorkspace}
+                      onManageClick={handleManageClick}
+                      onClick={() => handleCardClick(item.id)}
+                    />
+                  ))}
+                </HubFeaturedGrid>
+              </>
+            )}
+
+            {gridItems.length > 0 && (
+              <>
+                <HubSectionLabel>
+                  <FormattedMessage
+                    id={featured.length > 0 ? 'challenge.hub.more' : 'challenge.hub.list'}
+                    defaultMessage={featured.length > 0 ? '更多挑战' : '挑战列表'}
+                  />
+                </HubSectionLabel>
+                <HubGrid>
+                  {gridItems.map((item, index) => (
+                    <ChallengeCardItem
+                      key={item.id}
+                      challenge={item}
+                      isActive={false}
+                      index={index}
+                      variant="hub"
+                      canManage={canManage && !embedInWorkspace}
+                      onManageClick={handleManageClick}
+                      onClick={() => handleCardClick(item.id)}
+                    />
+                  ))}
+                </HubGrid>
+              </>
+            )}
+          </>
         ) : (
           <EmptyState style={{ marginTop: 40 }}>
             <Empty
               image={Empty.PRESENTED_IMAGE_SIMPLE}
               description={
-                searchTerm ? (
+                searchTerm || filter !== 'all' ? (
                   <FormattedMessage
                     id="challenge.noChallenges.desc"
                     defaultMessage="Try adjusting your search terms"
@@ -239,12 +286,6 @@ const ChallengeHubPage = ({ embedInWorkspace = false }) => {
               }
             />
           </EmptyState>
-        )}
-
-        {refreshing && (
-          <div style={{ textAlign: 'center', padding: 16 }}>
-            <Spin />
-          </div>
         )}
       </Container>
 

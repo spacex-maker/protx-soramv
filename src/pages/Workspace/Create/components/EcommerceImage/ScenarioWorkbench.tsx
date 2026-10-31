@@ -449,13 +449,13 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
 
       if (scenario.supportsOfficialModel) {
         if (!selectedOfficialModel?.composedImageUrl) {
-          message.warning('请选择一位官方模特'));
+          message.warning('请选择一位官方模特');
           hide();
           setLoading(false);
           return;
         }
         if (!uploadedUrls.length) {
-          message.warning('请上传衣物 / 商品图'));
+          message.warning('请上传衣物 / 商品图');
           hide();
           setLoading(false);
           return;
