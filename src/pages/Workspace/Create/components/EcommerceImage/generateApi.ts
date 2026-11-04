@@ -9,14 +9,60 @@ import {
 } from '../shared/fluxKleinParams';
 import { pollKleinImageTask } from '../shared/kleinTaskPoll';
 
-export async function fetchPreferredI2iModel(): Promise<Model | null> {
+function asModelList(raw: unknown): Model[] {
+  if (Array.isArray(raw)) return raw as Model[];
+  if (raw && typeof raw === 'object') {
+    const obj = raw as { items?: unknown; records?: unknown; list?: unknown };
+    if (Array.isArray(obj.items)) return obj.items as Model[];
+    if (Array.isArray(obj.records)) return obj.records as Model[];
+    if (Array.isArray(obj.list)) return obj.list as Model[];
+  }
+  return [];
+}
+
+/** 优先 FLUX.3 Klein；列表里没有时用任意已启用的图生图模型。excludeCodes 用于换掉后端已下线的编码。 */
+export async function fetchPreferredI2iModel(excludeCodes: string[] = []): Promise<Model | null> {
   const response = await instance.get('/productx/sa-ai-models/enabled/by-type', {
     params: { modelType: 'i2i' },
   });
-  const list: Model[] = response.data?.success ? response.data.data || [] : [];
+  if (response.data && response.data.success === false) {
+    throw new Error(response.data.message || '加载图生图模型失败');
+  }
+  const exclude = new Set(excludeCodes.filter(Boolean));
+  const list = asModelList(response.data?.data).filter(
+    (m) => Boolean(m?.modelCode) && !exclude.has(m.modelCode),
+  );
   if (!list.length) return null;
-  const klein = list.find((m) => isFluxKleinModel(m));
-  return klein || list[0];
+  const kleinExact = list.find((m) => String(m.modelCode).toLowerCase() === 'flux.3-klein');
+  if (kleinExact) return kleinExact;
+  return list.find((m) => isFluxKleinModel(m)) || list[0];
+}
+
+export async function downloadGeneratedImage(url: string, filename: string): Promise<'saved' | 'opened'> {
+  const name = /\.(png|jpe?g|webp|gif)$/i.test(filename) ? filename : `${filename}.png`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(String(res.status));
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1500);
+    return 'saved';
+  } catch {
+    const a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return 'opened';
+  }
 }
 
 export async function uploadImageToCos(file: File): Promise<string> {

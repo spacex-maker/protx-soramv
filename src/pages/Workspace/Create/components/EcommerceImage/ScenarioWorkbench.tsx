@@ -3,16 +3,20 @@ import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
   CloudUploadOutlined,
+  DownloadOutlined,
+  LinkOutlined,
   LoadingOutlined,
+  ReloadOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
-import { Button, message } from 'antd';
+import { Button, Image, message } from 'antd';
 import styled from 'styled-components';
 import type { Model } from '../ImageToImage/types';
 import type { EcommerceCategory, EcommerceScenario, ScenarioFieldValues, ScenarioUploadSlot } from './scenarios';
 import { resolveScenarioAspect } from './scenarios';
 import FieldControls, { buildInitialFieldValues } from './FieldControls';
 import {
+  downloadGeneratedImage,
   fetchPreferredI2iModel,
   generateKleinImage,
   uploadImageFiles,
@@ -162,25 +166,10 @@ const StepHeading = styled.div<{ $dark?: boolean }>`
   gap: 8px;
 `;
 
-const AspectPreviewWrap = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
+const RatioNote = styled.div<{ $dark?: boolean }>`
   margin-bottom: 12px;
-`;
-
-const AspectFrame = styled.div<{ $ratio: number; $dark?: boolean }>`
-  width: min(100%, 160px);
-  aspect-ratio: ${(p) => p.$ratio};
-  max-height: 120px;
-  border-radius: 10px;
-  border: 2px dashed ${(p) => (p.$dark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.18)')};
-  background: ${(p) => (p.$dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)')};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  color: ${(p) => (p.$dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)')};
+  font-size: 12px;
+  color: ${(p) => (p.$dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)')};
 `;
 
 const WorkbenchSub = styled.div<{ $dark?: boolean }>`
@@ -291,20 +280,71 @@ const Tips = styled.ul<{ $dark?: boolean }>`
   color: ${(p) => (p.$dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)')};
 `;
 
-const ResultBox = styled.div<{ $dark?: boolean }>`
-  min-height: 280px;
+const ResultHead = styled.div`
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+`;
+
+const ResultMeta = styled.div<{ $dark?: boolean }>`
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: ${(p) => (p.$dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.45)')};
+`;
+
+const ResultActions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const ResultStage = styled.div<{ $dark?: boolean }>`
+  min-height: 360px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 12px;
-  background: ${(p) => (p.$dark ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.03)')};
   overflow: hidden;
+  background: ${(p) =>
+    p.$dark
+      ? 'repeating-conic-gradient(rgba(255,255,255,0.035) 0% 25%, rgba(0,0,0,0.28) 0% 50%) 0 0 / 22px 22px'
+      : 'repeating-conic-gradient(#fafaf9 0% 25%, #e7e5e4 0% 50%) 0 0 / 22px 22px'};
+  border: 1px solid ${(p) => (p.$dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)')};
+
+  .ant-image {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
 
   img {
     max-width: 100%;
-    max-height: 420px;
+    max-height: min(72vh, 720px);
     object-fit: contain;
+    display: block;
   }
+`;
+
+const ResultEmpty = styled.div<{ $dark?: boolean }>`
+  padding: 48px 20px;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.6;
+  color: ${(p) => (p.$dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)')};
+`;
+
+const ModelLine = styled.div<{ $dark?: boolean }>`
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: ${(p) => (p.$dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)')};
 `;
 
 const BackBtn = styled(Button)`
@@ -322,12 +362,6 @@ type Props = {
   onBack: () => void;
 };
 
-
-function parseAspectRatio(ratio: string): number {
-  const [w, h] = ratio.split(':').map((n) => Number(n));
-  if (!w || !h) return 1;
-  return w / h;
-}
 
 function validateUploads(slots: ScenarioUploadSlot[], files: Record<string, SlotFile | undefined>): string | null {
   for (const slot of slots) {
@@ -349,7 +383,10 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
   );
   const [slotFiles, setSlotFiles] = useState<Record<string, SlotFile | undefined>>({});
   const [model, setModel] = useState<Model | null>(null);
+  const [modelLoading, setModelLoading] = useState(true);
+  const [modelError, setModelError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [selectedOfficialModel, setSelectedOfficialModel] =
     useState<OfficialEcommerceModel | null>(null);
@@ -369,27 +406,32 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
     setSelectedOfficialModel(null);
   }, [scenario.id, scenario.fields]);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const m = await fetchPreferredI2iModel();
-        if (!cancelled) setModel(m);
-      } catch {
-        if (!cancelled) message.error('加载图生图模型失败');
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+  const loadModel = useCallback(async () => {
+    setModelLoading(true);
+    setModelError(null);
+    try {
+      const m = await fetchPreferredI2iModel();
+      setModel(m);
+      if (!m) setModelError('当前没有可用的图生图模型');
+      return m;
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      setModel(null);
+      setModelError(err?.message || '加载图生图模型失败');
+      return null;
+    } finally {
+      setModelLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadModel();
+  }, [loadModel]);
 
   const aspectForGenerate = useMemo(
     () => resolveScenarioAspect(scenario, fieldValues),
     [scenario, fieldValues],
   );
-
-  const aspectRatioNumber = useMemo(() => parseAspectRatio(aspectForGenerate), [aspectForGenerate]);
 
   const uploadsReady = useMemo(
     () => !validateUploads(scenario.uploads, slotFiles),
@@ -427,11 +469,10 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
       message.warning(uploadErr);
       return;
     }
-    if (!model) {
-      message.warning('图生图模型未就绪，请稍后重试');
+    if (scenario.supportsOfficialModel && !selectedOfficialModel?.composedImageUrl) {
+      message.warning('请选择一位官方模特');
       return;
     }
-
     if (abortRef.current) abortRef.current.abort();
     const ac = new AbortController();
     abortRef.current = ac;
@@ -441,6 +482,18 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
     const hide = message.loading('正在上传并生成…', 0);
 
     try {
+      let activeModel = model;
+      if (!activeModel?.modelCode) {
+        activeModel = await fetchPreferredI2iModel();
+        setModel(activeModel);
+      }
+      if (!activeModel?.modelCode) {
+        hide();
+        setModelError('当前没有可用的图生图模型');
+        message.error('没有可用的图生图模型，请稍后重试');
+        return;
+      }
+
       const orderedSlots = scenario.uploads.filter((s) => slotFiles[s.id]);
       const files = orderedSlots.map((s) => slotFiles[s.id]!.file);
       const uploadedUrls = await uploadImageFiles(files);
@@ -448,33 +501,38 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
       let prompt = scenario.buildPrompt(fieldValues);
 
       if (scenario.supportsOfficialModel) {
-        if (!selectedOfficialModel?.composedImageUrl) {
-          message.warning('请选择一位官方模特');
-          hide();
-          setLoading(false);
-          return;
-        }
         if (!uploadedUrls.length) {
           message.warning('请上传衣物 / 商品图');
           hide();
           setLoading(false);
           return;
         }
-        imageUrls = [selectedOfficialModel.composedImageUrl, uploadedUrls[0]];
+        imageUrls = [selectedOfficialModel!.composedImageUrl, uploadedUrls[0]];
         prompt = buildKleinOutfitPrompt({
-          personDesc: `${selectedOfficialModel.modelName} fashion model`,
+          personDesc: `${selectedOfficialModel!.modelName} fashion model`,
           garmentDesc: 'the garment / product clothing from Image 2',
         });
       }
 
-      const gen = await generateKleinImage({
-        model,
-        imageUrls,
-        prompt,
-        aspectRatio: aspectForGenerate,
-        kleinMode: scenario.kleinMode,
-        signal: ac.signal,
-      });
+      const run = (m: Model) =>
+        generateKleinImage({
+          model: m,
+          imageUrls,
+          prompt,
+          aspectRatio: aspectForGenerate,
+          kleinMode: scenario.kleinMode,
+          signal: ac.signal,
+        });
+
+      let gen = await run(activeModel);
+      if (!gen.ok && /未找到模型/.test(gen.error || '')) {
+        const next = await fetchPreferredI2iModel([activeModel.modelCode]);
+        if (next?.modelCode) {
+          setModel(next);
+          activeModel = next;
+          gen = await run(next);
+        }
+      }
 
       hide();
       if (gen.ok) {
@@ -493,6 +551,31 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!resultUrl) return;
+    setDownloading(true);
+    try {
+      const mode = await downloadGeneratedImage(resultUrl, `ecommerce-${scenario.id}-${Date.now()}.png`);
+      if (mode === 'saved') message.success('已开始下载');
+      else message.info('图片已在新标签打开，可右键另存为');
+    } catch (e: unknown) {
+      const err = e as { message?: string };
+      message.error(err?.message || '下载失败');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleCopyLink = async () => {
+    if (!resultUrl) return;
+    try {
+      await navigator.clipboard.writeText(resultUrl);
+      message.success('已复制图片链接');
+    } catch {
+      message.error('复制失败，请直接下载');
     }
   };
 
@@ -628,12 +711,7 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
 
             <StepBlock $dark={isDark}>
               <StepHeading $dark={isDark}>步骤 2 · 场景属性</StepHeading>
-              <AspectPreviewWrap>
-                <AspectFrame $dark={isDark} $ratio={aspectRatioNumber}>
-                  {aspectForGenerate}
-                </AspectFrame>
-                <span style={{ fontSize: 12, opacity: 0.55 }}>生成比例预览框</span>
-              </AspectPreviewWrap>
+              <RatioNote $dark={isDark}>输出比例 {aspectForGenerate}</RatioNote>
               <FieldControls
                 fields={scenario.fields}
                 values={fieldValues}
@@ -652,6 +730,18 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
 
             <StepBlock $dark={isDark}>
               <StepHeading $dark={isDark}>步骤 3 · 生成</StepHeading>
+              <ModelLine $dark={isDark}>
+                {modelLoading
+                  ? '正在连接图生图模型…'
+                  : model
+                    ? `图生图模型：${model.modelName || model.modelCode}`
+                    : modelError || '图生图模型未就绪'}
+                {!modelLoading && !model && (
+                  <Button type="link" size="small" icon={<ReloadOutlined />} onClick={() => void loadModel()}>
+                    重试
+                  </Button>
+                )}
+              </ModelLine>
               <Button
                 type="primary"
                 size="large"
@@ -668,19 +758,40 @@ const ScenarioWorkbench: React.FC<Props> = ({ category, scenario, onBack }) => {
         </Section>
 
         <Section $dark={isDark}>
-          <SectionTitle $dark={isDark}>生成结果</SectionTitle>
-          <AspectPreviewWrap>
-            <AspectFrame $dark={isDark} $ratio={aspectRatioNumber}>
-              预览
-            </AspectFrame>
-          </AspectPreviewWrap>
-          <ResultBox $dark={isDark}>
+          <ResultHead>
+            <div>
+              <SectionTitle $dark={isDark} style={{ margin: 0 }}>
+                生成结果
+              </SectionTitle>
+              <ResultMeta $dark={isDark}>
+                {resultUrl ? `比例 ${aspectForGenerate} · 可下载或复制链接` : '生成完成后在这里预览，并直接下载'}
+              </ResultMeta>
+            </div>
+            <ResultActions>
+              <Button
+                type="primary"
+                icon={<DownloadOutlined />}
+                disabled={!resultUrl}
+                loading={downloading}
+                onClick={() => void handleDownload()}
+                style={{ background: category.accent, borderColor: category.accent }}
+              >
+                下载
+              </Button>
+              <Button icon={<LinkOutlined />} disabled={!resultUrl} onClick={() => void handleCopyLink()}>
+                复制链接
+              </Button>
+            </ResultActions>
+          </ResultHead>
+          <ResultStage $dark={isDark}>
             {resultUrl ? (
-              <img src={resultUrl} alt="生成结果" />
+              <Image src={resultUrl} alt="生成结果" />
             ) : (
-              <span style={{ opacity: 0.45, fontSize: 13 }}>{loading ? '生成中…' : '结果将显示在这里'}</span>
+              <ResultEmpty $dark={isDark}>
+                {loading ? '正在生成，完成后会出现在这里' : '还没有结果。上传素材后点左侧「生成」。'}
+              </ResultEmpty>
             )}
-          </ResultBox>
+          </ResultStage>
         </Section>
       </Panel>
     </>
